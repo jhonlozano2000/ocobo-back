@@ -28,6 +28,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/getme', [AuthController::class, 'getMe']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
     Route::post('/register', [AuthController::class, 'register']);
-
-    Route::resource('/users', UserControlle::class)->except('create', 'edit');
 });

@@ -20,7 +20,7 @@ class UserControlle extends Controller
         return response()->json(
             [
                 'status' => true,
-                'data' => $users,
+                $users,
                 'message' => 'Listado de usuarios'
             ]
         );
@@ -73,7 +73,7 @@ class UserControlle extends Controller
 
         return response()->json([
             'status' => true,
-            'data' => $user,
+            $user,
             'message' => 'Usuario creado correctamente'
         ], 201);
     }
@@ -159,7 +159,7 @@ class UserControlle extends Controller
 
         return response()->json([
             'status' => true,
-            'data' => $user,
+            $user,
             'message' => 'Usuario actualizado correctamente'
         ], 200);
     }
