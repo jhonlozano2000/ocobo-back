@@ -20,6 +20,8 @@ return new class extends Migration
             $table->string('movil', 15)->nullable();
             $table->string('dir', 100)->nullable();
             $table->string('email')->unique();
+            $table->string('firma', 100)->nullable();
+            $table->string('avatar', 100)->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\AuthLoginRequest;
 use Illuminate\Http\Request;
 use App\Models\User;
+use Dotenv\Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,22 +15,41 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         // Validación de los datos
-        $rules = [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+        $validator = Validator::make($request->all(), [
+            'num_docu' => 'required|string|max:20|unique:users',
+            'nombres' => 'required|string|max:70',
+            'apellidos' => 'required|string|max:70',
+            'email' => 'required|string|email|max:70|unique:users',
             'password' => 'required|string|min:6|confirmed',
-        ];
+        ], [
+            'num_docu.unique' => 'El número de documento ya está en uso',
+            'num_docu.required' => 'Te hizo falta el número de documento',
+            'nombres.required' => 'Te hizo falta el nombre',
+            'apellidos.required' => 'Te hizo falta el apellido',
+            'email.required' => 'Te hizo falta el correo electrónico',
+            'email.email' => 'El correo electrónico no es válido',
+            'email.max' => 'El correo electrónico es demasiado largo',
+            'email.unique' => 'El correo electrónico ya está en uso',
+            'password.required' => 'Te hizo falta la contraseña',
+            'password.min' => 'La contraseña debe tener al menos 6 caracteres',
+            'password.confirmed' => 'La contraseña no coincide con la confirmación',
+        ]);
 
-        $validatedData = \Validator::make($request->input(), $rules);
-        if ($validatedData->fails()) {
+        // Verificar si la validación falla
+        if ($validator->fails()) {
             return response()->json([
-                'status' => false,
-                'erros' => $validatedData->errors()->all()
-            ], 422);
+                'status' => 'error',
+                'errors' => $validator->errors(),
+            ], 400); // Devuelve un error 400 (Bad Request) con los errores
         }
 
         $user = User::create([
-            'name' => $request->name,
+            'num_docu' => $request->num_docu,
+            'nombres' => $request->nombres,
+            'apellidos' => $request->apellidos,
+            'tel' => $request->tel,
+            'movil' => $request->movil,
+            'dir' => $request->dir,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
@@ -79,8 +99,28 @@ class AuthController extends Controller
         ]);
     }
 
-    public function getUser(Request $request)
+    public function getMe(Request $request)
     {
-        return response()->json($request->user());
+        return response()->json(
+            [
+                'status' => true,
+                'data' => $request->user()
+            ],
+            201
+        );
+    }
+
+    public function refresh(Request $request)
+    {
+        // Revoca el token actual
+        $request->user()->currentAccessToken()->delete();
+
+        // Crea un nuevo token
+        $newToken = $request->user()->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'access_token' => $newToken,
+            'token_type' => 'Bearer',
+        ]);
     }
 }
