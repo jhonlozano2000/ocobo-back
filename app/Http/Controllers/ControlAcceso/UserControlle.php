@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use PhpParser\Node\Stmt\TryCatch;
 use \Validator;
 
@@ -17,13 +18,11 @@ class UserControlle extends Controller
     public function index()
     {
         $users = User::all();
-        return response()->json(
-            [
-                'status' => true,
-                $users,
-                'message' => 'Listado de usuarios'
-            ]
-        );
+        return response()->json([
+            'status' => true,
+            'data' => $users,
+            'message' => 'Listado de usuarios'
+        ], 200);
     }
 
     /**
@@ -73,7 +72,7 @@ class UserControlle extends Controller
 
         return response()->json([
             'status' => true,
-            $user,
+            'data' => $user,
             'message' => 'Usuario creado correctamente'
         ], 201);
     }
@@ -118,8 +117,8 @@ class UserControlle extends Controller
             'num_docu' => 'required|string|max:20',
             'nombres' => 'required|string|max:70',
             'apellidos' => 'required|string|max:70',
-            'email' => 'required|string|email|max:70|unique:users',
-            'password' => 'required|string|min:6',
+            //'email' => ['required', 'string', 'email', 'max:70', Rule::unique('users')->ignore($user->id),],
+            //'password' => 'required|string|min:6',
         ], [
             'num_docu.required' => 'Te hizo falta el número de documento',
             'nombres.required' => 'Te hizo falta el nombre',
@@ -127,9 +126,9 @@ class UserControlle extends Controller
             'email.required' => 'Te hizo falta el correo electrónico',
             'email.email' => 'El correo electrónico no es válido',
             'email.max' => 'El correo electrónico es demasiado largo',
-            'email.unique' => 'El correo electrónico ya está en uso',
-            'password.required' => 'Te hizo falta la contraseña',
-            'password.min' => 'La contraseña debe tener al menos 6 caracteres',
+            //'email.unique' => 'El correo electrónico ya está en uso',
+            /* 'password.required' => 'Te hizo falta la contraseña',
+            'password.min' => 'La contraseña debe tener al menos 6 caracteres', */
         ]);
 
         // Verificar si la validación falla
@@ -141,15 +140,7 @@ class UserControlle extends Controller
         }
 
         // Actualiza el usuario
-        $user->update($request->only([
-            'num_docu',
-            'nombres',
-            'apellidos',
-            'dir',
-            'tel',
-            'movil',
-            'password'
-        ]));
+        $user->update($request->only(['num_docu', 'nombres', 'apellidos', 'dir', 'tel', 'movil']));
 
         // Si la contraseña debe ser hasheada antes de guardar:
         if ($request->has('password')) {
@@ -161,7 +152,7 @@ class UserControlle extends Controller
             'status' => true,
             $user,
             'message' => 'Usuario actualizado correctamente'
-        ], 200);
+        ], 201);
     }
 
     /**

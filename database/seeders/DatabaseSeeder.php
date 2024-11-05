@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 
+use Database\Seeders\Calidad\OrganigramaSeed;
 use Database\Seeders\ControlAcceso\RoleSeeder;
 use Database\Seeders\ControlAcceso\UsersSeeder;
 use Illuminate\Database\Seeder;
@@ -24,5 +25,6 @@ class DatabaseSeeder extends Seeder
 
         $this->call(RoleSeeder::class);
         $this->call(UsersSeeder::class);
+        $this->call(OrganigramaSeed::class);
     }
 }

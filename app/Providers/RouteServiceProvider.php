@@ -42,6 +42,10 @@ class RouteServiceProvider extends ServiceProvider
                 ->group(base_path('routes/controlAcceso.php'));
 
             Route::middleware('api')
+                ->prefix('api/calidad')
+                ->group(base_path('routes/calidad.php'));
+
+            Route::middleware('api')
                 ->prefix('api/config')
                 ->group(base_path('routes/configuracion.php'));
         });
