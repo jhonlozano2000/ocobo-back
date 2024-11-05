@@ -11,14 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('calidad_organi_oficinas', function (Blueprint $table) {
+        Schema::create('calidad_organigrama', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('dependencia_id');
-            $table->foreign('dependencia_id')->references('id')->on('calidad_organi_dependencias');
-            $table->string('cod_oficina', 15)->nullable();
-            $table->string('nom_oficina', 150);
+            $table->string('tipo', 15);
+            $table->string('nom_organico', 100);
+            $table->string('cod_organico', 10)->nullable();
             $table->string('observaciones')->nullable();
-            $table->boolean('estado')->default(true);
+            $table->unsignedBigInteger('parent')->nullable();
+            $table->foreign('parent')->references('id')->on('organigrama');
             $table->timestamps();
         });
     }
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('calidad_organi_oficinas');
+        Schema::dropIfExists('calidad_organigrama');
     }
 };

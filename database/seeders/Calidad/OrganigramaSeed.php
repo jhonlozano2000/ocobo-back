@@ -2,9 +2,8 @@
 
 namespace Database\Seeders\Calidad;
 
-use App\Models\Calidad\Organigrama\CalidadOrganiDependencia;
-use App\Models\Calidad\Organigrama\CalidadOrganiOficina;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Calidad\CalidadOrganigrama;
+use App\Models\Calidad\Organigrama;
 use Illuminate\Database\Seeder;
 
 class OrganigramaSeed extends Seeder
@@ -14,28 +13,28 @@ class OrganigramaSeed extends Seeder
      */
     public function run(): void
     {
-        $dependenciaJuenta = CalidadOrganiDependencia::firstOrCreate(['nom_depen' => 'JUNTA DIRECTIVO',]);
-        $dependenciaRevisoria = CalidadOrganiDependencia::firstOrCreate(['nom_depen' => 'REVISORIA FISCA']);
+        $dependenciaJuenta = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'JUNTA DIRECTIVA', 'cod_organico' => '']);
+        $dependenciaRevisoria = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'REVISORIA FISCA', 'cod_organico' => '', 'parent' => 1]);
 
-        $dependenciaGerencia = CalidadOrganiDependencia::firstOrCreate(['nom_depen' => 'GERENCIA']);
-        CalidadOrganiOficina::create(['nom_oficina' => 'ASESORÍA JURÍDICA', 'dependencia_id' => $dependenciaGerencia->id]);
-        CalidadOrganiOficina::create(['nom_oficina' => 'ATENCIÓN AL USUARIO', 'dependencia_id' => $dependenciaGerencia->id]);
-        CalidadOrganiOficina::create(['nom_oficina' => 'CONTROL INTERNO', 'dependencia_id' => $dependenciaGerencia->id]);
-        CalidadOrganiOficina::create(['nom_oficina' => 'SUBDIRECCION OPERATIVA', 'dependencia_id' => $dependenciaGerencia->id]);
-        CalidadOrganiOficina::create(['nom_oficina' => 'AMBULATORIO', 'dependencia_id' => $dependenciaGerencia->id]);
-        CalidadOrganiOficina::create(['nom_oficina' => 'PLANEACION', 'dependencia_id' => $dependenciaGerencia->id]);
+        $dependenciaGerencia = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'GERENCIA', 'cod_organico' => 'GRE', 'parent' => 1]);
+        $dependenciaAsesoJuri = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'SESSORIA JURIDICA', 'cod_organico' => 'GRE', 'parent' => 3]);
+        $dependenciaComiteTecnico = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'COMITÉ TECNICO', 'cod_organico' => 'GRE', 'parent' => 3]);
+        $dependenciaControlInter = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'CONTRO INTERNO', 'cod_organico' => 'GRE', 'parent' => 3]);
+        $dependenciaPlaneacion = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'PLANEACIÓN', 'cod_organico' => 'GRE', 'parent' => 3]);
+        $dependenciaOAUsuarios = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'O A USUARIOS', 'cod_organico' => 'GRE', 'parent' => 3]);
 
-        $dependenciaAsesoJuri = CalidadOrganiDependencia::firstOrCreate(['nom_depen' => 'SESSORIA JURIDICA']);
-        $dependenciaComiteTecnico = CalidadOrganiDependencia::firstOrCreate(['nom_depen' => 'COMITÉ TECNICO']);
-        $dependenciaControlInter = CalidadOrganiDependencia::firstOrCreate(['nom_depen' => 'CONTRO INTERNO']);
-        $dependenciaPlaneacion = CalidadOrganiDependencia::firstOrCreate(['nom_depen' => 'PLANEACIÓN']);
-        $dependenciaOAUsuarios = CalidadOrganiDependencia::firstOrCreate(['nom_depen' => 'ATENCION A USUARIOS']);
+        CalidadOrganigrama::create(['tipo' => 'Oficina', 'nom_organico' => 'ASESORÍA JURÍDICA', 'cod_organico' => 'AJU', 'parent' => 3]);
+        CalidadOrganigrama::create(['tipo' => 'Oficina', 'nom_organico' => 'ATENCIÓN AL USUARIO', 'cod_organico' => 'ATU', 'parent' => 3]);
+        CalidadOrganigrama::create(['tipo' => 'Oficina', 'nom_organico' => 'CONTROL INTERNO', 'cod_organico' => 'COI', 'parent' => 3]);
+        CalidadOrganigrama::create(['tipo' => 'Oficina', 'nom_organico' => 'SUBDIRECCION OPERATIVA', 'cod_organico' => 'PLA', 'parent' => 3]);
+        CalidadOrganigrama::create(['tipo' => 'Oficina', 'nom_organico' => 'AMBULATORIO', 'cod_organico' => 'PLA', 'parent' => 3]);
+        CalidadOrganigrama::create(['tipo' => 'Oficina', 'nom_organico' => 'PLANEACION', 'cod_organico' => 'PLA', 'parent' => 3]);
 
-        $dependenciaSubdirOpera = CalidadOrganiDependencia::firstOrCreate(['nom_depen' => 'SUBDIRECCION OPERATIVA']);
-        CalidadOrganiOficina::create(['nom_oficina' => 'AMBULATORIO', 'dependencia_id' => $dependenciaSubdirOpera->id]);
-        CalidadOrganiOficina::create(['nom_oficina' => 'APOYO DIAGNOSTICO Y TERAPEUTICO', 'dependencia_id' => $dependenciaSubdirOpera->id]);
-        CalidadOrganiOficina::create(['nom_oficina' => 'CALIDAD', 'dependencia_id' => $dependenciaSubdirOpera->id]);
-        CalidadOrganiOficina::create(['nom_oficina' => 'URGENCIAS', 'dependencia_id' => $dependenciaSubdirOpera->id]);
-        CalidadOrganiOficina::create(['nom_oficina' => 'INTERNACION', 'dependencia_id' => $dependenciaSubdirOpera->id]);
+        $dependenciaSubdirOpera = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'SUBDIRECCION OPERATIVA', 'cod_organico' => 'SDO', 'parent' => 3]);
+        CalidadOrganigrama::create(['tipo' => 'Oficina', 'nom_organico' => 'AMBULATORIO', 'cod_organico' => 'AMB', 'parent' => 12]);
+        CalidadOrganigrama::create(['tipo' => 'Oficina', 'nom_organico' => 'APOYO DIAGNOSTICO Y TERAPEUTICO', 'cod_organico' => 'ADT', 'parent' => 12]);
+        CalidadOrganigrama::create(['tipo' => 'Oficina', 'nom_organico' => 'CALIDAD', 'cod_organico' => 'CLD', 'parent' => 12]);
+        CalidadOrganigrama::create(['tipo' => 'Oficina', 'nom_organico' => 'URGENCIAS', 'cod_organico' => 'URC', 'parent' => 12]);
+        CalidadOrganigrama::create(['tipo' => 'Oficina', 'nom_organico' => 'INTERNACION', 'cod_organico' => 'INT', 'parent' => 12]);
     }
 }
