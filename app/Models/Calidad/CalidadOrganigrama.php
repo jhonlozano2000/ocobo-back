@@ -9,8 +9,8 @@ class CalidadOrganigrama extends Model
 {
     use HasFactory;
 
-    protected $table = 'calidad_organigrama';
-    protected $fillable = ['tipo', 'nombre', 'cod_organico', 'cod_corres', 'parent'];
+    protected $table = 'calidad_organigrama'; // Asegúrate de que este nombre sea correcto y en singular
+    protected $fillable = ['tipo', 'nom_organico', 'cod_organico', 'observaciones', 'parent'];
 
     public function children()
     {

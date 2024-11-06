@@ -27,7 +27,6 @@ class CalidadOrganigramaController extends Controller
         ]);
     }
 
-
     /**
      * Store a newly created resource in storage.
      */
@@ -36,7 +35,7 @@ class CalidadOrganigramaController extends Controller
         $validator = Validator::make($request->all(), [
             'tipo' => 'required',
             'nom_organico' => 'required|min:2|max:100',
-            'parent' => 'nullable|exists:calidad_organigramas,id', // Valida que el padre exista si se envía
+            'parent' => 'nullable|exists:calidad_organigrama,id', // Valida que el padre exista si se envía
         ], [
             'tipo.requires' => 'Te hizo falta el tipo',
             'nom_organico.required' => 'Te hizo falta el nombre del organismo',
@@ -48,8 +47,47 @@ class CalidadOrganigramaController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
-                'errors' => $validator->errors()
-            ], 400);
+                'errors' => $validator->errors(),
+            ], 400); // Devuelve un error 400 (Bad Request) con los errores
+        }
+
+        // Validación adicional para el tipo de nodo padre
+        if ($request->parent) {
+            // Obtener el tipo del nodo padre
+            $parentNode = CalidadOrganigrama::find($request->parent);
+
+            // Restricciones según el tipo de nodo padre
+            if ($parentNode->tipo === 'Cargo') {
+                if ($request->tipo !== 'Cargo') {
+                    // No se permite agregar dependencias u oficinas a un cargo
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'No se pueden agregar dependencias u oficinas a un cargo.',
+                    ], 400);
+                } else {
+                    // No se permite agregar otro cargo a un cargo
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'No se pueden agregar cargos a un cargo existente.',
+                    ], 400);
+                }
+            }
+
+            if ($parentNode->tipo === 'Oficina') {
+                if ($request->tipo === 'Dependencia') {
+                    // No se permite agregar una dependencia a una oficina
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'No se pueden agregar dependencias a una oficina.',
+                    ], 400);
+                } elseif ($request->tipo === 'Oficina') {
+                    // No se permite agregar otra oficina a una oficina
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'No se pueden agregar oficinas a una oficina existente.',
+                    ], 400);
+                }
+            }
         }
 
         $organigrama = CalidadOrganigrama::create([
@@ -84,6 +122,50 @@ class CalidadOrganigramaController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $organigrama
+        ]);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, string $id)
+    {
+        // Buscar el nodo por ID
+        $nodo = CalidadOrganigrama::find($id);
+        if (!$nodo) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Nodo no encontrado'
+            ], 404);
+        }
+
+        // Validación de los datos
+        $validator = Validator::make($request->all(), [
+            'tipo' => 'required',
+            'nom_organico' => 'required|min:2|max:100',
+            'parent' => 'nullable|exists:calidad_organigrama,id',
+        ], [
+            'tipo.required' => 'Te hizo falta el tipo',
+            'nom_organico.required' => 'Te hizo falta el nombre del organismo',
+            'nom_organico.min' => 'El nombre del organismo debe tener al menos 2 caracteres',
+            'nom_organico.max' => 'El nombre del organismo no puede tener más de 100 caracteres',
+            'parent.exists' => 'El nodo padre no existe',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'errors' => $validator->errors(),
+            ], 400);
+        }
+
+        // Actualizar el nodo con los datos del request
+        $nodo->update($request->only(['tipo', 'nom_organico', 'cod_organico', 'observaciones', 'parent']));
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $nodo,
+            'message' => 'Nodo actualizado con éxito',
         ]);
     }
 

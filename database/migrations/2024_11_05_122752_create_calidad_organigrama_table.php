@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('cod_organico', 10)->nullable();
             $table->string('observaciones')->nullable();
             $table->unsignedBigInteger('parent')->nullable();
-            $table->foreign('parent')->references('id')->on('organigrama');
+            $table->foreign('parent')->references('id')->on('calidad_organigrama');
             $table->timestamps();
         });
     }
