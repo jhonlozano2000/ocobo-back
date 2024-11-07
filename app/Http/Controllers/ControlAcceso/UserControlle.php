@@ -70,6 +70,15 @@ class UserControlle extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        // Finaliza el cargo actual si existe
+        $user->endCurrentOrganigrama();
+
+        // Asigna el nuevo cargo
+        $user->organigramas()->attach($request->input('organigrama_id'), [
+            'start_date' => $request->input('start_date'),
+            'end_date' => null
+        ]);
+
         return response()->json([
             'status' => true,
             'data' => $user,
@@ -141,6 +150,18 @@ class UserControlle extends Controller
 
         // Actualiza el usuario
         $user->update($request->only(['num_docu', 'nombres', 'apellidos', 'dir', 'tel', 'movil']));
+
+        $organigramaId = $request->input('organigrama_id');
+
+        // Finaliza el cargo actual
+        $user->endCurrentOrganigrama();
+
+        // Asigna el nuevo cargo o actualiza la fecha de fin
+        $user->organigramas()->attach($organigramaId, [
+            'start_date' => $request->input('start_date'),
+            'end_date' => $request->input('end_date')
+        ]);
+
 
         // Si la contraseña debe ser hasheada antes de guardar:
         if ($request->has('password')) {

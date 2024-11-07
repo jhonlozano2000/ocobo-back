@@ -174,20 +174,37 @@ class CalidadOrganigramaController extends Controller
      */
     public function destroy(Int $id)
     {
-        $organigrama = CalidadOrganigrama::find($id);
+        try {
+            $organigrama = CalidadOrganigrama::find($id);
 
-        if (!$organigrama) {
+            if (!$organigrama) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Organismo no encontrado'
+                ], 404);
+            }
+
+            $organigrama->delete();
+
             return response()->json([
+                'status' => 'success',
+                'message' => 'Organismo eliminado correctamente'
+            ]);
+        } catch (\Exception $e) {
+
+            // Código de error para restricción de clave foránea
+            if ($e->getCode() == 23000) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'El nodo no se puede eliminar porque contiene hijos.'
+                ], 400); // Puedes usar el código de estado 400 (Bad Request) u otro apropiado
+            }
+
+            return response()->json([
+                'error' => $e->getMessage(),
                 'status' => 'error',
-                'message' => 'Organismo no encontrado'
-            ], 404);
+                'message' => 'Ha ocurrido un error al eliminar el nodo'
+            ], 500);
         }
-
-        $organigrama->delete();
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Organismo eliminado correctamente'
-        ]);
     }
 }
