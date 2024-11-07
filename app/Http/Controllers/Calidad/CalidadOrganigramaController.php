@@ -52,7 +52,7 @@ class CalidadOrganigramaController extends Controller
         }
 
         // Validación adicional para el tipo de nodo padre
-        if ($request->parent) {
+        /* if ($request->parent) {
             // Obtener el tipo del nodo padre
             $parentNode = CalidadOrganigrama::find($request->parent);
 
@@ -88,7 +88,7 @@ class CalidadOrganigramaController extends Controller
                     ], 400);
                 }
             }
-        }
+        } */
 
         $organigrama = CalidadOrganigrama::create([
             'tipo' => $request->tipo,

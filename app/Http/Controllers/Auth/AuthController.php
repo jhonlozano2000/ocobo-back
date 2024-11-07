@@ -3,10 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\AuthLoginRequest;
 use Illuminate\Http\Request;
 use App\Models\User;
-use Dotenv\Validator;
+use \Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,7 +14,7 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         // Validación de los datos
-        $validator = Validator::make($request->all(), [
+        $validator = \Validator::make($request->all(), [
             'num_docu' => 'required|string|max:20|unique:users',
             'nombres' => 'required|string|max:70',
             'apellidos' => 'required|string|max:70',
