@@ -35,24 +35,4 @@ class ClasificacionDocumentalTRD extends Model
     {
         return $this->belongsTo(ClasificacionDocumentalTRD::class, 'parent');
     }
-
-    // Relación con User a través de la tabla pivote
-    public function users(): BelongsToMany
-    {
-        return $this->belongsToMany(User::class, 'user_register')
-            ->withPivot('start_date', 'end_date')
-            ->withTimestamps();
-    }
-
-    // Obtener los usuarios actuales que ocupan este cargo
-    public function currentUsers()
-    {
-        return $this->users()->wherePivot('end_date', null)->get();
-    }
-
-    // Obtener el historial de usuarios que han ocupado este cargo
-    public function usersHistory()
-    {
-        return $this->users()->withPivot('start_date', 'end_date')->get();
-    }
 }

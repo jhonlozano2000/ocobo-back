@@ -19,7 +19,17 @@ class ClasificacionDocumentalTRDController extends Controller
      */
     public function index()
     {
-        //
+        // Obtener todas la TRD (nodos raíz) donde el campo 'tipo' es 'serie' y no tienen un padre
+        $trd = ClasificacionDocumentalTRD::whereIn('tipo', ['Serie', 'SubSerie'])
+            ->whereNull('parent')
+            ->with('children') // Carga los hijos de cada nodo, sin importar su tipo
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $trd,
+            'message' => 'Organigrama de calidad obtenido correctamente'
+        ]);
     }
 
     /**
@@ -54,18 +64,31 @@ class ClasificacionDocumentalTRDController extends Controller
         //
     }
 
-    public function importTRD()
+    public function importTRD(Request $request)
     {
         if (Storage::disk('temp_files')->exists('TRD para importa.xlsx')) {
+
+            $dependencia = 3;
+            $idSubSerie = null;
+            $idSerie = null;
+
+            /**
+             * Buscamos la dependencia para saber si ya tiene TRD configurada
+             */
+            $dependencia = ClasificacionDocumentalTRD::where('dependencia_id', '=', $dependencia)
+                ->get();
+            if ($dependencia) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'La depencia ya tiene configurada un TRD'
+                ], 205);
+            }
 
             $file = storage_path('app\temp_files\TRD para importa.xlsx');
 
             $documentos = IOFactory::load($file);
             $cantidad = $documentos->getActiveSheet()->toArray();
 
-            $dependencia = 3;
-            $idSubSerie = null;
-            $idSerie = null;
 
             /**
              * Establecer si los tipos documentales van en la serie o subserie
@@ -164,31 +187,27 @@ class ClasificacionDocumentalTRDController extends Controller
                 $i++;
             }
 
-            $totalHoja = $documentos->getSheetCount();
-
-            $hojaActual = $documentos->getSheet(0);
-            $numeroFilas = $hojaActual->getHighestDataRow();
-            $letra = $hojaActual->getHighestColumn();
-
-            $numeroLetra = Coordinate::columnIndexFromString($letra);
-
-            for ($indiceFila = 1; $indiceFila <= $numeroLetra; $indiceFila++) {
-                for ($indiceColumna = 1; $indiceColumna <= $numeroLetra; $indiceColumna++)
-                    $celda = $indiceColumna . "-" . $indiceFila;
-                echo $celda;
-                exit();
-                $valor = $hojaActual->getCellB($indiceColumna, $indiceFila);
-                echo $valor . "<br />";
-            }
-
-            /* return response()->json([
+            return response()->json([
                 'satatus' => true,
-                'data' => $contents,
-                'messahe' => 'Procesando archivo'
-            ], 200); */
+                'messahe' => 'La TRD se ha cargado satisfactoriamente'
+            ], 200);
         } else {
-            return 'No Existe';
+            return response()->json([
+                'status' => true,
+                'message' => 'El archivo no existe'
+            ], 404);
         }
-        $file = public_path('storage/app/temp_files/TRD para importa.xlsx');
+    }
+
+    public function estadistica($id)
+    {
+        // Obtener todas la TRD (nodos raíz) donde el campo 'tipo' es 'serie' y no tienen un padre
+        $trd = ClasificacionDocumentalTRD::whereIn('tipo', ['Serie', 'SubSerie'])
+            ->whereNull('parent')
+            ->with('children') // Carga los hijos de cada nodo, sin importar su tipo
+            ->groupBy('tipo')
+            ->count();
+
+        return $trd;
     }
 }
