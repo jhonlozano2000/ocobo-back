@@ -213,32 +213,16 @@ class CalidadOrganigramaController extends Controller
      */
     public function listDependencias()
     {
-        // Obtiene todas las dependencias con sus hijos jerárquicos
-        $dependencias = CalidadOrganigrama::where('tipo', 'Dependencia')
-            ->with('childrenDependencias')  // Aquí nos aseguramos de cargar dependencias recursivamente
+        // Obtiene solo las dependencias principales que no tienen padre
+        $organigrama = CalidadOrganigrama::where('tipo', 'Dependencia')
+            ->whereNull('parent')
+            ->with('childrenDependencias') // Usa la relación de dependencias recursiva
             ->get();
 
         return response()->json([
             'status' => 'success',
-            'data' => $this->formatDependencias($dependencias),
+            'data' => $organigrama,
             'message' => 'Dependencias obtenidas correctamente'
         ], 200);
-    }
-
-    // Función para formatear dependencias sin hacer recursión en PHP
-    private function formatDependencias($dependencias)
-    {
-        return $dependencias->map(function ($dependencia) {
-            return [
-                'id' => $dependencia->id,
-                'tipo' => $dependencia->tipo,
-                'nom_organico' => $dependencia->nom_organico,
-                'cod_organico' => $dependencia->cod_organico,
-                'observaciones' => $dependencia->observaciones,
-                'parent' => $dependencia->parent,
-                // Renombra children_dependencias a children en la salida JSON
-                'children' => $this->formatDependencias($dependencia->childrenDependencias),
-            ];
-        });
     }
 }
