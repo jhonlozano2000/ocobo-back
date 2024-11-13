@@ -24,6 +24,14 @@ class CalidadOrganigrama extends Model
         return $this->belongsTo(CalidadOrganigrama::class, 'parent');
     }
 
+    // Relación recursiva para obtener los hijos de tipo "Dependencia"
+    public function childrenDependencias()
+    {
+        return $this->hasMany(CalidadOrganigrama::class, 'parent')
+            ->where('tipo', 'Dependencia')
+            ->with('childrenDependencias'); // Asegura que la relación solo devuelva dependencias en todos los niveles
+    }
+
     // Relación con User a través de la tabla pivote
     public function users(): BelongsToMany
     {
