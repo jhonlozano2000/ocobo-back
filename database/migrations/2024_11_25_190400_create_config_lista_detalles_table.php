@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('config_listas_detalles', function (Blueprint $table) {
             $table->id();
 
-            $table->unsignedSmallInteger('lista_id');
-            $table->foreign('lista_id')->on('id')->references('config_listas');
+            $table->unsignedBigInteger('lista_id');
+            $table->foreign('lista_id')->on('config_listas')->references('id');
 
             $table->string('codigo', 20);
             $table->string('nombre', 70);
@@ -30,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('config_lista_detalles');
+        Schema::dropIfExists('config_listas_detalles');
     }
 };

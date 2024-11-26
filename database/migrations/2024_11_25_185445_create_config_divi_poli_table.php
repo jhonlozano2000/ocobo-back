@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('parent')->nullable();
             $table->foreign('parent')->references('id')->on('config_divi_poli');
 
-            $table->string('codigo', 3);
+            $table->string('codigo', 5);
             $table->string('nombre', 70);
             $table->string('tipo', '15');
             $table->timestamps();

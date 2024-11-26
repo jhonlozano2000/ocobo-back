@@ -17,14 +17,6 @@ class ConfigDiviPoliController extends Controller
     }
 
     /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
@@ -36,14 +28,6 @@ class ConfigDiviPoliController extends Controller
      * Display the specified resource.
      */
     public function show(ConfigDiviPoli $configDiviPoli)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(ConfigDiviPoli $configDiviPoli)
     {
         //
     }
@@ -62,5 +46,47 @@ class ConfigDiviPoliController extends Controller
     public function destroy(ConfigDiviPoli $configDiviPoli)
     {
         //
+    }
+
+    public function paises()
+    {
+        $paises = ConfigDiviPoli::where('tipo', '=', 'Pais')
+            ->get();
+
+        if ($paises) {
+            return response()->json([
+                'status' => true,
+                'data' => $paises,
+                'message' => 'Listado de paises'
+            ], 200);
+        }
+    }
+
+    public function departamento($id)
+    {
+        $departamentos = ConfigDiviPoli::where('parent', '=', $id)
+            ->get();
+
+        if ($departamentos) {
+            return response()->json([
+                'status' => true,
+                'data' => $departamentos,
+                'message' => 'Listado de departamentos'
+            ], 200);
+        }
+    }
+
+    public function municipios($id)
+    {
+        $municipios = ConfigDiviPoli::where('parent', '=', $id)
+            ->get();
+
+        if ($municipios) {
+            return response()->json([
+                'status' => true,
+                'data' => $municipios,
+                'message' => 'Listado de municipios'
+            ], 200);
+        }
     }
 }

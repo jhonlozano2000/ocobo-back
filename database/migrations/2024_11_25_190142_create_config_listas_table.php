@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('config_listas', function (Blueprint $table) {
             $table->id();
-            $table->string('nombre');
+            $table->string('cod', 10);
+            $table->string('nombre', 70);
             $table->timestamps();
         });
     }
