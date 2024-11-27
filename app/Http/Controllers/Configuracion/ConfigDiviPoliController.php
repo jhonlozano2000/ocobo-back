@@ -62,7 +62,7 @@ class ConfigDiviPoliController extends Controller
         }
     }
 
-    public function departamento($id)
+    public function departamentos($id)
     {
         $departamentos = ConfigDiviPoli::where('parent', '=', $id)
             ->get();
