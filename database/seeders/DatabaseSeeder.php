@@ -26,9 +26,9 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         $this->call(RoleSeeder::class);
+        $this->call(DiviPoliSeed::class);
         $this->call(UsersSeeder::class);
         $this->call(OrganigramaSeed::class);
         $this->call(ListaSeed::class);
-        $this->call(DiviPoliSeed::class);
     }
 }

@@ -5,10 +5,9 @@ namespace App\Http\Controllers\ControlAcceso;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
-use PhpParser\Node\Stmt\TryCatch;
+use Illuminate\Support\Facades\Storage;
 use \Validator;
+use Str;
 
 class UserControlle extends Controller
 {
@@ -59,16 +58,46 @@ class UserControlle extends Controller
         }
 
         // Crear el nuevo usuario
-        $user = User::create([
-            'num_docu' => $request->num_docu,
-            'nombres' => $request->nombres,
-            'apellidos' => $request->apellidos,
-            'tel' => $request->tel,
-            'movil' => $request->movil,
-            'dir' => $request->dir,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+        $user = new User();
+        $user->num_docu = $request->num_docu;
+        $user->nombres = $request->nombres;
+        $user->apellidos = $request->apellidos;
+        $user->tel = $request->tel;
+        $user->movil = $request->movil;
+        $user->dir = $request->dir;
+        $user->email = $request->email;
+
+        // Alnaceno el avatar
+        if ($request->hasFile('avatar')) {
+            $fileAvatar = $request->file('avatar');
+
+            if (!is_null($request->avatar) && Storage::disk('avatars')->exists($request->avatar)) {
+                Storage::disk('avatars')->delete($request->avatar);
+            }
+
+            $nombreEncrip = Str::random(50) . "." . $fileAvatar->extension();
+            $avatar = $fileAvatar->storeAs('avatars', $nombreEncrip);
+            $user->avatar = $avatar;
+        }
+
+        // Almaceno la firma
+        if ($request->hasFile('firma')) {
+            $filefirma = $request->file('firma');
+
+            if (!is_null($request->firma) && Storage::disk('avatars')->exists($request->firma)) {
+                Storage::disk('firmas')->delete($request->firma);
+            }
+
+            $nombreEncrip = Str::random(50) . "." . $filefirma->extension();
+            $firma = $filefirma->storeAs('avatars', $nombreEncrip);
+            $user->firma = $firma;
+        }
+
+        // Actualizo la contraseña
+        if ($request->has('password')) {
+            $user->password = bcrypt($request->input('password'));
+            $user->save();
+        }
 
         // Finaliza el cargo actual si existe
         $user->endCurrentOrganigrama();
@@ -91,7 +120,6 @@ class UserControlle extends Controller
      */
     public function show(string $id)
     {
-
         $user = User::find($id);
         if (!$user) {
             return response()->json([
@@ -161,7 +189,6 @@ class UserControlle extends Controller
             'start_date' => $request->input('start_date'),
             'end_date' => $request->input('end_date')
         ]);
-
 
         // Si la contraseña debe ser hasheada antes de guardar:
         if ($request->has('password')) {

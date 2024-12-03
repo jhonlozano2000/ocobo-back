@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+
+            $table->unsignedBigInteger('divi_poli_id')->nullable();
+            $table->foreign('divi_poli_id')->references('id')->on('config_divi_poli');
+
             $table->string('num_docu', 20);
             $table->string('nombres', 70);
             $table->string('apellidos', 70);
@@ -24,6 +28,7 @@ return new class extends Migration
             $table->string('avatar', 100)->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('estado')->default(1);
             $table->rememberToken();
             $table->timestamps();
         });

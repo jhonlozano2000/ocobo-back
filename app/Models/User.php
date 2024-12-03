@@ -24,6 +24,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'id',
+        'divi_poli_id',
         'num_docu',
         'nombres',
         'apellidos',
@@ -31,7 +32,10 @@ class User extends Authenticatable
         'movil',
         'dir',
         'email',
+        'firma',
+        'avatar',
         'password',
+        'estado'
     ];
 
     /**

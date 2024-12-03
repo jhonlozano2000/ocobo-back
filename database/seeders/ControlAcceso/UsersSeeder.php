@@ -13,6 +13,6 @@ class UsersSeeder extends Seeder
      */
     public function run(): void
     {
-        User::create(['num_docu' => '123456', 'nombres' => 'administrador', 'apellidos' => 'administrador', 'email' => 'admin@admin.com', 'password' => bcrypt('123456')])->assignRole('Administrador');
+        User::create(['divi_poli_id' => 998, 'num_docu' => '123456', 'nombres' => 'administrador', 'apellidos' => 'administrador', 'email' => 'admin@admin.com', 'password' => bcrypt('123456')])->assignRole('Administrador');
     }
 }

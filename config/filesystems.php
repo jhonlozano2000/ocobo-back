@@ -64,6 +64,22 @@ return [
             'throw' => false,
         ],
 
+        'fimas' => [
+            'driver' => 'local',
+            'root' => storage_path('app/fimas'),
+            'url' => env('APP_URL') . '/fimas',
+            'visibility' => 'fimas',
+            'throw' => false,
+        ],
+
+        'avatars' => [
+            'driver' => 'local',
+            'root' => storage_path('app/avatars'),
+            'url' => env('APP_URL') . '/avatars',
+            'visibility' => 'avatars',
+            'throw' => false,
+        ],
+
     ],
 
     /*
@@ -80,6 +96,8 @@ return [
     'links' => [
         public_path('storage') => storage_path('app/public'),
         public_path('temp_files') => storage_path('app/temp_files'),
+        public_path('fimas') => storage_path('app/fimas'),
+        public_path('avatars') => storage_path('app/avatars'),
     ],
 
 ];
