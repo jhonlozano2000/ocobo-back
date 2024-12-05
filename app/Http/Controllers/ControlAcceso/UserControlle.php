@@ -29,6 +29,7 @@ class UserControlle extends Controller
      */
     public function store(Request $request)
     {
+        return $request;
         // Validación de los datos
         $validator = Validator::make($request->all(), [
             'num_docu' => 'required|string|max:20|unique:users',
@@ -98,6 +99,17 @@ class UserControlle extends Controller
             $user->password = bcrypt($request->input('password'));
             $user->save();
         }
+
+        // Almaceno los roles
+        $rolesDeUsuario = $registro['rolesUsuario'];
+        $rolesInsertar = array();
+        foreach ($rolesDeUsuario as $rol) {
+            if ($rol['checked'] === true) {
+                $rolesInsertar[] = $rol['id'];
+            }
+        }
+
+        $seguridad_usuario->assignRole($rolesInsertar);
 
         // Finaliza el cargo actual si existe
         $user->endCurrentOrganigrama();

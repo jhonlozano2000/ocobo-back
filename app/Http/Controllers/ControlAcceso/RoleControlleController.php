@@ -17,9 +17,26 @@ class RoleControlleController extends Controller
     public function index()
     {
         $registros = Role::all();
+
+        return response()->json([
+            'status' => true,
+            'data' =>  $registros,
+            'message' => 'Listado de roles y permisos'
+        ], 200);
+    }
+
+    /**
+     * Display a listing of the resource.
+     */
+    public function listPermisos()
+    {
         $permission = Permission::get();
 
-        return response()->json([$registros, $permission]);
+        return response()->json([
+            'status' => true,
+            'data' =>  $permission,
+            'message' => 'Listado de roles y permisos'
+        ], 200);
     }
 
 
@@ -34,8 +51,12 @@ class RoleControlleController extends Controller
             'permissions.*' => 'exists:permissions,name' // Valida que cada permiso exista
         ]);
 
+        // Verificar si la validación falla
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json([
+                'status' => 'error',
+                'errors' => $validator->errors(),
+            ], 400); // Devuelve un error 400 (Bad Request) con los errores
         }
 
         $role = Role::create(['name' => $request->name]);
@@ -45,7 +66,11 @@ class RoleControlleController extends Controller
             $role->syncPermissions($request->permissions);
         }
 
-        return response()->json(['message' => 'Rol creado exitosamente', 'role' => $role->load('permissions')], 201);
+        return response()->json([
+            'status' => true,
+            'data' => $role->load('permissions'),
+            'message' => 'Rol creado exitosamente'
+        ], 201);
     }
 
     /**
@@ -56,10 +81,17 @@ class RoleControlleController extends Controller
         $role = Role::with('permissions')->find($id);
 
         if (!$role) {
-            return response()->json(['message' => 'Rol no encontrado'], 404);
+            return response()->json([
+                'status' => false,
+                'message' => 'Rol no encontrado'
+            ], 404);
         }
 
-        return response()->json($role, 200);
+        return response()->json([
+            'status' => true,
+            'data' => $role,
+            'message' => 'Rol encontrado'
+        ], 200);
     }
 
     /**
@@ -70,7 +102,10 @@ class RoleControlleController extends Controller
         $role = Role::find($id);
 
         if (!$role) {
-            return response()->json(['message' => 'Rol no encontrado'], 404);
+            return response()->json([
+                'status' => false,
+                'message' => 'Rol no encontrado'
+            ], 404);
         }
 
         $validator = Validator::make($request->all(), [
@@ -91,8 +126,13 @@ class RoleControlleController extends Controller
             $role->syncPermissions($request->permissions);
         }
 
-        return response()->json(['message' => 'Rol actualizado exitosamente', 'role' => $role->load('permissions')], 200);
+        return response()->json([
+            'status' => true,
+            'data' => $role->load('permissions'),
+            'message' => 'Rol actualizado exitosamente'
+        ], 200);
     }
+
     /**
      * Remove the specified resource from storage.
      */
@@ -101,10 +141,17 @@ class RoleControlleController extends Controller
         $role = Role::find($id);
 
         if (!$role) {
-            return response()->json(['message' => 'Rol no encontrado'], 404);
+            return response()->json([
+                'status' => false,
+                'message' => 'Rol no encontrado'
+            ], 404);
         }
 
         $role->delete();
-        return response()->json(['message' => 'Rol eliminado exitosamente'], 200);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Rol eliminado exitosamente'
+        ], 200);
     }
 }
