@@ -32,23 +32,11 @@ class CalidadOrganigrama extends Model
             ->with('childrenDependencias'); // Asegura que la relación solo devuelva dependencias en todos los niveles
     }
 
-    // Relación con User a través de la tabla pivote
-    public function users(): BelongsToMany
+    // Relación con la tabla pivote users_cargos
+    public function users()
     {
-        return $this->belongsToMany(User::class, 'organigrama_user')
-            ->withPivot('start_date', 'end_date')
-            ->withTimestamps();
-    }
-
-    // Obtener los usuarios actuales que ocupan este cargo
-    public function currentUsers()
-    {
-        return $this->users()->wherePivot('end_date', null)->get();
-    }
-
-    // Obtener el historial de usuarios que han ocupado este cargo
-    public function usersHistory()
-    {
-        return $this->users()->withPivot('start_date', 'end_date')->get();
+        return $this->belongsToMany(User::class, 'users_cargos')
+            ->withPivot('start_date', 'end_date')  // Fechas de inicio y fin del cargo
+            ->withTimestamps();  // Tiempos de creación y actualización
     }
 }

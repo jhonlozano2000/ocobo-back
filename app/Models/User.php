@@ -35,7 +35,7 @@ class User extends Authenticatable
         'firma',
         'avatar',
         'password',
-        'estado'
+        'estado',
     ];
 
     /**
@@ -58,45 +58,40 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    // Relación con Organigrama a través de la tabla pivote
-    public function organigramas(): BelongsToMany
+    // Relación con la tabla pivote users_cargos
+    public function cargos()
     {
-        return $this->belongsToMany(CalidadOrganigrama::class, 'organigrama_user')
-            ->withPivot('start_date', 'end_date')
-            ->withTimestamps();
+        return $this->belongsToMany(CalidadOrganigrama::class, 'users_cargos')
+            ->withPivot('start_date', 'end_date')  // Fechas de inicio y fin del cargo
+            ->withTimestamps();  // Tiempos de creación y actualización
     }
 
-    // Método para asignar un nuevo cargo a un usuario
-    public function assignOrganigrama(CalidadOrganigrama $organigrama)
+    // Método para asignar un cargo a un usuario
+    public function assignCargo($organigramaId)
     {
-        $this->organigramas()->attach($organigrama->id, [
-            'start_date' => Carbon::now(),
-            'end_date' => null // Esto indica que el cargo está activo
-        ]);
+        // Finaliza cualquier cargo activo antes de asignar uno nuevo
+        $this->cargos()->updateExistingPivot($organigramaId, ['end_date' => now()]);
+
+        // Asigna el nuevo cargo con la fecha de inicio
+        return $this->cargos()->attach($organigramaId, ['start_date' => now()]);
     }
 
-    // Método para obtener el cargo actual del usuario (si lo tiene)
-    public function currentOrganigrama()
+    // Método para eliminar un cargo de un usuario
+    public function removeCargo($organigramaId)
     {
-        return $this->organigramas()
-            ->wherePivot('end_date', null)
-            ->first();
+        // Finaliza el cargo especificado
+        $this->cargos()->updateExistingPivot($organigramaId, ['end_date' => now()]);
     }
 
-    // Método para terminar el cargo actual del usuario (definir end_date)
-    public function endCurrentOrganigrama()
+    // Método para finalizar el cargo activo actual
+    public function endCurrentCargo()
     {
-        $currentOrganigrama = $this->currentOrganigrama();
-        if ($currentOrganigrama) {
-            $this->organigramas()->updateExistingPivot($currentOrganigrama->id, [
-                'end_date' => Carbon::now()
-            ]);
+        // Obtiene el cargo activo (sin fecha de fin)
+        $currentCargo = $this->cargos()->whereNull('end_date')->first();
+
+        // Si existe un cargo activo, lo finaliza
+        if ($currentCargo) {
+            $this->removeCargo($currentCargo->pivot->organigrama_id);
         }
-    }
-
-    // Método para obtener el historial completo de cargos del usuario
-    public function organigramaHistory()
-    {
-        return $this->organigramas()->withPivot('start_date', 'end_date')->get();
     }
 }

@@ -16,7 +16,7 @@ class UserControlle extends Controller
      */
     public function index()
     {
-        $users = User::all();
+        $users = User::with(['roles', 'permissions'])->get();
         return response()->json([
             'status' => true,
             'data' => $users,
@@ -37,6 +37,10 @@ class UserControlle extends Controller
             'apellidos' => 'required|string|max:70',
             'email' => 'required|string|email|max:70|unique:users',
             'password' => 'required|string|min:6',
+            'avatar' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'firma' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'roles' => 'required|array|min:1', // El campo roles debe ser un arreglo
+            'roles.*' => 'required|string|exists:roles,name', // Cada valor debe ser un nombre existente en la tabla roles
         ], [
             'num_docu.unique' => 'El número de documento ya está en uso',
             'num_docu.required' => 'Te hizo falta el número de documento',
@@ -48,6 +52,9 @@ class UserControlle extends Controller
             'email.unique' => 'El correo electrónico ya está en uso',
             'password.required' => 'Te hizo falta la contraseña',
             'password.min' => 'La contraseña debe tener al menos 6 caracteres',
+            'roles.required' => 'Debe asignar al menos un rol.',
+            'roles.array' => 'El campo roles debe ser un arreglo.',
+            'roles.*.exists' => 'El rol ":input" no existe en el sistema.'
         ]);
 
         // Verificar si la validación falla
@@ -101,24 +108,13 @@ class UserControlle extends Controller
         }
 
         // Almaceno los roles
-        $rolesDeUsuario = $registro['rolesUsuario'];
-        $rolesInsertar = array();
-        foreach ($rolesDeUsuario as $rol) {
-            if ($rol['checked'] === true) {
-                $rolesInsertar[] = $rol['id'];
-            }
-        }
-
-        $seguridad_usuario->assignRole($rolesInsertar);
+        $user->assignRole($request->roles);
 
         // Finaliza el cargo actual si existe
         $user->endCurrentOrganigrama();
 
-        // Asigna el nuevo cargo
-        $user->organigramas()->attach($request->input('organigrama_id'), [
-            'start_date' => $request->input('start_date'),
-            'end_date' => null
-        ]);
+        // Asigna el nuevo cargo con la fecha de inicio
+        $user->assignCargo($request->cargo_id);
 
         return response()->json([
             'status' => true,
@@ -163,21 +159,26 @@ class UserControlle extends Controller
 
         // Validación de los datos
         $validator = Validator::make($request->all(), [
-            'num_docu' => 'required|string|max:20',
+            'num_docu' => 'required|string|max:20|unique:users,num_docu,' . $id,
             'nombres' => 'required|string|max:70',
             'apellidos' => 'required|string|max:70',
-            //'email' => ['required', 'string', 'email', 'max:70', Rule::unique('users')->ignore($user->id),],
-            //'password' => 'required|string|min:6',
+            'email' => 'required|string|email|max:70|unique:users,email,' . $id,
+            'password' => 'nullable|string|min:6',
+            'avatar' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'firma' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'roles' => 'nullable|array',
+            'roles.*' => 'exists:roles,name', // Valida que el nombre del rol exista
         ], [
             'num_docu.required' => 'Te hizo falta el número de documento',
+            'num_docu.unique' => 'El número de documento ya está en uso',
             'nombres.required' => 'Te hizo falta el nombre',
             'apellidos.required' => 'Te hizo falta el apellido',
             'email.required' => 'Te hizo falta el correo electrónico',
             'email.email' => 'El correo electrónico no es válido',
-            'email.max' => 'El correo electrónico es demasiado largo',
-            //'email.unique' => 'El correo electrónico ya está en uso',
-            /* 'password.required' => 'Te hizo falta la contraseña',
-            'password.min' => 'La contraseña debe tener al menos 6 caracteres', */
+            'email.unique' => 'El correo electrónico ya está en uso',
+            'password.min' => 'La contraseña debe tener al menos 6 caracteres',
+            'roles.array' => 'El campo roles debe ser un arreglo',
+            'roles.*.exists' => 'El rol :input no existe',
         ]);
 
         // Verificar si la validación falla
