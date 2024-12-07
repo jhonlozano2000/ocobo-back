@@ -64,11 +64,11 @@ return [
             'throw' => false,
         ],
 
-        'fimas' => [
+        'firmas' => [
             'driver' => 'local',
-            'root' => storage_path('app/fimas'),
-            'url' => env('APP_URL') . '/fimas',
-            'visibility' => 'fimas',
+            'root' => storage_path('app/firmas'),
+            'url' => env('APP_URL') . '/firmas',
+            'visibility' => 'firmas',
             'throw' => false,
         ],
 
@@ -96,7 +96,7 @@ return [
     'links' => [
         public_path('storage') => storage_path('app/public'),
         public_path('temp_files') => storage_path('app/temp_files'),
-        public_path('fimas') => storage_path('app/fimas'),
+        public_path('firmas') => storage_path('app/firmas'),
         public_path('avatars') => storage_path('app/avatars'),
     ],
 

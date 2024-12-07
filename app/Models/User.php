@@ -61,7 +61,7 @@ class User extends Authenticatable
     // Relación con la tabla pivote users_cargos
     public function cargos()
     {
-        return $this->belongsToMany(CalidadOrganigrama::class, 'users_cargos')
+        return $this->belongsToMany(CalidadOrganigrama::class, 'users_cargos', 'user_id', 'organigrama_id')
             ->withPivot('start_date', 'end_date')  // Fechas de inicio y fin del cargo
             ->withTimestamps();  // Tiempos de creación y actualización
     }

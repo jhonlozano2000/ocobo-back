@@ -29,7 +29,6 @@ class UserControlle extends Controller
      */
     public function store(Request $request)
     {
-        return $request;
         // Validación de los datos
         $validator = Validator::make($request->all(), [
             'num_docu' => 'required|string|max:20|unique:users',
@@ -39,8 +38,9 @@ class UserControlle extends Controller
             'password' => 'required|string|min:6',
             'avatar' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'firma' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'roles' => 'required|array|min:1', // El campo roles debe ser un arreglo
-            'roles.*' => 'required|string|exists:roles,name', // Cada valor debe ser un nombre existente en la tabla roles
+            'roles' => 'required|array|min:1',
+            'roles.*' => 'required|string|exists:roles,name',
+            'cargo_id' => 'required|integer|exists:calidad_organigrama,id',
         ], [
             'num_docu.unique' => 'El número de documento ya está en uso',
             'num_docu.required' => 'Te hizo falta el número de documento',
@@ -54,7 +54,16 @@ class UserControlle extends Controller
             'password.min' => 'La contraseña debe tener al menos 6 caracteres',
             'roles.required' => 'Debe asignar al menos un rol.',
             'roles.array' => 'El campo roles debe ser un arreglo.',
-            'roles.*.exists' => 'El rol ":input" no existe en el sistema.'
+            'roles.*.exists' => 'El rol ":input" no existe en el sistema.',
+            'cargo_id.required' => 'Debe seleccionar un cargo.',
+            'cargo_id.integer' => 'El cargo seleccionado no es válido.',
+            'cargo_id.exists' => 'El cargo seleccionado no existe en el sistema.',
+            'avatar.file' => 'El avatar debe ser un archivo.',
+            'avatar.mimes' => 'El avatar debe ser una imagen en formato JPEG, PNG, JPG, GIF o SVG.',
+            'avatar.max' => 'El avatar no debe superar los 2MB.',
+            'firma.file' => 'La firma debe ser un archivo.',
+            'firma.mimes' => 'La firma debe ser una imagen en formato JPEG, PNG, JPG, GIF o SVG.',
+            'firma.max' => 'La firma no debe superar los 2MB.'
         ]);
 
         // Verificar si la validación falla
@@ -92,12 +101,12 @@ class UserControlle extends Controller
         if ($request->hasFile('firma')) {
             $filefirma = $request->file('firma');
 
-            if (!is_null($request->firma) && Storage::disk('avatars')->exists($request->firma)) {
+            if (!is_null($request->firma) && Storage::disk('firmas')->exists($request->firma)) {
                 Storage::disk('firmas')->delete($request->firma);
             }
 
             $nombreEncrip = Str::random(50) . "." . $filefirma->extension();
-            $firma = $filefirma->storeAs('avatars', $nombreEncrip);
+            $firma = $filefirma->storeAs('firmas', $nombreEncrip);
             $user->firma = $firma;
         }
 
@@ -111,7 +120,7 @@ class UserControlle extends Controller
         $user->assignRole($request->roles);
 
         // Finaliza el cargo actual si existe
-        $user->endCurrentOrganigrama();
+        $user->endCurrentCargo();
 
         // Asigna el nuevo cargo con la fecha de inicio
         $user->assignCargo($request->cargo_id);
