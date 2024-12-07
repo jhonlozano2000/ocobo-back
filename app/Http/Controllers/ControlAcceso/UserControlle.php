@@ -16,7 +16,7 @@ class UserControlle extends Controller
      */
     public function index()
     {
-        $users = User::with(['roles', 'permissions'])->get();
+        $users = User::with(['cargos', 'roles', 'permissions'])->get();
         return response()->json([
             'status' => true,
             'data' => $users,
@@ -157,6 +157,7 @@ class UserControlle extends Controller
      */
     public function update(Request $request, string $id)
     {
+
         // Encuentra el usuario por ID
         $user = User::find($id);
         if (!$user) {
@@ -213,16 +214,14 @@ class UserControlle extends Controller
         // Actualiza el usuario
         $user->update($request->only(['num_docu', 'nombres', 'apellidos', 'dir', 'tel', 'movil']));
 
-        $organigramaId = $request->input('organigrama_id');
+        // Almaceno los roles
+        $user->assignRole($request->roles);
 
-        // Finaliza el cargo actual
-        $user->endCurrentOrganigrama();
+        // Finaliza el cargo actual si existe
+        $user->endCurrentCargo();
 
-        // Asigna el nuevo cargo o actualiza la fecha de fin
-        $user->organigramas()->attach($organigramaId, [
-            'start_date' => $request->input('start_date'),
-            'end_date' => $request->input('end_date')
-        ]);
+        // Asigna el nuevo cargo con la fecha de inicio
+        $user->assignCargo($request->cargo_id);
 
         // Si la contraseña debe ser hasheada antes de guardar:
         if ($request->has('password')) {

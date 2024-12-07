@@ -66,6 +66,14 @@ class User extends Authenticatable
             ->withTimestamps();  // Tiempos de creación y actualización
     }
 
+    public function cargoActivo()
+    {
+        return $this->belongsToMany(CalidadOrganigrama::class, 'users_cargos', 'user_id', 'organigrama_id')
+            ->withPivot('start_date', 'end_date')  // Fechas de inicio y fin del cargo
+            ->whereNull('end_date')
+            ->withTimestamps();  // Tiempos de creación y actualización
+    }
+
     // Método para asignar un cargo a un usuario
     public function assignCargo($organigramaId)
     {
