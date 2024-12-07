@@ -168,26 +168,38 @@ class UserControlle extends Controller
 
         // Validación de los datos
         $validator = Validator::make($request->all(), [
-            'num_docu' => 'required|string|max:20|unique:users,num_docu,' . $id,
+            'num_docu' => 'required|string|max:20|unique:users,num_docu,' . $user->id,
             'nombres' => 'required|string|max:70',
             'apellidos' => 'required|string|max:70',
-            'email' => 'required|string|email|max:70|unique:users,email,' . $id,
+            'email' => 'required|string|email|max:70|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:6',
             'avatar' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'firma' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'roles' => 'nullable|array',
-            'roles.*' => 'exists:roles,name', // Valida que el nombre del rol exista
+            'roles' => 'required|array|min:1',
+            'roles.*' => 'required|string|exists:roles,name',
+            'cargo_id' => 'required|integer|exists:calidad_organigrama,id',
         ], [
-            'num_docu.required' => 'Te hizo falta el número de documento',
             'num_docu.unique' => 'El número de documento ya está en uso',
+            'num_docu.required' => 'Te hizo falta el número de documento',
             'nombres.required' => 'Te hizo falta el nombre',
             'apellidos.required' => 'Te hizo falta el apellido',
             'email.required' => 'Te hizo falta el correo electrónico',
             'email.email' => 'El correo electrónico no es válido',
+            'email.max' => 'El correo electrónico es demasiado largo',
             'email.unique' => 'El correo electrónico ya está en uso',
             'password.min' => 'La contraseña debe tener al menos 6 caracteres',
-            'roles.array' => 'El campo roles debe ser un arreglo',
-            'roles.*.exists' => 'El rol :input no existe',
+            'roles.required' => 'Debe asignar al menos un rol.',
+            'roles.array' => 'El campo roles debe ser un arreglo.',
+            'roles.*.exists' => 'El rol ":input" no existe en el sistema.',
+            'cargo_id.required' => 'Debe seleccionar un cargo.',
+            'cargo_id.integer' => 'El cargo seleccionado no es válido.',
+            'cargo_id.exists' => 'El cargo seleccionado no existe en el sistema.',
+            'avatar.file' => 'El avatar debe ser un archivo.',
+            'avatar.mimes' => 'El avatar debe ser una imagen en formato JPEG, PNG, JPG, GIF o SVG.',
+            'avatar.max' => 'El avatar no debe superar los 2MB.',
+            'firma.file' => 'La firma debe ser un archivo.',
+            'firma.mimes' => 'La firma debe ser una imagen en formato JPEG, PNG, JPG, GIF o SVG.',
+            'firma.max' => 'La firma no debe superar los 2MB.'
         ]);
 
         // Verificar si la validación falla
