@@ -9,4 +9,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::resource('/users', UserControlle::class)->except('create', 'edit');
     Route::resource('/roles', RoleControlleController::class)->except('create', 'edit');
     Route::get('/permisos', [RoleControlleController::class, 'listPermisos'])->name('permisos.show');
+    Route::get('/roles-y-permisos', [RoleControlleController::class, 'listRolesPermisos'])->name('roles.permisos.show');
 });

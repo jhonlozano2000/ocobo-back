@@ -32,38 +32,72 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'Control de acceso - Roles -> Mostar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Control de acceso - Roles -> Eliminar'])->syncRoles([$Rol1]);
 
-
         /**
          * Configuración
          */
-        Permission::create(['name' => 'Configuración - División política -> Listar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - División política -> Crear'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - División política -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - División política -> Mostar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - División política -> Eliminar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - División política -> Listar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - División política -> Crear'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - División política -> Editar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - División política -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - División política -> Eliminar'])->syncRoles([$Rol1]);
 
-        Permission::create(['name' => 'Configuración - Gestión de plantillas -> Listar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Gestión de plantillas -> Crear'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Gestión de plantillas -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Gestión de plantillas -> Mostar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Gestión de plantillas -> Eliminar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Gestión de plantillas -> Listar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Gestión de plantillas -> Crear'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Gestión de plantillas -> Editar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Gestión de plantillas -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Gestión de plantillas -> Eliminar'])->syncRoles([$Rol1]);
 
-        Permission::create(['name' => 'Configuración - Medios de recepción -> Listar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Medios de recepción -> Crear'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Medios de recepción -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Medios de recepción -> Mostar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Medios de recepción -> Eliminar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Medios de recepción -> Listar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Medios de recepción -> Crear'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Medios de recepción -> Editar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Medios de recepción -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Medios de recepción -> Eliminar'])->syncRoles([$Rol1]);
 
-        Permission::create(['name' => 'Configuración - Plantilla de documentos -> Listar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Plantilla de documentos -> Crear'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Plantilla de documentos -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Plantilla de documentos -> Mostar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Plantilla de documentos -> Eliminar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Plantilla de documentos -> Listar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Plantilla de documentos -> Crear'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Plantilla de documentos -> Editar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Plantilla de documentos -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Plantilla de documentos -> Eliminar'])->syncRoles([$Rol1]);
 
-        Permission::create(['name' => 'Configuración - Tipos de radicados -> Listar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Tipos de radicados -> Crear'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Tipos de radicados -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Tipos de radicados -> Mostar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Configuración - Tipos de radicados -> Eliminar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Tipos de radicados -> Listar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Tipos de radicados -> Crear'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Tipos de radicados -> Editar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Tipos de radicados -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Tipos de radicados -> Eliminar'])->syncRoles([$Rol1]);
+
+        /**
+         * Radicación
+         */
+        Permission::create(['name' => 'Radicar -> Cores. Recibida'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Cores. Enviada'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Cores. Interna'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> PQRSF'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Imprimir planillas'])->syncRoles([$Rol1]);
+
+        /**
+         * Calidad
+         */
+        Permission::create(['name' => 'Calidad -> Crear procesos'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Calidad -> Crear Macro Procesos'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Calidad -> Crear Procedimientos'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Calidad -> Crear Tipos de Archivos'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Calidad -> Eliminar'])->syncRoles([$Rol1]);
+
+        /**
+         * Clasificacion documental
+         */
+        Permission::create(['name' => 'TRD -> Importar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'TRD -> Listar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'TRD -> Crear'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'TRD -> Editar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'TRD -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'TRD -> Eliminar'])->syncRoles([$Rol1]);
+
+        Permission::create(['name' => 'TVD -> Importar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'TVD -> Listar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'TVD -> Crear'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'TVD -> Editar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'TVD -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'TVD -> Eliminar'])->syncRoles([$Rol1]);
     }
 }
