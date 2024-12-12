@@ -13,8 +13,10 @@ return new class extends Migration
     {
         Schema::create('users_cargos', function (Blueprint $table) {
             $table->id();
+
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('organigrama_id');
+
             $table->date('start_date');
             $table->date('end_date')->nullable();
             $table->timestamps();

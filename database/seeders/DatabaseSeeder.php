@@ -9,6 +9,7 @@ use Database\Seeders\Configuracion\DiviPoliSeed;
 use Database\Seeders\Configuracion\ListaSeed;
 use Database\Seeders\ControlAcceso\RoleSeeder;
 use Database\Seeders\ControlAcceso\UsersSeeder;
+use Database\Seeders\Gestion\TercerosSeed;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -30,5 +31,6 @@ class DatabaseSeeder extends Seeder
         $this->call(UsersSeeder::class);
         $this->call(OrganigramaSeed::class);
         $this->call(ListaSeed::class);
+        $this->call(TercerosSeed::class);
     }
 }
