@@ -258,4 +258,20 @@ class UserControlle extends Controller
             'message' => 'Usuario eliminado correctamente'
         ], 200);
     }
+
+    public function estadisticas()
+    {
+        $totalUsers = User::count();
+        $totalUsersActivos = User::where('estado', 1)->count();
+        $totalUsersInactivos = User::where('estado', 0)->count();
+
+        return response()->json([
+            'status' => true,
+            'data' => [
+                'total_users' => $totalUsers,
+                'total_users_activos' => $totalUsersActivos,
+                'total_users_inactivos' => $totalUsersInactivos,
+            ]
+        ], 200);
+    }
 }

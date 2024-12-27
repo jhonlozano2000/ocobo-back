@@ -16626,7 +16626,7 @@ GestionTercero::create(['num_docu_nit' => '65709023',  'nom_razo_soci' => 'MARIA
 GestionTercero::create(['num_docu_nit' => '1105679700',  'nom_razo_soci' => 'SORAYA GARCIA MORA',  'direccion' => '', 'telefono' => '', 'email' => '']);
 GestionTercero::create(['num_docu_nit' => '11296967',  'nom_razo_soci' => 'ALCIBIADES QUIMBAYO TORRES',  'direccion' => '', 'telefono' => '', 'email' => '']);
 GestionTercero::create(['num_docu_nit' => '4534375373',  'nom_razo_soci' => 'OFELIA MARIA RIVERA PRADA',  'direccion' => '', 'telefono' => '', 'email' => '']);
-GestionTercero::create(['num_docu_nit' => '7867676',  'nom_razo_soci' => 'mariol garzon‬‬‬',  'direccion' => '', 'telefono' => '', 'email' => '']);
+GestionTercero::create(['num_docu_nit' => '7867676',  'nom_razo_soci' => 'mariol garzon',  'direccion' => '', 'telefono' => '', 'email' => '']);
 GestionTercero::create(['num_docu_nit' => '1005773589',  'nom_razo_soci' => 'LAURA VALENTINA MUÑOZ RINCON',  'direccion' => '', 'telefono' => '', 'email' => '']);
 GestionTercero::create(['num_docu_nit' => '1023022156',  'nom_razo_soci' => 'NUBIA MARCELA OYUELA',  'direccion' => '', 'telefono' => '', 'email' => '']);
 GestionTercero::create(['num_docu_nit' => '5727275',  'nom_razo_soci' => 'sandra jineth calderon morales',  'direccion' => '', 'telefono' => '', 'email' => '']);
@@ -16645,6 +16645,5 @@ GestionTercero::create(['num_docu_nit' => '1109493995',  'nom_razo_soci' => 'HEI
 GestionTercero::create(['num_docu_nit' => '573733',  'nom_razo_soci' => 'Leidy Garcia',  'direccion' => '', 'telefono' => '', 'email' => '']);
 GestionTercero::create(['num_docu_nit' => '38143655',  'nom_razo_soci' => 'MARITZA SANCHEZ BARRIOS',  'direccion' => '', 'telefono' => '', 'email' => '']);
 GestionTercero::create(['num_docu_nit' => '65555371',  'nom_razo_soci' => 'SORAYA GUZMAN GALINDO',  'direccion' => '', 'telefono' => '', 'email' => '']);
-
     }
 }
