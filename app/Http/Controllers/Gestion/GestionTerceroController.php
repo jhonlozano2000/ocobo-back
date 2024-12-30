@@ -177,4 +177,25 @@ class GestionTerceroController extends Controller
             ]
         ], 200);
     }
+
+    public function filterTerceros(Request $request)
+    {
+        $request->validate([
+            'query' => 'required|string|min:3',
+        ]);
+
+        $query = $request->input('query');
+
+        $terceros = DB::table('gestion_terceros')
+            ->where('num_docu_nit', 'like', '%' . $query . '%')
+            ->orWhere('nom_razo_soci', 'like', '%' . $query . '%')
+            ->select('id', 'nom_razo_soci as text', 'num_docu_nit')
+            ->limit(100) // Ajusta el límite según sea necesario
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $terceros,
+        ]);
+    }
 }
