@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Gestion\GestionTercero;
 use \Validator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class GestionTerceroController extends Controller
 {
