@@ -190,7 +190,7 @@ class GestionTerceroController extends Controller
         $terceros = DB::table('gestion_terceros')
             ->where('num_docu_nit', 'like', '%' . $query . '%')
             ->orWhere('nom_razo_soci', 'like', '%' . $query . '%')
-            ->select('id', 'nom_razo_soci as text', 'num_docu_nit')
+            ->select('id', 'nom_razo_soci', 'num_docu_nit')
             ->limit(100) // Ajusta el límite según sea necesario
             ->get();
 

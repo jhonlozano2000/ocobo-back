@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\VentanillaUnida;
 
+use App\Http\Controllers\Controller;
 use App\Models\VentanillaUnica\RadicadoRecibidoResponsables;
 use Illuminate\Http\Request;
 

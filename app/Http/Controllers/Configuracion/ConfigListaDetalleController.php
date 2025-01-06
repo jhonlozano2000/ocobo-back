@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Configuracion;
 
+use App\Http\Controllers\Controller;
 use App\Models\Configuracion\ConfigListaDetalle;
 use Illuminate\Http\Request;
 
