@@ -25,7 +25,7 @@ class GestionTerceroController extends Controller
     public function store(Request $request)
     {
 
-        $validator = Validator::make($request->all(), [
+        $validator = \Validator::make($request->all(), [
             'divi_pilo_id' => 'nullable|exists:config_divi_poli,id',
             'num_docu_nit' => 'nullable|string|max:25|unique:gestion_terceros,num_docu_nit',
             'nom_razo_soci' => 'nullable|string|max:150',
