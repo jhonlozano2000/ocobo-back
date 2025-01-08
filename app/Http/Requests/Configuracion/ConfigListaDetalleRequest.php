@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Configuracion;
 
+use App\Models\Configuracion\ConfigLista;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -12,7 +13,7 @@ class ConfigListaDetalleRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -20,17 +21,36 @@ class ConfigListaDetalleRequest extends FormRequest
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
-    public function rules(): array
+    public function rules()
     {
+        $detalleId = $this->route('lista_detalle'); // ID del detalle actual
+
         return [
             'lista_id' => 'required|exists:config_listas,id',
-            'codigo' => [
+            'nombre' => [
                 'required',
                 'string',
-                'max:20',
-                Rule::unique('config_listas_detalles', 'codigo')->ignore($this->route('lista_detalle')),
+                'max:70',
+                Rule::unique('config_listas_detalles', 'nombre')
+                    ->where('lista_id', $this->lista_id) // Validar dentro de la misma lista
+                    ->ignore($detalleId),               // Excluir el ID actual
             ],
-            'nombre' => 'required|string|max:70',
+        ];
+    }
+
+    public function messages()
+    {
+        $lista = ConfigLista::find($this->lista_id);
+        $nombreLista = $lista ? $lista->nombre : 'desconocida';
+
+        return [
+            'lista_id.required' => 'El ID de la lista es obligatorio.',
+            'lista_id.exists' => 'El ID de la lista no es válido.',
+
+            'nombre.required' => 'El nombre es obligatorio.',
+            'nombre.string' => 'El nombre debe ser una cadena de texto.',
+            'nombre.max' => 'El nombre no puede superar los 70 caracteres.',
+            'nombre.unique' => 'El nombre ya existe en la lista "' . $nombreLista . '", por favor elija otro.',
         ];
     }
 }

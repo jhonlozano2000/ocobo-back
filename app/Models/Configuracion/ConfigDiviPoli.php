@@ -11,4 +11,16 @@ class ConfigDiviPoli extends Model
 
     protected $table = 'config_divi_poli';
     protected $fillable = ['parent', 'codigo', 'nombre', 'tipo'];
+
+    // Relación con el padre (División política superior)
+    public function parent()
+    {
+        return $this->belongsTo(ConfigDiviPoli::class, 'parent');
+    }
+
+    // Relación con las divisiones políticas hijas
+    public function children()
+    {
+        return $this->hasMany(ConfigDiviPoli::class, 'parent');
+    }
 }

@@ -41,5 +41,11 @@ class ListaSeed extends Seeder
         ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Verbal']);
         ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Personal']);
         ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Pagina Web']);
+
+        $lista = ConfigLista::create(['cod' => 'TipProce', 'nombre' => 'Tipos de Procesos']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Proceso comunicaciones recibida']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Proceso comunicaciones enviada']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Proceso comunicaciones interna']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Proceso Expedientes']);
     }
 }

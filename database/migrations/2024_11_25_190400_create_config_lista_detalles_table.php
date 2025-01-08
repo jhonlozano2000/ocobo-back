@@ -17,7 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('lista_id');
             $table->foreign('lista_id')->on('config_listas')->references('id');
 
-            $table->string('codigo', 20);
+            $table->string('codigo', 20)->nullable();
             $table->string('nombre', 70);
 
             $table->timestamps();

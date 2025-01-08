@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Configuracion\ConfigListaRequest;
+use App\Http\Requests\Configuracion\UpdateConfigListaRequest;
 use App\Models\Configuracion\ConfigLista;
 use Illuminate\Http\Request;
 
@@ -38,7 +39,7 @@ class ConfigListaController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(ConfigListaRequest  $request, $id)
+    public function update(ConfigListaRequest $request, $id)
     {
         $lista = ConfigLista::findOrFail($id);
         $lista->update($request->validated());

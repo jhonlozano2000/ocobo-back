@@ -13,10 +13,15 @@ return new class extends Migration
     {
         Schema::create('config_server_archivos', function (Blueprint $table) {
             $table->id();
-            $table->string('host', 15);
-            $table->string('ruta', 40)->nullable();
-            $table->string('password', 15);
-            $table->string('user', 15);
+
+            $table->unsignedBigInteger('proceso_id');
+            $table->foreign('proceso_id')->on('config_listas_detalles')->references('id');
+
+            $table->string('host', 11);
+            $table->string('ruta', 100)->nullable();
+            $table->string('user', 20);
+            $table->string('password');
+            $table->string('detalle', 200)->nullable();
             $table->boolean('estado')->default(1);
             $table->timestamps();
         });
