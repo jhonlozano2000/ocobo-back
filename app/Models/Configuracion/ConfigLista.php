@@ -11,4 +11,9 @@ class ConfigLista extends Model
 
     protected $table = 'config_listas';
     protected $fillable = ['cod', 'nombre'];
+
+    public function detalles()
+    {
+        return $this->hasMany(ConfigListaDetalle::class, 'lista_id');
+    }
 }

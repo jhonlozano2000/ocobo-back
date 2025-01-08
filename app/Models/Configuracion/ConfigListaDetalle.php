@@ -11,4 +11,9 @@ class ConfigListaDetalle extends Model
 
     protected $table = 'config_listas_detalles';
     protected $filllable = ['lista_id', 'codigo', 'nombre'];
+
+    public function lista()
+    {
+        return $this->belongsTo(ConfigLista::class, 'lista_id');
+    }
 }
