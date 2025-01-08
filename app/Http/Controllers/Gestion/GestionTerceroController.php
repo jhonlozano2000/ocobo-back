@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Gestion;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Gestion\GestionTerceroRequest;
+use App\Models\Configuracion\ConfigDiviPoli;
 use App\Models\Gestion\GestionTercero;
 use \Validator;
 use Illuminate\Http\Request;
@@ -15,55 +17,34 @@ class GestionTerceroController extends Controller
      */
     public function index(Request $request)
     {
-        $terceros = GestionTercero::with('divisionPolitica')->get();
-        return response()->json($terceros, 200);
+        return response()->json(GestionTercero::with('divisionPolitica')->get());
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(GestionTerceroRequest $request)
     {
+        $municipio = ConfigDiviPoli::find($request->municipio_id);
 
-        $validator = \Validator::make($request->all(), [
-            'divi_pilo_id' => 'nullable|exists:config_divi_poli,id',
-            'num_docu_nit' => 'nullable|string|max:25|unique:gestion_terceros,num_docu_nit',
-            'nom_razo_soci' => 'nullable|string|max:150',
-            'direccion' => 'nullable|string|max:150',
-            'telefono' => 'nullable|string|max:30',
-            'email' => 'nullable|email|max:70',
-            'tipo' => 'required|in:Natural,Juridico',
-            'notifica_email' => 'boolean',
-            'notifica_msm' => 'boolean',
-        ], [
-            'divi_pilo_id.exists' => 'La división política seleccionada no existe.',
-            'num_docu_nit.unique' => 'El número de documento o NIT ya está registrado.',
-            'num_docu_nit.max' => 'El número de documento o NIT no puede exceder los 25 caracteres.',
-            'nom_razo_soci.max' => 'El nombre o razón social no puede exceder los 150 caracteres.',
-            'direccion.max' => 'La dirección no puede exceder los 150 caracteres.',
-            'telefono.max' => 'El teléfono no puede exceder los 30 caracteres.',
-            'email.email' => 'El correo electrónico no tiene un formato válido.',
-            'email.max' => 'El correo electrónico no puede exceder los 70 caracteres.',
-            'tipo.required' => 'El tipo de tercero es obligatorio.',
-            'tipo.in' => 'El tipo de tercero debe ser "Natural" o "Jurídico".',
-            'notifica_email.boolean' => 'El valor de notificar por email debe ser verdadero o falso.',
-            'notifica_msm.boolean' => 'El valor de notificar por SMS debe ser verdadero o falso.',
+        $departamento = $municipio ? ConfigDiviPoli::find($municipio->parent) : null;
+        $pais = $departamento ? ConfigDiviPoli::find($departamento->parent) : null;
+
+        $tercero = GestionTercero::create([
+            'municipio_id' => $request->municipio_id,
+            'departamento_id' => $departamento ? $departamento->id : null,
+            'pais_id' => $pais ? $pais->id : null,
+            'num_docu_nit' => $request->num_docu_nit,
+            'nom_razo_soci' => $request->nom_razo_soci,
+            'direccion' => $request->direccion,
+            'telefono' => $request->telefono,
+            'email' => $request->email,
+            'tipo' => $request->tipo,
+            'notifica_email' => $request->notifica_email,
+            'notifica_msm' => $request->notifica_msm,
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'errors' => $validator->errors(),
-            ], 400);
-        }
-
-        $tercero = GestionTercero::create($request->all());
-
-        return response()->json([
-            'status' => true,
-            'data' => $tercero,
-            'message' => 'Tercero creado exitosamente',
-        ], 201);
+        return response()->json($tercero, 201);
     }
 
     /**
@@ -74,71 +55,43 @@ class GestionTerceroController extends Controller
         $tercero = GestionTercero::with('divisionPolitica')->find($id);
 
         if (!$tercero) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Tercero no encontrado',
-            ], 404);
+            return response()->json(['message' => 'Tercero no encontrado'], 404);
         }
 
-        return response()->json([
-            'status' => true,
-            'data' => $tercero,
-        ], 200);
+        return response()->json($tercero);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $id)
+    public function update(GestionTerceroRequest $request, $id)
     {
         $tercero = GestionTercero::find($id);
 
         if (!$tercero) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Tercero no encontrado',
-            ], 404);
+            return response()->json(['message' => 'Tercero no encontrado'], 404);
         }
 
-        $validator = Validator::make($request->all(), [
-            'divi_pilo_id' => 'nullable|exists:config_divi_poli,id',
-            'num_docu_nit' => 'nullable|string|max:25|unique:gestion_terceros,num_docu_nit,' . $tercero->id,
-            'nom_razo_soci' => 'nullable|string|max:150',
-            'direccion' => 'nullable|string|max:150',
-            'telefono' => 'nullable|string|max:30',
-            'email' => 'nullable|email|max:70',
-            'tipo' => 'required|in:Natural,Juridico',
-            'notifica_email' => 'boolean',
-            'notifica_msm' => 'boolean',
-        ], [
-            'divi_pilo_id.exists' => 'La división política seleccionada no existe.',
-            'num_docu_nit.unique' => 'El número de documento o NIT ya está registrado.',
-            'num_docu_nit.max' => 'El número de documento o NIT no puede exceder los 25 caracteres.',
-            'nom_razo_soci.max' => 'El nombre o razón social no puede exceder los 150 caracteres.',
-            'direccion.max' => 'La dirección no puede exceder los 150 caracteres.',
-            'telefono.max' => 'El teléfono no puede exceder los 30 caracteres.',
-            'email.email' => 'El correo electrónico no tiene un formato válido.',
-            'email.max' => 'El correo electrónico no puede exceder los 70 caracteres.',
-            'tipo.required' => 'El tipo de tercero es obligatorio.',
-            'tipo.in' => 'El tipo de tercero debe ser "Natural" o "Jurídico".',
-            'notifica_email.boolean' => 'El valor de notificar por email debe ser verdadero o falso.',
-            'notifica_msm.boolean' => 'El valor de notificar por SMS debe ser verdadero o falso.',
+        $municipio = ConfigDiviPoli::find($request->municipio_id);
+
+        $departamento = $municipio ? ConfigDiviPoli::find($municipio->parent) : null;
+        $pais = $departamento ? ConfigDiviPoli::find($departamento->parent) : null;
+
+        $tercero->update([
+            'municipio_id' => $request->municipio_id,
+            'departamento_id' => $departamento ? $departamento->id : null,
+            'pais_id' => $pais ? $pais->id : null,
+            'num_docu_nit' => $request->num_docu_nit,
+            'nom_razo_soci' => $request->nom_razo_soci,
+            'direccion' => $request->direccion,
+            'telefono' => $request->telefono,
+            'email' => $request->email,
+            'tipo' => $request->tipo,
+            'notifica_email' => $request->notifica_email,
+            'notifica_msm' => $request->notifica_msm,
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'errors' => $validator->errors(),
-            ], 400);
-        }
-
-        $tercero->update($request->all());
-
-        return response()->json([
-            'status' => true,
-            'data' => $tercero,
-            'message' => 'Tercero actualizado exitosamente',
-        ], 200);
+        return response()->json($tercero);
     }
 
     /**
@@ -149,18 +102,12 @@ class GestionTerceroController extends Controller
         $tercero = GestionTercero::find($id);
 
         if (!$tercero) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Tercero no encontrado',
-            ], 404);
+            return response()->json(['message' => 'Tercero no encontrado'], 404);
         }
 
         $tercero->delete();
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Tercero eliminado exitosamente',
-        ], 200);
+        return response()->json(['message' => 'Tercero eliminado correctamente']);
     }
 
     public function estadisticas()
