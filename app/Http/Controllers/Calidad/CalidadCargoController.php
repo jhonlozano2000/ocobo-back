@@ -1,12 +1,11 @@
 <?php
 
-namespace App\Http\Controllers\VentanillaUnida;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Models\VentanillaUnica\RadicadoRecibido;
+use App\Models\Calidad\CalidadCargo;
 use Illuminate\Http\Request;
 
-class RadicadoRecibidoController extends Controller
+class CalidadCargoController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -35,7 +34,7 @@ class RadicadoRecibidoController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(RadicadoRecibido $radicadoRecibido)
+    public function show(CalidadCargo $calidadCargo)
     {
         //
     }
@@ -43,7 +42,7 @@ class RadicadoRecibidoController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(RadicadoRecibido $radicadoRecibido)
+    public function edit(CalidadCargo $calidadCargo)
     {
         //
     }
@@ -51,7 +50,7 @@ class RadicadoRecibidoController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, RadicadoRecibido $radicadoRecibido)
+    public function update(Request $request, CalidadCargo $calidadCargo)
     {
         //
     }
@@ -59,7 +58,7 @@ class RadicadoRecibidoController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(RadicadoRecibido $radicadoRecibido)
+    public function destroy(CalidadCargo $calidadCargo)
     {
         //
     }

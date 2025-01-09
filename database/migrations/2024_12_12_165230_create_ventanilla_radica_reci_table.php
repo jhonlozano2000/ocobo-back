@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::create('ventanilla_radica_reci', function (Blueprint $table) {
             $table->id();
 
+            $table->string('num_radicado', 50)->unique()->comment('Número único del radicado');
+
             $table->unsignedBigInteger('clasifica_documen_id')->comment('Clasificacion documetnal');
             $table->foreign('clasifica_documen_id')->references('id')->on('clasificacion_documental_trd');
 
@@ -26,12 +28,15 @@ return new class extends Migration
             $table->unsignedBigInteger('config_server_id')->nullable()->comment('Rutal de almacenamiento de los archivos digitalizados');
             $table->foreign('config_server_id')->references('id')->on('config_server_archivos');
 
+            $table->unsignedBigInteger('uploaded_by')->nullable()->comment('Usuario que subió el archivo');
+            $table->foreign('uploaded_by')->references('id')->on('users');
+
             $table->date('fec_venci')->nullable()->comment('Fecha de vencimeinto del radicado');
             $table->integer('num_folios')->default(0)->comment('Numero de folios del radicado');
             $table->integer('num_anexos')->default(0)->comment('Numero de anexos del radicado');
             $table->string('descrip_anexos', 300)->nullable()->comment('Descripcion de los anexos');
             $table->string('asunto', 300)->nullable();
-            $table->string('archivo_radica', 100)->nullable();
+            $table->string('archivo_radica', 100)->nullable()->comment('Archivo digitalizado');
 
             $table->timestamps();
         });

@@ -32,11 +32,13 @@ class CalidadOrganigrama extends Model
             ->with('childrenDependencias'); // Asegura que la relación solo devuelva dependencias en todos los niveles
     }
 
-    // Relación con la tabla pivote users_cargos
-    public function users()
+    public function subdependencias()
     {
-        return $this->belongsToMany(User::class, 'users_cargos')
-            ->withPivot('start_date', 'end_date')  // Fechas de inicio y fin del cargo
-            ->withTimestamps();  // Tiempos de creación y actualización
+        return $this->hasMany(CalidadOrganigrama::class, 'parent');
+    }
+
+    public function dependenciaPadre()
+    {
+        return $this->belongsTo(CalidadOrganigrama::class, 'parent');
     }
 }

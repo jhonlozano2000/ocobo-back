@@ -27,52 +27,8 @@ class UserControlle extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(User $request)
     {
-        // Validación de los datos
-        $validator = Validator::make($request->all(), [
-            'num_docu' => 'required|string|max:20|unique:users',
-            'nombres' => 'required|string|max:70',
-            'apellidos' => 'required|string|max:70',
-            'email' => 'required|string|email|max:70|unique:users',
-            'password' => 'required|string|min:6',
-            'avatar' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'firma' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'roles' => 'required|array|min:1',
-            'roles.*' => 'required|string|exists:roles,name',
-            'cargo_id' => 'required|integer|exists:calidad_organigrama,id',
-        ], [
-            'num_docu.unique' => 'El número de documento ya está en uso',
-            'num_docu.required' => 'Te hizo falta el número de documento',
-            'nombres.required' => 'Te hizo falta el nombre',
-            'apellidos.required' => 'Te hizo falta el apellido',
-            'email.required' => 'Te hizo falta el correo electrónico',
-            'email.email' => 'El correo electrónico no es válido',
-            'email.max' => 'El correo electrónico es demasiado largo',
-            'email.unique' => 'El correo electrónico ya está en uso',
-            'password.required' => 'Te hizo falta la contraseña',
-            'password.min' => 'La contraseña debe tener al menos 6 caracteres',
-            'roles.required' => 'Debe asignar al menos un rol.',
-            'roles.array' => 'El campo roles debe ser un arreglo.',
-            'roles.*.exists' => 'El rol ":input" no existe en el sistema.',
-            'cargo_id.required' => 'Debe seleccionar un cargo.',
-            'cargo_id.integer' => 'El cargo seleccionado no es válido.',
-            'cargo_id.exists' => 'El cargo seleccionado no existe en el sistema.',
-            'avatar.file' => 'El avatar debe ser un archivo.',
-            'avatar.mimes' => 'El avatar debe ser una imagen en formato JPEG, PNG, JPG, GIF o SVG.',
-            'avatar.max' => 'El avatar no debe superar los 2MB.',
-            'firma.file' => 'La firma debe ser un archivo.',
-            'firma.mimes' => 'La firma debe ser una imagen en formato JPEG, PNG, JPG, GIF o SVG.',
-            'firma.max' => 'La firma no debe superar los 2MB.'
-        ]);
-
-        // Verificar si la validación falla
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'errors' => $validator->errors(),
-            ], 400); // Devuelve un error 400 (Bad Request) con los errores
-        }
 
         // Crear el nuevo usuario
         $user = new User();
@@ -84,31 +40,12 @@ class UserControlle extends Controller
         $user->dir = $request->dir;
         $user->email = $request->email;
 
-        // Alnaceno el avatar
-        if ($request->hasFile('avatar')) {
-            $fileAvatar = $request->file('avatar');
+        // Asignar roles
+        $user->assignRole($request->roles);
 
-            if (!is_null($request->avatar) && Storage::disk('avatars')->exists($request->avatar)) {
-                Storage::disk('avatars')->delete($request->avatar);
-            }
-
-            $nombreEncrip = Str::random(50) . "." . $fileAvatar->extension();
-            $avatar = $fileAvatar->storeAs('avatars', $nombreEncrip);
-            $user->avatar = $avatar;
-        }
-
-        // Almaceno la firma
-        if ($request->hasFile('firma')) {
-            $filefirma = $request->file('firma');
-
-            if (!is_null($request->firma) && Storage::disk('firmas')->exists($request->firma)) {
-                Storage::disk('firmas')->delete($request->firma);
-            }
-
-            $nombreEncrip = Str::random(50) . "." . $filefirma->extension();
-            $firma = $filefirma->storeAs('firmas', $nombreEncrip);
-            $user->firma = $firma;
-        }
+        // Manejo de archivos (avatar y firma)
+        $user->avatar = $this->guardarArchivo($request, 'avatar', 'avatars');
+        $user->firma = $this->guardarArchivo($request, 'firma', 'firmas');
 
         // Actualizo la contraseña
         if ($request->has('password')) {
@@ -273,5 +210,23 @@ class UserControlle extends Controller
                 'total_users_inactivos' => $totalUsersInactivos,
             ]
         ], 200);
+    }
+
+    private function guardarArchivo($request, $campo, $disk, $archivoActual = null)
+    {
+        if ($request->hasFile($campo)) {
+            $file = $request->file($campo);
+
+            // Eliminar archivo anterior si existe
+            if ($archivoActual && Storage::disk($disk)->exists($archivoActual)) {
+                Storage::disk($disk)->delete($archivoActual);
+            }
+
+            // Guardar el nuevo archivo
+            $nombreArchivo = Str::random(50) . "." . $file->extension();
+            return $file->storeAs($disk, $nombreArchivo);
+        }
+
+        return $archivoActual;
     }
 }

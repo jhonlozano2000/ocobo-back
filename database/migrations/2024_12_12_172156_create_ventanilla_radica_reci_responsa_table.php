@@ -20,8 +20,8 @@ return new class extends Migration
             $table->unsignedBigInteger('users_cargos_id');
             $table->foreign('users_cargos_id')->references('id')->on('users_cargos');
 
-            $table->boolean('visto')->nullable(0);
-            $table->datetime('fechor_visto')->nullable(0);
+            $table->boolean('custodio')->nullable(0)->comment('Usuario que va a tener la custodia del documento');
+            $table->datetime('fechor_visto')->nullable(0)->comment('Fecha y hora en el cual el responsable ve el radicado');
 
             $table->timestamps();
         });
