@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\ControlAcceso;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ControlAcceso\UserRequest;
+use App\Models\ControlAcceso\UsersCargo;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use \Validator;
 use Str;
@@ -27,7 +28,7 @@ class UserControlle extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(User $request)
+    public function store(UserRequest $request)
     {
 
         // Crear el nuevo usuario
@@ -53,13 +54,7 @@ class UserControlle extends Controller
             $user->save();
         }
 
-        // Almaceno los roles
-        $user->assignRole($request->roles);
-
-        // Finaliza el cargo actual si existe
-        $user->endCurrentCargo();
-
-        // Asigna el nuevo cargo con la fecha de inicio
+        // Desactivar cargos anteriores y asignar el nuevo cargo
         $user->assignCargo($request->cargo_id);
 
         return response()->json([
@@ -92,7 +87,7 @@ class UserControlle extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(UserRequest $request, string $id)
     {
 
         // Encuentra el usuario por ID
@@ -104,58 +99,11 @@ class UserControlle extends Controller
             ], 404);
         }
 
-        // Validación de los datos
-        $validator = Validator::make($request->all(), [
-            'num_docu' => 'required|string|max:20|unique:users,num_docu,' . $user->id,
-            'nombres' => 'required|string|max:70',
-            'apellidos' => 'required|string|max:70',
-            'email' => 'required|string|email|max:70|unique:users,email,' . $user->id,
-            'password' => 'nullable|string|min:6',
-            'avatar' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'firma' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'roles' => 'required|array|min:1',
-            'roles.*' => 'required|string|exists:roles,name',
-            'cargo_id' => 'required|integer|exists:calidad_organigrama,id',
-        ], [
-            'num_docu.unique' => 'El número de documento ya está en uso',
-            'num_docu.required' => 'Te hizo falta el número de documento',
-            'nombres.required' => 'Te hizo falta el nombre',
-            'apellidos.required' => 'Te hizo falta el apellido',
-            'email.required' => 'Te hizo falta el correo electrónico',
-            'email.email' => 'El correo electrónico no es válido',
-            'email.max' => 'El correo electrónico es demasiado largo',
-            'email.unique' => 'El correo electrónico ya está en uso',
-            'password.min' => 'La contraseña debe tener al menos 6 caracteres',
-            'roles.required' => 'Debe asignar al menos un rol.',
-            'roles.array' => 'El campo roles debe ser un arreglo.',
-            'roles.*.exists' => 'El rol ":input" no existe en el sistema.',
-            'cargo_id.required' => 'Debe seleccionar un cargo.',
-            'cargo_id.integer' => 'El cargo seleccionado no es válido.',
-            'cargo_id.exists' => 'El cargo seleccionado no existe en el sistema.',
-            'avatar.file' => 'El avatar debe ser un archivo.',
-            'avatar.mimes' => 'El avatar debe ser una imagen en formato JPEG, PNG, JPG, GIF o SVG.',
-            'avatar.max' => 'El avatar no debe superar los 2MB.',
-            'firma.file' => 'La firma debe ser un archivo.',
-            'firma.mimes' => 'La firma debe ser una imagen en formato JPEG, PNG, JPG, GIF o SVG.',
-            'firma.max' => 'La firma no debe superar los 2MB.'
-        ]);
-
-        // Verificar si la validación falla
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'errors' => $validator->errors(),
-            ], 400); // Devuelve un error 400 (Bad Request) con los errores
-        }
-
         // Actualiza el usuario
         $user->update($request->only(['num_docu', 'nombres', 'apellidos', 'dir', 'tel', 'movil']));
 
         // Almaceno los roles
         $user->assignRole($request->roles);
-
-        // Finaliza el cargo actual si existe
-        $user->endCurrentCargo();
 
         // Asigna el nuevo cargo con la fecha de inicio
         $user->assignCargo($request->cargo_id);

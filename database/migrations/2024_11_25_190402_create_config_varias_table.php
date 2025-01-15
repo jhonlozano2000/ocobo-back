@@ -26,7 +26,7 @@ return new class extends Migration
         ]);
 
         DB::table('config_varias')->insert([
-            ['clave' => 'formato_num_radicado', 'valor' => 'YYYYMMDD-#####', 'descripcion' => 'Formato del número de radicado'],
+            ['clave' => 'formato_num_radicado_reci', 'valor' => 'YYYYMMDD-#####', 'descripcion' => 'Formato del número de radicado'],
         ]);
     }
 

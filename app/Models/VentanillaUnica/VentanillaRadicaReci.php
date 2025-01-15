@@ -4,6 +4,7 @@ namespace App\Models\VentanillaUnica;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class VentanillaRadicaReci extends Model
 {
@@ -23,6 +24,18 @@ class VentanillaRadicaReci extends Model
         'asunto',
         'archivo_radica'
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleted(function ($radicado) {
+            // Eliminar el archivo si existe
+            if ($radicado->archivo_radica && Storage::exists($radicado->archivo_radica)) {
+                Storage::delete($radicado->archivo_radica);
+            }
+        });
+    }
 
     public function clasificacionDocumental()
     {

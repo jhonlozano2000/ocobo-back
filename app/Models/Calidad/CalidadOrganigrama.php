@@ -14,31 +14,42 @@ class CalidadOrganigrama extends Model
     protected $table = 'calidad_organigrama'; // Asegúrate de que este nombre sea correcto y en singular
     protected $fillable = ['tipo', 'nom_organico', 'cod_organico', 'observaciones', 'parent'];
 
+    // Relación recursiva para obtener TODAS las subdependencias y cargos
     public function children()
     {
         return $this->hasMany(CalidadOrganigrama::class, 'parent')->with('children');
     }
 
+    // Relación con la dependencia superior (Padre)
     public function parent()
     {
         return $this->belongsTo(CalidadOrganigrama::class, 'parent');
     }
 
-    // Relación recursiva para obtener los hijos de tipo "Dependencia"
+    // Relación recursiva para obtener SOLO las subdependencias (sin cargos)
     public function childrenDependencias()
     {
         return $this->hasMany(CalidadOrganigrama::class, 'parent')
             ->where('tipo', 'Dependencia')
-            ->with('childrenDependencias'); // Asegura que la relación solo devuelva dependencias en todos los niveles
+            ->with('childrenDependencias');
     }
 
-    public function subdependencias()
+    // Relación para obtener SOLO los cargos dentro de una dependencia
+    public function childrenCargos()
     {
-        return $this->hasMany(CalidadOrganigrama::class, 'parent');
+        return $this->hasMany(CalidadOrganigrama::class, 'parent')
+            ->where('tipo', 'Cargo');
     }
 
-    public function dependenciaPadre()
+    // Obtener SOLO las dependencias principales (sin padres)
+    public function scopeDependenciasRaiz($query)
     {
-        return $this->belongsTo(CalidadOrganigrama::class, 'parent');
+        return $query->whereNull('parent')->where('tipo', 'Dependencia');
+    }
+
+    // Obtener SOLO los cargos
+    public function scopeCargos($query)
+    {
+        return $query->where('tipo', 'Cargo');
     }
 }
