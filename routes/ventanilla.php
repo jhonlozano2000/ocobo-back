@@ -18,6 +18,6 @@ Route::middleware('auth:sanctum')->group(function () {
     /**
      * Responsables
      */
-    Route::apiResource('radica-corres-responsables', VentanillaRadicaReciResponsaController::class)->except('create', 'edit');
-    Route::get('radica-corres-recibida/{id}/responsables', [VentanillaRadicaReciResponsaController::class, 'getByRadicado']);
+    Route::apiResource('radica-corres-recibida-responsables', VentanillaRadicaReciResponsaController::class)->except('create', 'edit');
+    Route::get('radica-corres-recibida-recibida/{id}/responsables', [VentanillaRadicaReciResponsaController::class, 'getByRadicado']);
 });
