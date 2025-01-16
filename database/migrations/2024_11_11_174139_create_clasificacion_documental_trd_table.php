@@ -15,23 +15,23 @@ return new class extends Migration
             $table->id();
 
             $table->unsignedBigInteger('parent')->nullable();
-            $table->foreign('parent')->references('id')->on('clasificacion_documental_trd');
+            $table->foreign('parent')->references('id')->on('clasificacion_documental_trd')->onDelete('cascade');
 
             $table->unsignedBigInteger('user_register');
-            $table->foreign('user_register')->references('id')->on('users');
+            $table->foreign('user_register')->references('id')->on('users')->onDelete('cascade');
 
             $table->unsignedBigInteger('dependencia_id')->nullable();
-            $table->foreign('dependencia_id')->references('id')->on('calidad_organigrama');
+            $table->foreign('dependencia_id')->references('id')->on('calidad_organigrama')->onDelete('cascade');
 
-            $table->string('tipo', 15);
+            $table->enum('tipo', ['Serie', 'SubSerie', 'TipoDocumento'])->index();
             $table->string('cod', 10)->nullable();
             $table->string('nom', 100)->nullable();
-            $table->string('a_g')->nullable()->comment('Archivo de gestrión');
-            $table->string('a_c')->nullable()->comment('Archivo Central');
-            $table->string('ct')->nullable()->comment('Conservación Total');
-            $table->string('e')->nullable()->comment('Eliminación');
-            $table->string('m_d')->nullable()->comment('M: Microfilmación - D:Digitalización ');
-            $table->string('s')->nullable()->comment('Selección');
+            $table->string('a_g', 5)->nullable()->comment('Archivo de Gestión');
+            $table->string('a_c', 5)->nullable()->comment('Archivo Central');
+            $table->boolean('ct')->default(false)->comment('Conservación Total');
+            $table->boolean('e')->default(false)->comment('Eliminación');
+            $table->boolean('m_d')->default(false)->comment('Microfilmación / Digitalización');
+            $table->boolean('s')->default(false)->comment('Selección');
             $table->text('procedimiento')->nullable();
             $table->boolean('estado')->default(1);
             $table->timestamps();

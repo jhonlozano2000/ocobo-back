@@ -11,6 +11,7 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use DB;
 
 class ClasificacionDocumentalTRDController extends Controller
 {
@@ -66,138 +67,119 @@ class ClasificacionDocumentalTRDController extends Controller
 
     public function importTRD(Request $request)
     {
-        if (Storage::disk('temp_files')->exists('TRD para importa.xlsx')) {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx|max:2048',
+            'dependencia_id' => 'required|exists:calidad_organigrama,id'
+        ]);
 
-            $dependencia = 3;
-            $idSubSerie = null;
-            $idSerie = null;
+        $dependenciaId = $request->input('dependencia_id');
 
-            /**
-             * Buscamos la dependencia para saber si ya tiene TRD configurada
-             */
-            $dependencia = ClasificacionDocumentalTRD::where('dependencia_id', '=', $dependencia)
-                ->get();
-            if ($dependencia) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'La depencia ya tiene configurada un TRD'
-                ], 205);
-            }
-
-            $file = storage_path('app\temp_files\TRD para importa.xlsx');
-
-            $documentos = IOFactory::load($file);
-            $cantidad = $documentos->getActiveSheet()->toArray();
-
-
-            /**
-             * Establecer si los tipos documentales van en la serie o subserie
-             * */
-            $tiposDocumeEnSeri = false;
-
-            $i = 0;
-
-            foreach ($cantidad as $row) {
-                if ($i > 0) {
-                    $codSerie = $row[0];
-                    $codSubSerie = $row[1];
-                    $serie = $row[2];
-                    $subSerie = $row[3];
-                    $tipoDocumental = $row[4];
-                    $ag = $row[5];
-                    $ac = $row[6];
-                    $ct = $row[7];
-                    $e = $row[8];
-                    $md = $row[9];
-                    $s = $row[10];
-                    $procedimiento = $row[11];
-
-                    /**
-                     * Inserto la serie
-                     */
-                    if ($codSerie != '') {
-                        $trdSerie = new ClasificacionDocumentalTRD();
-                        $trdSerie->tipo = 'Serie';
-                        $trdSerie->cod = $codSerie;
-                        $trdSerie->nom = $serie;
-                        $trdSerie->a_g = $ag;
-                        $trdSerie->a_c = $ac;
-                        $trdSerie->ct = $ct;
-                        $trdSerie->e = $e;
-                        $trdSerie->m_d = $md;
-                        $trdSerie->s = $s;
-                        $trdSerie->procedimiento = $procedimiento;
-                        $trdSerie->user_register = 1;
-                        $trdSerie->dependencia_id = $dependencia;
-                        $trdSerie->save();
-                        $idSerie = $trdSerie->id;
-                    }
-
-                    /**
-                     * Inserto la subserie
-                     */
-                    if ($codSubSerie != '') {
-                        $trdSubSerie = new ClasificacionDocumentalTRD();
-                        $trdSubSerie->tipo = 'SubSerie';
-                        $trdSubSerie->cod = $codSerie;
-                        $trdSubSerie->nom = $subSerie;
-                        $trdSubSerie->parent = $idSerie;
-                        $trdSubSerie->user_register = 1;
-                        $trdSubSerie->dependencia_id = $dependencia;
-                        $trdSubSerie->save();
-                        $idSubSerie = $trdSubSerie->id;
-                    }
-
-                    /**
-                     * Inserto el tipo documental
-                     */
-                    if ($tipoDocumental != '') {
-                        $trdTipoDocumento = new ClasificacionDocumentalTRD();
-                        $trdTipoDocumento->tipo = 'TipoDocumento';
-                        $trdTipoDocumento->nom = $tipoDocumental;
-
-                        /**
-                         * Cuando la serie y subseries existen el tipo documental va en la subserie
-                         * */
-                        if ($codSerie != '' and $codSubSerie != '' and $serie != "" and $subSerie != '') {
-
-                            $trdTipoDocumento->parent = $idSubSerie;
-                            $tiposDocumeEnSeri = false;
-                            /**
-                             * Cuando la serie existe pero no la subserie el tipo documental va en la serie
-                             * */
-                        } elseif ($codSerie != '' and $codSubSerie == '' and $serie != "" and $subSerie == '') {
-                            $tiposDocumeEnSeri = true;
-                            $trdTipoDocumento->parent = $idSerie;
-
-                            /** Cuando la serie existe pero no la subserie ya anteriormente se inserto un tipo documental en la serie
-                             * el tipo documental va en la serie
-                             * */
-                        } elseif ($codSerie == '' and $codSubSerie == '' and $serie == "" and $subSerie == '' and $tiposDocumeEnSeri) {
-
-                            $trdTipoDocumento->parent = $idSerie;
-                        }
-
-                        $trdTipoDocumento->user_register = 1;
-                        $trdTipoDocumento->dependencia_id = $dependencia;
-                        $trdTipoDocumento->save();
-                    }
-                }
-
-                $i++;
-            }
-
+        // Verificar si la dependencia ya tiene TRD
+        if (ClasificacionDocumentalTRD::where('dependencia_id', $dependenciaId)->exists()) {
             return response()->json([
-                'satatus' => true,
-                'messahe' => 'La TRD se ha cargado satisfactoriamente'
-            ], 200);
-        } else {
+                'status' => false,
+                'message' => 'La dependencia ya tiene configurada una TRD.'
+            ], 400);
+        }
+
+        // Crear el nombre del archivo
+        $nombreArchivo = 'TRD_para_importar_' . now()->timestamp . '.xlsx';
+
+        // Almacenar el archivo en el directorio `temp_files`
+        $filePath = $request->file('file')->storeAs('temp_files', $nombreArchivo);
+
+        // Usar el nombre del archivo para obtener la ruta absoluta
+        $file = Storage::disk('temp_files')->path($nombreArchivo);
+
+        if (!file_exists($file)) {
             return response()->json([
-                'status' => true,
-                'message' => 'El archivo no existe'
+                'status' => false,
+                'message' => 'El archivo no existe en el almacenamiento.'
             ], 404);
         }
+
+        // Leer el archivo
+        $spreadsheet = IOFactory::load($file);
+        $data = $spreadsheet->getActiveSheet()->toArray();
+
+        \DB::beginTransaction();
+
+        try {
+            $idSerie = null;
+            $idSubSerie = null;
+
+            foreach ($data as $index => $row) {
+                if ($index == 0) continue; // Saltar la cabecera
+
+                [$codSerie, $codSubSerie, $serie, $subSerie, $tipoDoc, $a_g, $a_c, $ct, $e, $m_d, $s, $procedimiento] = $row;
+
+                if ($codSerie) {
+                    $serieModel = ClasificacionDocumentalTRD::create([
+                        'tipo' => 'Serie',
+                        'cod' => $codSerie,
+                        'nom' => $serie,
+                        'a_g' => $a_g,
+                        'a_c' => $a_c,
+                        'ct' => $ct,
+                        'e' => $e,
+                        'm_d' => $m_d,
+                        's' => $s,
+                        'procedimiento' => $procedimiento,
+                        'dependencia_id' => $dependenciaId,
+                        'user_register' => auth()->id(),
+                    ]);
+                    $idSerie = $serieModel->id;
+                }
+
+                if ($codSubSerie) {
+                    $subSerieModel = ClasificacionDocumentalTRD::create([
+                        'tipo' => 'SubSerie',
+                        'cod' => $codSubSerie,
+                        'nom' => $subSerie,
+                        'parent' => $idSerie,
+                        'dependencia_id' => $dependenciaId,
+                        'user_register' => auth()->id(),
+                    ]);
+                    $idSubSerie = $subSerieModel->id;
+                }
+
+                if ($tipoDoc) {
+                    ClasificacionDocumentalTRD::create([
+                        'tipo' => 'TipoDocumento',
+                        'nom' => $tipoDoc,
+                        'parent' => $idSubSerie ?? $idSerie,
+                        'dependencia_id' => $dependenciaId,
+                        'user_register' => auth()->id(),
+                    ]);
+                }
+            }
+
+            \DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'TRD importada satisfactoriamente.'
+            ], 200);
+        } catch (\Exception $e) {
+            \DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Error al importar la TRD.',
+                'error' => $e->getMessage()
+            ], 500);
+        } finally {
+            // Eliminar el archivo del almacenamiento, independientemente del resultado
+            if (Storage::disk('temp_files')->exists($filePath)) {
+                Storage::disk('temp_files')->delete($filePath);
+            }
+        }
     }
+
+
+
+
+
 
     public function estadistica($id)
     {
@@ -209,5 +191,23 @@ class ClasificacionDocumentalTRDController extends Controller
             ->count();
 
         return $trd;
+    }
+
+    public function uploadTRD(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx|max:2048',
+        ]);
+
+        $filePath = $request->file('file')->storeAs(
+            'temp_files',
+            'TRD_para_importar_' . now()->timestamp . '.xlsx'
+        );
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Archivo subido correctamente.',
+            'path' => $filePath
+        ], 201);
     }
 }

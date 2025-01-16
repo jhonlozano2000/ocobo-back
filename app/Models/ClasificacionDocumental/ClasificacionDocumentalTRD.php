@@ -2,6 +2,7 @@
 
 namespace App\Models\ClasificacionDocumental;
 
+use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,7 @@ class ClasificacionDocumentalTRD extends Model
     use HasFactory;
 
     protected $table = 'clasificacion_documental_trd';
+
     protected $fillable = [
         'tipo',
         'cod',
@@ -24,15 +26,28 @@ class ClasificacionDocumentalTRD extends Model
         's',
         'procedimiento',
         'parent',
+        'dependencia_id',
+        'user_register',
+        'estado'
     ];
 
     public function children()
     {
-        return $this->hasMany(ClasificacionDocumentalTRD::class, 'parent')->with('children');
+        return $this->hasMany(self::class, 'parent')->with('children');
     }
 
     public function parent()
     {
-        return $this->belongsTo(ClasificacionDocumentalTRD::class, 'parent');
+        return $this->belongsTo(self::class, 'parent');
+    }
+
+    public function dependencia()
+    {
+        return $this->belongsTo(CalidadOrganigrama::class, 'dependencia_id');
+    }
+
+    public function scopeSeries($query)
+    {
+        return $query->where('tipo', 'Serie')->whereNull('parent');
     }
 }
