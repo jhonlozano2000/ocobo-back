@@ -24,23 +24,32 @@ class VentanillaRadicaReciResponsaController extends Controller
      */
     public function store(VentanillaRadicaReciResponsaRequest $request)
     {
-        $data = $request->validated();
+        $data = $request->all(); // Obtener todos los datos enviados
 
-        $responsables = [];
-
-        if (isset($data[0])) {
-            // Si es un array de objetos, usamos createMany para obtener los IDs generados
-            $responsables = VentanillaRadicaReciResponsa::query()->insert($data);
-        } else {
-            // Si es un solo objeto, usamos create normalmente
-            $responsables[] = VentanillaRadicaReciResponsa::create($data);
+        // Validar que sea un arreglo indexado
+        if (!is_array($data) || empty($data)) {
+            return response()->json([
+                'message' => 'Los datos deben ser un arreglo no vacío.'
+            ], 400);
         }
+
+        // Validar y procesar los datos
+        $responsables = $request->validated();
+
+        // Insertar los registros
+        VentanillaRadicaReciResponsa::insert($responsables);
+
+        // Obtener los registros recién insertados para retornar
+        $radicaReciId = $responsables[0]['radica_reci_id'];
+        $insertados = VentanillaRadicaReciResponsa::where('radica_reci_id', $radicaReciId)->get();
 
         return response()->json([
             'message' => 'Responsables asignados correctamente',
-            'data' => $responsables
+            'data' => $insertados
         ], 201);
     }
+
+
 
 
     /**

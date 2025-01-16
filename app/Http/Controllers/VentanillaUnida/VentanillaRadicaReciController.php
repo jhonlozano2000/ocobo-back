@@ -68,10 +68,12 @@ class VentanillaRadicaReciController extends Controller
         // Generar el número de radicado usando la dependencia del custodio
         $num_radicado = $this->generarNumeroRadicado($cod_dependencia);
 
-        // Insertar el radicado con el número generado
-        $radicado = VentanillaRadicaReci::create(array_merge($validatedData, [
-            'num_radicado' => $num_radicado,
-        ]));
+        // Crear el radicado con los datos enviados
+        $radicado = new VentanillaRadicaReci($request->validated());
+        $radicado->num_radicado = $num_radicado;
+
+        // Guardar el radicado
+        $radicado->save();
 
         return response()->json($radicado, 201);
     }

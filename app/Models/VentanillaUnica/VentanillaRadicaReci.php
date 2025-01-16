@@ -22,7 +22,9 @@ class VentanillaRadicaReci extends Model
         'num_anexos',
         'descrip_anexos',
         'asunto',
-        'archivo_radica'
+        'archivo_radica',
+        'num_radicado',
+        'uploaded_by',
     ];
 
     protected static function boot()

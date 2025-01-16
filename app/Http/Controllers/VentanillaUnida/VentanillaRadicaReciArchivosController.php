@@ -14,6 +14,7 @@ class VentanillaRadicaReciArchivosController extends Controller
 {
     public function upload(Request $request, $id)
     {
+
         $maxSize = ConfigVarias::getValor('max_tamano_archivo', 20480);
         $allowedExtensions = explode(',', ConfigVarias::getValor('tipos_archivos_permitidos', 'pdf,jpg,png,docx'));
 

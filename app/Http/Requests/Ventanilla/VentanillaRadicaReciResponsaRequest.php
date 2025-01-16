@@ -11,7 +11,7 @@ class VentanillaRadicaReciResponsaRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -23,21 +23,20 @@ class VentanillaRadicaReciResponsaRequest extends FormRequest
     {
         return [
             '*.radica_reci_id' => 'required|exists:ventanilla_radica_reci,id',
-            '*.users_cargos_id' => 'required|exists:users_cargos,id',
-            '*.custodio' => 'nullable|boolean',
-            '*.fechor_visto' => 'nullable|date',
+            '*.user_id' => 'required|exists:users,id',
+            '*.custodio' => 'required|boolean',
         ];
     }
 
     public function messages()
     {
         return [
-            '*.radica_reci_id.required' => 'El radicado es obligatorio.',
-            '*.radica_reci_id.exists' => 'El radicado no existe.',
-            '*.users_cargos_id.required' => 'El usuario con cargo es obligatorio.',
-            '*.users_cargos_id.exists' => 'El usuario con cargo no es válido.',
+            '*.radica_reci_id.required' => 'El campo radica_reci_id es obligatorio.',
+            '*.radica_reci_id.exists' => 'El radica_reci_id proporcionado no existe.',
+            '*.user_id.required' => 'El campo user_id es obligatorio.',
+            '*.user_id.exists' => 'El usuario proporcionado no existe.',
+            '*.custodio.required' => 'El campo custodio es obligatorio.',
             '*.custodio.boolean' => 'El campo custodio debe ser verdadero o falso.',
-            '*.fechor_visto.date' => 'La fecha de visto debe ser una fecha válida.',
         ];
     }
 }
