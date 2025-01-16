@@ -176,11 +176,6 @@ class ClasificacionDocumentalTRDController extends Controller
         }
     }
 
-
-
-
-
-
     public function estadistica($id)
     {
         // Obtener todas la TRD (nodos raíz) donde el campo 'tipo' es 'serie' y no tienen un padre
