@@ -58,7 +58,7 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    // 🔹 Relación con los cargos históricos del usuario
+    // Relación con los cargos históricos del usuario
     public function cargos()
     {
         return $this->belongsToMany(CalidadOrganigrama::class, 'users_cargos', 'user_id', 'organigrama_id')
@@ -66,7 +66,7 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
-    // 🔹 Relación para obtener el cargo ACTIVO del usuario
+    // Relación para obtener el cargo ACTIVO del usuario
     public function cargoActivo()
     {
         return $this->belongsToMany(CalidadOrganigrama::class, 'users_cargos', 'user_id', 'organigrama_id')
@@ -75,17 +75,17 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
-    // 🔹 Método para asignar un nuevo cargo y desactivar el anterior
-    public function assignCargo($organigramaId)
+    // Método para asignar un nuevo cargo y desactivar el anterior
+    public function assignCargo($cargoId)
     {
         // Finaliza cualquier cargo activo antes de asignar uno nuevo
-        $this->endCurrentCargo();
+        $this->cargos()->updateExistingPivot($cargoId, ['end_date' => now()]);
 
         // Asigna el nuevo cargo con la fecha de inicio
-        return $this->cargos()->attach($organigramaId, ['start_date' => now()]);
+        return $this->cargos()->attach($cargoId, ['start_date' => now()]);
     }
 
-    // 🔹 Método para finalizar el cargo activo actual
+    // Método para finalizar el cargo activo actual
     public function endCurrentCargo()
     {
         // Obtiene el cargo activo del usuario

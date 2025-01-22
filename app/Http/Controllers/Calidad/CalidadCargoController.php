@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Calidad;
 
+use App\Http\Controllers\Controller;
 use App\Models\Calidad\CalidadCargo;
 use Illuminate\Http\Request;
 

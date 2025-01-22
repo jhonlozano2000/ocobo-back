@@ -11,7 +11,7 @@ class UserRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -34,6 +34,7 @@ class UserRequest extends FormRequest
             'roles' => 'required|array|min:1',
             'roles.*' => 'required|string|exists:roles,name',
             'cargo_id' => 'required|integer|exists:calidad_organigrama,id',
+            'divi_poli_id' => 'required|integer|exists:config_divi_poli,id', // Ahora es obligatorio
         ];
     }
 

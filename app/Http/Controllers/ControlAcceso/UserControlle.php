@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ControlAcceso\UserRequest;
 use App\Models\ControlAcceso\UsersCargo;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use \Validator;
 use Str;
@@ -30,7 +31,6 @@ class UserControlle extends Controller
      */
     public function store(UserRequest $request)
     {
-
         // Crear el nuevo usuario
         $user = new User();
         $user->num_docu = $request->num_docu;
@@ -40,6 +40,7 @@ class UserControlle extends Controller
         $user->movil = $request->movil;
         $user->dir = $request->dir;
         $user->email = $request->email;
+        $user->divi_poli_id = $request->divi_poli_id; // Asignar división política
 
         // Asignar roles
         $user->assignRole($request->roles);
@@ -54,7 +55,7 @@ class UserControlle extends Controller
             $user->save();
         }
 
-        // Desactivar cargos anteriores y asignar el nuevo cargo
+        // Asignar el nuevo cargo (finalizando los anteriores automáticamente)
         $user->assignCargo($request->cargo_id);
 
         return response()->json([
@@ -100,19 +101,27 @@ class UserControlle extends Controller
         }
 
         // Actualiza el usuario
-        $user->update($request->only(['num_docu', 'nombres', 'apellidos', 'dir', 'tel', 'movil']));
+        $user->update([
+            'num_docu' => $request->num_docu,
+            'nombres' => $request->nombres,
+            'apellidos' => $request->apellidos,
+            'tel' => $request->tel,
+            'movil' => $request->movil,
+            'dir' => $request->dir,
+            'divi_poli_id' => $request->divi_poli_id, // Actualizar división política
+        ]);
 
         // Almaceno los roles
         $user->assignRole($request->roles);
-
-        // Asigna el nuevo cargo con la fecha de inicio
-        $user->assignCargo($request->cargo_id);
 
         // Si la contraseña debe ser hasheada antes de guardar:
         if ($request->has('password')) {
             $user->password = bcrypt($request->input('password'));
             $user->save();
         }
+
+        // Asignar el nuevo cargo (finalizando los anteriores automáticamente)
+        $user->assignCargo($request->cargo_id);
 
         return response()->json([
             'status' => true,
