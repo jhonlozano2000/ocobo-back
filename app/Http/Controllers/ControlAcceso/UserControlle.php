@@ -4,11 +4,8 @@ namespace App\Http\Controllers\ControlAcceso;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ControlAcceso\UserRequest;
-use App\Models\ControlAcceso\UsersCargo;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use \Validator;
 use Str;
 
 class UserControlle extends Controller

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('divi_poli_id')->nullable();
             $table->foreign('divi_poli_id')->references('id')->on('config_divi_poli');
 
-            $table->string('num_docu', 20);
+            $table->string('num_docu', 20)->comment('Numero de documento del usuario');
             $table->string('nombres', 70);
             $table->string('apellidos', 70);
             $table->string('tel', 15)->nullable();

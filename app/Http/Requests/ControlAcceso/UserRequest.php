@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\ControlAcceso;
 
+use App\Models\Calidad\CalidadOrganigrama;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UserRequest extends FormRequest
@@ -28,41 +29,57 @@ class UserRequest extends FormRequest
             'nombres' => 'required|string|max:70',
             'apellidos' => 'required|string|max:70',
             'email' => 'required|string|email|max:70|unique:users,email,' . $userId,
-            'password' => $this->isMethod('post') ? 'required|string|min:6' : 'nullable|string|min:6',
-            'avatar' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'firma' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'password' => $this->isMethod('post') ? 'required|string|min:6|confirmed' : 'nullable|string|min:6|confirmed',
             'roles' => 'required|array|min:1',
             'roles.*' => 'required|string|exists:roles,name',
-            'cargo_id' => 'required|integer|exists:calidad_organigrama,id',
-            'divi_poli_id' => 'required|integer|exists:config_divi_poli,id', // Ahora es obligatorio
+            'cargo_id' => [
+                'required',
+                'integer',
+                'exists:calidad_organigrama,id',
+                function ($attribute, $value, $fail) {
+                    // Realiza una única consulta para verificar si el ID es válido y de tipo "Cargo"
+                    if (!CalidadOrganigrama::where('id', $value)->where('tipo', 'Cargo')->exists()) {
+                        $fail('El cargo asignado no es válido. Solo se pueden asignar cargos de tipo "Cargo".');
+                    }
+                },
+            ],
+            'divi_poli_id' => 'required|exists:config_divi_poli,id',
         ];
     }
 
     public function messages()
     {
         return [
-            'num_docu.unique' => 'El número de documento ya está en uso',
-            'num_docu.required' => 'Te hizo falta el número de documento',
-            'nombres.required' => 'Te hizo falta el nombre',
-            'apellidos.required' => 'Te hizo falta el apellido',
-            'email.required' => 'Te hizo falta el correo electrónico',
-            'email.email' => 'El correo electrónico no es válido',
-            'email.max' => 'El correo electrónico es demasiado largo',
-            'email.unique' => 'El correo electrónico ya está en uso',
-            'password.required' => 'Te hizo falta la contraseña',
-            'password.min' => 'La contraseña debe tener al menos 6 caracteres',
+            'num_docu.required' => 'El número de documento es obligatorio.',
+            'num_docu.unique' => 'El número de documento ya está en uso.',
+            'nombres.required' => 'El nombre es obligatorio.',
+            'nombres.max' => 'El nombre no puede superar los 70 caracteres.',
+            'apellidos.required' => 'El apellido es obligatorio.',
+            'apellidos.max' => 'El apellido no puede superar los 70 caracteres.',
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'El formato del correo electrónico no es válido.',
+            'email.unique' => 'El correo electrónico ya está en uso.',
+            'password.required' => 'La contraseña es obligatoria.',
+            'password.min' => 'La contraseña debe tener al menos 6 caracteres.',
+            'password.confirmed' => 'La confirmación de la contraseña no coincide.',
             'roles.required' => 'Debe asignar al menos un rol.',
             'roles.array' => 'El campo roles debe ser un arreglo.',
             'roles.*.exists' => 'El rol ":input" no existe en el sistema.',
-            'cargo_id.required' => 'Debe seleccionar un cargo.',
-            'cargo_id.integer' => 'El cargo seleccionado no es válido.',
-            'cargo_id.exists' => 'El cargo seleccionado no existe en el sistema.',
-            'avatar.file' => 'El avatar debe ser un archivo.',
-            'avatar.mimes' => 'El avatar debe ser una imagen en formato JPEG, PNG, JPG, GIF o SVG.',
-            'avatar.max' => 'El avatar no debe superar los 2MB.',
-            'firma.file' => 'La firma debe ser un archivo.',
-            'firma.mimes' => 'La firma debe ser una imagen en formato JPEG, PNG, JPG, GIF o SVG.',
-            'firma.max' => 'La firma no debe superar los 2MB.'
+            'cargo_id.required' => 'Debe seleccionar un cargo válido.',
+            'cargo_id.exists' => 'El cargo asignado no existe en el sistema.',
+            'divi_poli_id.required' => 'Debe seleccionar una división política.',
+            'divi_poli_id.exists' => 'La división política seleccionada no existe.',
         ];
+    }
+
+    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
+    {
+        $response = response()->json([
+            'status' => false,
+            'message' => 'Errores de validación.',
+            'errors' => $validator->errors(),
+        ], 422);
+
+        throw new \Illuminate\Validation\ValidationException($validator, $response);
     }
 }
