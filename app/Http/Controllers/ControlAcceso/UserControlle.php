@@ -4,12 +4,10 @@ namespace App\Http\Controllers\ControlAcceso;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ControlAcceso\UserRequest;
-use App\Models\ControlAcceso\UsersCargo;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use \Validator;
-use Str;
 
 class UserControlle extends Controller
 {
@@ -88,9 +86,8 @@ class UserControlle extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UserRequest $request, string $id)
+    public function update(Request $request, string $id)
     {
-
         // Encuentra el usuario por ID
         $user = User::find($id);
         if (!$user) {
