@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ControlAcceso\UserRequest;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
-use Str;
 
 class UserControlle extends Controller
 {
@@ -85,9 +84,8 @@ class UserControlle extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UserRequest $request, string $id)
+    public function update(Request $request, string $id)
     {
-
         // Encuentra el usuario por ID
         $user = User::find($id);
         if (!$user) {

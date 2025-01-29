@@ -22,9 +22,10 @@ class UserRequest extends FormRequest
      */
     public function rules()
     {
-        $userId = $this->route('id'); // Obtener el ID del usuario en caso de actualización
+        $userId = $this->route('id'); // Captura el ID del usuario en caso de actualización
 
         return [
+            'divi_poli_id' => 'required|integer|exists:config_divi_poli,id',
             'num_docu' => 'required|string|max:20|unique:users,num_docu,' . $userId,
             'nombres' => 'required|string|max:70',
             'apellidos' => 'required|string|max:70',
@@ -46,6 +47,7 @@ class UserRequest extends FormRequest
             'divi_poli_id' => 'required|exists:config_divi_poli,id',
         ];
     }
+
 
     public function messages()
     {
