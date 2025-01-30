@@ -7,4 +7,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::resource('/trd', ClasificacionDocumentalTRDController::class)->except('create', 'edit');
     Route::post('/import-trd', [ClasificacionDocumentalTRDController::class, 'importTRD']);
     Route::get('/estadisticas-trd/{id}', [ClasificacionDocumentalTRDController::class, 'estadistica']);
+    Route::get('/dependencia/{id}', [ClasificacionDocumentalTRDController::class, 'listarPorDependencia']);
 });

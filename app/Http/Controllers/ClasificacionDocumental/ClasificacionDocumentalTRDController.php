@@ -3,14 +3,13 @@
 namespace App\Http\Controllers\ClasificacionDocumental;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ClasificacionDocumental\ClasificacionDocumentalRequest;
+use App\Http\Requests\ClasificacionDocumental\StoreClasificacionDocumentalRequest;
+use App\Http\Requests\ClasificacionDocumental\UpdateClasificacionDocumentalRequest;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
-use Illuminate\Contracts\Cache\Store;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use DB;
 
 class ClasificacionDocumentalTRDController extends Controller
@@ -38,40 +37,141 @@ class ClasificacionDocumentalTRDController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $data = $request->all();
+
+        // Verificar reglas de validación para el campo "parent"
+        if (in_array($data['tipo'], ['SubSerie', 'TipoDocumento'])) {
+            if (!isset($data['parent']) || empty($data['parent'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'El campo parent es obligatorio para SubSerie y TipoDocumento.'
+                ], 400);
+            }
+
+            $parent = ClasificacionDocumentalTRD::find($data['parent']);
+
+            if (!$parent) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'El parent seleccionado no existe.'
+                ], 400);
+            }
+
+            if ($data['tipo'] === 'SubSerie' && $parent->tipo !== 'Serie') {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Las SubSeries solo pueden tener como parent una Serie.'
+                ], 400);
+            }
+
+            if ($data['tipo'] === 'TipoDocumento' && !in_array($parent->tipo, ['Serie', 'SubSerie'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Los TipoDocumento solo pueden tener como parent una Serie o SubSerie.'
+                ], 400);
+            }
+        }
+
+        $trd = ClasificacionDocumentalTRD::create([
+            'tipo' => $request->tipo,
+            'cod' => $request->cod,
+            'nom' => $request->nom,
+            'a_g' => $request->a_g,
+            'a_c' => $request->a_c,
+            'ct' => $request->ct,
+            'e' => $request->e,
+            'm_d' => $request->m_d,
+            's' => $request->s,
+            'procedimiento' => $request->procedimiento,
+            'parent' => $request->parent, // Puede ser null si es Serie
+            'dependencia_id' => $request->dependencia_id,
+            'user_register' => auth()->id(),
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Elemento creado correctamente.',
+            'data' => $trd
+        ], 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(ClasificacionDocumentalTRD $clasificacionDocumentalTRD)
+    public function show($id)
     {
-        //
+        $trd = ClasificacionDocumentalTRD::with('children')->find($id);
+
+        if (!$trd) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Elemento no encontrado.'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $trd
+        ], 200);
     }
+
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, ClasificacionDocumentalTRD $clasificacionDocumentalTRD)
+    public function update(UpdateClasificacionDocumentalRequest $request, $id)
     {
-        //
+        $trd = ClasificacionDocumentalTRD::find($id);
+
+        if (!$trd) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Elemento no encontrado.'
+            ], 404);
+        }
+
+        $trd->update($request->validated());
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Elemento actualizado correctamente.',
+            'data' => $trd
+        ], 200);
     }
+
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(ClasificacionDocumentalTRD $clasificacionDocumentalTRD)
+    public function destroy($id)
     {
-        //
+        $trd = ClasificacionDocumentalTRD::find($id);
+
+        if (!$trd) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Elemento no encontrado.'
+            ], 404);
+        }
+
+        // Verificar si tiene hijos antes de eliminar
+        if ($trd->children()->exists()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No se puede eliminar porque tiene elementos asociados.'
+            ], 400);
+        }
+
+        $trd->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Elemento eliminado correctamente.'
+        ], 200);
     }
 
-    public function importTRD(Request $request)
+    public function importTRD(ClasificacionDocumentalRequest $request)
     {
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx|max:2048',
-            'dependencia_id' => 'required|exists:calidad_organigrama,id'
-        ]);
-
         $dependenciaId = $request->input('dependencia_id');
 
         // Verificar si la dependencia ya tiene TRD
@@ -204,5 +304,18 @@ class ClasificacionDocumentalTRDController extends Controller
             'message' => 'Archivo subido correctamente.',
             'path' => $filePath
         ], 201);
+    }
+
+    public function listarPorDependencia($id)
+    {
+        $trd = ClasificacionDocumentalTRD::where('dependencia_id', $id)
+            ->whereNull('parent')
+            ->with('children')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $trd
+        ], 200);
     }
 }
