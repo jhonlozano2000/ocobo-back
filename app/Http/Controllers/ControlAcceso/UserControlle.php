@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\ControlAcceso;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\ControlAcceso\UserRequest;
 use App\Models\User;
+use App\Http\Requests\ControlAcceso\UserRequest;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class UserControlle extends Controller

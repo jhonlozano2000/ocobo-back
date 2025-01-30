@@ -40,14 +40,12 @@ class UserRequest extends FormRequest
                 function ($attribute, $value, $fail) {
                     // Realiza una única consulta para verificar si el ID es válido y de tipo "Cargo"
                     if (!CalidadOrganigrama::where('id', $value)->where('tipo', 'Cargo')->exists()) {
-                        $fail('El cargo asignado no es válido. Solo se pueden asignar cargos de tipo "Cargo".');
+                        $this->isMethod('post') ?  $fail('El usuario no se pudo crear ya que no se está relacionando a algún cargo.') : $fail('El usuario no se pudo actualiza ya que no se está relacionando a algún cargo.');
                     }
                 },
             ],
-            'divi_poli_id' => 'required|exists:config_divi_poli,id',
         ];
     }
-
 
     public function messages()
     {
