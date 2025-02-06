@@ -23,7 +23,7 @@ class VentanillaRadicaReciResponsaRequest extends FormRequest
     {
         return [
             '*.radica_reci_id' => 'required|exists:ventanilla_radica_reci,id',
-            '*.user_id' => 'required|exists:users,id',
+            '*.users_cargos_id' => 'required|exists:users,id',
             '*.custodio' => 'required|boolean',
         ];
     }
@@ -33,8 +33,8 @@ class VentanillaRadicaReciResponsaRequest extends FormRequest
         return [
             '*.radica_reci_id.required' => 'El campo radica_reci_id es obligatorio.',
             '*.radica_reci_id.exists' => 'El radica_reci_id proporcionado no existe.',
-            '*.user_id.required' => 'El campo user_id es obligatorio.',
-            '*.user_id.exists' => 'El usuario proporcionado no existe.',
+            '*.users_cargos_id.required' => 'El campo users_cargos_id es obligatorio.',
+            '*.users_cargos_id.exists' => 'El usuario proporcionado no existe.',
             '*.custodio.required' => 'El campo custodio es obligatorio.',
             '*.custodio.boolean' => 'El campo custodio debe ser verdadero o falso.',
         ];

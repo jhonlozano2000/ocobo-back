@@ -172,6 +172,7 @@ class ClasificacionDocumentalTRDController extends Controller
 
     public function importTRD(ClasificacionDocumentalRequest $request)
     {
+        return $request;
         $dependenciaId = $request->input('dependencia_id');
 
         // Verificar si la dependencia ya tiene TRD

@@ -80,6 +80,14 @@ return [
             'throw' => false,
         ],
 
+        'radocados_recibidos' => [
+            'driver' => 'local',
+            'root' => storage_path('app/radocados_recibidos'),
+            'url' => env('APP_URL') . '/radocados_recibidos',
+            'visibility' => 'radocados_recibidos',
+            'throw' => false,
+        ],
+
     ],
 
     /*
@@ -98,6 +106,7 @@ return [
         public_path('temp_files') => storage_path('app/temp_files'),
         public_path('firmas') => storage_path('app/firmas'),
         public_path('avatars') => storage_path('app/avatars'),
+        public_path('radocados_recibidos') => storage_path('app/radocados_recibidos'),
     ],
 
 ];

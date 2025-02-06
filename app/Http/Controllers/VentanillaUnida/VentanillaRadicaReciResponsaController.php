@@ -18,7 +18,6 @@ class VentanillaRadicaReciResponsaController extends Controller
         return response()->json(VentanillaRadicaReciResponsa::with('usuarioCargo', 'radicado')->get());
     }
 
-
     /**
      * Store a newly created resource in storage.
      */
@@ -48,9 +47,6 @@ class VentanillaRadicaReciResponsaController extends Controller
             'data' => $insertados
         ], 201);
     }
-
-
-
 
     /**
      * Display the specified resource.
@@ -98,7 +94,7 @@ class VentanillaRadicaReciResponsaController extends Controller
         return response()->json(['message' => 'Responsable eliminado correctamente']);
     }
 
-    // ✅ Obtener responsables de un radicado
+    // Obtener responsables de un radicado
     public function getByRadicado($radica_reci_id)
     {
         $responsables = VentanillaRadicaReciResponsa::with('usuarioCargo')

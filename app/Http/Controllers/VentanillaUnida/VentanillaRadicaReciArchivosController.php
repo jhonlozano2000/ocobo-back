@@ -14,7 +14,6 @@ class VentanillaRadicaReciArchivosController extends Controller
 {
     public function upload(Request $request, $id)
     {
-
         $maxSize = ConfigVarias::getValor('max_tamano_archivo', 20480);
         $allowedExtensions = explode(',', ConfigVarias::getValor('tipos_archivos_permitidos', 'pdf,jpg,png,docx'));
 
@@ -29,7 +28,7 @@ class VentanillaRadicaReciArchivosController extends Controller
         }
 
         $archivo = $request->file('archivo');
-        $path = $archivo->store('radicaciones');
+        $path = $archivo->store('radicaciones_recibidas');
 
         // Guardar quién subió el archivo (si hay usuario autenticado)
         $usuario = Auth::check() ? Auth::user() : null;
@@ -45,7 +44,6 @@ class VentanillaRadicaReciArchivosController extends Controller
             'uploaded_by' => $usuario ? $usuario->name : 'No se registró usuario',
         ]);
     }
-
 
     public function download($id)
     {
