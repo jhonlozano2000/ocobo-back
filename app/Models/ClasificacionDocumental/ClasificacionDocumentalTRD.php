@@ -28,7 +28,9 @@ class ClasificacionDocumentalTRD extends Model
         'parent',
         'dependencia_id',
         'user_register',
-        'estado'
+        'estado',
+        'version',
+        'estado_version'
     ];
 
     public function children()
@@ -49,5 +51,10 @@ class ClasificacionDocumentalTRD extends Model
     public function scopeSeries($query)
     {
         return $query->where('tipo', 'Serie')->whereNull('parent');
+    }
+
+    public function scopeVersionActiva($query)
+    {
+        return $query->where('estado_version', 'ACTIVO');
     }
 }

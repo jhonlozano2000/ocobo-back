@@ -8,4 +8,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/import-trd', [ClasificacionDocumentalTRDController::class, 'importTRD'])->name("import.trd");
     Route::get('/estadisticas-trd/{id}', [ClasificacionDocumentalTRDController::class, 'estadistica'])->name('estadisticas.trd');
     Route::get('/dependencia/{id}', [ClasificacionDocumentalTRDController::class, 'listarPorDependencia']);
+
+    Route::post('clasificacion/aprobar/{id}', [ClasificacionDocumentalTRDController::class, 'aprobarVersion'])
+        ->middleware('role:Jefe de Archivo');
 });

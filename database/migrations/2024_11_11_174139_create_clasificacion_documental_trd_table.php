@@ -23,6 +23,10 @@ return new class extends Migration
             $table->unsignedBigInteger('dependencia_id')->nullable();
             $table->foreign('dependencia_id')->references('id')->on('calidad_organigrama')->onDelete('cascade');
 
+            $table->integer('version')->default(1)->comment('Número de versión del TRD');
+            $table->enum('estado_version', ['TEMP', 'ACTIVO', 'HISTORICO'])->default('TEMP')
+                ->comment('Estado de la versión: TEMP = Temporal, ACTIVO = En uso, HISTORICO = Versiones antiguas');
+
             $table->enum('tipo', ['Serie', 'SubSerie', 'TipoDocumento'])->index();
             $table->string('cod', 10)->nullable();
             $table->string('nom', 100)->nullable();

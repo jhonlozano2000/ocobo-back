@@ -99,5 +99,7 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'TVD -> Editar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'TVD -> Mostar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'TVD -> Eliminar'])->syncRoles([$Rol1]);
+
+        Permission::create(['name' => 'Jefe de Archivo'])->syncRoles([$Rol1]);
     }
 }
