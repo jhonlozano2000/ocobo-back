@@ -170,35 +170,41 @@ class ClasificacionDocumentalTRDController extends Controller
         ], 200);
     }
 
-    public function importTRD(ClasificacionDocumentalRequest $request)
+    public function importTRD(Request $request)
     {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx|max:2048',
+            'dependencia_id' => 'required|exists:calidad_organigrama,id'
+        ]);
+
         $dependenciaId = $request->input('dependencia_id');
 
-        // Verificar si la dependencia ya tiene TRD
-        if (ClasificacionDocumentalTRD::where('dependencia_id', $dependenciaId)->exists()) {
+        // Verificar si ya existe una TRD activa
+        $existeTRD = ClasificacionDocumentalTRD::where('dependencia_id', $dependenciaId)
+            ->where('estado_version', 'ACTIVO')
+            ->exists();
+
+        if ($existeTRD) {
             return response()->json([
                 'status' => false,
-                'message' => 'La dependencia ya tiene configurada una TRD.'
+                'message' => 'Ya existe una TRD activa para esta dependencia. Use la opción de versionamiento.'
             ], 400);
         }
 
-        // Crear el nombre del archivo
+        // Obtener la última versión
+        $ultimaVersion = ClasificacionDocumentalTRD::where('dependencia_id', $dependenciaId)
+            ->max('version') ?? 0;
+        $nuevaVersion = $ultimaVersion + 1;
+
+        // Procesar archivo
         $nombreArchivo = 'TRD_para_importar_' . now()->timestamp . '.xlsx';
-
-        // Almacenar el archivo en el directorio `temp_files`
         $filePath = $request->file('file')->storeAs('temp_files', $nombreArchivo);
-
-        // Usar el nombre del archivo para obtener la ruta absoluta
         $file = Storage::disk('temp_files')->path($nombreArchivo);
 
         if (!file_exists($file)) {
-            return response()->json([
-                'status' => false,
-                'message' => 'El archivo no existe en el almacenamiento.'
-            ], 404);
+            return response()->json(['status' => false, 'message' => 'El archivo no existe en el almacenamiento.'], 404);
         }
 
-        // Leer el archivo
         $spreadsheet = IOFactory::load($file);
         $data = $spreadsheet->getActiveSheet()->toArray();
 
@@ -209,7 +215,7 @@ class ClasificacionDocumentalTRDController extends Controller
             $idSubSerie = null;
 
             foreach ($data as $index => $row) {
-                if ($index == 0) continue; // Saltar la cabecera
+                if ($index == 0) continue;
 
                 [$codSerie, $codSubSerie, $serie, $subSerie, $tipoDoc, $a_g, $a_c, $ct, $e, $m_d, $s, $procedimiento] = $row;
 
@@ -227,6 +233,8 @@ class ClasificacionDocumentalTRDController extends Controller
                         'procedimiento' => $procedimiento,
                         'dependencia_id' => $dependenciaId,
                         'user_register' => auth()->id(),
+                        'version' => $nuevaVersion,
+                        'estado_version' => 'TEMP'
                     ]);
                     $idSerie = $serieModel->id;
                 }
@@ -239,6 +247,8 @@ class ClasificacionDocumentalTRDController extends Controller
                         'parent' => $idSerie,
                         'dependencia_id' => $dependenciaId,
                         'user_register' => auth()->id(),
+                        'version' => $nuevaVersion,
+                        'estado_version' => 'TEMP'
                     ]);
                     $idSubSerie = $subSerieModel->id;
                 }
@@ -250,30 +260,49 @@ class ClasificacionDocumentalTRDController extends Controller
                         'parent' => $idSubSerie ?? $idSerie,
                         'dependencia_id' => $dependenciaId,
                         'user_register' => auth()->id(),
+                        'version' => $nuevaVersion,
+                        'estado_version' => 'TEMP'
                     ]);
                 }
             }
 
             \DB::commit();
 
-            return response()->json([
-                'status' => true,
-                'message' => 'TRD importada satisfactoriamente.'
-            ], 200);
+            return response()->json(['status' => true, 'message' => 'TRD importada en estado TEMPORAL.'], 200);
         } catch (\Exception $e) {
             \DB::rollBack();
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Error al importar la TRD.',
-                'error' => $e->getMessage()
-            ], 500);
+            return response()->json(['status' => false, 'message' => 'Error al importar la TRD.', 'error' => $e->getMessage()], 500);
         } finally {
-            // Eliminar el archivo del almacenamiento, independientemente del resultado
-            if (Storage::disk('temp_files')->exists($filePath)) {
-                Storage::disk('temp_files')->delete($filePath);
-            }
+            Storage::disk('temp_files')->delete($filePath);
         }
+    }
+
+
+    public function aprobarVersion($id)
+    {
+        $user = auth()->user();
+
+        if (!$user->hasRole('Jefe de Archivo')) {
+            return response()->json(['status' => false, 'message' => 'No tiene permisos para aprobar versiones.'], 403);
+        }
+
+        $versionTRD = ClasificacionDocumentalTRD::where('id', $id)
+            ->where('estado_version', 'TEMP')
+            ->first();
+
+        if (!$versionTRD) {
+            return response()->json(['status' => false, 'message' => 'No existe una versión temporal para aprobar.'], 404);
+        }
+
+        // Marcar versiones anteriores como HISTORICO
+        ClasificacionDocumentalTRD::where('dependencia_id', $versionTRD->dependencia_id)
+            ->where('estado_version', 'ACTIVO')
+            ->update(['estado_version' => 'HISTORICO']);
+
+        // Activar la nueva versión
+        $versionTRD->update(['estado_version' => 'ACTIVO']);
+
+        return response()->json(['status' => true, 'message' => 'Versión aprobada con éxito.'], 200);
     }
 
     public function estadistica($id)
