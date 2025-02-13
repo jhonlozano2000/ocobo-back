@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\ClasificacionDocumental;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\ClasificacionDocumental\ClasificacionDocumentalRequest;
-use App\Http\Requests\ClasificacionDocumental\StoreClasificacionDocumentalRequest;
 use App\Http\Requests\ClasificacionDocumental\UpdateClasificacionDocumentalRequest;
+use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use DB;
+use Illuminate\Support\Facades\Auth;
 
 class ClasificacionDocumentalTRDController extends Controller
 {
@@ -170,108 +170,123 @@ class ClasificacionDocumentalTRDController extends Controller
         ], 200);
     }
 
-    public function importTRD(Request $request)
+    public function importarTRD(Request $request)
     {
         $request->validate([
             'file' => 'required|file|mimes:xlsx|max:2048',
-            'dependencia_id' => 'required|exists:calidad_organigrama,id'
         ]);
 
-        $dependenciaId = $request->input('dependencia_id');
+        // Cargar el archivo
+        $filePath = $request->file('file')->storeAs('temp_files', 'TRD_import_' . now()->timestamp . '.xlsx');
+        //$file = Storage::disk('temp_files')->path($filePath);
 
-        // Verificar si ya existe una TRD activa
-        $existeTRD = ClasificacionDocumentalTRD::where('dependencia_id', $dependenciaId)
-            ->where('estado_version', 'ACTIVO')
-            ->exists();
-
-        if ($existeTRD) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Ya existe una TRD activa para esta dependencia. Use la opción de versionamiento.'
-            ], 400);
-        }
-
-        // Obtener la última versión
-        $ultimaVersion = ClasificacionDocumentalTRD::where('dependencia_id', $dependenciaId)
-            ->max('version') ?? 0;
-        $nuevaVersion = $ultimaVersion + 1;
-
-        // Procesar archivo
-        $nombreArchivo = 'TRD_para_importar_' . now()->timestamp . '.xlsx';
-        $filePath = $request->file('file')->storeAs('temp_files', $nombreArchivo);
-        $file = Storage::disk('temp_files')->path($nombreArchivo);
-
-        if (!file_exists($file)) {
+        if (!file_exists($filePath)) {
             return response()->json(['status' => false, 'message' => 'El archivo no existe en el almacenamiento.'], 404);
         }
 
-        $spreadsheet = IOFactory::load($file);
-        $data = $spreadsheet->getActiveSheet()->toArray();
+        $spreadsheet = IOFactory::load($filePath);
+        $sheet = $spreadsheet->getActiveSheet();
+        $data = $sheet->toArray();
 
         \DB::beginTransaction();
 
         try {
+            // Obtener el código de la dependencia desde la celda B4 y el nombre desde C4
+            $codDependencia = $sheet->getCell('B4')->getValue();
+            $nombreDependencia = $sheet->getCell('C4')->getValue();
+
+            // Buscar la dependencia en la base de datos
+            $dependencia = CalidadOrganigrama::where('cod_organico', $codDependencia)->first();
+            if (!$dependencia) {
+                return response()->json(['status' => false, 'message' => 'La dependencia especificada no existe en el sistema.'], 400);
+            }
+
+            // Obtener la versión actual y calcular la nueva versión
+            $ultimaVersion = ClasificacionDocumentalTRD::where('dependencia_id', $dependencia->id)->max('version') ?? 0;
+            $nuevaVersion = $ultimaVersion + 1;
+
             $idSerie = null;
             $idSubSerie = null;
 
             foreach ($data as $index => $row) {
-                if ($index == 0) continue;
+                if ($index < 6) continue; // Saltar filas de encabezado
 
-                [$codSerie, $codSubSerie, $serie, $subSerie, $tipoDoc, $a_g, $a_c, $ct, $e, $m_d, $s, $procedimiento] = $row;
+                // Asegurar que la fila tenga suficientes elementos
+                $row = array_pad($row, 14, null);
 
-                if ($codSerie) {
-                    $serieModel = ClasificacionDocumentalTRD::create([
+                [
+                    $codDep,
+                    $codSerie,
+                    $codSubSerie,
+                    $nom,
+                    $a_g,
+                    $a_c,
+                    $ct,
+                    $e,
+                    $m_d,
+                    $s,
+                    $procedimiento
+                ] = $row;
+
+                // **CASO 1: Es una SERIE**
+                if (!empty($codSerie) && empty($codSubSerie)) {
+                    $serie = ClasificacionDocumentalTRD::create([
                         'tipo' => 'Serie',
                         'cod' => $codSerie,
-                        'nom' => $serie,
+                        'nom' => $nom,
                         'a_g' => $a_g,
                         'a_c' => $a_c,
-                        'ct' => $ct,
-                        'e' => $e,
-                        'm_d' => $m_d,
-                        's' => $s,
+                        'ct' => (bool)$ct,
+                        'e' => (bool)$e,
+                        'm_d' => (bool)$m_d,
+                        's' => (bool)$s,
                         'procedimiento' => $procedimiento,
-                        'dependencia_id' => $dependenciaId,
+                        'dependencia_id' => $dependencia->id,
                         'user_register' => auth()->id(),
                         'version' => $nuevaVersion,
-                        'estado_version' => 'TEMP'
+                        'estado_version' => 'TEMP',
                     ]);
-                    $idSerie = $serieModel->id;
+                    $idSerie = $serie->id;
                 }
 
-                if ($codSubSerie) {
-                    $subSerieModel = ClasificacionDocumentalTRD::create([
+                // **CASO 2: Es una SUBSERIE**
+                elseif (!empty($codSerie) && !empty($codSubSerie)) {
+                    $subSerie = ClasificacionDocumentalTRD::create([
                         'tipo' => 'SubSerie',
                         'cod' => $codSubSerie,
-                        'nom' => $subSerie,
+                        'nom' => $nom,
                         'parent' => $idSerie,
-                        'dependencia_id' => $dependenciaId,
+                        'dependencia_id' => $dependencia->id,
                         'user_register' => auth()->id(),
                         'version' => $nuevaVersion,
-                        'estado_version' => 'TEMP'
+                        'estado_version' => 'TEMP',
                     ]);
-                    $idSubSerie = $subSerieModel->id;
+                    $idSubSerie = $subSerie->id;
                 }
 
-                if ($tipoDoc) {
+                // **CASO 3: Es un TIPO DOCUMENTAL**
+                elseif (empty($codSerie) && empty($codSubSerie)) {
                     ClasificacionDocumentalTRD::create([
                         'tipo' => 'TipoDocumento',
-                        'nom' => $tipoDoc,
+                        'nom' => $nom,
                         'parent' => $idSubSerie ?? $idSerie,
-                        'dependencia_id' => $dependenciaId,
+                        'dependencia_id' => $dependencia->id,
                         'user_register' => auth()->id(),
                         'version' => $nuevaVersion,
-                        'estado_version' => 'TEMP'
+                        'estado_version' => 'TEMP',
                     ]);
                 }
             }
 
             \DB::commit();
-
-            return response()->json(['status' => true, 'message' => 'TRD importada en estado TEMPORAL.'], 200);
+            return response()->json(['status' => true, 'message' => 'TRD importada satisfactoriamente.'], 200);
         } catch (\Exception $e) {
             \DB::rollBack();
-            return response()->json(['status' => false, 'message' => 'Error al importar la TRD.', 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'status' => false,
+                'message' => 'Error al importar la TRD.',
+                'error' => $e->getMessage(),
+            ], 500);
         } finally {
             Storage::disk('temp_files')->delete($filePath);
         }
@@ -280,7 +295,21 @@ class ClasificacionDocumentalTRDController extends Controller
 
     public function aprobarVersion($id)
     {
-        $user = auth()->user();
+
+        $user = User::find(1);
+        $user->hasPermissionTo('Jefe de Archivo'); // Debe devolver true
+        $user->givePermissionTo('Jefe de Archivo');
+        $user = Auth::user();
+
+        // Validar que el usuario tenga el permiso "Jefe de Archivo"
+        if (!$user->hasPermissionTo('Jefe de Archivo')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No tiene permisos para aprobar versiones.'
+            ], 403);
+        }
+
+
 
         if (!$user->hasRole('Jefe de Archivo')) {
             return response()->json(['status' => false, 'message' => 'No tiene permisos para aprobar versiones.'], 403);
