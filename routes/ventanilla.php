@@ -11,9 +11,9 @@ Route::middleware('auth:sanctum')->group(function () {
      * Correspondencia recibida
      */
     Route::apiResource('radica-recibida', VentanillaRadicaReciController::class)->except('create', 'edit');
-    Route::post('radica-recibida/{id}/archivo', [VentanillaRadicaReciArchivosController::class, 'upload'])->name('radica.corres.recibida.upload');
-    Route::get('radica-recibida/{id}/archivo', [VentanillaRadicaReciArchivosController::class, 'download'])->name('radica.corres.recibida.download');
-    Route::delete('radica-recibida/{id}/archivo', [VentanillaRadicaReciArchivosController::class, 'deleteFile'])->name('radica.corres.recibida.deleteFile');
+    Route::post('radica-recibida/{id}/archivo', [VentanillaRadicaReciArchivosController::class, 'upload'])->name('corres.recibida.upload');
+    Route::get('radica-recibida/{id}/archivo', [VentanillaRadicaReciArchivosController::class, 'download'])->name('corres.recibida.download');
+    Route::delete('radica-recibida/{id}/archivo', [VentanillaRadicaReciArchivosController::class, 'deleteFile'])->name('corres.recibida.deleteFile');
 
     /**
      * Responsables
