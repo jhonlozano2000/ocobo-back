@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\ClasificacionDocumental;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ClasificacionDocumental\ImportarTRDRequest;
 use App\Http\Requests\ClasificacionDocumental\UpdateClasificacionDocumentalRequest;
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRDVersion;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -170,12 +172,8 @@ class ClasificacionDocumentalTRDController extends Controller
         ], 200);
     }
 
-    public function importarTRD(Request $request)
+    public function importarTRD(ImportarTRDRequest $request)
     {
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx|max:2048',
-        ]);
-
         // Cargar el archivo
         $filePath = $request->file('file')->storeAs('temp_files', 'TRD_import_' . now()->timestamp . '.xlsx');
         //$file = Storage::disk('temp_files')->path($filePath);
@@ -196,14 +194,31 @@ class ClasificacionDocumentalTRDController extends Controller
             $nombreDependencia = $sheet->getCell('C4')->getValue();
 
             // Buscar la dependencia en la base de datos
-            $dependencia = CalidadOrganigrama::findDependenciaByCodOrganico($codDependencia);
+            $dependencia = CalidadOrganigrama::where('cod_organico', $codDependencia)->first();
+
             if (!$dependencia) {
                 return response()->json(['status' => false, 'message' => 'La dependencia especificada no existe en el sistema.'], 400);
             }
 
-            // Obtener la versión actual y calcular la nueva versión
-            $ultimaVersion = ClasificacionDocumentalTRD::where('dependencia_id', $dependencia->id)->max('version') ?? 0;
-            $nuevaVersion = $ultimaVersion + 1;
+            // Verificar si la dependencia ya tiene una versión "TEMP"
+            $pendienteAprobacion = ClasificacionDocumentalTRDVersion::where('dependencia_id', $dependencia->id)
+                ->where('estado_version', 'TEMP')
+                ->exists();
+
+            if ($pendienteAprobacion) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'La dependencia ya tiene una versión pendiente por aprobar. No se puede crear una nueva.'
+                ], 400);
+            }
+
+            // Crear una nueva versión en la tabla de versionamiento
+            $nuevaVersion = ClasificacionDocumentalTRDVersion::create([
+                'dependencia_id' => $dependencia->id,
+                'version' => ClasificacionDocumentalTRDVersion::where('dependencia_id', $dependencia->id)->max('version') + 1,
+                'estado' => 'TEMP',
+                'user_register' => auth()->id(),
+            ]);
 
             $idSerie = null;
             $idSubSerie = null;
@@ -211,135 +226,78 @@ class ClasificacionDocumentalTRDController extends Controller
             foreach ($data as $index => $row) {
                 if ($index < 6) continue; // Saltar filas de encabezado
 
-                // Asegurar que la fila tenga suficientes elementos
-                $row = array_pad($row, 14, null);
+                [$codDep, $codSerie, $codSubSerie, $nom, $a_g, $a_c, $ct, $e, $m_d, $s, $procedimiento] = $row;
 
-                [
-                    $codDep,
-                    $codSerie,
-                    $codSubSerie,
-                    $nom,
-                    $a_g,
-                    $a_c,
-                    $ct,
-                    $e,
-                    $m_d,
-                    $s,
-                    $procedimiento
-                ] = $row;
+                $ct = $ct ? 1 : 0;
+                $e = $e ? 1 : 0;
+                $m_d = $m_d ? 1 : 0;
+                $s = $s ? 1 : 0;
 
-                // **CASO 1: Es una SERIE**
-                if (!empty($codSerie) && empty($codSubSerie)) {
-                    $serie = ClasificacionDocumentalTRD::create([
+                if ($codSerie) {
+                    $serieModel = ClasificacionDocumentalTRD::create([
                         'tipo' => 'Serie',
                         'cod' => $codSerie,
                         'nom' => $nom,
                         'a_g' => $a_g,
                         'a_c' => $a_c,
-                        'ct' => (bool)$ct,
-                        'e' => (bool)$e,
-                        'm_d' => (bool)$m_d,
-                        's' => (bool)$s,
+                        'ct' => $ct,
+                        'e' => $e,
+                        'm_d' => $m_d,
+                        's' => $s,
                         'procedimiento' => $procedimiento,
                         'dependencia_id' => $dependencia->id,
+                        'version_id' => $nuevaVersion->id, // Relacionar con la versión creada
                         'user_register' => auth()->id(),
-                        'version' => $nuevaVersion,
-                        'estado_version' => 'TEMP',
                     ]);
-                    $idSerie = $serie->id;
+                    $idSerie = $serieModel->id;
                 }
 
-                // **CASO 2: Es una SUBSERIE**
-                elseif (!empty($codSerie) && !empty($codSubSerie)) {
-                    $subSerie = ClasificacionDocumentalTRD::create([
+                if ($codSubSerie) {
+                    $subSerieModel = ClasificacionDocumentalTRD::create([
                         'tipo' => 'SubSerie',
                         'cod' => $codSubSerie,
                         'nom' => $nom,
                         'parent' => $idSerie,
                         'dependencia_id' => $dependencia->id,
+                        'version_id' => $nuevaVersion->id, // Relacionar con la versión creada
                         'user_register' => auth()->id(),
-                        'version' => $nuevaVersion,
-                        'estado_version' => 'TEMP',
                     ]);
-                    $idSubSerie = $subSerie->id;
+                    $idSubSerie = $subSerieModel->id;
                 }
 
-                // **CASO 3: Es un TIPO DOCUMENTAL**
-                elseif (empty($codSerie) && empty($codSubSerie)) {
+                if ($nom) {
                     ClasificacionDocumentalTRD::create([
                         'tipo' => 'TipoDocumento',
                         'nom' => $nom,
                         'parent' => $idSubSerie ?? $idSerie,
                         'dependencia_id' => $dependencia->id,
+                        'version_id' => $nuevaVersion->id, // Relacionar con la versión creada
                         'user_register' => auth()->id(),
-                        'version' => $nuevaVersion,
-                        'estado_version' => 'TEMP',
                     ]);
                 }
             }
 
             \DB::commit();
-            return response()->json(['status' => true, 'message' => 'TRD importada satisfactoriamente.'], 200);
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            return response()->json([
-                'status' => false,
-                'message' => 'Error al importar la TRD.',
-                'error' => $e->getMessage(),
-            ], 500);
-        } finally {
-            Storage::disk('temp_files')->delete($filePath);
-        }
-    }
-
-
-    /**
-     * Aprovar el vercionamiento de la TRD
-     */
-    public function aprobarVersion($dependenciaId)
-    {
-        // Verificar si la dependencia tiene TRD en estado TEMP
-        $trdTemp = ClasificacionDocumentalTRD::where('dependencia_id', $dependenciaId)
-            ->where('estado_version', 'TEMP')
-            ->exists();
-
-        if (!$trdTemp) {
-            return response()->json([
-                'status' => false,
-                'message' => 'No hay una versión temporal de TRD para esta dependencia.'
-            ], 404);
-        }
-
-        \DB::beginTransaction();
-
-        try {
-            // Mover la versión actual a HISTORICO
-            ClasificacionDocumentalTRD::where('dependencia_id', $dependenciaId)
-                ->where('estado_version', 'ACTIVO')
-                ->update(['estado_version' => 'HISTORICO']);
-
-            // Activar la versión TEMP
-            ClasificacionDocumentalTRD::where('dependencia_id', $dependenciaId)
-                ->where('estado_version', 'TEMP')
-                ->update(['estado_version' => 'ACTIVO']);
-
-            \DB::commit();
 
             return response()->json([
                 'status' => true,
-                'message' => 'Versión de TRD aprobada exitosamente.'
+                'message' => 'TRD importada y versión creada correctamente.'
             ], 200);
         } catch (\Exception $e) {
             \DB::rollBack();
 
             return response()->json([
                 'status' => false,
-                'message' => 'Error al aprobar la versión de TRD.',
+                'message' => 'Error al importar la TRD.',
                 'error' => $e->getMessage()
             ], 500);
+        } finally {
+            // Eliminar el archivo importado
+            if (file_exists(storage_path("app/$filePath"))) {
+                unlink(storage_path("app/$filePath"));
+            }
         }
     }
-
 
     /**
      * Genarar datos estadisticos
@@ -387,35 +345,6 @@ class ClasificacionDocumentalTRDController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $trd
-        ], 200);
-    }
-
-    /**
-     * Listar TRD que esten pendientes por aprobar
-     */
-    public function listarPendientesPorAprobar()
-    {
-        // Obtener las dependencias con TRD en estado TEMP
-        $dependencias = CalidadOrganigrama::whereHas('trds', function ($query) {
-            $query->where('estado_version', 'TEMP');
-        })
-            ->with(['trds' => function ($query) {
-                $query->where('estado_version', 'TEMP')->select('dependencia_id', 'version', 'estado_version')->distinct();
-            }])
-            ->select('id', 'nom_organico', 'cod_organico')
-            ->get();
-
-        if ($dependencias->isEmpty()) {
-            return response()->json([
-                'status' => false,
-                'message' => 'No hay TRD pendientes por aprobar.'
-            ], 404);
-        }
-
-        return response()->json([
-            'status' => true,
-            'data' => $dependencias,
-            'message' => 'Listado de TRD pendientes por aprobar obtenido correctamente.'
         ], 200);
     }
 }

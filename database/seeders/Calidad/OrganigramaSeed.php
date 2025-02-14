@@ -16,7 +16,7 @@ class OrganigramaSeed extends Seeder
         $dependenciaJuenta = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'JUNTA DIRECTIVA', 'cod_organico' => '']);
         $dependenciaRevisoria = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'REVISORIA FISCA', 'cod_organico' => '', 'parent' => 1]);
 
-        $dependenciaGerencia = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'GERENCIA', 'cod_organico' => 'GRE', 'parent' => 1]);
+        $dependenciaGerencia = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'GERENCIA', 'cod_organico' => '100', 'parent' => 1]);
         $dependenciaAsesoJuri = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'SESSORIA JURIDICA', 'cod_organico' => 'GRE', 'parent' => 3]);
         $dependenciaComiteTecnico = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'COMITÉ TECNICO', 'cod_organico' => 'GRE', 'parent' => 3]);
         $dependenciaControlInter = CalidadOrganigrama::firstOrCreate(['tipo' => 'Dependencia', 'nom_organico' => 'CONTRO INTERNO', 'cod_organico' => 'GRE', 'parent' => 3]);

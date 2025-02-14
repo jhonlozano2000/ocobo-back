@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ClasificacionDocumental\ClasificacionDocumentalTRDController;
+use App\Http\Controllers\ClasificacionDocumental\ClasificacionDocumentalTRDVersionController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -9,6 +10,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/estadisticas-trd/{id}', [ClasificacionDocumentalTRDController::class, 'estadistica'])->name('estadisticas.trd');
     Route::get('/dependencia/{id}', [ClasificacionDocumentalTRDController::class, 'listarPorDependencia']);
 
-    Route::get('clasificacion/pendientes-aprobar', [ClasificacionDocumentalTRDController::class, 'listarPendientesPorAprobar']);
-    Route::post('clasificacion/aprobar/{id}', [ClasificacionDocumentalTRDController::class, 'aprobarVersion']);
+    Route::get('clasificacion/pendientes-aprobar', [ClasificacionDocumentalTRDVersionController::class, 'listarPendientesPorAprobar'])->name('pendiente.aprobar');
+    Route::post('clasificacion/aprobar/{id}', [ClasificacionDocumentalTRDVersionController::class, 'aprobarVersion'])->name('aprobarVersion');
 });

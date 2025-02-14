@@ -27,6 +27,7 @@ class ClasificacionDocumentalTRD extends Model
         'procedimiento',
         'parent',
         'dependencia_id',
+        'version_id',
         'user_register',
         'estado',
         'version',
@@ -56,5 +57,11 @@ class ClasificacionDocumentalTRD extends Model
     public function scopeVersionActiva($query)
     {
         return $query->where('estado_version', 'ACTIVO');
+    }
+
+    public function version()
+    {
+        return $this->belongsTo(ClasificacionDocumentalTRDVersion::class, 'version', 'version')
+            ->where('dependencia_id', $this->dependencia_id);
     }
 }

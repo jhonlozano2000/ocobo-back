@@ -15,13 +15,16 @@ return new class extends Migration
             $table->id();
 
             $table->unsignedBigInteger('parent')->nullable();
-            $table->foreign('parent')->references('id')->on('clasificacion_documental_trd')->onDelete('cascade');
+            $table->foreign('parent')->references('id')->on('clasificacion_documental_trd');
+
+            $table->unsignedBigInteger('version_id')->nullable();
+            $table->foreign('version_id')->references('id')->on('clasificacion_documental_trd_versiones');
 
             $table->unsignedBigInteger('user_register');
-            $table->foreign('user_register')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('user_register')->references('id')->on('users');
 
             $table->unsignedBigInteger('dependencia_id')->nullable();
-            $table->foreign('dependencia_id')->references('id')->on('calidad_organigrama')->onDelete('cascade');
+            $table->foreign('dependencia_id')->references('id')->on('calidad_organigrama');
 
             $table->integer('version')->default(1)->comment('Número de versión del TRD');
             $table->enum('estado_version', ['TEMP', 'ACTIVO', 'HISTORICO'])->default('TEMP')
