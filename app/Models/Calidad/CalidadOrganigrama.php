@@ -2,6 +2,7 @@
 
 namespace App\Models\Calidad;
 
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -69,5 +70,24 @@ class CalidadOrganigrama extends Model
     public function scopeDependenciasRaiz($query)
     {
         return $query->whereNull('parent')->where('tipo', 'Dependencia');
+    }
+
+    public static function findDependenciaById($id)
+    {
+        return self::where('id', $id)
+            ->where('tipo', 'Dependencia')
+            ->first();
+    }
+
+    public static function findDependenciaByCodOrganico($id)
+    {
+        return self::where('cod_organico', $id)
+            ->where('tipo', 'Dependencia')
+            ->first();
+    }
+
+    public function trds()
+    {
+        return $this->hasMany(ClasificacionDocumentalTRD::class, 'dependencia_id');
     }
 }

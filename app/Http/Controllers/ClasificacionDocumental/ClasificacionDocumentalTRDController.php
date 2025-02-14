@@ -196,7 +196,7 @@ class ClasificacionDocumentalTRDController extends Controller
             $nombreDependencia = $sheet->getCell('C4')->getValue();
 
             // Buscar la dependencia en la base de datos
-            $dependencia = CalidadOrganigrama::where('cod_organico', $codDependencia)->first();
+            $dependencia = CalidadOrganigrama::findDependenciaByCodOrganico($codDependencia);
             if (!$dependencia) {
                 return response()->json(['status' => false, 'message' => 'La dependencia especificada no existe en el sistema.'], 400);
             }
@@ -293,47 +293,57 @@ class ClasificacionDocumentalTRDController extends Controller
     }
 
 
-    public function aprobarVersion($id)
+    /**
+     * Aprovar el vercionamiento de la TRD
+     */
+    public function aprobarVersion($dependenciaId)
     {
+        // Verificar si la dependencia tiene TRD en estado TEMP
+        $trdTemp = ClasificacionDocumentalTRD::where('dependencia_id', $dependenciaId)
+            ->where('estado_version', 'TEMP')
+            ->exists();
 
-        $user = User::find(1);
-        $user->hasPermissionTo('Jefe de Archivo'); // Debe devolver true
-        $user->givePermissionTo('Jefe de Archivo');
-        $user = Auth::user();
-
-        // Validar que el usuario tenga el permiso "Jefe de Archivo"
-        if (!$user->hasPermissionTo('Jefe de Archivo')) {
+        if (!$trdTemp) {
             return response()->json([
                 'status' => false,
-                'message' => 'No tiene permisos para aprobar versiones.'
-            ], 403);
+                'message' => 'No hay una versión temporal de TRD para esta dependencia.'
+            ], 404);
         }
 
+        \DB::beginTransaction();
 
+        try {
+            // Mover la versión actual a HISTORICO
+            ClasificacionDocumentalTRD::where('dependencia_id', $dependenciaId)
+                ->where('estado_version', 'ACTIVO')
+                ->update(['estado_version' => 'HISTORICO']);
 
-        if (!$user->hasRole('Jefe de Archivo')) {
-            return response()->json(['status' => false, 'message' => 'No tiene permisos para aprobar versiones.'], 403);
+            // Activar la versión TEMP
+            ClasificacionDocumentalTRD::where('dependencia_id', $dependenciaId)
+                ->where('estado_version', 'TEMP')
+                ->update(['estado_version' => 'ACTIVO']);
+
+            \DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Versión de TRD aprobada exitosamente.'
+            ], 200);
+        } catch (\Exception $e) {
+            \DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Error al aprobar la versión de TRD.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $versionTRD = ClasificacionDocumentalTRD::where('id', $id)
-            ->where('estado_version', 'TEMP')
-            ->first();
-
-        if (!$versionTRD) {
-            return response()->json(['status' => false, 'message' => 'No existe una versión temporal para aprobar.'], 404);
-        }
-
-        // Marcar versiones anteriores como HISTORICO
-        ClasificacionDocumentalTRD::where('dependencia_id', $versionTRD->dependencia_id)
-            ->where('estado_version', 'ACTIVO')
-            ->update(['estado_version' => 'HISTORICO']);
-
-        // Activar la nueva versión
-        $versionTRD->update(['estado_version' => 'ACTIVO']);
-
-        return response()->json(['status' => true, 'message' => 'Versión aprobada con éxito.'], 200);
     }
 
+
+    /**
+     * Genarar datos estadisticos
+     */
     public function estadistica($id)
     {
         // Obtener todas la TRD (nodos raíz) donde el campo 'tipo' es 'serie' y no tienen un padre
@@ -364,6 +374,9 @@ class ClasificacionDocumentalTRDController extends Controller
         ], 201);
     }
 
+    /**
+     * Listar TRD por dependencia
+     */
     public function listarPorDependencia($id)
     {
         $trd = ClasificacionDocumentalTRD::where('dependencia_id', $id)
@@ -374,6 +387,35 @@ class ClasificacionDocumentalTRDController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $trd
+        ], 200);
+    }
+
+    /**
+     * Listar TRD que esten pendientes por aprobar
+     */
+    public function listarPendientesPorAprobar()
+    {
+        // Obtener las dependencias con TRD en estado TEMP
+        $dependencias = CalidadOrganigrama::whereHas('trds', function ($query) {
+            $query->where('estado_version', 'TEMP');
+        })
+            ->with(['trds' => function ($query) {
+                $query->where('estado_version', 'TEMP')->select('dependencia_id', 'version', 'estado_version')->distinct();
+            }])
+            ->select('id', 'nom_organico', 'cod_organico')
+            ->get();
+
+        if ($dependencias->isEmpty()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No hay TRD pendientes por aprobar.'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'data' => $dependencias,
+            'message' => 'Listado de TRD pendientes por aprobar obtenido correctamente.'
         ], 200);
     }
 }

@@ -9,5 +9,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/estadisticas-trd/{id}', [ClasificacionDocumentalTRDController::class, 'estadistica'])->name('estadisticas.trd');
     Route::get('/dependencia/{id}', [ClasificacionDocumentalTRDController::class, 'listarPorDependencia']);
 
+    Route::get('clasificacion/pendientes-aprobar', [ClasificacionDocumentalTRDController::class, 'listarPendientesPorAprobar']);
     Route::post('clasificacion/aprobar/{id}', [ClasificacionDocumentalTRDController::class, 'aprobarVersion']);
 });
