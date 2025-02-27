@@ -5,13 +5,12 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 use App\Models\Calidad\CalidadOrganigrama;
+use App\Models\Configuracion\configVentanilla;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
-use Carbon\Carbon;
 
 class User extends Authenticatable
 {
@@ -95,5 +94,10 @@ class User extends Authenticatable
         if ($currentCargo) {
             $this->cargos()->updateExistingPivot($currentCargo->id, ['end_date' => now()]);
         }
+    }
+
+    public function ventanillas()
+    {
+        return $this->belongsToMany(configVentanilla::class, 'user_ventanillas');
     }
 }
