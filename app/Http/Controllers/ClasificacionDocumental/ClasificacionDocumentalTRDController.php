@@ -176,13 +176,14 @@ class ClasificacionDocumentalTRDController extends Controller
     {
         // Cargar el archivo
         $filePath = $request->file('file')->storeAs('temp_files', 'TRD_import_' . now()->timestamp . '.xlsx');
-        //$file = Storage::disk('temp_files')->path($filePath);
+        $fileName = basename($filePath); // Extrae solo el nombre del archivo
+        $file = Storage::disk('temp_files')->path($fileName); // Obtiene la ruta correcta
 
-        if (!file_exists($filePath)) {
+        if (!file_exists($file)) {
             return response()->json(['status' => false, 'message' => 'El archivo no existe en el almacenamiento.'], 404);
         }
 
-        $spreadsheet = IOFactory::load($filePath);
+        $spreadsheet = IOFactory::load($file);
         $sheet = $spreadsheet->getActiveSheet();
         $data = $sheet->toArray();
 
@@ -281,7 +282,7 @@ class ClasificacionDocumentalTRDController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'TRD importada y versión creada correctamente.'
+                'message' => 'TRD importada correctamente y versión creada correctamente.'
             ], 200);
         } catch (\Exception $e) {
             \DB::rollBack();
