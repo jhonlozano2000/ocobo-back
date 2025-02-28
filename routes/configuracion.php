@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ConfigSedeController;
 use App\Http\Controllers\Configuracion\ConfigDiviPoliController;
 use App\Http\Controllers\Configuracion\ConfigListaController;
 use App\Http\Controllers\Configuracion\ConfigListaDetalleController;
@@ -38,4 +39,26 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('config-num-radicado', [ConfigNumRadicadoController::class, 'getConfiguracion'])->name('config.num.radicado.getConfiguracion');
     Route::put('config-num-radicado', [ConfigNumRadicadoController::class, 'updateConfiguracion'])->name('config.num.radicado.updateConfiguracion');
+
+    /**
+     * Sedes
+     */
+    // 📌 Rutas para Sedes
+    Route::apiResource('sedes', ConfigSedeController::class);
+
+    // 📌 Rutas para Ventanillas dentro de una Sede
+    Route::apiResource('sedes.ventanillas', VentanillaUnicaController::class)
+        ->except(['create', 'edit']);
+
+    // 📌 Asignación de permisos de usuarios a ventanillas
+    Route::post('ventanillas/{ventanilla}/permisos', [PermisoVentanillaController::class, 'asignarPermisos']);
+    Route::get('usuarios/{usuario}/ventanillas', [PermisoVentanillaController::class, 'listarVentanillasPermitidas']);
+
+    // 📌 Configuración de tipos documentales permitidos en una ventanilla
+    Route::post('ventanillas/{ventanilla}/tipos-documentales', [VentanillaUnicaController::class, 'configurarTiposDocumentales']);
+    Route::get('ventanillas/{ventanilla}/tipos-documentales', [VentanillaUnicaController::class, 'listarTiposDocumentales']);
+
+    // 📌 Configuración de numeración (unificada o por sede)
+    Route::post('configuracion/numeracion', [ConfigSedeController::class, 'configurarNumeracion']);
+    Route::get('configuracion/numeracion', [ConfigSedeController::class, 'obtenerConfiguracionNumeracion']);
 });
