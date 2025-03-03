@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Configuracion;
 
-use App\Models\Configuracion\config_sede;
+use App\Http\Controllers\Controller;
+use App\Models\Configuracion\configSede;
 use Illuminate\Http\Request;
 
 class ConfigSedeController extends Controller
@@ -34,7 +35,7 @@ class ConfigSedeController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(config_sede $config_sede)
+    public function show(configSede $config_sede)
     {
         //
     }
@@ -42,7 +43,7 @@ class ConfigSedeController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(config_sede $config_sede)
+    public function edit(configSede $config_sede)
     {
         //
     }
@@ -50,7 +51,7 @@ class ConfigSedeController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, config_sede $config_sede)
+    public function update(Request $request, configSede $config_sede)
     {
         //
     }
@@ -58,7 +59,7 @@ class ConfigSedeController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(config_sede $config_sede)
+    public function destroy(configSede $config_sede)
     {
         //
     }

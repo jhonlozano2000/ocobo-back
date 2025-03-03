@@ -1,12 +1,14 @@
 <?php
 
-use App\Http\Controllers\ConfigSedeController;
 use App\Http\Controllers\Configuracion\ConfigDiviPoliController;
 use App\Http\Controllers\Configuracion\ConfigListaController;
 use App\Http\Controllers\Configuracion\ConfigListaDetalleController;
 use App\Http\Controllers\Configuracion\ConfigNumRadicadoController;
+use App\Http\Controllers\Configuracion\ConfigSedeController;
 use App\Http\Controllers\Configuracion\ConfigServerArchivoController;
 use App\Http\Controllers\Configuracion\ConfigVariasController;
+use App\Http\Controllers\VentanillaUnica\PermisosVentanillaUnicaController;
+use App\Http\Controllers\VentanillaUnica\VentanillaUnicaController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -43,22 +45,21 @@ Route::middleware('auth:sanctum')->group(function () {
     /**
      * Sedes
      */
-    // 📌 Rutas para Sedes
     Route::apiResource('sedes', ConfigSedeController::class);
 
-    // 📌 Rutas para Ventanillas dentro de una Sede
+    // Rutas para Ventanillas dentro de una Sede
     Route::apiResource('sedes.ventanillas', VentanillaUnicaController::class)
         ->except(['create', 'edit']);
 
-    // 📌 Asignación de permisos de usuarios a ventanillas
-    Route::post('ventanillas/{ventanilla}/permisos', [PermisoVentanillaController::class, 'asignarPermisos']);
-    Route::get('usuarios/{usuario}/ventanillas', [PermisoVentanillaController::class, 'listarVentanillasPermitidas']);
+    // Asignación de permisos de usuarios a ventanillas
+    Route::post('ventanillas/{ventanilla}/permisos', [PermisosVentanillaUnicaController::class, 'asignarPermisos']);
+    Route::get('usuarios/{usuario}/ventanillas', [PermisosVentanillaUnicaController::class, 'listarVentanillasPermitidas']);
 
-    // 📌 Configuración de tipos documentales permitidos en una ventanilla
+    // Configuración de tipos documentales permitidos en una ventanilla
     Route::post('ventanillas/{ventanilla}/tipos-documentales', [VentanillaUnicaController::class, 'configurarTiposDocumentales']);
     Route::get('ventanillas/{ventanilla}/tipos-documentales', [VentanillaUnicaController::class, 'listarTiposDocumentales']);
 
-    // 📌 Configuración de numeración (unificada o por sede)
+    // Configuración de numeración (unificada o por sede)
     Route::post('configuracion/numeracion', [ConfigSedeController::class, 'configurarNumeracion']);
     Route::get('configuracion/numeracion', [ConfigSedeController::class, 'obtenerConfiguracionNumeracion']);
 });

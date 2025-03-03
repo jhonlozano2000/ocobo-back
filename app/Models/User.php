@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\Configuracion\configVentanilla;
+use App\Models\VentanillaUnica\VentanillaUnica;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -99,5 +100,10 @@ class User extends Authenticatable
     public function ventanillas()
     {
         return $this->belongsToMany(configVentanilla::class, 'user_ventanillas');
+    }
+
+    public function ventanillasPermitidas()
+    {
+        return $this->belongsToMany(VentanillaUnica::class, 'ventanilla_permisos', 'user_id', 'ventanilla_id');
     }
 }

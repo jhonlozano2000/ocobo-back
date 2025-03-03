@@ -13,6 +13,6 @@ class configSede extends Model
 
     public function ventanillas()
     {
-        return $this->hasMany(configVentanillas::class);
+        return $this->hasMany(ConfigVentanilla::class);
     }
 }

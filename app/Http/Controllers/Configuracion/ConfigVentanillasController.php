@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Configuracion;
 
-use App\Models\Configuracion\config_ventanillas;
+use App\Http\Controllers\Controller;
+use App\Models\Configuracion\configVentanilla;
 use Illuminate\Http\Request;
 
 class ConfigVentanillasController extends Controller
@@ -34,7 +35,7 @@ class ConfigVentanillasController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(config_ventanillas $config_ventanillas)
+    public function show(configVentanilla $config_ventanillas)
     {
         //
     }
@@ -42,7 +43,7 @@ class ConfigVentanillasController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(config_ventanillas $config_ventanillas)
+    public function edit(configVentanilla $config_ventanillas)
     {
         //
     }
@@ -50,7 +51,7 @@ class ConfigVentanillasController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, config_ventanillas $config_ventanillas)
+    public function update(Request $request, configVentanilla $config_ventanillas)
     {
         //
     }
@@ -58,7 +59,7 @@ class ConfigVentanillasController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(config_ventanillas $config_ventanillas)
+    public function destroy(configVentanilla $config_ventanillas)
     {
         //
     }
