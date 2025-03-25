@@ -11,14 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('ventanilla_tipos_documentales', function (Blueprint $table) {
+        Schema::create('config_ventanillas_permisos', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('ventanilla_id');
-            $table->unsignedBigInteger('tipo_documental_id');
+            $table->unsignedBigInteger('user_id');
             $table->timestamps();
 
-            $table->foreign('ventanilla_id')->references('id')->on('ventanillas_unicas')->onDelete('cascade');
-            $table->foreign('tipo_documental_id')->references('id')->on('clasificacion_documental_trd')->onDelete('cascade');
+            $table->foreign('ventanilla_id')->references('id')->on('config_ventanillas')->onDelete('cascade');
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 

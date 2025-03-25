@@ -15,11 +15,12 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('sede_id');
             $table->string('nombre', 100);
-            $table->boolean('estado')->default(1);
+            $table->text('descripcion')->nullable();
+            $table->boolean('numeracion_unificada')->default(true)
+                ->comment('Define si la numeración de radicados es unificada o por sede.');
             $table->timestamps();
 
-            $table->foreign('sede_id')->references('id')->on('config_sedes');
-            $table->timestamps();
+            $table->foreign('sede_id')->references('id')->on('config_sedes')->onDelete('cascade');
         });
     }
 

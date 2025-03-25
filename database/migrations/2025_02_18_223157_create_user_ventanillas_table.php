@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('ventanilla_id');
-            $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users');
             $table->foreign('ventanilla_id')->references('id')->on('config_ventanillas');

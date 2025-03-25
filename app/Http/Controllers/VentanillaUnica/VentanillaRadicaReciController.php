@@ -5,13 +5,10 @@ namespace App\Http\Controllers\VentanillaUnida;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\VentanillaRadicaReciRequest;
 use App\Models\Configuracion\ConfigVarias;
-use App\Models\ControlAcceso\UsersCargo;
 use App\Models\User;
 use App\Models\VentanillaUnica\VentanillaRadicaReci;
-use App\Models\VentanillaUnica\VentanillaRadicaReciResponsa;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class VentanillaRadicaReciController extends Controller
 {
