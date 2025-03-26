@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Http\Controllers\VentanillaUnida;
+namespace App\Http\Controllers\VentanillaUnica;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 use App\Http\Requests\Ventanilla\VentanillaRadicaReciRequest;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\User;
 use App\Models\VentanillaUnica\VentanillaRadicaReci;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
 
 class VentanillaRadicaReciController extends Controller
 {

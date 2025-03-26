@@ -117,7 +117,6 @@ class ClasificacionDocumentalTRDController extends Controller
         ], 200);
     }
 
-
     /**
      * Update the specified resource in storage.
      */
@@ -140,7 +139,6 @@ class ClasificacionDocumentalTRDController extends Controller
             'data' => $trd
         ], 200);
     }
-
 
     /**
      * Remove the specified resource from storage.

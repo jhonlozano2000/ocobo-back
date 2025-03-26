@@ -1,12 +1,11 @@
 <?php
 
-namespace App\Http\Controllers\VentanillaUnida;
+namespace App\Http\Controllers\VentanillaUnica;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Ventanilla\VentanillaRadicaReciResponsaRequest;
-use App\Models\VentanillaUnica\RadicadoRecibidoResponsables;
-use App\Models\VentanillaUnica\VentanillaRadicaReciResponsa;
 use Illuminate\Http\Request;
+use App\Http\Requests\Ventanilla\VentanillaRadicaReciResponsaRequest;
+use App\Models\VentanillaUnica\VentanillaRadicaReciResponsa;
 
 class VentanillaRadicaReciResponsaController extends Controller
 {

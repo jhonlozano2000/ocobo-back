@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\VentanillaUnida;
+namespace App\Http\Controllers\VentanillaUnica;
 
 use App\Http\Controllers\Controller;
 use App\Models\Configuracion\ConfigVarias;

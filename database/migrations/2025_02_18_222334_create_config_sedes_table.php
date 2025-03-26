@@ -17,6 +17,10 @@ return new class extends Migration
             $table->string('codigo', 20)->unique();
             $table->string('ubicacion')->nullable();
             $table->boolean('estado')->default(1);
+
+            $table->boolean('numeracion_unificada')->default(true)
+                ->comment('Define si la numeración de radicados es unificada o por ventanilla.');
+
             $table->timestamps();
         });
     }
