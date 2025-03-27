@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\VentanillaUnida\VentanillaRadicaReciController;
+use App\Http\Controllers\VentanillaUnica\VentanillaRadicaReciController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {

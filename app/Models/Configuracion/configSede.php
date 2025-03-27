@@ -5,7 +5,7 @@ namespace App\Models\Configuracion;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class configSede extends Model
+class ConfigSede extends Model
 {
     use HasFactory;
 

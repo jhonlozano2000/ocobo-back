@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Configuracion\configSede;
+use App\Models\Configuracion\ConfigSede;
 use Illuminate\Http\Request;
 
 class ConfigSedeController extends Controller
@@ -13,15 +13,8 @@ class ConfigSedeController extends Controller
      */
     public function index()
     {
-        //
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
+        $sedes = ConfigSede::all();
+        return response()->json($sedes, 200);
     }
 
     /**
@@ -29,38 +22,57 @@ class ConfigSedeController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $sedes = ConfigSede::create($request->all());
+        return response()->json($sedes, 201);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(configSede $config_sede)
+    public function show($id)
     {
-        //
+        $sede = ConfigSede::find($id);
+        if (!$sede) {
+            return response('Sede no encontrada', 404);
+        }
+
+        return response()->json($sede, 200);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(configSede $config_sede)
-    {
-        //
-    }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, configSede $config_sede)
+    public function update(Request $request, int $id)
     {
-        //
+        $sede = ConfigSede::find($id);
+        if (!$sede) {
+            return response('Sede no encontrada', 404);
+        }
+
+        $sede->update($request->all());
+        return response()->json($sede, 200);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(configSede $config_sede)
+    public function destroy($id)
     {
-        //
+        $sede = ConfigSede::find($id);
+        if (!$sede) {
+            return response('Sede no encontrada', 404);
+        }
+
+        $sede->delete();
+        return response()->json('Sede elimina correctament');
+    }
+
+    public function estadisticas()
+    {
+        $sedesTotal = ConfigSede::count();
+        return response()->json([
+            'total' => $sedesTotal
+        ]);
     }
 }

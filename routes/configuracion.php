@@ -45,7 +45,8 @@ Route::middleware('auth:sanctum')->group(function () {
     /**
      * Sedes
      */
-    Route::apiResource('sedes', ConfigSedeController::class);
+    Route::apiResource('sedes', ConfigSedeController::class)->except('create', 'edit');;
+    Route::get('estadisticas', [ConfigSedeController::class, 'estadisticas'])->name('deses.estadisticas');
 
     // Rutas para Ventanillas dentro de una Sede
     Route::apiResource('sedes.ventanillas', VentanillaUnicaController::class)
