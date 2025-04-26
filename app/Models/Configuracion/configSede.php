@@ -9,7 +9,7 @@ class ConfigSede extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nombre', 'codigo', 'ubicacion', 'estado'];
+    protected $fillable = ['nombre', 'codigo', 'direccion', 'telefono', 'email', 'ubicacion', 'estado'];
 
     public function ventanillas()
     {

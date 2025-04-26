@@ -15,6 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('nombre', 100);
             $table->string('codigo', 20)->unique();
+            $table->string('direccion')->nullable();
+            $table->string('telefono')->nullable();
+            $table->string('email')->nullable();
             $table->string('ubicacion')->nullable();
             $table->boolean('estado')->default(1);
 
