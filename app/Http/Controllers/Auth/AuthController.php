@@ -65,7 +65,6 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-
         $request->validate([
             'email' => 'required|string|email',
             'password' => 'required|string',
@@ -79,11 +78,21 @@ class AuthController extends Controller
         }
 
         $user = User::where('email', $request->email)->firstOrFail();
+
         $token = $user->createToken('auth_token')->plainTextToken;
+
+        // Carga roles y permisos
+        $user->load('roles', 'permissions');
 
         return response()->json([
             'status' => true,
-            'user' => $user,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->roles->pluck('name'),
+                'permissions' => $user->getAllPermissions()->pluck('name'),
+            ],
             'access_token' => $token,
             'token_type' => 'Bearer',
         ]);
@@ -101,13 +110,19 @@ class AuthController extends Controller
 
     public function getMe(Request $request)
     {
-        return response()->json(
-            [
-                'status' => true,
-                'data' => $request->user()
-            ],
-            201
-        );
+        $user = Auth::user();
+
+        $user->load('roles.permissions'); // Carga roles con permisos
+
+        $permisos = $user->getAllPermissions()->pluck('name'); // Obtiene solo los nombres de permisos
+
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'roles' => $user->getRoleNames(),
+            'permisos' => $permisos
+        ]);
     }
 
     public function refresh(Request $request)

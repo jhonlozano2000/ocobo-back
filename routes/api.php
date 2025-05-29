@@ -23,7 +23,6 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
-    //Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/getme', [AuthController::class, 'getMe']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
     Route::post('/register', [AuthController::class, 'register']);
