@@ -21,4 +21,6 @@ Route::middleware('auth:sanctum')->group(function () {
      * Permisos
      */
     Route::get('/permisos', [RoleControlleController::class, 'listPermisos'])->name('permisos.show');
+
+    Route::put('/user/profile-information', [UserControlle::class, 'updateUserProfile']);
 });

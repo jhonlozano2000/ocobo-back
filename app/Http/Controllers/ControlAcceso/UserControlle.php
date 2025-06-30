@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Http\Requests\ControlAcceso\UserRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class UserControlle extends Controller
@@ -181,5 +182,19 @@ class UserControlle extends Controller
         }
 
         return $archivoActual;
+    }
+
+    private function updateUserProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'nombres' => 'required|string|max:70',
+            'apellidos' => 'required|string|max:70',
+        ]);
+
+        $user->update($validated);
+
+        return response()->json($user);
     }
 }
