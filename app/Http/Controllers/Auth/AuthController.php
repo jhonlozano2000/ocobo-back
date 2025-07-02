@@ -65,34 +65,43 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $request->validate([
+        // 1. Validamos que el request tenga email y password
+        $credentials = $request->validate([
             'email' => 'required|string|email',
             'password' => 'required|string',
         ]);
 
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user || !Hash::check($request->password, $user->password) || $user->estado == 0) {
-            // Si el usuario existe pero está inactivo, damos un mensaje específico
-            if ($user && $user->estado == 0) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Tu cuenta se encuentra desactivada.'
-                ], 401);
-            }
-
-            // Para otros casos, un mensaje genérico
+        // 2. Intentamos autenticar al usuario con Auth::attempt()
+        // Este método automáticamente busca al usuario y compara la contraseña hasheada.
+        // Si tiene éxito, inicia la sesión y dispara el evento de Login.
+        if (!Auth::attempt($credentials)) {
             return response()->json([
                 'status' => false,
                 'message' => 'Las credenciales proporcionadas son incorrectas.'
             ], 401);
         }
 
+        // 3. Si Auth::attempt() fue exitoso, podemos obtener el usuario autenticado
+        $user = Auth::user();
+
+        // 4. Verificamos si la cuenta está activa (tu lógica de seguridad)
+        if ($user->estado == 0) {
+            // Cerramos la sesión que Auth::attempt() pudo haber iniciado
+            $user->tokens()->delete(); // Invalidamos cualquier token
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Tu cuenta se encuentra desactivada.'
+            ], 401);
+        }
+
+        // 5. Si todo está bien, creamos el token y devolvemos la respuesta
         $token = $user->createToken('auth_token')->plainTextToken;
 
         // Carga roles y permisos
         $user->load('roles', 'permissions');
 
+        // Usamos el mismo formato de respuesta que ya tenías
         return response()->json([
             'status' => true,
             'user' => [
@@ -104,7 +113,6 @@ class AuthController extends Controller
                 'tel' => $user->tel,
                 'movil' => $user->movil,
                 'dir' => $user->dir,
-                'email' => $user->email,
                 'firma' => $user->firma,
                 'avatar' => $user->avatar,
                 'roles' => $user->roles->pluck('name'),
