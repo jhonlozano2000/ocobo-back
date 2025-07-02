@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\ControlAcceso\RoleControlleController;
 use App\Http\Controllers\ControlAcceso\UserControlle;
-
+use App\Http\Controllers\ControlAcceso\UserSessionController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -23,4 +23,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/permisos', [RoleControlleController::class, 'listPermisos'])->name('permisos.show');
 
     Route::put('/user/profile-information', [UserControlle::class, 'updateUserProfile']);
+
+    Route::put('/user/changePassword', [UserControlle::class, 'updatePassword']);
+
+    // routes/api.php
+    Route::middleware('auth:sanctum')->post('/user/activar-inactivar', [UserControlle::class, 'activarInactivar']);
+
+    // routes/api.php
+    Route::middleware('auth:sanctum')->get('/user/recent-devices', [UserSessionController::class, 'index']);
 });

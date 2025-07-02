@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\Configuracion\configVentanilla;
+use App\Models\ControlAcceso\UserSession;
 use App\Models\VentanillaUnica\VentanillaUnica;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -105,5 +106,10 @@ class User extends Authenticatable
     public function ventanillasPermitidas()
     {
         return $this->belongsToMany(VentanillaUnica::class, 'ventanilla_permisos', 'user_id', 'ventanilla_id');
+    }
+
+    public function sessions()
+    {
+        return $this->hasMany(UserSession::class)->latest('last_login_at');
     }
 }

@@ -70,14 +70,23 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        if (!Auth::attempt($request->only('email', 'password'))) {
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || !Hash::check($request->password, $user->password) || $user->estado == 0) {
+            // Si el usuario existe pero está inactivo, damos un mensaje específico
+            if ($user && $user->estado == 0) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Tu cuenta se encuentra desactivada.'
+                ], 401);
+            }
+
+            // Para otros casos, un mensaje genérico
             return response()->json([
                 'status' => false,
-                'message' => 'Invalid credentials'
+                'message' => 'Las credenciales proporcionadas son incorrectas.'
             ], 401);
         }
-
-        $user = User::where('email', $request->email)->firstOrFail();
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -88,8 +97,16 @@ class AuthController extends Controller
             'status' => true,
             'user' => [
                 'id' => $user->id,
-                'name' => $user->name,
+                'num_docu' => $user->num_docu,
+                'nombres' => $user->nombres,
+                'apellidos' => $user->apellidos,
                 'email' => $user->email,
+                'tel' => $user->tel,
+                'movil' => $user->movil,
+                'dir' => $user->dir,
+                'email' => $user->email,
+                'firma' => $user->firma,
+                'avatar' => $user->avatar,
                 'roles' => $user->roles->pluck('name'),
                 'permissions' => $user->getAllPermissions()->pluck('name'),
             ],
@@ -118,8 +135,16 @@ class AuthController extends Controller
 
         return response()->json([
             'id' => $user->id,
-            'name' => $user->name,
+            'num_docu' => $user->num_docu,
+            'nombres' => $user->nombres,
+            'apellidos' => $user->apellidos,
             'email' => $user->email,
+            'tel' => $user->tel,
+            'movil' => $user->movil,
+            'dir' => $user->dir,
+            'email' => $user->email,
+            'firma' => $user->firma,
+            'avatar' => $user->avatar,
             'roles' => $user->getRoleNames(),
             'permisos' => $permisos
         ]);

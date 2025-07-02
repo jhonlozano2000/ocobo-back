@@ -7,7 +7,9 @@ use App\Models\User;
 use App\Http\Requests\ControlAcceso\UserRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class UserControlle extends Controller
 {
@@ -184,7 +186,7 @@ class UserControlle extends Controller
         return $archivoActual;
     }
 
-    private function updateUserProfile(Request $request)
+    public function updateUserProfile(Request $request)
     {
         $user = Auth::user();
 
@@ -196,5 +198,76 @@ class UserControlle extends Controller
         $user->update($validated);
 
         return response()->json($user);
+    }
+
+
+    public function updatePassword(Request $request)
+    {
+        $user = Auth::user();
+
+        // 1. Validar que la contraseña actual es correcta
+        if (!Hash::check($request->current_password, $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => 'La contraseña actual que ingresaste no es correcta.',
+            ]);
+        }
+
+        // 2. Definir las reglas de validación
+        $rules = [
+            'current_password' => 'required',
+            'password' => [
+                'required',
+                'confirmed',
+                Password::min(8)
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols()
+            ],
+        ];
+
+        // 3. Definir los mensajes personalizados en español para cada regla
+        $messages = [
+            'current_password.required' => 'Debes ingresar tu contraseña actual.',
+            'password.required'         => 'Debes ingresar una nueva contraseña.',
+            'password.confirmed'        => 'La confirmación de la nueva contraseña no coincide.',
+            'password.min'              => 'La nueva contraseña debe tener al menos :min caracteres.',
+            'password.mixedCase'        => 'La nueva contraseña debe contener al menos una letra mayúscula y una minúscula.',
+            'password.numbers'          => 'La nueva contraseña debe contener al menos un número.',
+            'password.symbols'          => 'La nueva contraseña debe contener al menos un símbolo.',
+        ];
+
+        // 4. Ejecutar la validación con las reglas y los mensajes
+        $request->validate($rules, $messages);
+
+        // 5. Actualizar la contraseña
+        $user->forceFill([
+            'password' => Hash::make($request->password),
+        ])->save();
+
+        // 6. Devolver una respuesta de éxito
+        return response()->json(['message' => 'Contraseña actualizada con éxito.']);
+    }
+
+    public function activarInactivar(Request $request)
+    {
+        $user = Auth::user();
+
+        // 1. Validar que la contraseña proporcionada es correcta
+        if (!Hash::check($request->password, $user->password)) {
+            throw ValidationException::withMessages([
+                'password' => 'La contraseña proporcionada no es correcta.',
+            ]);
+        }
+
+        // 2. Invalidar todos los tokens del usuario para cerrar todas sus sesiones
+        $user->tokens()->delete();
+
+
+        // 3. Cambiar el estado del usuario a 0 (Inactivo) y guardar
+        $user->estado = 0;
+        $user->save();
+
+        // 4. Devolver una respuesta de éxito
+        return response()->json(['message' => 'Tu cuenta ha sido desactivada con éxito.']);
     }
 }
