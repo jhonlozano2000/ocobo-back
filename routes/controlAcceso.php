@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ControlAcceso\NotificationSettingsController;
 use App\Http\Controllers\ControlAcceso\RoleControlleController;
 use App\Http\Controllers\ControlAcceso\UserControlle;
 use App\Http\Controllers\ControlAcceso\UserSessionController;
@@ -27,8 +28,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/user/changePassword', [UserControlle::class, 'updatePassword']);
 
     // routes/api.php
-    Route::middleware('auth:sanctum')->post('/user/activar-inactivar', [UserControlle::class, 'activarInactivar']);
+    Route::post('/user/activar-inactivar', [UserControlle::class, 'activarInactivar']);
 
     // routes/api.php
-    Route::middleware('auth:sanctum')->get('/user/recent-devices', [UserSessionController::class, 'index']);
+    Route::get('/user/recent-devices', [UserSessionController::class, 'index']);
+
+    Route::get('/user/notification-settings', [NotificationSettingsController::class, 'show']);
+    Route::put('/user/notification-settings', [NotificationSettingsController::class, 'update']);
 });

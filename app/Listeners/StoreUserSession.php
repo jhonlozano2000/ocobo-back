@@ -2,7 +2,7 @@
 
 namespace App\Listeners;
 
-use App\Models\ControlAcceso\UserSession;
+use App\Models\ControlAcceso\UsersSession;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +20,7 @@ class StoreUserSession
 
         Log::info('Evento de Login capturado para el usuario: ' . $event->user->id);
 
-        UserSession::create([
+        UsersSession::create([
             'user_id'       => $event->user->id,
             'ip_address'    => $this->request->ip(),
             'user_agent'    => $this->request->userAgent(),

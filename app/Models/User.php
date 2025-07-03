@@ -6,7 +6,8 @@ namespace App\Models;
 
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\Configuracion\configVentanilla;
-use App\Models\ControlAcceso\UserSession;
+use App\Models\ControlAcceso\UserNotificationSetting;
+use App\Models\ControlAcceso\UsersSession;
 use App\Models\VentanillaUnica\VentanillaUnica;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -110,6 +111,11 @@ class User extends Authenticatable
 
     public function sessions()
     {
-        return $this->hasMany(UserSession::class)->latest('last_login_at');
+        return $this->hasMany(UsersSession::class)->latest('last_login_at');
+    }
+
+    public function notificationSettings()
+    {
+        return $this->hasOne(UserNotificationSetting::class);
     }
 }

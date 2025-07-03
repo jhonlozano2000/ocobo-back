@@ -11,12 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('user_sessions', function (Blueprint $table) {
+        Schema::create('users_notification_settings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('ip_address', 45)->nullable();
-            $table->text('user_agent')->nullable();
-            $table->timestamp('last_login_at');
+            $table->boolean('new_for_you')->default(true);
+            $table->boolean('account_activity')->default(true);
+            $table->boolean('new_browser_login')->default(true);
             $table->timestamps();
         });
     }
@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('user_sessions');
+        Schema::dropIfExists('users_notification_settings');
     }
 };

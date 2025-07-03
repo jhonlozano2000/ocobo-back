@@ -14,6 +14,7 @@ class UserSessionController extends Controller
         $user = Auth::user();
 
         // Obtenemos las últimas 6 sesiones del usuario
+
         $sessions = $user->sessions()->take(6)->get();
 
         $agent = new Agent();
