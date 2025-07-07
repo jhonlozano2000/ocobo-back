@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\ControlAcceso;
 
 use App\Http\Controllers\Controller;
-use App\Models\ControlAcceso\RoleControlle;
+use App\Models\ControlAcceso\Role;
 use Illuminate\Http\Request;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Facades\Validator;
 
-class RoleControlleController extends Controller
+class RoleController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -30,7 +29,7 @@ class RoleControlleController extends Controller
      */
     public function listPermisos()
     {
-        $permission = Permission::get();
+        $permission = Permission::orderBy('name', 'asc')->get();
 
         return response()->json([
             'status' => true,
@@ -54,6 +53,14 @@ class RoleControlleController extends Controller
     }
 
 
+    /**
+     * Listar roles con permisos y cantidad de usuarios asignados.
+     */
+    public function rolesConUsuarios()
+    {
+        $roles = Role::with('permissions')->withCount('users')->get();
+        return response()->json($roles);
+    }
 
     /**
      * Store a newly created resource in storage.
@@ -156,7 +163,6 @@ class RoleControlleController extends Controller
             'message' => 'Rol actualizado exitosamente'
         ], 200);
     }
-
 
     /**
      * Remove the specified resource from storage.
