@@ -68,11 +68,29 @@ class RoleSeeder extends Seeder
         /**
          * Radicación
          */
-        Permission::create(['name' => 'Radicar -> Cores. Recibida'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Radicar -> Cores. Enviada'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Radicar -> Cores. Interna'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Radicar -> PQRSF'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Radicar -> Imprimir planillas'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Listar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Crear'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Editar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Eliminar'])->syncRoles([$Rol1]);
+
+        Permission::create(['name' => 'Radicar -> Cores. Enviada -> Listar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Cores. Enviada -> Crear'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Cores. Enviada -> Editar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Cores. Enviada -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Cores. Enviada -> Eliminar'])->syncRoles([$Rol1]);
+
+        Permission::create(['name' => 'Radicar -> Cores. Interna -> Listar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Cores. Interna -> Crear'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Cores. Interna -> Editar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Cores. Interna -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> Cores. Interna -> Eliminar'])->syncRoles([$Rol1]);
+
+        Permission::create(['name' => 'Radicar -> PQRSF -> Listar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> PQRSF -> Crear'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> PQRSF -> Editar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> PQRSF -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Radicar -> PQRSF -> Eliminar'])->syncRoles([$Rol1]);
 
         /**
          * Calidad
@@ -100,6 +118,16 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'TVD -> Mostar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'TVD -> Eliminar'])->syncRoles([$Rol1]);
 
+        /**
+         * Reportes
+         */
+        Permission::create(['name' => 'Reporte - Ventanilla -> Imprimir planillas correspondencia recibida'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Reporte - Ventanilla -> Imprimir planillas correspondencia enviada'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Reporte - Ventanilla -> Imprimir planillas correspondencia interna'])->syncRoles([$Rol1]);
+
+        /**
+         * Otros permisos
+         */
         Permission::create(['name' => 'Jefe de Archivo'])->syncRoles([$Rol1]);
     }
 }
