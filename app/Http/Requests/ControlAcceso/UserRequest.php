@@ -30,10 +30,10 @@ class UserRequest extends FormRequest
             'nombres' => 'required|string|max:70',
             'apellidos' => 'required|string|max:70',
             'email' => 'required|string|email|max:70|unique:users,email,' . $userId,
-            'password' => $this->isMethod('post') ? 'required|string|min:6|confirmed' : 'nullable|string|min:6|confirmed',
+            //'password' => $this->isMethod('post') ? 'required|string|min:6|confirmed' : 'nullable|string|min:6|confirmed',
             'roles' => 'required|array|min:1',
             'roles.*' => 'required|string|exists:roles,name',
-            'cargo_id' => [
+            /* 'cargo_id' => [
                 'required',
                 'integer',
                 'exists:calidad_organigrama,id',
@@ -43,7 +43,7 @@ class UserRequest extends FormRequest
                         $this->isMethod('post') ?  $fail('El usuario no se pudo crear ya que no se está relacionando a algún cargo.') : $fail('El usuario no se pudo actualiza ya que no se está relacionando a algún cargo.');
                     }
                 },
-            ],
+            ], */
         ];
     }
 
@@ -61,12 +61,12 @@ class UserRequest extends FormRequest
             'email.unique' => 'El correo electrónico ya está en uso.',
             'password.required' => 'La contraseña es obligatoria.',
             'password.min' => 'La contraseña debe tener al menos 6 caracteres.',
-            'password.confirmed' => 'La confirmación de la contraseña no coincide.',
+            //'password.confirmed' => 'La confirmación de la contraseña no coincide.',
             'roles.required' => 'Debe asignar al menos un rol.',
             'roles.array' => 'El campo roles debe ser un arreglo.',
             'roles.*.exists' => 'El rol ":input" no existe en el sistema.',
-            'cargo_id.required' => 'Debe seleccionar un cargo válido.',
-            'cargo_id.exists' => 'El cargo asignado no existe en el sistema.',
+            /* 'cargo_id.required' => 'Debe seleccionar un cargo válido.',
+            'cargo_id.exists' => 'El cargo asignado no existe en el sistema.', */
             'divi_poli_id.required' => 'Debe seleccionar una división política.',
             'divi_poli_id.exists' => 'La división política seleccionada no existe.',
         ];
