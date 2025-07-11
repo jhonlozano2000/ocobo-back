@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class UserControlle extends Controller
 {
@@ -29,8 +31,11 @@ class UserControlle extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(UserRequest $request)
+    public function store(Request $request)
     {
+        $archivo = $request->file('avatar');
+
+        return $archivo->getClientOriginalExtension();
         // Crear el nuevo usuario
         $user = new User();
         $user->num_docu = $request->num_docu;
@@ -41,6 +46,12 @@ class UserControlle extends Controller
         $user->dir = $request->dir;
         $user->email = $request->email;
         $user->divi_poli_id = $request->divi_poli_id; // Asignar división política
+
+        if ($request->hasFile('avatar')) {
+            $archivo = $request->file('avatar');
+            $nombreArchivo = Str::random(40) . '.' . $archivo->getClientOriginalExtension();
+            $validatedData['avatar'] = $archivo->storeAs('/', $nombreArchivo, 'avatars');
+        }
 
         // Asignar roles
         $user->assignRole($request->roles);
@@ -124,7 +135,7 @@ class UserControlle extends Controller
 
         return response()->json([
             'status' => true,
-            $user,
+            'data' => $user,
             'message' => 'Usuario actualizado correctamente'
         ], 201);
     }

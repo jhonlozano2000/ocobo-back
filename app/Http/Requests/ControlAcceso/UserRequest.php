@@ -31,6 +31,7 @@ class UserRequest extends FormRequest
             'apellidos' => 'required|string|max:70',
             'email' => 'required|string|email|max:70|unique:users,email,' . $userId,
             //'password' => $this->isMethod('post') ? 'required|string|min:6|confirmed' : 'nullable|string|min:6|confirmed',
+            'password' => $this->isMethod('post') ? 'required|string|min:6' : 'nullable|string|min:6',
             'roles' => 'required|array|min:1',
             'roles.*' => 'required|string|exists:roles,name',
             /* 'cargo_id' => [
