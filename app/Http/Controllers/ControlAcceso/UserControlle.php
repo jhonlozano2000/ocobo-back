@@ -7,11 +7,12 @@ use App\Models\User;
 use App\Http\Requests\ControlAcceso\UserRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Storage;
 
 class UserControlle extends Controller
 {
@@ -30,54 +31,28 @@ class UserControlle extends Controller
 
     /**
      * Store a newly created resource in storage.
+     * @param UserRequest $request instancia del request
      */
     public function store(Request $request)
     {
-        $archivo = $request->file('avatar');
-
-        return $archivo->getClientOriginalExtension();
-        // Crear el nuevo usuario
-        $user = new User();
-        $user->num_docu = $request->num_docu;
-        $user->nombres = $request->nombres;
-        $user->apellidos = $request->apellidos;
-        $user->tel = $request->tel;
-        $user->movil = $request->movil;
-        $user->dir = $request->dir;
-        $user->email = $request->email;
-        $user->divi_poli_id = $request->divi_poli_id; // Asignar división política
-
-        if ($request->hasFile('avatar')) {
-            $archivo = $request->file('avatar');
-            $nombreArchivo = Str::random(40) . '.' . $archivo->getClientOriginalExtension();
-            $validatedData['avatar'] = $archivo->storeAs('/', $nombreArchivo, 'avatars');
+        // Manejo del avatar
+        if ($request->hasFile('avatar') && $request->file('avatar')->isValid()) {
+            $avatarPath = $request->file('avatar')->store('', 'avatars');
+            $patch = Storage::disk('avatars')->url($avatarPath);
         }
 
-        // Asignar roles
-        $user->assignRole($request->roles);
-
-        // Manejo de archivos (avatar y firma)
-        $user->avatar = $this->guardarArchivo($request, 'avatar', 'avatars');
-        $user->firma = $this->guardarArchivo($request, 'firma', 'firmas');
-
-        // Actualizo la contraseña
-        if ($request->has('password')) {
-            $user->password = bcrypt($request->input('password'));
-            $user->save();
+        // Manejo de la firma
+        if ($request->hasFile('firma')) {
+            $firmaPath = $request->file('firma')->store('', 'firmas');
+            //$user->firma = Storage::disk('firmas')->url($firmaPath);
         }
 
-        // Asignar el nuevo cargo (finalizando los anteriores automáticamente)
-        $user->assignCargo($request->cargo_id);
-
-        return response()->json([
-            'status' => true,
-            'data' => $user,
-            'message' => 'Usuario creado correctamente'
-        ], 201);
+        return response()->json(['data' => 'Ok'], 201);
     }
 
     /**
      * Display the specified resource.
+     * @param string $id ID del usuario a mostrar
      */
     public function show(string $id)
     {
@@ -179,6 +154,15 @@ class UserControlle extends Controller
         ], 200);
     }
 
+    /**
+     * Guarda un archivo en el disco especificado y elimina el archivo anterior si existe.
+     *
+     * @param Request $request instancia del request
+     * @param string $campo nombre del campo del archivo en el request
+     * @param string $disk disco donde se guardará el archivo
+     * @param string|null $archivoActual archivo actual a eliminar (opcional)
+     * @return string|null ruta del archivo guardado o el archivo actual si no se subió uno nuevo
+     */
     private function guardarArchivo($request, $campo, $disk, $archivoActual = null)
     {
         if ($request->hasFile($campo)) {
@@ -188,10 +172,9 @@ class UserControlle extends Controller
             if ($archivoActual && Storage::disk($disk)->exists($archivoActual)) {
                 Storage::disk($disk)->delete($archivoActual);
             }
-
             // Guardar el nuevo archivo
             $nombreArchivo = Str::random(50) . "." . $file->extension();
-            return $file->storeAs($disk, $nombreArchivo);
+            return $file->storeAs('/', $nombreArchivo, $disk);
         }
 
         return $archivoActual;
