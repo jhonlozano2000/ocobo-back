@@ -12,6 +12,7 @@ use App\Models\VentanillaUnica\VentanillaUnica;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -25,7 +26,6 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
-        'id',
         'divi_poli_id',
         'num_docu',
         'nombres',
@@ -59,6 +59,20 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function getAvatarUrlAttribute()
+    {
+        return $this->avatar
+            ? Storage::disk('avatars')->url($this->avatar)
+            : null;
+    }
+
+    public function getFirmaUrlAttribute()
+    {
+        return $this->firma
+            ? Storage::disk('firmas')->url($this->firma)
+            : null;
+    }
 
     // Relación con los cargos históricos del usuario
     public function cargos()

@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\ControlAcceso\NotificationSettingsController;
 use App\Http\Controllers\ControlAcceso\RoleController;
-use App\Http\Controllers\ControlAcceso\UserControlle;
+use App\Http\Controllers\ControlAcceso\UserController;
 use App\Http\Controllers\ControlAcceso\UserSessionController;
 use Illuminate\Support\Facades\Route;
 
@@ -10,7 +10,7 @@ Route::middleware('auth:sanctum')->group(function () {
     /**
      * Usuarios
      */
-    Route::resource('/users', UserControlle::class)->except('create', 'edit');
+    Route::resource('/users', UserController::class)->except('create', 'edit');
 
     /**
      * Roles y permisosas
@@ -24,12 +24,12 @@ Route::middleware('auth:sanctum')->group(function () {
      */
     Route::get('/permisos', [RoleController::class, 'listPermisos'])->name('permisos.show');
 
-    Route::put('/user/profile-information', [UserControlle::class, 'updateUserProfile']);
+    Route::put('/user/profile-information', [UserController::class, 'updateUserProfile']);
 
-    Route::put('/user/changePassword', [UserControlle::class, 'updatePassword']);
+    Route::put('/user/changePassword', [UserController::class, 'updatePassword']);
 
     // routes/api.php
-    Route::post('/user/activar-inactivar', [UserControlle::class, 'activarInactivar']);
+    Route::post('/user/activar-inactivar', [UserController::class, 'activarInactivar']);
 
     // routes/api.php
     Route::get('/user/recent-devices', [UserSessionController::class, 'index']);
