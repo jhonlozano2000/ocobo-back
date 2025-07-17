@@ -106,7 +106,7 @@ return [
         public_path('temp_files') => storage_path('app/temp_files'),
         public_path('firmas') => storage_path('app/firmas'),
         public_path('avatars') => storage_path('app/avatars'),
-        public_path('radocados_recibidos') => storage_path('app/radicados_recibidos'),
+        public_path('radicados_recibidos') => storage_path('app/radicados_recibidos'),
     ],
 
 ];
