@@ -67,17 +67,15 @@ return [
         'avatars' => [
             'driver' => 'local',
             'root' => storage_path('app/avatars'),
-            'url' => env('APP_URL') . '/avatars',
+            'url' => env('APP_URL') . '/storage/avatars',
             'visibility' => 'public',
-            'throw' => false,
         ],
 
         'firmas' => [
             'driver' => 'local',
             'root' => storage_path('app/firmas'),
-            'url' => env('APP_URL') . '/firmas',
+            'url' => env('APP_URL') . '/storage/firmas',
             'visibility' => 'public',
-            'throw' => false,
         ],
 
         'radicados_recibidos' => [
