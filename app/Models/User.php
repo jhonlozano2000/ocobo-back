@@ -15,6 +15,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use App\Helpers\ArchivoHelper;
 
 class User extends Authenticatable
 {
@@ -62,16 +63,23 @@ class User extends Authenticatable
 
     public function getAvatarUrlAttribute()
     {
-        return $this->avatar
-            ? Storage::disk('avatars')->url($this->avatar)
-            : null;
+        return ArchivoHelper::obtenerUrl($this->avatar, 'avatars');
     }
 
     public function getFirmaUrlAttribute()
     {
-        return $this->firma
-            ? Storage::disk('firmas')->url($this->firma)
-            : null;
+        return ArchivoHelper::obtenerUrl($this->firma, 'firmas');
+    }
+
+    /**
+     * Obtiene la URL de cualquier archivo del usuario usando ArchivoHelper.
+     * @param string $campo Nombre del atributo (ej: 'avatar', 'firma')
+     * @param string $disk Nombre del disco
+     * @return string|null
+     */
+    public function getArchivoUrl(string $campo, string $disk): ?string
+    {
+        return ArchivoHelper::obtenerUrl($this->{$campo} ?? null, $disk);
     }
 
     // Relación con los cargos históricos del usuario

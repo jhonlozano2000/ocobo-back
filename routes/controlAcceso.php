@@ -36,4 +36,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/user/notification-settings', [NotificationSettingsController::class, 'show']);
     Route::put('/user/notification-settings', [NotificationSettingsController::class, 'update']);
+
+    Route::get('/user/estadisticas', [UserController::class, 'estadisticas']);
 });

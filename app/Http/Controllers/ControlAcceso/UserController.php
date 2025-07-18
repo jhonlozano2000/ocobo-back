@@ -71,7 +71,7 @@ class UserController extends Controller
 
             return response()->json([
                 'status' => true,
-                'data' => $user->load('roles')->each->append(['avatar_url', 'firma_url']),
+                'data' => $user->load('roles')->append(['avatar_url', 'firma_url']),
                 'message' => 'Usuario creado correctamente'
             ], 201);
         } catch (\Exception $e) {
@@ -95,7 +95,6 @@ class UserController extends Controller
         }
     }
 
-
     /**
      * Display the specified resource.
      */
@@ -111,7 +110,7 @@ class UserController extends Controller
 
         return response()->json([
             'status' => true,
-            'data' => $user,
+            'data' => $user->append(['avatar_url', 'firma_url']),
             'message' => 'Usuario encontrado'
         ], 200);
     }
@@ -167,7 +166,7 @@ class UserController extends Controller
 
             return response()->json([
                 'status' => true,
-                'data' => $user->load('roles')->each->append(['avatar_url', 'firma_url']),
+                'data' => $user->load('roles')->append(['avatar_url', 'firma_url']),
                 'message' => 'Usuario actualizado correctamente'
             ], 200);
         } catch (\Exception $e) {
@@ -195,7 +194,6 @@ class UserController extends Controller
      */
     public function destroy(string $id)
     {
-        return $id;
         // Encuentra el usuario por ID
         $user = User::find($id);
         if (!$user) {
@@ -225,6 +223,7 @@ class UserController extends Controller
         $totalUsers = User::count();
         $totalUsersActivos = User::where('estado', 1)->count();
         $totalUsersInactivos = User::where('estado', 0)->count();
+        $totalSesiones = DB::table('users_sessions')->count();
 
         return response()->json([
             'status' => true,
@@ -232,6 +231,7 @@ class UserController extends Controller
                 'total_users' => $totalUsers,
                 'total_users_activos' => $totalUsersActivos,
                 'total_users_inactivos' => $totalUsersInactivos,
+                'total_sesiones' => $totalSesiones,
             ]
         ], 200);
     }
@@ -251,9 +251,8 @@ class UserController extends Controller
 
         $user->update($validated);
 
-        return response()->json($user);
+        return response()->json($user->append(['avatar_url', 'firma_url']));
     }
-
 
     /**
      * Update user password.
