@@ -3,145 +3,139 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\Auth\AuthLoginRequest;
+use App\Http\Requests\Auth\AuthRegisterRequest;
 use App\Models\User;
-use \Validator;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
-    public function register(Request $request)
+    /**
+     * Registra un nuevo usuario.
+     */
+    public function register(AuthRegisterRequest $request)
     {
-        // Validación de los datos
-        $validator = \Validator::make($request->all(), [
-            'num_docu' => 'required|string|max:20|unique:users',
-            'nombres' => 'required|string|max:70',
-            'apellidos' => 'required|string|max:70',
-            'email' => 'required|string|email|max:70|unique:users',
-            'password' => 'required|string|min:6|confirmed',
-        ], [
-            'num_docu.unique' => 'El número de documento ya está en uso',
-            'num_docu.required' => 'Te hizo falta el número de documento',
-            'nombres.required' => 'Te hizo falta el nombre',
-            'apellidos.required' => 'Te hizo falta el apellido',
-            'email.required' => 'Te hizo falta el correo electrónico',
-            'email.email' => 'El correo electrónico no es válido',
-            'email.max' => 'El correo electrónico es demasiado largo',
-            'email.unique' => 'El correo electrónico ya está en uso',
-            'password.required' => 'Te hizo falta la contraseña',
-            'password.min' => 'La contraseña debe tener al menos 6 caracteres',
-            'password.confirmed' => 'La contraseña no coincide con la confirmación',
-        ]);
+        DB::beginTransaction();
 
-        // Verificar si la validación falla
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'errors' => $validator->errors(),
-            ], 400); // Devuelve un error 400 (Bad Request) con los errores
+        try {
+            $user = User::create([
+                'num_docu' => $request->num_docu,
+                'nombres' => $request->nombres,
+                'apellidos' => $request->apellidos,
+                'tel' => $request->tel,
+                'movil' => $request->movil,
+                'dir' => $request->dir,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'estado' => 1, // Usuario activo por defecto
+            ]);
+
+            // Asignar rol por defecto si se especifica
+            if ($request->has('role')) {
+                $user->assignRole($request->role);
+            }
+
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            DB::commit();
+
+            return $this->successResponse([
+                'user' => $this->formatUserData($user),
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+            ], 'Usuario registrado correctamente', 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse('Error al registrar el usuario', $e->getMessage(), 500);
         }
-
-        $user = User::create([
-            'num_docu' => $request->num_docu,
-            'nombres' => $request->nombres,
-            'apellidos' => $request->apellidos,
-            'tel' => $request->tel,
-            'movil' => $request->movil,
-            'dir' => $request->dir,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'status' => true,
-            'user' => $user,
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-        ], 201);
     }
 
-    public function login(Request $request)
+    /**
+     * Autentica un usuario y retorna token con roles y permisos.
+     */
+    public function login(AuthLoginRequest $request)
     {
-        // 1. Validamos que el request tenga email y password
-        $credentials = $request->validate([
-            'email' => 'required|string|email',
-            'password' => 'required|string',
-        ]);
+        $credentials = $request->only('email', 'password');
 
-        // 2. Intentamos autenticar al usuario con Auth::attempt()
-        // Este método automáticamente busca al usuario y compara la contraseña hasheada.
-        // Si tiene éxito, inicia la sesión y dispara el evento de Login.
         if (!Auth::attempt($credentials)) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Las credenciales proporcionadas son incorrectas.'
-            ], 401);
+            return $this->errorResponse('Las credenciales proporcionadas son incorrectas.', null, 401);
         }
 
-        // 3. Si Auth::attempt() fue exitoso, podemos obtener el usuario autenticado
         $user = Auth::user();
 
-        // 4. Verificamos si la cuenta está activa (tu lógica de seguridad)
+        // Verificar si la cuenta está activa
         if ($user->estado == 0) {
-            // Cerramos la sesión que Auth::attempt() pudo haber iniciado
-            $user->tokens()->delete(); // Invalidamos cualquier token
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Tu cuenta se encuentra desactivada.'
-            ], 401);
+            $user->tokens()->delete();
+            return $this->errorResponse('Tu cuenta se encuentra desactivada.', null, 401);
         }
 
-        // 5. Si todo está bien, creamos el token y devolvemos la respuesta
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        // Carga roles y permisos
-        $user->load('roles', 'permissions');
-
-        // Usamos el mismo formato de respuesta que ya tenías
-        return response()->json([
-            'status' => true,
-            'user' => [
-                'id' => $user->id,
-                'num_docu' => $user->num_docu,
-                'nombres' => $user->nombres,
-                'apellidos' => $user->apellidos,
-                'email' => $user->email,
-                'tel' => $user->tel,
-                'movil' => $user->movil,
-                'dir' => $user->dir,
-                'firma' => $user->firma,
-                'avatar' => $user->avatar,
-                'roles' => $user->roles->pluck('name'),
-                'permissions' => $user->getAllPermissions()->pluck('name'),
-            ],
+        return $this->successResponse([
+            'user' => $this->formatUserData($user),
             'access_token' => $token,
             'token_type' => 'Bearer',
-        ]);
+        ], 'Login exitoso');
     }
 
+    /**
+     * Cierra la sesión del usuario.
+     */
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Logged out'
-        ]);
+        return $this->successResponse(null, 'Sesión cerrada correctamente');
     }
 
+    /**
+     * Obtiene la información del usuario autenticado.
+     */
     public function getMe(Request $request)
     {
         $user = Auth::user();
 
-        $user->load('roles.permissions'); // Carga roles con permisos
+        return $this->successResponse([
+            'user' => $this->formatUserData($user)
+        ], 'Información del usuario');
+    }
 
-        $permisos = $user->getAllPermissions()->pluck('name'); // Obtiene solo los nombres de permisos
+    /**
+     * Refresca el token del usuario.
+     */
+    public function refresh(Request $request)
+    {
+        $user = $request->user();
 
-        return response()->json([
+        // Revoca el token actual
+        $user->currentAccessToken()->delete();
+
+        // Crea un nuevo token
+        $newToken = $user->createToken('auth_token')->plainTextToken;
+
+        return $this->successResponse([
+            'user' => $this->formatUserData($user),
+            'access_token' => $newToken,
+            'token_type' => 'Bearer',
+        ], 'Token refrescado correctamente');
+    }
+
+    /**
+     * Formatea los datos del usuario de manera consistente.
+     */
+    private function formatUserData(User $user): array
+    {
+        // Limpiar cache de permisos para asegurar datos actualizados
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+        // Cargar relaciones necesarias
+        $user->load(['roles.permissions', 'permissions']);
+
+        return [
             'id' => $user->id,
             'num_docu' => $user->num_docu,
             'nombres' => $user->nombres,
@@ -150,25 +144,44 @@ class AuthController extends Controller
             'tel' => $user->tel,
             'movil' => $user->movil,
             'dir' => $user->dir,
-            'email' => $user->email,
+            'estado' => $user->estado,
             'firma' => $user->firma,
             'avatar' => $user->avatar,
+            'firma_url' => $user->firma_url,
+            'avatar_url' => $user->avatar_url,
             'roles' => $user->getRoleNames(),
-            'permisos' => $permisos
-        ]);
+            'permissions' => $user->getAllPermissions()->pluck('name')->toArray(),
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at,
+        ];
     }
 
-    public function refresh(Request $request)
+    /**
+     * Respuesta exitosa estándar.
+     */
+    private function successResponse($data, $message, $code = 200)
     {
-        // Revoca el token actual
-        $request->user()->currentAccessToken()->delete();
-
-        // Crea un nuevo token
-        $newToken = $request->user()->createToken('auth_token')->plainTextToken;
-
         return response()->json([
-            'access_token' => $newToken,
-            'token_type' => 'Bearer',
-        ]);
+            'status' => true,
+            'message' => $message,
+            'data' => $data
+        ], $code);
+    }
+
+    /**
+     * Respuesta de error estándar.
+     */
+    private function errorResponse($message, $error = null, $code = 400)
+    {
+        $response = [
+            'status' => false,
+            'message' => $message,
+        ];
+
+        if ($error) {
+            $response['error'] = $error;
+        }
+
+        return response()->json($response, $code);
     }
 }
