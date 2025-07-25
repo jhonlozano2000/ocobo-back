@@ -24,11 +24,11 @@ return [
          * `Spatie\Permission\Contracts\Role` contract.
          */
 
-        //'role' => Spatie\Permission\Models\Role::class,
-        'role' => App\Models\ControlAcceso\Role::class,
+        // 'role' => App\Models\ControlAcceso\Role::class,
+        'role' => Spatie\Permission\Models\Role::class,
 
     ],
-
+    'default_guard_name' => 'web',
     'table_names' => [
 
         /*

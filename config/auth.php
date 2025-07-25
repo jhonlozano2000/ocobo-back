@@ -116,4 +116,10 @@ return [
 
     'password_timeout' => 10800,
 
+    'models' => [
+        'role' => Spatie\Permission\Models\Role::class,
+        'permission' => Spatie\Permission\Models\Permission::class,
+    ],
+    'default_guard_name' => 'web',
+
 ];

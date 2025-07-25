@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
@@ -194,25 +193,34 @@ class UserController extends Controller
      */
     public function destroy(string $id)
     {
-        // Encuentra el usuario por ID
-        $user = User::find($id);
-        if (!$user) {
+        DB::beginTransaction();
+        try {
+            // Encuentra el usuario por ID
+            $user = User::find($id);
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Usuario no encontrado'
+                ], 404);
+            }
+
+            ArchivoHelper::eliminarArchivo($user->avatar, 'avatars');
+            ArchivoHelper::eliminarArchivo($user->firma, 'firmas');
+            $user->delete();
+
+            DB::commit();
+            return response()->json([
+                'status' => true,
+                'message' => 'Usuario eliminado correctamente'
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'status' => false,
-                'message' => 'Usuario no encontrado'
-            ], 404);
+                'message' => 'Ocurrió un error al eliminar el usuario.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        ArchivoHelper::eliminarArchivo($user->avatar, 'avatars');
-        ArchivoHelper::eliminarArchivo($user->firma, 'firmas');
-
-        // Elimina el usuario
-        $user->delete();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Usuario eliminado correctamente'
-        ], 200);
     }
 
     /**
@@ -311,24 +319,34 @@ class UserController extends Controller
      */
     public function activarInactivar(Request $request)
     {
-        $user = Auth::user();
+        DB::beginTransaction();
+        try {
+            $user = Auth::user();
 
-        // 1. Validar que la contraseña proporcionada es correcta
-        if (!Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'password' => 'La contraseña proporcionada no es correcta.',
-            ]);
+            // 1. Validar que la contraseña proporcionada es correcta
+            if (!Hash::check($request->password, $user->password)) {
+                throw ValidationException::withMessages([
+                    'password' => 'La contraseña proporcionada no es correcta.',
+                ]);
+            }
+
+            // 2. Invalidar todos los tokens del usuario para cerrar todas sus sesiones
+            $user->tokens()->delete();
+
+            // 3. Cambiar el estado del usuario a 0 (Inactivo) y guardar
+            $user->estado = 0;
+            $user->save();
+
+            DB::commit();
+            // 4. Devolver una respuesta de éxito
+            return response()->json(['message' => 'Tu cuenta ha sido desactivada con éxito.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => 'Ocurrió un error al desactivar la cuenta.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        // 2. Invalidar todos los tokens del usuario para cerrar todas sus sesiones
-        $user->tokens()->delete();
-
-
-        // 3. Cambiar el estado del usuario a 0 (Inactivo) y guardar
-        $user->estado = 0;
-        $user->save();
-
-        // 4. Devolver una respuesta de éxito
-        return response()->json(['message' => 'Tu cuenta ha sido desactivada con éxito.']);
     }
 }

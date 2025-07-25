@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\ControlAcceso;
 
 use App\Http\Controllers\Controller;
-use App\Models\ControlAcceso\Role;
+use Spatie\Permission\Models\Role;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class RoleController extends Controller
 {
@@ -20,7 +21,7 @@ class RoleController extends Controller
         return response()->json([
             'status' => true,
             'data' =>  $registros,
-            'message' => 'Listado de roles y permisos'
+            'message' => 'Listado de roles'
         ], 200);
     }
 
@@ -88,12 +89,14 @@ class RoleController extends Controller
             ], 422); // Devuelve un código 422 (Unprocessable Entity) para validaciones fallidas
         }
 
+        DB::beginTransaction();
         try {
             // Crear el rol
             $role = Role::create(['name' => $request->name]);
 
             // Asignar permisos al rol
             $role->syncPermissions($request->permissions);
+            DB::commit();
 
             return response()->json([
                 'status' => true,
@@ -101,6 +104,7 @@ class RoleController extends Controller
                 'message' => 'Rol creado exitosamente.',
             ], 201);
         } catch (\Exception $e) {
+            DB::rollBack();
             // Manejo de excepciones
             return response()->json([
                 'status' => 'error',
@@ -151,17 +155,28 @@ class RoleController extends Controller
             return response()->json([
                 'status' => 'error',
                 'errors' => $validator->errors(),
-            ], 400);
+            ], 422); // Usar 422 en ambos métodos
         }
 
-        $role->update(['name' => $request->name]);
-        $role->syncPermissions($request->permissions);
+        DB::beginTransaction();
+        try {
+            $role->update(['name' => $request->name]);
+            $role->syncPermissions($request->permissions);
+            DB::commit();
 
-        return response()->json([
-            'status' => true,
-            'data' => $role->load('permissions'),
-            'message' => 'Rol actualizado exitosamente'
-        ], 200);
+            return response()->json([
+                'status' => true,
+                'data' => $role->load('permissions'),
+                'message' => 'Rol actualizado exitosamente'
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Ocurrió un error al actualizar el rol.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -176,6 +191,16 @@ class RoleController extends Controller
                 'status' => false,
                 'message' => 'Rol no encontrado'
             ], 404);
+        }
+
+        // Antes de eliminar un rol, podrías verificar si hay usuarios asignados a ese rol
+        // y prevenir la eliminación si es necesario, o advertir al usuario.
+        // Por ahora, solo eliminamos si no hay usuarios asignados.
+        if ($role->users()->count() > 0) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No se puede eliminar el rol porque hay usuarios asignados a él.'
+            ], 409); // Conflict
         }
 
         $role->delete();
