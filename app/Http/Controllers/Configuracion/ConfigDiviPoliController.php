@@ -596,7 +596,7 @@ class ConfigDiviPoliController extends Controller
             $estadisticas = [
                 'total_divisiones' => $totalDivisiones,
                 'conteo_por_tipo' => $conteoPorTipo,
-                'estructura_jerarquica' => [
+                /* 'estructura_jerarquica' => [
                     'paises_con_departamentos' => $paisesConDepartamentos,
                     'departamentos_con_municipios' => $departamentosConMunicipios,
                     'divisiones_sin_hijos' => $divisionesSinHijos
@@ -605,12 +605,121 @@ class ConfigDiviPoliController extends Controller
                     'pais_principal' => $paisPrincipal,
                     'departamentos_mas_poblados' => $departamentosMasPoblados
                 ],
-                'ultimas_actualizaciones' => $ultimasActualizaciones
+                'ultimas_actualizaciones' => $ultimasActualizaciones */
             ];
 
             return $this->successResponse($estadisticas, 'Estadísticas de divisiones políticas obtenidas exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener las estadísticas de divisiones políticas', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Obtiene un listado completo de países con sus departamentos y municipios.
+     *
+     * Este método retorna una estructura jerárquica completa de todos los países
+     * con sus departamentos y municipios anidados. Es útil para interfaces que
+     * necesitan mostrar la estructura geográfica completa del sistema.
+     *
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la estructura jerárquica completa
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Estructura jerárquica de países obtenida exitosamente",
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "codigo": "CO",
+     *       "nombre": "Colombia",
+     *       "tipo": "Pais",
+     *       "departamentos": [
+     *         {
+     *           "id": 2,
+     *           "codigo": "CUN",
+     *           "nombre": "Cundinamarca",
+     *           "tipo": "Departamento",
+     *           "municipios": [
+     *             {
+     *               "id": 3,
+     *               "codigo": "BOG",
+     *               "nombre": "Bogotá D.C.",
+     *               "tipo": "Municipio"
+     *             },
+     *             {
+     *               "id": 4,
+     *               "codigo": "SOA",
+     *               "nombre": "Soacha",
+     *               "tipo": "Municipio"
+     *             }
+     *           ]
+     *         },
+     *         {
+     *           "id": 5,
+     *           "codigo": "ANT",
+     *           "nombre": "Antioquia",
+     *           "tipo": "Departamento",
+     *           "municipios": [
+     *             {
+     *               "id": 6,
+     *               "codigo": "MED",
+     *               "nombre": "Medellín",
+     *               "tipo": "Municipio"
+     *             }
+     *           ]
+     *         }
+     *       ]
+     *     }
+     *   ]
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener la estructura jerárquica de países",
+     *   "error": "Error message"
+     * }
+     */
+    public function diviPoliCompleta()
+    {
+        try {
+            $paises = ConfigDiviPoli::where('tipo', 'Pais')
+                ->with(['children' => function ($query) {
+                    $query->where('tipo', 'Departamento')
+                        ->orderBy('nombre', 'asc')
+                        ->with(['children' => function ($subQuery) {
+                            $subQuery->where('tipo', 'Municipio')
+                                ->orderBy('nombre', 'asc');
+                        }]);
+                }])
+                ->orderBy('nombre', 'asc')
+                ->get()
+                ->map(function ($pais) {
+                    return [
+                        'id' => $pais->id,
+                        'codigo' => $pais->codigo,
+                        'nombre' => $pais->nombre,
+                        'tipo' => $pais->tipo,
+                        'departamentos' => $pais->children->map(function ($departamento) {
+                            return [
+                                'id' => $departamento->id,
+                                'codigo' => $departamento->codigo,
+                                'nombre' => $departamento->nombre,
+                                'tipo' => $departamento->tipo,
+                                'municipios' => $departamento->children->map(function ($municipio) {
+                                    return [
+                                        'id' => $municipio->id,
+                                        'codigo' => $municipio->codigo,
+                                        'nombre' => $municipio->nombre,
+                                        'tipo' => $municipio->tipo
+                                    ];
+                                })
+                            ];
+                        })
+                    ];
+                });
+
+            return $this->successResponse($paises, 'Estructura jerárquica de países obtenida exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener la estructura jerárquica de países', $e->getMessage(), 500);
         }
     }
 }

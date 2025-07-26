@@ -16,6 +16,9 @@ Route::middleware('auth:sanctum')->group(function () {
     /**
      * División política
      */
+    // Ruta para estadísticas de división política (debe ir antes del resource)
+    Route::get('/divipoli/estadisticas', [ConfigDiviPoliController::class, 'estadisticas'])->name('divipoli.estadisticas');
+
     Route::apiResource('divipoli', ConfigDiviPoliController::class)->parameters(['divipoli' => 'config_divi_poli',])->names('divipoli')->except('create', 'edit');
 
     // Rutas para listar países, departamentos y municipios
@@ -23,8 +26,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/divipoli/list/departamentos/{paisId}', [ConfigDiviPoliController::class, 'departamentos'])->name('divipoli.list.departamentos');
     Route::get('/divipoli/list/municipios/{departamentoId}', [ConfigDiviPoliController::class, 'municipios'])->name('divipoli.list.municipios');
 
-    // Ruta para estadísticas de división política
-    Route::get('/divipoli/estadisticas', [ConfigDiviPoliController::class, 'estadisticas'])->name('divipoli.estadisticas');
+    // Ruta para obtener estructura jerárquica completa
+    Route::get('/divipoli/list/divi-poli-completa', [ConfigDiviPoliController::class, 'diviPoliCompleta'])->name('divipoli.list.divi.poli.completa');
 
     /**
      * Listas
