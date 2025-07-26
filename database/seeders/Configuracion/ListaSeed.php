@@ -32,7 +32,7 @@ class ListaSeed extends Seeder
         ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Comunicaciones interna']);
         ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'PQRSF']);
 
-        $lista = ConfigLista::create(['cod' => 'TipRecep', 'nombre' => 'Tipos de Recepcion']);
+        $lista = ConfigLista::create(['cod' => 'TipRecep', 'nombre' => 'Tipos de Recepción']);
         ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Buzon de Sugerencias']);
         ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Correo Certificado']);
         ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Correo Electrónico']);
@@ -47,5 +47,21 @@ class ListaSeed extends Seeder
         ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Proceso comunicaciones enviada']);
         ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Proceso comunicaciones interna']);
         ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Proceso Expedientes']);
+
+        $lista = ConfigLista::create(['cod' => 'TipRespues', 'nombre' => 'Tipos de respuesta']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Aprobada']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Rechazado']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'En proceso']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'En espera']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'En revisión']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'En espera']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'En espera']);
+
+        $lista = ConfigLista::create(['cod' => 'TipSoli', 'nombre' => 'Tipos de solicitud']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Solicitud de información']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Solicitud de servicio']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Solicitud de trámite']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Solicitud de recurso']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Solicitud de recurso']);
     }
 }

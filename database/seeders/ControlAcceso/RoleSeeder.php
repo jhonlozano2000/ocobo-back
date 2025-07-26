@@ -47,36 +47,27 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'Config - División política -> Mostar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - División política -> Eliminar'])->syncRoles([$Rol1]);
 
+        /** Esto es para gestionar las plantilla de la comunicacion oficiales - Por ahora no se va a implementar, esto lo vamos
+         * a dejar de ultimo con el mudo de edicion de documento de forma colaborativa y en caliente
+         **/
         Permission::create(['name' => 'Config - Gestión de plantillas -> Listar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Gestión de plantillas -> Crear'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Gestión de plantillas -> Editar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Gestión de plantillas -> Mostar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Gestión de plantillas -> Eliminar'])->syncRoles([$Rol1]);
 
-        Permission::create(['name' => 'Config - Medios de recepción -> Listar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - Medios de recepción -> Crear'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - Medios de recepción -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - Medios de recepción -> Mostar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - Medios de recepción -> Eliminar'])->syncRoles([$Rol1]);
-
-        Permission::create(['name' => 'Config - Plantilla de documentos -> Listar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - Plantilla de documentos -> Crear'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - Plantilla de documentos -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - Plantilla de documentos -> Mostar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - Plantilla de documentos -> Eliminar'])->syncRoles([$Rol1]);
-
-        Permission::create(['name' => 'Config - Tipos de radicados -> Listar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - Tipos de radicados -> Crear'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - Tipos de radicados -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - Tipos de radicados -> Mostar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - Tipos de radicados -> Eliminar'])->syncRoles([$Rol1]);
-
+        /**
+         * Configuración de servidor de almacenamiento
+         */
         Permission::create(['name' => 'Config - Servidor de almacenamiento -> Listar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Servidor de almacenamiento -> Crear'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Servidor de almacenamiento -> Editar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Servidor de almacenamiento -> Mostar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Servidor de almacenamiento -> Eliminar'])->syncRoles([$Rol1]);
 
+        /**
+         * Configuración de listas
+         */
         Permission::create(['name' => 'Config - Listas -> Listar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Listas -> Crear'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Listas -> Editar'])->syncRoles([$Rol1]);
