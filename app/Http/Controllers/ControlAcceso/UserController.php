@@ -153,6 +153,11 @@ class UserController extends Controller
             // Cifrar contraseña
             $validatedData['password'] = Hash::make($validatedData['password']);
 
+            // Convertir estado a booleano si se proporciona
+            if (isset($validatedData['estado'])) {
+                $validatedData['estado'] = filter_var($validatedData['estado'], FILTER_VALIDATE_BOOLEAN);
+            }
+
             // Crear usuario
             $user = User::create($validatedData);
 
@@ -316,6 +321,11 @@ class UserController extends Controller
                 $validatedData['password'] = Hash::make($validatedData['password']);
             } else {
                 unset($validatedData['password']);
+            }
+
+            // Convertir estado a booleano si se proporciona
+            if (isset($validatedData['estado'])) {
+                $validatedData['estado'] = filter_var($validatedData['estado'], FILTER_VALIDATE_BOOLEAN);
             }
 
             // Actualizar usuario

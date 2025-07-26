@@ -86,7 +86,7 @@ class UpdateUserRequest extends FormRequest
 
             'estado' => [
                 'nullable',
-                'boolean'
+                'in:0,1,true,false'
             ],
 
             'roles' => [
@@ -155,7 +155,7 @@ class UpdateUserRequest extends FormRequest
             'password.string' => 'La contraseña debe ser una cadena de texto.',
             'password.min' => 'La contraseña debe tener al menos 6 caracteres.',
 
-            'estado.boolean' => 'El estado debe ser verdadero o falso.',
+            'estado.in' => 'El estado debe ser 0, 1, true o false.',
 
             'roles.array' => 'El campo roles debe ser un arreglo.',
             'roles.min' => 'Debe asignar al menos un rol.',
