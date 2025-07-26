@@ -23,6 +23,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/divipoli/list/departamentos/{paisId}', [ConfigDiviPoliController::class, 'departamentos'])->name('divipoli.list.departamentos');
     Route::get('/divipoli/list/municipios/{departamentoId}', [ConfigDiviPoliController::class, 'municipios'])->name('divipoli.list.municipios');
 
+    // Ruta para estadísticas de división política
+    Route::get('/divipoli/estadisticas', [ConfigDiviPoliController::class, 'estadisticas'])->name('divipoli.estadisticas');
+
     /**
      * Listas
      */
