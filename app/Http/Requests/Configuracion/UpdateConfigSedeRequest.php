@@ -29,6 +29,12 @@ class UpdateConfigSedeRequest extends FormRequest
                 'string',
                 'max:100'
             ],
+            'codigo' => [
+                'sometimes',
+                'string',
+                'max:20',
+                'unique:config_sedes,codigo,' . $this->route('sede')
+            ],
             'direccion' => [
                 'sometimes',
                 'string',
@@ -44,9 +50,22 @@ class UpdateConfigSedeRequest extends FormRequest
                 'email',
                 'max:100'
             ],
+            'ubicacion' => [
+                'nullable',
+                'string',
+                'max:255'
+            ],
+            'divi_poli_id' => [
+                'nullable',
+                'exists:config_divi_poli,id'
+            ],
             'estado' => [
                 'nullable',
                 'in:0,1,true,false'
+            ],
+            'numeracion_unificada' => [
+                'nullable',
+                'boolean'
             ]
         ];
     }
@@ -61,13 +80,20 @@ class UpdateConfigSedeRequest extends FormRequest
         return [
             'nombre.string' => 'El nombre debe ser una cadena de texto.',
             'nombre.max' => 'El nombre no puede superar los 100 caracteres.',
+            'codigo.string' => 'El código debe ser una cadena de texto.',
+            'codigo.max' => 'El código no puede superar los 20 caracteres.',
+            'codigo.unique' => 'El código de la sede ya está en uso.',
             'direccion.string' => 'La dirección debe ser una cadena de texto.',
             'direccion.max' => 'La dirección no puede superar los 255 caracteres.',
             'telefono.string' => 'El teléfono debe ser una cadena de texto.',
             'telefono.max' => 'El teléfono no puede superar los 20 caracteres.',
             'email.email' => 'El formato del email no es válido.',
             'email.max' => 'El email no puede superar los 100 caracteres.',
+            'ubicacion.string' => 'La ubicación debe ser una cadena de texto.',
+            'ubicacion.max' => 'La ubicación no puede superar los 255 caracteres.',
+            'divi_poli_id.exists' => 'El departamento/policía seleccionada no existe.',
             'estado.in' => 'El estado debe ser 0, 1, true o false.',
+            'numeracion_unificada.boolean' => 'La numeración unificada debe ser verdadero o falso.',
         ];
     }
 
@@ -80,10 +106,14 @@ class UpdateConfigSedeRequest extends FormRequest
     {
         return [
             'nombre' => 'nombre de la sede',
+            'codigo' => 'código de la sede',
             'direccion' => 'dirección',
             'telefono' => 'teléfono',
             'email' => 'email',
-            'estado' => 'estado'
+            'ubicacion' => 'ubicación',
+            'divi_poli_id' => 'departamento/policía',
+            'estado' => 'estado',
+            'numeracion_unificada' => 'numeración unificada'
         ];
     }
 }

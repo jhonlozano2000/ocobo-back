@@ -19,12 +19,13 @@ return new class extends Migration
             $table->string('telefono')->nullable();
             $table->string('email')->nullable();
             $table->string('ubicacion')->nullable();
+            $table->unsignedBigInteger('divi_poli_id')->nullable();
             $table->boolean('estado')->default(1);
 
-            $table->boolean('numeracion_unificada')->default(true)
-                ->comment('Define si la numeración de radicados es unificada o por ventanilla.');
-
             $table->timestamps();
+
+            // Foreign key constraint
+            $table->foreign('divi_poli_id')->references('id')->on('config_divi_poli')->onDelete('set null');
         });
     }
 

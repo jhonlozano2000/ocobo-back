@@ -24,8 +24,9 @@ class ConfigSedeController extends Controller
      * @param Request $request La solicitud HTTP que puede contener parámetros de filtrado
      * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de sedes
      *
-     * @queryParam search string Buscar por nombre o dirección. Example: "Principal"
+     * @queryParam search string Buscar por nombre, dirección o código. Example: "Principal"
      * @queryParam estado integer Filtrar por estado (0 inactivo, 1 activo). Example: 1
+     * @queryParam divi_poli_id integer Filtrar por división política. Example: 1
      * @queryParam per_page integer Número de elementos por página (por defecto: 15). Example: 20
      *
      * @response 200 {
@@ -54,19 +55,24 @@ class ConfigSedeController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = ConfigSede::query();
+            $query = ConfigSede::with('divisionPolitica');
 
             // Aplicar filtros si se proporcionan
             if ($request->filled('search')) {
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
                     $q->where('nombre', 'like', "%{$search}%")
-                        ->orWhere('direccion', 'like', "%{$search}%");
+                        ->orWhere('direccion', 'like', "%{$search}%")
+                        ->orWhere('codigo', 'like', "%{$search}%");
                 });
             }
 
             if ($request->filled('estado')) {
                 $query->where('estado', $request->estado);
+            }
+
+            if ($request->filled('divi_poli_id')) {
+                $query->where('divi_poli_id', $request->divi_poli_id);
             }
 
             // Ordenar por nombre
@@ -96,10 +102,14 @@ class ConfigSedeController extends Controller
      * @return \Illuminate\Http\JsonResponse Respuesta JSON con la sede creada
      *
      * @bodyParam nombre string required Nombre de la sede. Example: "Sede Principal"
+     * @bodyParam codigo string required Código único de la sede. Example: "SEDE001"
      * @bodyParam direccion string required Dirección de la sede. Example: "Calle 123 #45-67"
      * @bodyParam telefono string Teléfono de la sede. Example: "1234567"
      * @bodyParam email string Email de la sede. Example: "sede@example.com"
+     * @bodyParam ubicacion string Ubicación de la sede. Example: "Centro de la ciudad"
+     * @bodyParam divi_poli_id integer ID de la división política. Example: 1
      * @bodyParam estado boolean Estado de la sede (activo/inactivo). Example: true
+     * @bodyParam numeracion_unificada boolean Numeración unificada de radicados. Example: true
      *
      * @response 201 {
      *   "status": true,
@@ -144,7 +154,11 @@ class ConfigSedeController extends Controller
 
             DB::commit();
 
-            return $this->successResponse($sede, 'Sede creada exitosamente', 201);
+            return $this->successResponse(
+                $sede->load('divisionPolitica'),
+                'Sede creada exitosamente',
+                201
+            );
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->errorResponse('Error al crear la sede', $e->getMessage(), 500);
@@ -189,7 +203,10 @@ class ConfigSedeController extends Controller
     public function show(ConfigSede $sede)
     {
         try {
-            return $this->successResponse($sede, 'Sede encontrada exitosamente');
+            return $this->successResponse(
+                $sede->load('divisionPolitica'),
+                'Sede encontrada exitosamente'
+            );
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener la sede', $e->getMessage(), 500);
         }
@@ -206,10 +223,14 @@ class ConfigSedeController extends Controller
      * @return \Illuminate\Http\JsonResponse Respuesta JSON con la sede actualizada
      *
      * @bodyParam nombre string Nombre de la sede. Example: "Sede Principal"
+     * @bodyParam codigo string Código único de la sede. Example: "SEDE001"
      * @bodyParam direccion string Dirección de la sede. Example: "Calle 123 #45-67"
      * @bodyParam telefono string Teléfono de la sede. Example: "1234567"
      * @bodyParam email string Email de la sede. Example: "sede@example.com"
+     * @bodyParam ubicacion string Ubicación de la sede. Example: "Centro de la ciudad"
+     * @bodyParam divi_poli_id integer ID de la división política. Example: 1
      * @bodyParam estado boolean Estado de la sede (activo/inactivo). Example: true
+     * @bodyParam numeracion_unificada boolean Numeración unificada de radicados. Example: true
      *
      * @response 200 {
      *   "status": true,
@@ -254,7 +275,10 @@ class ConfigSedeController extends Controller
 
             DB::commit();
 
-            return $this->successResponse($sede, 'Sede actualizada exitosamente');
+            return $this->successResponse(
+                $sede->load('divisionPolitica'),
+                'Sede actualizada exitosamente'
+            );
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->errorResponse('Error al actualizar la sede', $e->getMessage(), 500);
