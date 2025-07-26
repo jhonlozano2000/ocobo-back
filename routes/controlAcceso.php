@@ -4,9 +4,13 @@ use App\Http\Controllers\ControlAcceso\NotificationSettingsController;
 use App\Http\Controllers\ControlAcceso\RoleController;
 use App\Http\Controllers\ControlAcceso\UserController;
 use App\Http\Controllers\ControlAcceso\UserSessionController;
+use App\Http\Controllers\ControlAcceso\UserVentanillaController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/users/estadisticas', [UserController::class, 'estadisticas']);
+
+
     /**
      * Usuarios
      */
@@ -32,10 +36,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/user/activar-inactivar', [UserController::class, 'activarInactivar']);
 
     // routes/api.php
+    /**
+     * Sesiones de usuario
+     */
     Route::get('/user/recent-devices', [UserSessionController::class, 'index']);
+    Route::get('/users/{userId}/sessions', [UserSessionController::class, 'getUserSessions']);
+    Route::delete('/user/sessions/{sessionId}', [UserSessionController::class, 'destroy']);
 
-    Route::get('/user/notification-settings', [NotificationSettingsController::class, 'show']);
-    Route::put('/user/notification-settings', [NotificationSettingsController::class, 'update']);
+    /**
+     * Configuración de notificaciones
+     */
+    Route::get('/users/notification-settings', [NotificationSettingsController::class, 'show']);
+    Route::put('/users/notification-settings', [NotificationSettingsController::class, 'update']);
+    Route::get('/users/{userId}/notification-settings', [NotificationSettingsController::class, 'getUserSettings']);
+    Route::put('/users/{userId}/notification-settings', [NotificationSettingsController::class, 'updateUserSettings']);
 
-    Route::get('/user/estadisticas', [UserController::class, 'estadisticas']);
+    /**
+     * Gestión de ventanillas por usuario
+     */
+    Route::resource('/user-ventanillas', UserVentanillaController::class)->except('create', 'edit');
 });

@@ -4,80 +4,174 @@ namespace App\Http\Controllers\ControlAcceso;
 
 use App\Helpers\ArchivoHelper;
 use App\Http\Controllers\Controller;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\User;
-use App\Http\Requests\ControlAcceso\UserRequest;
+use App\Http\Requests\ControlAcceso\StoreUserRequest;
+use App\Http\Requests\ControlAcceso\UpdateUserRequest;
+use App\Http\Requests\ControlAcceso\UpdateUserProfileRequest;
+use App\Http\Requests\ControlAcceso\UpdatePasswordRequest;
+use App\Http\Requests\ControlAcceso\ActivarInactivarRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
+    use ApiResponseTrait;
+
     /**
-     * Display a listing of the resource.
+     * Obtiene un listado de todos los usuarios del sistema.
+     *
+     * Este método retorna todos los usuarios registrados en el sistema junto con
+     * sus relaciones (cargos, roles, permisos) y URLs de archivos (avatar, firma).
+     * Es útil para interfaces de administración donde se necesita mostrar una
+     * lista completa de usuarios.
+     *
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de usuarios
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "nombres": "Juan",
+     *       "apellidos": "Pérez",
+     *       "email": "juan.perez@example.com",
+     *       "estado": 1,
+     *       "avatar_url": "http://example.com/avatars/user.jpg",
+     *       "firma_url": "http://example.com/firmas/user.jpg",
+     *       "cargos": [],
+     *       "roles": [
+     *         {
+     *           "id": 1,
+     *           "name": "Administrador"
+     *         }
+     *       ],
+     *       "permissions": []
+     *     }
+     *   ],
+     *   "message": "Listado de usuarios obtenido exitosamente"
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener el listado de usuarios",
+     *   "error": "Error message"
+     * }
      */
     public function index()
     {
-        $users = User::with(['cargos', 'roles', 'permissions'])->get()->each->append(['avatar_url', 'firma_url']);
+        try {
+            $users = User::with(['cargos', 'roles', 'permissions'])
+                ->get()
+                ->each->append(['avatar_url', 'firma_url']);
 
-        return response()->json([
-            'status' => true,
-            'data' => $users,
-            'message' => 'Listado de usuarios'
-        ], 200);
+            return $this->successResponse($users, 'Listado de usuarios obtenido exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener el listado de usuarios', $e->getMessage(), 500);
+        }
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Crea un nuevo usuario en el sistema.
+     *
+     * Este método permite crear un nuevo usuario con todos sus datos personales,
+     * archivos (avatar y firma) y asignación de roles. El proceso se ejecuta
+     * dentro de una transacción para garantizar la integridad de los datos.
+     * Si algo falla, se eliminan los archivos subidos y se revierte la transacción.
+     *
+     * @param StoreUserRequest $request La solicitud HTTP validada con los datos del usuario
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el usuario creado
+     *
+     * @bodyParam divi_poli_id integer required ID de la división política. Example: 1
+     * @bodyParam num_docu string required Número de documento único. Example: "12345678"
+     * @bodyParam nombres string required Nombres del usuario. Example: "Juan Carlos"
+     * @bodyParam apellidos string required Apellidos del usuario. Example: "Pérez García"
+     * @bodyParam tel string Teléfono fijo. Example: "1234567"
+     * @bodyParam movil string Teléfono móvil. Example: "3001234567"
+     * @bodyParam dir string Dirección. Example: "Calle 123 #45-67"
+     * @bodyParam email string required Email único. Example: "juan.perez@example.com"
+     * @bodyParam password string required Contraseña. Example: "Password123!"
+     * @bodyParam estado boolean Estado del usuario. Example: true
+     * @bodyParam roles array required Array de nombres de roles. Example: ["admin", "editor"]
+     * @bodyParam avatar file Archivo de avatar. Example: "user.jpg"
+     * @bodyParam firma file Archivo de firma. Example: "signature.jpg"
+     *
+     * @response 201 {
+     *   "status": true,
+     *   "message": "Usuario creado exitosamente",
+     *   "data": {
+     *     "id": 1,
+     *     "nombres": "Juan Carlos",
+     *     "apellidos": "Pérez García",
+     *     "email": "juan.perez@example.com",
+     *     "avatar_url": "http://example.com/avatars/user.jpg",
+     *     "firma_url": "http://example.com/firmas/signature.jpg",
+     *     "roles": [
+     *       {
+     *         "id": 1,
+     *         "name": "admin"
+     *       }
+     *     ]
+     *   }
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Datos de validación incorrectos",
+     *   "error": {
+     *     "email": ["El email ya se encuentra registrado."],
+     *     "num_docu": ["El número de documento ya se encuentra registrado."]
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al crear el usuario",
+     *   "error": "Error message"
+     * }
      */
-    public function store(UserRequest $request)
+    public function store(StoreUserRequest $request)
     {
-        // Obtiene los datos ya validados por UserRequest
         $validatedData = $request->validated();
 
         DB::beginTransaction();
 
         try {
-
-            // Subir el avatar
+            // Procesar archivos si se proporcionan
             if ($request->hasFile('avatar')) {
-                $fileAvatar = ArchivoHelper::guardarArchivo($request, 'avatar', 'avatars', null);
-                $validatedData['avatar'] = $fileAvatar;
+                $validatedData['avatar'] = ArchivoHelper::guardarArchivo($request, 'avatar', 'avatars', null);
             }
 
-            // Subir la firma
             if ($request->hasFile('firma')) {
-                $fileFirma = ArchivoHelper::guardarArchivo($request, 'firma', 'firmas', null);
-                $validatedData['firma'] = $fileFirma;
+                $validatedData['firma'] = ArchivoHelper::guardarArchivo($request, 'firma', 'firmas', null);
             }
 
-            // Ciframos la contraseña
+            // Cifrar contraseña
             $validatedData['password'] = Hash::make($validatedData['password']);
 
-            // Creamos el usuario con TODOS los datos, incluyendo las rutas de los archivos
+            // Crear usuario
             $user = User::create($validatedData);
 
-            // Asignamos roles
+            // Asignar roles
             if ($request->has('roles')) {
                 $user->syncRoles($request->roles);
             }
 
-            // Si todo va bien, confirmamos los cambios en la base de datos
             DB::commit();
 
-            return response()->json([
-                'status' => true,
-                'data' => $user->load('roles')->append(['avatar_url', 'firma_url']),
-                'message' => 'Usuario creado correctamente'
-            ], 201);
+            return $this->successResponse(
+                $user->load('roles')->append(['avatar_url', 'firma_url']),
+                'Usuario creado exitosamente',
+                201
+            );
         } catch (\Exception $e) {
-            // Si algo falla, revertimos la transacción de la BD
             DB::rollBack();
 
-            // Y eliminamos los archivos que se hayan subido, si existen
+            // Limpiar archivos subidos en caso de error
             if (isset($validatedData['avatar'])) {
                 Storage::disk('avatars')->delete($validatedData['avatar']);
             }
@@ -85,77 +179,156 @@ class UserController extends Controller
                 Storage::disk('firmas')->delete($validatedData['firma']);
             }
 
-            // Devolvemos una respuesta de error clara
-            return response()->json([
-                'status' => false,
-                'message' => 'Ocurrió un error al crear el usuario.',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse('Error al crear el usuario', $e->getMessage(), 500);
         }
     }
 
     /**
-     * Display the specified resource.
+     * Obtiene un usuario específico por su ID.
+     *
+     * Este método permite obtener la información detallada de un usuario específico,
+     * incluyendo sus URLs de archivos (avatar y firma). Es útil para mostrar
+     * los detalles de un usuario o para formularios de edición.
+     *
+     * @param string $id El ID del usuario a obtener
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el usuario
+     *
+     * @urlParam id integer required El ID del usuario. Example: 1
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Usuario encontrado exitosamente",
+     *   "data": {
+     *     "id": 1,
+     *     "nombres": "Juan Carlos",
+     *     "apellidos": "Pérez García",
+     *     "email": "juan.perez@example.com",
+     *     "avatar_url": "http://example.com/avatars/user.jpg",
+     *     "firma_url": "http://example.com/firmas/signature.jpg"
+     *   }
+     * }
+     *
+     * @response 404 {
+     *   "status": false,
+     *   "message": "Usuario no encontrado"
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener el usuario",
+     *   "error": "Error message"
+     * }
      */
     public function show(string $id)
     {
-        $user = User::find($id);
-        if (!$user) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Usuario no encontrado'
-            ], 404);
-        }
+        try {
+            $user = User::find($id);
 
-        return response()->json([
-            'status' => true,
-            'data' => $user->append(['avatar_url', 'firma_url']),
-            'message' => 'Usuario encontrado'
-        ], 200);
+            if (!$user) {
+                return $this->errorResponse('Usuario no encontrado', null, 404);
+            }
+
+            return $this->successResponse(
+                $user->append(['avatar_url', 'firma_url']),
+                'Usuario encontrado exitosamente'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener el usuario', $e->getMessage(), 500);
+        }
     }
 
     /**
-     * Update the specified resource in storage.
+     * Actualiza un usuario existente en el sistema.
+     *
+     * Este método permite modificar los datos de un usuario existente, incluyendo
+     * la actualización de archivos (avatar y firma) y roles. El proceso se ejecuta
+     * dentro de una transacción para garantizar la integridad de los datos.
+     * Los archivos antiguos se eliminan solo después de que la actualización sea exitosa.
+     *
+     * @param UpdateUserRequest $request La solicitud HTTP validada con los datos actualizados
+     * @param User $user El usuario a actualizar (inyectado por Laravel)
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el usuario actualizado
+     *
+     * @bodyParam divi_poli_id integer ID de la división política. Example: 1
+     * @bodyParam num_docu string Número de documento único. Example: "12345678"
+     * @bodyParam nombres string Nombres del usuario. Example: "Juan Carlos"
+     * @bodyParam apellidos string Apellidos del usuario. Example: "Pérez García"
+     * @bodyParam tel string Teléfono fijo. Example: "1234567"
+     * @bodyParam movil string Teléfono móvil. Example: "3001234567"
+     * @bodyParam dir string Dirección. Example: "Calle 123 #45-67"
+     * @bodyParam email string Email único. Example: "juan.perez@example.com"
+     * @bodyParam password string Nueva contraseña (opcional). Example: "NewPassword123!"
+     * @bodyParam estado boolean Estado del usuario. Example: true
+     * @bodyParam roles array Array de nombres de roles. Example: ["admin", "editor"]
+     * @bodyParam avatar file Archivo de avatar. Example: "new_user.jpg"
+     * @bodyParam firma file Archivo de firma. Example: "new_signature.jpg"
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Usuario actualizado exitosamente",
+     *   "data": {
+     *     "id": 1,
+     *     "nombres": "Juan Carlos",
+     *     "apellidos": "Pérez García",
+     *     "email": "juan.perez@example.com",
+     *     "avatar_url": "http://example.com/avatars/new_user.jpg",
+     *     "firma_url": "http://example.com/firmas/new_signature.jpg",
+     *     "roles": [
+     *       {
+     *         "id": 1,
+     *         "name": "admin"
+     *       }
+     *     ]
+     *   }
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Datos de validación incorrectos",
+     *   "error": {
+     *     "email": ["El email ya se encuentra registrado."]
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al actualizar el usuario",
+     *   "error": "Error message"
+     * }
      */
-    public function update(UserRequest $request, User $user)
+    public function update(UpdateUserRequest $request, User $user)
     {
-        // Obtiene los datos ya validados por UserRequest.
         $validatedData = $request->validated();
 
-        // Iniciamos la transacción para asegurar la integridad de los datos.
         DB::beginTransaction();
 
         try {
-            // Guardamos las rutas de los archivos antiguos para eliminarlos DESPUÉS de que todo salga bien.
+            // Guardar rutas de archivos antiguos
             $oldAvatarPath = $user->avatar;
             $oldFirmaPath = $user->firma;
 
-            // Subir el avatar
+            // Procesar archivos si se proporcionan
             $user->avatar = ArchivoHelper::guardarArchivo($request, 'avatar', 'avatars', $user->avatar);
-            // Subir la firma
             $user->firma = ArchivoHelper::guardarArchivo($request, 'firma', 'firmas', $user->firma);
 
-            // Solo actualizamos la contraseña si se proporciona una nueva.
+            // Procesar contraseña si se proporciona
             if (!empty($validatedData['password'])) {
                 $validatedData['password'] = Hash::make($validatedData['password']);
             } else {
-                // Si el campo de contraseña viene vacío, lo eliminamos para no sobreescribir la existente.
                 unset($validatedData['password']);
             }
 
-            // Actualizamos los datos del usuario en la base de datos.
+            // Actualizar usuario
             $user->update($validatedData);
 
-            // Sincronizamos los roles (elimina los viejos y añade los nuevos).
+            // Sincronizar roles
             if ($request->has('roles')) {
                 $user->syncRoles($request->roles);
             }
 
-            // Si todo va bien, confirmamos la transacción.
             DB::commit();
 
-            // --- ELIMINACIÓN DE ARCHIVOS ANTIGUOS ---
-            // Solo eliminamos los archivos viejos si la transacción fue exitosa y se subió uno nuevo.
+            // Eliminar archivos antiguos después de confirmar la transacción
             if ($request->hasFile('avatar') && $oldAvatarPath) {
                 Storage::disk('avatars')->delete($oldAvatarPath);
             }
@@ -163,16 +336,14 @@ class UserController extends Controller
                 Storage::disk('firmas')->delete($oldFirmaPath);
             }
 
-            return response()->json([
-                'status' => true,
-                'data' => $user->load('roles')->append(['avatar_url', 'firma_url']),
-                'message' => 'Usuario actualizado correctamente'
-            ], 200);
+            return $this->successResponse(
+                $user->load('roles')->append(['avatar_url', 'firma_url']),
+                'Usuario actualizado exitosamente'
+            );
         } catch (\Exception $e) {
-            // Si algo falla, revertimos la transacción de la BD.
             DB::rollBack();
 
-            // Y eliminamos los NUEVOS archivos que se hayan subido antes del error.
+            // Limpiar archivos nuevos en caso de error
             if (isset($validatedData['avatar'])) {
                 Storage::disk('avatars')->delete($validatedData['avatar']);
             }
@@ -180,173 +351,285 @@ class UserController extends Controller
                 Storage::disk('firmas')->delete($validatedData['firma']);
             }
 
-            return response()->json([
-                'status' => false,
-                'message' => 'Ocurrió un error al actualizar el usuario.',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse('Error al actualizar el usuario', $e->getMessage(), 500);
         }
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Elimina un usuario del sistema.
+     *
+     * Este método permite eliminar un usuario del sistema junto con todos sus
+     * archivos asociados (avatar y firma). El proceso se ejecuta dentro de una
+     * transacción para garantizar la integridad de los datos.
+     *
+     * @param string $id El ID del usuario a eliminar
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la eliminación
+     *
+     * @urlParam id integer required El ID del usuario a eliminar. Example: 1
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Usuario eliminado exitosamente"
+     * }
+     *
+     * @response 404 {
+     *   "status": false,
+     *   "message": "Usuario no encontrado"
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al eliminar el usuario",
+     *   "error": "Error message"
+     * }
      */
     public function destroy(string $id)
     {
         DB::beginTransaction();
+
         try {
-            // Encuentra el usuario por ID
             $user = User::find($id);
+
             if (!$user) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Usuario no encontrado'
-                ], 404);
+                return $this->errorResponse('Usuario no encontrado', null, 404);
             }
 
+            // Eliminar archivos
             ArchivoHelper::eliminarArchivo($user->avatar, 'avatars');
             ArchivoHelper::eliminarArchivo($user->firma, 'firmas');
+
+            // Eliminar usuario
             $user->delete();
 
             DB::commit();
-            return response()->json([
-                'status' => true,
-                'message' => 'Usuario eliminado correctamente'
-            ], 200);
+
+            return $this->successResponse(null, 'Usuario eliminado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'status' => false,
-                'message' => 'Ocurrió un error al eliminar el usuario.',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse('Error al eliminar el usuario', $e->getMessage(), 500);
         }
     }
 
     /**
-     * Get user statistics.
+     * Obtiene estadísticas de usuarios del sistema.
+     *
+     * Este método proporciona estadísticas generales sobre los usuarios del sistema,
+     * incluyendo el total de usuarios, usuarios activos/inactivos y sesiones.
+     * Es útil para dashboards de administración y reportes.
+     *
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las estadísticas
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Estadísticas obtenidas exitosamente",
+     *   "data": {
+     *     "total_users": 150,
+     *     "total_users_activos": 120,
+     *     "total_users_inactivos": 30,
+     *     "total_sesiones": 45
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener las estadísticas",
+     *   "error": "Error message"
+     * }
      */
     public function estadisticas()
     {
-        $totalUsers = User::count();
-        $totalUsersActivos = User::where('estado', 1)->count();
-        $totalUsersInactivos = User::where('estado', 0)->count();
-        $totalSesiones = DB::table('users_sessions')->count();
+        try {
+            $totalUsers = User::count();
+            $totalUsersActivos = User::where('estado', 1)->count();
+            $totalUsersInactivos = User::where('estado', 0)->count();
+            $totalSesiones = DB::table('users_sessions')->count();
 
-        return response()->json([
-            'status' => true,
-            'data' => [
+            $estadisticas = [
                 'total_users' => $totalUsers,
                 'total_users_activos' => $totalUsersActivos,
                 'total_users_inactivos' => $totalUsersInactivos,
                 'total_sesiones' => $totalSesiones,
-            ]
-        ], 200);
-    }
+            ];
 
-    /**
-     * Update user profile information.
-     * @param Request $request
-     */
-    public function updateUserProfile(Request $request)
-    {
-        $user = Auth::user();
-
-        $validated = $request->validate([
-            'nombres' => 'required|string|max:70',
-            'apellidos' => 'required|string|max:70',
-        ]);
-
-        $user->update($validated);
-
-        return response()->json($user->append(['avatar_url', 'firma_url']));
-    }
-
-    /**
-     * Update user password.
-     * @param Request $request
-     */
-    public function updatePassword(Request $request)
-    {
-        $user = Auth::user();
-
-        // 1. Validar que la contraseña actual es correcta
-        if (!Hash::check($request->current_password, $user->password)) {
-            throw ValidationException::withMessages([
-                'current_password' => 'La contraseña actual que ingresaste no es correcta.',
-            ]);
+            return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
         }
-
-        // 2. Definir las reglas de validación
-        $rules = [
-            'current_password' => 'required',
-            'password' => [
-                'required',
-                'confirmed',
-                Password::min(8)
-                    ->mixedCase()
-                    ->numbers()
-                    ->symbols()
-            ],
-        ];
-
-        // 3. Definir los mensajes personalizados en español para cada regla
-        $messages = [
-            'current_password.required' => 'Debes ingresar tu contraseña actual.',
-            'password.required'         => 'Debes ingresar una nueva contraseña.',
-            'password.confirmed'        => 'La confirmación de la nueva contraseña no coincide.',
-            'password.min'              => 'La nueva contraseña debe tener al menos :min caracteres.',
-            'password.mixedCase'        => 'La nueva contraseña debe contener al menos una letra mayúscula y una minúscula.',
-            'password.numbers'          => 'La nueva contraseña debe contener al menos un número.',
-            'password.symbols'          => 'La nueva contraseña debe contener al menos un símbolo.',
-        ];
-
-        // 4. Ejecutar la validación con las reglas y los mensajes
-        $request->validate($rules, $messages);
-
-        // 5. Actualizar la contraseña
-        $user->forceFill([
-            'password' => Hash::make($request->password),
-        ])->save();
-
-        // 6. Devolver una respuesta de éxito
-        return response()->json(['message' => 'Contraseña actualizada con éxito.']);
     }
 
     /**
-     * Activar o inactivar el usuario.
-     * @param Request $request
+     * Actualiza la información del perfil del usuario autenticado.
+     *
+     * Este método permite al usuario autenticado actualizar su información
+     * personal básica (nombres y apellidos). Es útil para que los usuarios
+     * puedan mantener sus datos actualizados.
+     *
+     * @param UpdateUserProfileRequest $request La solicitud HTTP validada
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el usuario actualizado
+     *
+     * @bodyParam nombres string required Nombres del usuario. Example: "Juan Carlos"
+     * @bodyParam apellidos string required Apellidos del usuario. Example: "Pérez García"
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Perfil actualizado exitosamente",
+     *   "data": {
+     *     "id": 1,
+     *     "nombres": "Juan Carlos",
+     *     "apellidos": "Pérez García",
+     *     "avatar_url": "http://example.com/avatars/user.jpg",
+     *     "firma_url": "http://example.com/firmas/signature.jpg"
+     *   }
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Datos de validación incorrectos",
+     *   "error": {
+     *     "nombres": ["Los nombres son obligatorios."]
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al actualizar el perfil",
+     *   "error": "Error message"
+     * }
      */
-    public function activarInactivar(Request $request)
+    public function updateUserProfile(UpdateUserProfileRequest $request)
     {
-        DB::beginTransaction();
+        try {
+            $user = Auth::user();
+            $user->update($request->validated());
+
+            return $this->successResponse(
+                $user->append(['avatar_url', 'firma_url']),
+                'Perfil actualizado exitosamente'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al actualizar el perfil', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Actualiza la contraseña del usuario autenticado.
+     *
+     * Este método permite al usuario autenticado cambiar su contraseña.
+     * Requiere la contraseña actual para verificar la identidad del usuario
+     * y valida que la nueva contraseña cumpla con los requisitos de seguridad.
+     *
+     * @param UpdatePasswordRequest $request La solicitud HTTP validada
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando el cambio
+     *
+     * @bodyParam current_password string required Contraseña actual. Example: "OldPassword123!"
+     * @bodyParam password string required Nueva contraseña. Example: "NewPassword123!"
+     * @bodyParam password_confirmation string required Confirmación de nueva contraseña. Example: "NewPassword123!"
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Contraseña actualizada exitosamente"
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Datos de validación incorrectos",
+     *   "error": {
+     *     "current_password": ["La contraseña actual que ingresaste no es correcta."],
+     *     "password": ["La nueva contraseña debe contener al menos un símbolo."]
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al actualizar la contraseña",
+     *   "error": "Error message"
+     * }
+     */
+    public function updatePassword(UpdatePasswordRequest $request)
+    {
         try {
             $user = Auth::user();
 
-            // 1. Validar que la contraseña proporcionada es correcta
-            if (!Hash::check($request->password, $user->password)) {
+            // Verificar contraseña actual
+            if (!Hash::check($request->validated('current_password'), $user->password)) {
+                throw ValidationException::withMessages([
+                    'current_password' => 'La contraseña actual que ingresaste no es correcta.',
+                ]);
+            }
+
+            // Actualizar contraseña
+            $user->forceFill([
+                'password' => Hash::make($request->validated('password')),
+            ])->save();
+
+            return $this->successResponse(null, 'Contraseña actualizada exitosamente');
+        } catch (ValidationException $e) {
+            return $this->errorResponse('Datos de validación incorrectos', $e->errors(), 422);
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al actualizar la contraseña', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Desactiva la cuenta del usuario autenticado.
+     *
+     * Este método permite al usuario autenticado desactivar su cuenta.
+     * Requiere la contraseña para confirmar la acción y elimina todos
+     * los tokens de sesión activos del usuario.
+     *
+     * @param ActivarInactivarRequest $request La solicitud HTTP validada
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la desactivación
+     *
+     * @bodyParam password string required Contraseña para confirmar la acción. Example: "MyPassword123!"
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Cuenta desactivada exitosamente"
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Datos de validación incorrectos",
+     *   "error": {
+     *     "password": ["La contraseña proporcionada no es correcta."]
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al desactivar la cuenta",
+     *   "error": "Error message"
+     * }
+     */
+    public function activarInactivar(ActivarInactivarRequest $request)
+    {
+        DB::beginTransaction();
+
+        try {
+            $user = Auth::user();
+
+            // Verificar contraseña
+            if (!Hash::check($request->validated('password'), $user->password)) {
                 throw ValidationException::withMessages([
                     'password' => 'La contraseña proporcionada no es correcta.',
                 ]);
             }
 
-            // 2. Invalidar todos los tokens del usuario para cerrar todas sus sesiones
+            // Eliminar tokens de sesión
             $user->tokens()->delete();
 
-            // 3. Cambiar el estado del usuario a 0 (Inactivo) y guardar
+            // Desactivar cuenta
             $user->estado = 0;
             $user->save();
 
             DB::commit();
-            // 4. Devolver una respuesta de éxito
-            return response()->json(['message' => 'Tu cuenta ha sido desactivada con éxito.']);
+
+            return $this->successResponse(null, 'Cuenta desactivada exitosamente');
+        } catch (ValidationException $e) {
+            return $this->errorResponse('Datos de validación incorrectos', $e->errors(), 422);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'status' => false,
-                'message' => 'Ocurrió un error al desactivar la cuenta.',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->errorResponse('Error al desactivar la cuenta', $e->getMessage(), 500);
         }
     }
 }
