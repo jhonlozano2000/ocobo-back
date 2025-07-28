@@ -25,9 +25,9 @@ class UpdateConfigVariasRequest extends FormRequest
     {
         return [
             'valor' => [
-                'required',
+                'nullable',
                 'string',
-                'max:255'
+                'max:500'
             ],
             'descripcion' => [
                 'nullable',
@@ -47,6 +47,45 @@ class UpdateConfigVariasRequest extends FormRequest
     }
 
     /**
+     * Configure the validator instance.
+     *
+     * @param  \Illuminate\Validation\Validator  $validator
+     * @return void
+     */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            // Validar archivos si existen
+            $archivos = $this->allFiles();
+            foreach ($archivos as $campo => $archivo) {
+                if (!$archivo->isValid()) {
+                    $validator->errors()->add($campo, 'El archivo no es válido.');
+                    continue;
+                }
+
+                // Validar que sea una imagen
+                if (!$archivo->getMimeType() || !str_starts_with($archivo->getMimeType(), 'image/')) {
+                    $validator->errors()->add($campo, 'El archivo debe ser una imagen válida.');
+                    continue;
+                }
+
+                // Validar tipos permitidos
+                $tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+                if (!in_array($archivo->getMimeType(), $tiposPermitidos)) {
+                    $validator->errors()->add($campo, 'El archivo debe ser de tipo: jpg, jpeg, png, gif.');
+                    continue;
+                }
+
+                // Validar tamaño (2MB)
+                if ($archivo->getSize() > 2 * 1024 * 1024) {
+                    $validator->errors()->add($campo, 'El archivo no puede ser mayor a 2MB.');
+                    continue;
+                }
+            }
+        });
+    }
+
+    /**
      * Get custom messages for validator errors.
      *
      * @return array
@@ -54,9 +93,8 @@ class UpdateConfigVariasRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'valor.required' => 'El valor es obligatorio.',
             'valor.string' => 'El valor debe ser una cadena de texto.',
-            'valor.max' => 'El valor no puede superar los 255 caracteres.',
+            'valor.max' => 'El valor no puede superar los 500 caracteres.',
             'descripcion.string' => 'La descripción debe ser una cadena de texto.',
             'descripcion.max' => 'La descripción no puede superar los 500 caracteres.',
             'tipo.string' => 'El tipo debe ser una cadena de texto.',

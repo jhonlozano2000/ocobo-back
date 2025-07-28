@@ -16,7 +16,7 @@ class SedesSeeder extends Seeder
     {
 
         $faker = Faker::create();
-        for ($i = 0; $i < 30; $i++) {
+        for ($i = 0; $i < 1; $i++) {
             DB::table('config_sedes')->insert([
                 'nombre' =>  $faker->name,
                 'codigo' =>  $faker->unique()->word,

@@ -86,6 +86,14 @@ return [
             'throw' => false,
         ],
 
+        'otros_archivos' => [
+            'driver' => 'local',
+            'root' => storage_path('app/otros_archivos'),
+            'url' => env('APP_URL') . '/otros_archivos',
+            'visibility' => 'public',
+            'throw' => false,
+        ],
+
     ],
 
     /*
@@ -105,6 +113,7 @@ return [
         public_path('firmas') => storage_path('app/firmas'),
         public_path('avatars') => storage_path('app/avatars'),
         public_path('radicados_recibidos') => storage_path('app/radicados_recibidos'),
+        public_path('otros_archivos') => storage_path('app/otros_archivos'),
     ],
 
 ];

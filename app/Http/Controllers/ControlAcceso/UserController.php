@@ -15,7 +15,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -227,8 +226,6 @@ class UserController extends Controller
      */
     public function show(string $id)
     {
-        Log::info('Método show ejecutado con ID:', ['id' => $id]);
-
         try {
             $user = User::find($id);
 
@@ -451,8 +448,6 @@ class UserController extends Controller
      */
     public function estadisticas()
     {
-        \Log::info('Método estadisticas ejecutado');
-
         try {
             $totalUsers = User::count();
             $totalUsersActivos = User::where('estado', 1)->count();
@@ -466,11 +461,8 @@ class UserController extends Controller
                 'total_sesiones' => $totalSesiones,
             ];
 
-            \Log::info('Estadísticas calculadas:', $estadisticas);
-
             return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');
         } catch (\Exception $e) {
-            \Log::error('Error en estadisticas:', ['error' => $e->getMessage()]);
             return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
         }
     }

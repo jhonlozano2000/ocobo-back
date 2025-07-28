@@ -46,14 +46,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('config-varias', [ConfigVariasController::class, 'index'])->name('config.varias.list');
     Route::put('config-varias/{clave}', [ConfigVariasController::class, 'update'])->name('config.varias.update');
 
-    // Rutas para numeración unificada
-    Route::get('config-varias/numeracion-unificada', [ConfigVariasController::class, 'getNumeracionUnificada'])->name('config.varias.numeracion.unificada.get');
-    Route::put('config-varias/numeracion-unificada', [ConfigVariasController::class, 'updateNumeracionUnificada'])->name('config.varias.numeracion.unificada.update');
-
-    // Rutas para multi_sede
-    Route::get('config-varias/multi-sede', [ConfigVariasController::class, 'getMultiSede'])->name('config.varias.multi.sede.get');
-    Route::put('config-varias/multi-sede', [ConfigVariasController::class, 'updateMultiSede'])->name('config.varias.multi.sede.update');
-
     Route::get('config-num-radicado', [ConfigNumRadicadoController::class, 'getConfiguracion'])->name('config.num.radicado.getConfiguracion');
     Route::put('config-num-radicado', [ConfigNumRadicadoController::class, 'updateConfiguracion'])->name('config.num.radicado.updateConfiguracion');
 

@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
-use App\Http\Requests\Configuracion\StoreConfigVariasRequest;
 use App\Http\Requests\Configuracion\UpdateConfigVariasRequest;
 use App\Models\Configuracion\ConfigVarias;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ConfigVariasController extends Controller
 {
@@ -92,125 +92,11 @@ class ConfigVariasController extends Controller
     }
 
     /**
-     * Crea una nueva configuración en el sistema.
-     *
-     * Este método permite crear una nueva configuración con validación
-     * de datos y conversión automática del campo estado.
-     *
-     * @param StoreConfigVariasRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la configuración creada
-     *
-     * @bodyParam clave string required Clave única de la configuración. Example: "app_name"
-     * @bodyParam valor string required Valor de la configuración. Example: "Sistema de Gestión"
-     * @bodyParam descripcion string Descripción de la configuración. Example: "Nombre de la aplicación"
-     * @bodyParam tipo string Tipo de configuración. Example: "sistema"
-     * @bodyParam estado boolean Estado de la configuración (activo/inactivo). Example: true
-     *
-     * @response 201 {
-     *   "status": true,
-     *   "message": "Configuración creada exitosamente",
-     *   "data": {
-     *     "id": 1,
-     *     "clave": "app_name",
-     *     "valor": "Sistema de Gestión",
-     *     "descripcion": "Nombre de la aplicación",
-     *     "tipo": "sistema",
-     *     "estado": 1
-     *   }
-     * }
-     *
-     * @response 422 {
-     *   "status": false,
-     *   "message": "Datos de validación incorrectos",
-     *   "error": {
-     *     "clave": ["La clave ya está en uso, por favor elija otra."]
-     *   }
-     * }
-     *
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al crear la configuración",
-     *   "error": "Error message"
-     * }
-     */
-    public function store(StoreConfigVariasRequest $request)
-    {
-        try {
-            DB::beginTransaction();
-
-            $validatedData = $request->validated();
-
-            // Convertir estado a booleano si se proporciona
-            if (isset($validatedData['estado'])) {
-                $validatedData['estado'] = filter_var($validatedData['estado'], FILTER_VALIDATE_BOOLEAN);
-            }
-
-            $config = ConfigVarias::create($validatedData);
-
-            DB::commit();
-
-            return $this->successResponse($config, 'Configuración creada exitosamente', 201);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return $this->errorResponse('Error al crear la configuración', $e->getMessage(), 500);
-        }
-    }
-
-    /**
-     * Obtiene una configuración específica por su clave.
-     *
-     * Este método permite obtener los detalles de una configuración específica
-     * usando su clave como identificador.
-     *
-     * @param string $clave La clave de la configuración
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la configuración
-     *
-     * @urlParam clave string required La clave de la configuración. Example: "app_name"
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Configuración encontrada exitosamente",
-     *   "data": {
-     *     "id": 1,
-     *     "clave": "app_name",
-     *     "valor": "Sistema de Gestión",
-     *     "descripcion": "Nombre de la aplicación",
-     *     "tipo": "sistema",
-     *     "estado": 1
-     *   }
-     * }
-     *
-     * @response 404 {
-     *   "status": false,
-     *   "message": "Configuración no encontrada"
-     * }
-     *
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al obtener la configuración",
-     *   "error": "Error message"
-     * }
-     */
-    public function show(string $clave)
-    {
-        try {
-            $config = ConfigVarias::where('clave', $clave)->first();
-
-            if (!$config) {
-                return $this->errorResponse('Configuración no encontrada', null, 404);
-            }
-
-            return $this->successResponse($config, 'Configuración encontrada exitosamente');
-        } catch (\Exception $e) {
-            return $this->errorResponse('Error al obtener la configuración', $e->getMessage(), 500);
-        }
-    }
-
-    /**
      * Actualiza una configuración existente en el sistema.
      *
      * Este método permite modificar el valor de una configuración existente
-     * usando su clave como identificador.
+     * usando su clave como identificador. También maneja la subida de archivos
+     * para configuraciones específicas como el logo de la empresa.
      *
      * @param UpdateConfigVariasRequest $request La solicitud HTTP validada
      * @param string $clave La clave de la configuración a actualizar
@@ -220,6 +106,7 @@ class ConfigVariasController extends Controller
      * @bodyParam descripcion string Descripción de la configuración. Example: "Nombre actualizado de la aplicación"
      * @bodyParam tipo string Tipo de configuración. Example: "sistema"
      * @bodyParam estado boolean Estado de la configuración (activo/inactivo). Example: true
+     * @bodyParam archivo file Archivo a subir (para configuraciones como logo_empresa). Example: "logo.jpg"
      *
      * @response 200 {
      *   "status": true,
@@ -241,8 +128,8 @@ class ConfigVariasController extends Controller
      *
      * @response 422 {
      *   "status": false,
-     *   "message": "Datos de validación incorrectos",
-     *   "error": {
+     *   "message": "Error de validación",
+     *   "errors": {
      *     "valor": ["El valor es obligatorio."]
      *   }
      * }
@@ -271,6 +158,44 @@ class ConfigVariasController extends Controller
                 $validatedData['estado'] = filter_var($validatedData['estado'], FILTER_VALIDATE_BOOLEAN);
             }
 
+            // Debug: Log de información
+            Log::info('ConfigVariasController update', [
+                'clave' => $clave,
+                'hasFile' => $request->hasFile('archivo'),
+                'validatedData' => $validatedData,
+                'allData' => $request->all()
+            ]);
+
+            // Manejar subida de archivos para configuraciones específicas
+            if ($clave === 'logo_empresa') {
+                // Buscar cualquier archivo en la request
+                $archivos = $request->allFiles();
+                Log::info('Archivos encontrados', ['archivos' => array_keys($archivos)]);
+
+                if (!empty($archivos)) {
+                    // Tomar el primer archivo encontrado
+                    $campoArchivo = array_keys($archivos)[0];
+                    Log::info('Procesando archivo de logo', ['campo' => $campoArchivo]);
+
+                    $nuevoLogo = ConfigVarias::guardarLogoEmpresa($request, $campoArchivo);
+                    if ($nuevoLogo) {
+                        $validatedData['valor'] = $nuevoLogo;
+                        Log::info('Logo guardado', [
+                            'nuevoLogo' => $nuevoLogo,
+                            'longitud' => strlen($nuevoLogo)
+                        ]);
+                    }
+                } elseif (!isset($validatedData['valor']) || empty($validatedData['valor'])) {
+                    // Si no hay archivo y no hay valor, retornar error
+                    Log::error('Error: No hay archivo ni valor');
+                    return $this->errorResponse('Error de validación', ['valor' => ['El valor es obligatorio cuando no se proporciona un archivo.']], 422);
+                }
+            } elseif (!isset($validatedData['valor']) || empty($validatedData['valor'])) {
+                // Para otras configuraciones, validar que se proporcione un valor
+                Log::error('Error: No hay valor para configuración');
+                return $this->errorResponse('Error de validación', ['valor' => ['El valor es obligatorio.']], 422);
+            }
+
             $config->update($validatedData);
 
             DB::commit();
@@ -279,248 +204,6 @@ class ConfigVariasController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->errorResponse('Error al actualizar la configuración', $e->getMessage(), 500);
-        }
-    }
-
-    /**
-     * Elimina una configuración del sistema.
-     *
-     * Este método permite eliminar una configuración específica del sistema
-     * usando su clave como identificador.
-     *
-     * @param string $clave La clave de la configuración a eliminar
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la eliminación
-     *
-     * @urlParam clave string required La clave de la configuración a eliminar. Example: "app_name"
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Configuración eliminada exitosamente"
-     * }
-     *
-     * @response 404 {
-     *   "status": false,
-     *   "message": "Configuración no encontrada"
-     * }
-     *
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al eliminar la configuración",
-     *   "error": "Error message"
-     * }
-     */
-    public function destroy(string $clave)
-    {
-        try {
-            DB::beginTransaction();
-
-            $config = ConfigVarias::where('clave', $clave)->first();
-
-            if (!$config) {
-                return $this->errorResponse('Configuración no encontrada', null, 404);
-            }
-
-            $config->delete();
-
-            DB::commit();
-
-            return $this->successResponse(null, 'Configuración eliminada exitosamente');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return $this->errorResponse('Error al eliminar la configuración', $e->getMessage(), 500);
-        }
-    }
-
-    /**
-     * Obtiene el valor de numeración unificada.
-     *
-     * Este método permite obtener el valor actual de la configuración
-     * de numeración unificada de radicados.
-     *
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el valor de numeración unificada
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Valor de numeración unificada obtenido exitosamente",
-     *   "data": {
-     *     "numeracion_unificada": true
-     *   }
-     * }
-     *
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al obtener el valor de numeración unificada",
-     *   "error": "Error message"
-     * }
-     */
-    public function getNumeracionUnificada()
-    {
-        try {
-            $valor = ConfigVarias::getNumeracionUnificada();
-
-            return $this->successResponse(
-                ['numeracion_unificada' => $valor],
-                'Valor de numeración unificada obtenido exitosamente'
-            );
-        } catch (\Exception $e) {
-            return $this->errorResponse('Error al obtener el valor de numeración unificada', $e->getMessage(), 500);
-        }
-    }
-
-    /**
-     * Actualiza el valor de numeración unificada.
-     *
-     * Este método permite modificar el valor de la configuración
-     * de numeración unificada de radicados.
-     *
-     * @param Request $request La solicitud HTTP con el nuevo valor
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la actualización
-     *
-     * @bodyParam numeracion_unificada boolean required Nuevo valor de numeración unificada. Example: true
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Numeración unificada actualizada exitosamente",
-     *   "data": {
-     *     "numeracion_unificada": true
-     *   }
-     * }
-     *
-     * @response 422 {
-     *   "status": false,
-     *   "message": "Datos de validación incorrectos",
-     *   "error": {
-     *     "numeracion_unificada": ["El valor de numeración unificada es obligatorio."]
-     *   }
-     * }
-     *
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al actualizar la numeración unificada",
-     *   "error": "Error message"
-     * }
-     */
-    public function updateNumeracionUnificada(Request $request)
-    {
-        try {
-            $request->validate([
-                'numeracion_unificada' => 'required|boolean'
-            ], [
-                'numeracion_unificada.required' => 'El valor de numeración unificada es obligatorio.',
-                'numeracion_unificada.boolean' => 'El valor de numeración unificada debe ser verdadero o falso.'
-            ]);
-
-            DB::beginTransaction();
-
-            $valor = $request->boolean('numeracion_unificada');
-            ConfigVarias::setNumeracionUnificada($valor);
-
-            DB::commit();
-
-            return $this->successResponse(
-                ['numeracion_unificada' => $valor],
-                'Numeración unificada actualizada exitosamente'
-            );
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return $this->errorResponse('Error al actualizar la numeración unificada', $e->getMessage(), 500);
-        }
-    }
-
-    /**
-     * Obtiene el valor de multi_sede.
-     *
-     * Este método permite obtener el valor actual de la configuración
-     * de múltiples sedes.
-     *
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el valor de multi_sede
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Valor de multi_sede obtenido exitosamente",
-     *   "data": {
-     *     "multi_sede": 0
-     *   }
-     * }
-     *
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al obtener el valor de multi_sede",
-     *   "error": "Error message"
-     * }
-     */
-    public function getMultiSede()
-    {
-        try {
-            $valor = ConfigVarias::getMultiSede();
-
-            return $this->successResponse(
-                ['multi_sede' => $valor],
-                'Valor de multi_sede obtenido exitosamente'
-            );
-        } catch (\Exception $e) {
-            return $this->errorResponse('Error al obtener el valor de multi_sede', $e->getMessage(), 500);
-        }
-    }
-
-    /**
-     * Actualiza el valor de multi_sede.
-     *
-     * Este método permite modificar el valor de la configuración
-     * de múltiples sedes.
-     *
-     * @param Request $request La solicitud HTTP con el nuevo valor
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la actualización
-     *
-     * @bodyParam multi_sede integer required Nuevo valor de multi_sede (0: deshabilitado, 1: habilitado). Example: 1
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Multi_sede actualizado exitosamente",
-     *   "data": {
-     *     "multi_sede": 1
-     *   }
-     * }
-     *
-     * @response 422 {
-     *   "status": false,
-     *   "message": "Datos de validación incorrectos",
-     *   "error": {
-     *     "multi_sede": ["El valor de multi_sede es obligatorio."]
-     *   }
-     * }
-     *
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al actualizar multi_sede",
-     *   "error": "Error message"
-     * }
-     */
-    public function updateMultiSede(Request $request)
-    {
-        try {
-            $request->validate([
-                'multi_sede' => 'required|integer|in:0,1'
-            ], [
-                'multi_sede.required' => 'El valor de multi_sede es obligatorio.',
-                'multi_sede.integer' => 'El valor de multi_sede debe ser un número entero.',
-                'multi_sede.in' => 'El valor de multi_sede debe ser 0 (deshabilitado) o 1 (habilitado).'
-            ]);
-
-            DB::beginTransaction();
-
-            $valor = (int)$request->input('multi_sede');
-            ConfigVarias::setMultiSede($valor);
-
-            DB::commit();
-
-            return $this->successResponse(
-                ['multi_sede' => $valor],
-                'Multi_sede actualizado exitosamente'
-            );
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return $this->errorResponse('Error al actualizar multi_sede', $e->getMessage(), 500);
         }
     }
 }
