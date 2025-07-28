@@ -11,14 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('user_ventanillas', function (Blueprint $table) {
+        Schema::create('users_ventanillas', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('ventanilla_id');
+            $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users');
             $table->foreign('ventanilla_id')->references('id')->on('config_ventanillas');
-            $table->timestamps();
         });
     }
 
@@ -27,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('user_ventanillas');
+        Schema::dropIfExists('users_ventanillas');
     }
 };

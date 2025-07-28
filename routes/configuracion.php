@@ -7,6 +7,7 @@ use App\Http\Controllers\Configuracion\ConfigNumRadicadoController;
 use App\Http\Controllers\Configuracion\ConfigSedeController;
 use App\Http\Controllers\Configuracion\ConfigServerArchivoController;
 use App\Http\Controllers\Configuracion\ConfigVariasController;
+use App\Http\Controllers\Configuracion\ConfigVentanillasController;
 use App\Http\Controllers\VentanillaUnica\PermisosVentanillaUnicaController;
 use App\Http\Controllers\VentanillaUnica\VentanillaUnicaController;
 use Illuminate\Support\Facades\Route;
@@ -56,6 +57,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('sedes', ConfigSedeController::class)->except('create', 'edit');
     //Route::apiResource('ventanillas', ConfigVentanillasController::class)->except('create', 'edit');;
     Route::get('sedes-estadisticas', [ConfigSedeController::class, 'estadisticas'])->name('deses.estadisticas');
+
+    /**
+     * Ventanillas de Configuración
+     */
+    Route::get('/config-ventanillas/estadisticas', [ConfigVentanillasController::class, 'estadisticas']);
+    Route::apiResource('config-ventanillas', ConfigVentanillasController::class)->except('create', 'edit');
 
     // Rutas para Ventanillas dentro de una Sede
     Route::apiResource('sedes.ventanillas', VentanillaUnicaController::class)

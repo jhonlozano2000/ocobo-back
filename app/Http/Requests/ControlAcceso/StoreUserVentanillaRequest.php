@@ -50,7 +50,7 @@ class StoreUserVentanillaRequest extends FormRequest
             'user_id.exists' => 'El usuario seleccionado no existe en el sistema.',
             'ventanilla_id.required' => 'La ventanilla es obligatoria.',
             'ventanilla_id.integer' => 'El ID de la ventanilla debe ser un número entero.',
-            'ventanilla_id.exists' => 'La ventanilla seleccionada no existe en el sistema.',
+            'ventanilla_id.exists' => 'La ventanilla seleccionada no existe en el sistema.'
         ];
     }
 

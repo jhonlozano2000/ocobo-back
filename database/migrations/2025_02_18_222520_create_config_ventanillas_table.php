@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('sede_id');
             $table->string('nombre', 100);
+            $table->string('codigo', 20)->unique();
             $table->text('descripcion')->nullable();
             $table->boolean('estado')->default(true);
 

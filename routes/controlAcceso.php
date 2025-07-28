@@ -54,7 +54,8 @@ Route::middleware('auth:sanctum')->group(function () {
     /**
      * Gestión de ventanillas por usuario
      */
-    Route::resource('/user-ventanillas', UserVentanillaController::class)->except('create', 'edit');
+    Route::get('/users-ventanillas/estadisticas', [UserVentanillaController::class, 'estadisticas']);
+    Route::resource('/users-ventanillas', UserVentanillaController::class)->except('create', 'edit');
 
     /**
      * Gestión de relaciones usuario-sede

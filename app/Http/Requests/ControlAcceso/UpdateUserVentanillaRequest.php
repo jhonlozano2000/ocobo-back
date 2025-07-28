@@ -48,7 +48,7 @@ class UpdateUserVentanillaRequest extends FormRequest
             'user_id.integer' => 'El ID del usuario debe ser un número entero.',
             'user_id.exists' => 'El usuario seleccionado no existe en el sistema.',
             'ventanilla_id.integer' => 'El ID de la ventanilla debe ser un número entero.',
-            'ventanilla_id.exists' => 'La ventanilla seleccionada no existe en el sistema.',
+            'ventanilla_id.exists' => 'La ventanilla seleccionada no existe en el sistema.'
         ];
     }
 

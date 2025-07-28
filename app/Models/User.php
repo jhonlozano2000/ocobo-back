@@ -124,7 +124,7 @@ class User extends Authenticatable
 
     public function ventanillas()
     {
-        return $this->belongsToMany(configVentanilla::class, 'user_ventanillas');
+        return $this->belongsToMany(configVentanilla::class, 'users_ventanillas');
     }
 
     public function ventanillasPermitidas()

@@ -16,7 +16,7 @@ class UserVentanilla extends Model
      *
      * @var string
      */
-    protected $table = 'user_ventanillas';
+    protected $table = 'users_ventanillas';
 
     /**
      * The attributes that are mass assignable.

@@ -40,7 +40,7 @@ class UpdateConfigVentanillaRequest extends FormRequest
                 'max:255'
             ],
             'codigo' => [
-                'sometimes',
+                'nullable',
                 'string',
                 'max:20'
             ],

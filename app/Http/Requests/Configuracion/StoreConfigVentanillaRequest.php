@@ -40,7 +40,7 @@ class StoreConfigVentanillaRequest extends FormRequest
                 'max:255'
             ],
             'codigo' => [
-                'required',
+                'nullable',
                 'string',
                 'max:20',
                 'unique:config_ventanillas,codigo'
@@ -68,7 +68,6 @@ class StoreConfigVentanillaRequest extends FormRequest
             'nombre.max' => 'El nombre no puede superar los 100 caracteres.',
             'descripcion.string' => 'La descripción debe ser una cadena de texto.',
             'descripcion.max' => 'La descripción no puede superar los 255 caracteres.',
-            'codigo.required' => 'El código es obligatorio.',
             'codigo.string' => 'El código debe ser una cadena de texto.',
             'codigo.max' => 'El código no puede superar los 20 caracteres.',
             'codigo.unique' => 'El código ya está en uso, por favor elija otro.',

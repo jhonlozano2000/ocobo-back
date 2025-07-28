@@ -9,7 +9,7 @@ class configVentanilla extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['sede_id', 'nombre', 'descripcion', 'numeracion_unificada', 'estado'];
+    protected $fillable = ['sede_id', 'nombre', 'codigo', 'descripcion', 'estado'];
 
     public function sede()
     {

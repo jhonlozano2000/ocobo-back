@@ -348,4 +348,169 @@ class UserVentanillaController extends Controller
             return $this->errorResponse('Error al eliminar la asignación', $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Obtiene estadísticas detalladas sobre las asignaciones de ventanillas a usuarios.
+     *
+     * Este método proporciona información estadística útil sobre las asignaciones
+     * de ventanillas, incluyendo totales, distribución por usuario y ventanilla,
+     * y análisis de actividad reciente.
+     *
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las estadísticas
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Estadísticas obtenidas exitosamente",
+     *   "data": {
+     *     "total_asignaciones": 25,
+     *     "usuarios_con_asignaciones": 15,
+     *     "ventanillas_asignadas": 8,
+     *     "asignaciones_este_mes": 5,
+     *     "asignaciones_este_anio": 20,
+     *     "usuarios_mas_asignaciones": [
+     *       {
+     *         "user_id": 1,
+     *         "nombres": "Juan",
+     *         "apellidos": "Pérez",
+     *         "total_asignaciones": 3
+     *       }
+     *     ],
+     *     "ventanillas_mas_populares": [
+     *       {
+     *         "ventanilla_id": 1,
+     *         "nombre": "Ventanilla Principal",
+     *         "total_asignaciones": 5
+     *       }
+     *     ],
+     *     "distribucion_por_mes": [
+     *       {
+     *         "mes": "Enero 2024",
+     *         "total": 8
+     *       }
+     *     ],
+     *     "asignaciones_recientes": [
+     *       {
+     *         "id": 1,
+     *         "created_at": "2024-01-15T10:00:00.000000Z",
+     *         "user": {
+     *           "id": 1,
+     *           "nombres": "Juan",
+     *           "apellidos": "Pérez"
+     *         },
+     *         "ventanilla": {
+     *           "id": 1,
+     *           "nombre": "Ventanilla Principal"
+     *         }
+     *       }
+     *     ]
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener las estadísticas",
+     *   "error": "Error message"
+     * }
+     */
+    public function estadisticas()
+    {
+        try {
+            // Estadísticas generales
+            $totalAsignaciones = UserVentanilla::count();
+            $usuariosConAsignaciones = UserVentanilla::distinct('user_id')->count();
+            $ventanillasAsignadas = UserVentanilla::distinct('ventanilla_id')->count();
+
+            // Asignaciones por período
+            $asignacionesEsteMes = UserVentanilla::whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->count();
+
+            $asignacionesEsteAnio = UserVentanilla::whereYear('created_at', now()->year)
+                ->count();
+
+            // Usuarios con más asignaciones
+            $usuariosMasAsignaciones = UserVentanilla::select('user_id')
+                ->selectRaw('COUNT(*) as total_asignaciones')
+                ->with('user:id,nombres,apellidos')
+                ->groupBy('user_id')
+                ->orderByDesc('total_asignaciones')
+                ->limit(5)
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'user_id' => $item->user_id,
+                        'nombres' => $item->user->nombres,
+                        'apellidos' => $item->user->apellidos,
+                        'total_asignaciones' => $item->total_asignaciones
+                    ];
+                });
+
+            // Ventanillas más populares
+            $ventanillasMasPopulares = UserVentanilla::select('ventanilla_id')
+                ->selectRaw('COUNT(*) as total_asignaciones')
+                ->with('ventanilla:id,nombre')
+                ->groupBy('ventanilla_id')
+                ->orderByDesc('total_asignaciones')
+                ->limit(5)
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'ventanilla_id' => $item->ventanilla_id,
+                        'nombre' => $item->ventanilla->nombre,
+                        'total_asignaciones' => $item->total_asignaciones
+                    ];
+                });
+
+            // Distribución por mes (últimos 12 meses)
+            $distribucionPorMes = [];
+            for ($i = 11; $i >= 0; $i--) {
+                $fecha = now()->subMonths($i);
+                $total = UserVentanilla::whereYear('created_at', $fecha->year)
+                    ->whereMonth('created_at', $fecha->month)
+                    ->count();
+
+                $distribucionPorMes[] = [
+                    'mes' => $fecha->format('F Y'),
+                    'total' => $total
+                ];
+            }
+
+            // Asignaciones más recientes
+            $asignacionesRecientes = UserVentanilla::with(['user:id,nombres,apellidos', 'ventanilla:id,nombre'])
+                ->orderByDesc('created_at')
+                ->limit(10)
+                ->get()
+                ->map(function ($asignacion) {
+                    return [
+                        'id' => $asignacion->id,
+                        'created_at' => $asignacion->created_at->format('Y-m-d H:i:s'),
+                        'user' => [
+                            'id' => $asignacion->user->id,
+                            'nombres' => $asignacion->user->nombres,
+                            'apellidos' => $asignacion->user->apellidos
+                        ],
+                        'ventanilla' => [
+                            'id' => $asignacion->ventanilla->id,
+                            'nombre' => $asignacion->ventanilla->nombre
+                        ]
+                    ];
+                });
+
+            $estadisticas = [
+                'total_asignaciones' => $totalAsignaciones,
+                'usuarios_con_asignaciones' => $usuariosConAsignaciones,
+                'ventanillas_asignadas' => $ventanillasAsignadas,
+                'asignaciones_este_mes' => $asignacionesEsteMes,
+                'asignaciones_este_anio' => $asignacionesEsteAnio,
+                'usuarios_mas_asignaciones' => $usuariosMasAsignaciones,
+                'ventanillas_mas_populares' => $ventanillasMasPopulares,
+                'distribucion_por_mes' => $distribucionPorMes,
+                'asignaciones_recientes' => $asignacionesRecientes
+            ];
+
+            return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
+        }
+    }
 }
