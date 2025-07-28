@@ -29,13 +29,13 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'Control de acceso - Usuarios -> Listar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Control de acceso - Usuarios -> Crear'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Control de acceso - Usuarios -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Control de acceso - Usuarios -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Control de acceso - Usuarios -> Mostrar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Control de acceso - Usuarios -> Eliminar'])->syncRoles([$Rol1]);
 
         Permission::create(['name' => 'Control de acceso - Roles -> Listar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Control de acceso - Roles -> Crear'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Control de acceso - Roles -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Control de acceso - Roles -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Control de acceso - Roles -> Mostrar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Control de acceso - Roles -> Eliminar'])->syncRoles([$Rol1]);
 
         /**
@@ -44,7 +44,7 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'Config - División política -> Listar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - División política -> Crear'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - División política -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - División política -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - División política -> Mostrar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - División política -> Eliminar'])->syncRoles([$Rol1]);
 
         /** Esto es para gestionar las plantilla de la comunicacion oficiales - Por ahora no se va a implementar, esto lo vamos
@@ -53,7 +53,7 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'Config - Gestión de plantillas -> Listar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Gestión de plantillas -> Crear'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Gestión de plantillas -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - Gestión de plantillas -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Gestión de plantillas -> Mostrar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Gestión de plantillas -> Eliminar'])->syncRoles([$Rol1]);
 
         /**
@@ -62,7 +62,7 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'Config - Servidor de almacenamiento -> Listar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Servidor de almacenamiento -> Crear'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Servidor de almacenamiento -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - Servidor de almacenamiento -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Servidor de almacenamiento -> Mostrar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Servidor de almacenamiento -> Eliminar'])->syncRoles([$Rol1]);
 
         /**
@@ -71,10 +71,16 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'Config - Listas -> Listar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Listas -> Crear'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Listas -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'Config - Listas -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Listas -> Mostrar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Listas -> Eliminar'])->syncRoles([$Rol1]);
 
         Permission::create(['name' => 'Config - Otras configuraciones'])->syncRoles([$Rol1]);
+
+        Permission::create(['name' => 'Config - Sedes -> Listar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Sedes -> Crear'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Sedes -> Editar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Sedes -> Mostrar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Sedes -> Eliminar'])->syncRoles([$Rol1]);
 
         /**
          * Radicación
@@ -82,25 +88,25 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'Radicar -> Cores. Recibida -> Listar'])->syncRoles([$Rol1, $Rol2]);
         Permission::create(['name' => 'Radicar -> Cores. Recibida -> Crear'])->syncRoles([$Rol1, $Rol2]);
         Permission::create(['name' => 'Radicar -> Cores. Recibida -> Editar'])->syncRoles([$Rol1, $Rol2]);
-        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Mostar'])->syncRoles([$Rol1, $Rol2]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Mostrar'])->syncRoles([$Rol1, $Rol2]);
         Permission::create(['name' => 'Radicar -> Cores. Recibida -> Eliminar'])->syncRoles([$Rol1, $Rol2]);
 
         Permission::create(['name' => 'Radicar -> Cores. Enviada -> Listar'])->syncRoles([$Rol1, $Rol3]);
         Permission::create(['name' => 'Radicar -> Cores. Enviada -> Crear'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Radicar -> Cores. Enviada -> Editar'])->syncRoles([$Rol1, $Rol3]);
-        Permission::create(['name' => 'Radicar -> Cores. Enviada -> Mostar'])->syncRoles([$Rol1, $Rol3]);
+        Permission::create(['name' => 'Radicar -> Cores. Enviada -> Mostrar'])->syncRoles([$Rol1, $Rol3]);
         Permission::create(['name' => 'Radicar -> Cores. Enviada -> Eliminar'])->syncRoles([$Rol1, $Rol3]);
 
         Permission::create(['name' => 'Radicar -> Cores. Interna -> Listar'])->syncRoles([$Rol1, $Rol4]);
         Permission::create(['name' => 'Radicar -> Cores. Interna -> Crear'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Radicar -> Cores. Interna -> Editar'])->syncRoles([$Rol1, $Rol4]);
-        Permission::create(['name' => 'Radicar -> Cores. Interna -> Mostar'])->syncRoles([$Rol1, $Rol4]);
+        Permission::create(['name' => 'Radicar -> Cores. Interna -> Mostrar'])->syncRoles([$Rol1, $Rol4]);
         Permission::create(['name' => 'Radicar -> Cores. Interna -> Eliminar'])->syncRoles([$Rol1, $Rol4]);
 
         Permission::create(['name' => 'Radicar -> PQRSF -> Listar'])->syncRoles([$Rol1, $Rol5]);
         Permission::create(['name' => 'Radicar -> PQRSF -> Crear'])->syncRoles([$Rol1, $Rol5]);
         Permission::create(['name' => 'Radicar -> PQRSF -> Editar'])->syncRoles([$Rol1, $Rol5]);
-        Permission::create(['name' => 'Radicar -> PQRSF -> Mostar'])->syncRoles([$Rol1, $Rol5]);
+        Permission::create(['name' => 'Radicar -> PQRSF -> Mostrar'])->syncRoles([$Rol1, $Rol5]);
         Permission::create(['name' => 'Radicar -> PQRSF -> Eliminar'])->syncRoles([$Rol1, $Rol5]);
 
         /**
@@ -120,14 +126,14 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'TRD -> Listar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'TRD -> Crear'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'TRD -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'TRD -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'TRD -> Mostrar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'TRD -> Eliminar'])->syncRoles([$Rol1]);
 
         Permission::create(['name' => 'TVD -> Importar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'TVD -> Listar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'TVD -> Crear'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'TVD -> Editar'])->syncRoles([$Rol1]);
-        Permission::create(['name' => 'TVD -> Mostar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'TVD -> Mostrar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'TVD -> Eliminar'])->syncRoles([$Rol1]);
 
         /**
@@ -141,7 +147,7 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'Digitalización -> Listar'])->syncRoles([$Rol1, $Rol6]);
         Permission::create(['name' => 'Digitalización -> Crear'])->syncRoles([$Rol1, $Rol6]);
         Permission::create(['name' => 'Digitalización -> Editar'])->syncRoles([$Rol1, $Rol6]);
-        Permission::create(['name' => 'Digitalización -> Mostar'])->syncRoles([$Rol1, $Rol6]);
+        Permission::create(['name' => 'Digitalización -> Mostrar'])->syncRoles([$Rol1, $Rol6]);
         Permission::create(['name' => 'Digitalización -> Eliminar'])->syncRoles([$Rol1, $Rol6]);
 
         /**

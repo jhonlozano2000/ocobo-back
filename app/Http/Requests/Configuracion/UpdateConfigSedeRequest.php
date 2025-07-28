@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Configuracion;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;
 
 class UpdateConfigSedeRequest extends FormRequest
 {
@@ -17,12 +18,35 @@ class UpdateConfigSedeRequest extends FormRequest
     }
 
     /**
+     * Prepare the data for validation.
+     *
+     * @return void
+     */
+    protected function prepareForValidation()
+    {
+        // Remover campos que ya no existen en el modelo
+        $this->request->remove('numeracion_unificada');
+
+        // Debug: Log el route parameter
+        $sedeId = $this->route('sede');
+        Log::info('UpdateConfigSedeRequest - Route parameter', [
+            'route_sede' => $sedeId,
+            'route_sede_type' => gettype($sedeId),
+            'route_sede_id' => $sedeId ? (is_object($sedeId) ? $sedeId->id : $sedeId) : 'NULL',
+            'all_route_parameters' => $this->route()->parameters()
+        ]);
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
+        $sedeId = $this->route('sede');
+        $sedeIdValue = $sedeId ? (is_object($sedeId) ? $sedeId->id : $sedeId) : 'NULL';
+
         return [
             'nombre' => [
                 'sometimes',
@@ -33,7 +57,7 @@ class UpdateConfigSedeRequest extends FormRequest
                 'sometimes',
                 'string',
                 'max:20',
-                'unique:config_sedes,codigo,' . $this->route('sede')
+                'unique:config_sedes,codigo,' . $sedeIdValue
             ],
             'direccion' => [
                 'sometimes',
@@ -63,10 +87,7 @@ class UpdateConfigSedeRequest extends FormRequest
                 'nullable',
                 'in:0,1,true,false'
             ],
-            'numeracion_unificada' => [
-                'nullable',
-                'boolean'
-            ]
+
         ];
     }
 
@@ -93,7 +114,6 @@ class UpdateConfigSedeRequest extends FormRequest
             'ubicacion.max' => 'La ubicación no puede superar los 255 caracteres.',
             'divi_poli_id.exists' => 'El departamento/policía seleccionada no existe.',
             'estado.in' => 'El estado debe ser 0, 1, true o false.',
-            'numeracion_unificada.boolean' => 'La numeración unificada debe ser verdadero o falso.',
         ];
     }
 
@@ -112,8 +132,7 @@ class UpdateConfigSedeRequest extends FormRequest
             'email' => 'email',
             'ubicacion' => 'ubicación',
             'divi_poli_id' => 'departamento/policía',
-            'estado' => 'estado',
-            'numeracion_unificada' => 'numeración unificada'
+            'estado' => 'estado'
         ];
     }
 }

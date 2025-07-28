@@ -17,6 +17,17 @@ class StoreConfigSedeRequest extends FormRequest
     }
 
     /**
+     * Prepare the data for validation.
+     *
+     * @return void
+     */
+    protected function prepareForValidation()
+    {
+        // Remover campos que ya no existen en el modelo
+        $this->request->remove('numeracion_unificada');
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
@@ -63,10 +74,7 @@ class StoreConfigSedeRequest extends FormRequest
                 'nullable',
                 'in:0,1,true,false'
             ],
-            'numeracion_unificada' => [
-                'nullable',
-                'boolean'
-            ]
+
         ];
     }
 
@@ -96,7 +104,6 @@ class StoreConfigSedeRequest extends FormRequest
             'ubicacion.max' => 'La ubicación no puede superar los 255 caracteres.',
             'divi_poli_id.exists' => 'El departamento/policía seleccionada no existe.',
             'estado.in' => 'El estado debe ser 0, 1, true o false.',
-            'numeracion_unificada.boolean' => 'La numeración unificada debe ser verdadero o falso.',
         ];
     }
 
@@ -115,8 +122,7 @@ class StoreConfigSedeRequest extends FormRequest
             'email' => 'email',
             'ubicacion' => 'ubicación',
             'divi_poli_id' => 'departamento/policía',
-            'estado' => 'estado',
-            'numeracion_unificada' => 'numeración unificada'
+            'estado' => 'estado'
         ];
     }
 }

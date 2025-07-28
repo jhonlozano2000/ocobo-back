@@ -17,8 +17,7 @@ class ConfigSede extends Model
         'email',
         'ubicacion',
         'divi_poli_id',
-        'estado',
-        'numeracion_unificada'
+        'estado'
     ];
 
     /**

@@ -330,4 +330,197 @@ class ConfigVariasController extends Controller
             return $this->errorResponse('Error al eliminar la configuración', $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Obtiene el valor de numeración unificada.
+     *
+     * Este método permite obtener el valor actual de la configuración
+     * de numeración unificada de radicados.
+     *
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el valor de numeración unificada
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Valor de numeración unificada obtenido exitosamente",
+     *   "data": {
+     *     "numeracion_unificada": true
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener el valor de numeración unificada",
+     *   "error": "Error message"
+     * }
+     */
+    public function getNumeracionUnificada()
+    {
+        try {
+            $valor = ConfigVarias::getNumeracionUnificada();
+
+            return $this->successResponse(
+                ['numeracion_unificada' => $valor],
+                'Valor de numeración unificada obtenido exitosamente'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener el valor de numeración unificada', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Actualiza el valor de numeración unificada.
+     *
+     * Este método permite modificar el valor de la configuración
+     * de numeración unificada de radicados.
+     *
+     * @param Request $request La solicitud HTTP con el nuevo valor
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la actualización
+     *
+     * @bodyParam numeracion_unificada boolean required Nuevo valor de numeración unificada. Example: true
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Numeración unificada actualizada exitosamente",
+     *   "data": {
+     *     "numeracion_unificada": true
+     *   }
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Datos de validación incorrectos",
+     *   "error": {
+     *     "numeracion_unificada": ["El valor de numeración unificada es obligatorio."]
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al actualizar la numeración unificada",
+     *   "error": "Error message"
+     * }
+     */
+    public function updateNumeracionUnificada(Request $request)
+    {
+        try {
+            $request->validate([
+                'numeracion_unificada' => 'required|boolean'
+            ], [
+                'numeracion_unificada.required' => 'El valor de numeración unificada es obligatorio.',
+                'numeracion_unificada.boolean' => 'El valor de numeración unificada debe ser verdadero o falso.'
+            ]);
+
+            DB::beginTransaction();
+
+            $valor = $request->boolean('numeracion_unificada');
+            ConfigVarias::setNumeracionUnificada($valor);
+
+            DB::commit();
+
+            return $this->successResponse(
+                ['numeracion_unificada' => $valor],
+                'Numeración unificada actualizada exitosamente'
+            );
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse('Error al actualizar la numeración unificada', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Obtiene el valor de multi_sede.
+     *
+     * Este método permite obtener el valor actual de la configuración
+     * de múltiples sedes.
+     *
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el valor de multi_sede
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Valor de multi_sede obtenido exitosamente",
+     *   "data": {
+     *     "multi_sede": 0
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener el valor de multi_sede",
+     *   "error": "Error message"
+     * }
+     */
+    public function getMultiSede()
+    {
+        try {
+            $valor = ConfigVarias::getMultiSede();
+
+            return $this->successResponse(
+                ['multi_sede' => $valor],
+                'Valor de multi_sede obtenido exitosamente'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener el valor de multi_sede', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Actualiza el valor de multi_sede.
+     *
+     * Este método permite modificar el valor de la configuración
+     * de múltiples sedes.
+     *
+     * @param Request $request La solicitud HTTP con el nuevo valor
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la actualización
+     *
+     * @bodyParam multi_sede integer required Nuevo valor de multi_sede (0: deshabilitado, 1: habilitado). Example: 1
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Multi_sede actualizado exitosamente",
+     *   "data": {
+     *     "multi_sede": 1
+     *   }
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Datos de validación incorrectos",
+     *   "error": {
+     *     "multi_sede": ["El valor de multi_sede es obligatorio."]
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al actualizar multi_sede",
+     *   "error": "Error message"
+     * }
+     */
+    public function updateMultiSede(Request $request)
+    {
+        try {
+            $request->validate([
+                'multi_sede' => 'required|integer|in:0,1'
+            ], [
+                'multi_sede.required' => 'El valor de multi_sede es obligatorio.',
+                'multi_sede.integer' => 'El valor de multi_sede debe ser un número entero.',
+                'multi_sede.in' => 'El valor de multi_sede debe ser 0 (deshabilitado) o 1 (habilitado).'
+            ]);
+
+            DB::beginTransaction();
+
+            $valor = (int)$request->input('multi_sede');
+            ConfigVarias::setMultiSede($valor);
+
+            DB::commit();
+
+            return $this->successResponse(
+                ['multi_sede' => $valor],
+                'Multi_sede actualizado exitosamente'
+            );
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse('Error al actualizar multi_sede', $e->getMessage(), 500);
+        }
+    }
 }

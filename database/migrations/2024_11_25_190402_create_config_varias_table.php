@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -27,6 +28,8 @@ return new class extends Migration
 
         DB::table('config_varias')->insert([
             ['clave' => 'formato_num_radicado_reci', 'valor' => 'YYYYMMDD-#####', 'descripcion' => 'Formato del número de radicado'],
+            ['clave' => 'numeracion_unificada', 'valor' => 'true', 'descripcion' => 'Configuración de numeración unificada de radicados'],
+            ['clave' => 'multi_sede', 'valor' => '0', 'descripcion' => 'Configuración de múltiples sedes (0: deshabilitado, 1: habilitado)'],
         ]);
     }
 

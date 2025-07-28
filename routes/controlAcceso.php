@@ -8,16 +8,16 @@ use App\Http\Controllers\ControlAcceso\UserVentanillaController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/users/estadisticas', [UserController::class, 'estadisticas']);
-
-
     /**
      * Usuarios
      */
     Route::resource('/users', UserController::class)->except('create', 'edit');
 
+    // Rutas específicas de usuarios (deben ir DESPUÉS del resource)
+    Route::get('/users/stats/estadisticas', [UserController::class, 'estadisticas']);
+
     /**
-     * Roles y permisosas
+     * Roles y permisos
      */
     Route::resource('/roles', RoleController::class)->except('create', 'edit');
     Route::get('/roles-usuarios', [RoleController::class, 'rolesConUsuarios']);
@@ -28,14 +28,13 @@ Route::middleware('auth:sanctum')->group(function () {
      */
     Route::get('/permisos', [RoleController::class, 'listPermisos'])->name('permisos.show');
 
+    /**
+     * Perfil y autenticación de usuario
+     */
     Route::put('/user/profile-information', [UserController::class, 'updateUserProfile']);
-
     Route::put('/user/changePassword', [UserController::class, 'updatePassword']);
-
-    // routes/api.php
     Route::post('/user/activar-inactivar', [UserController::class, 'activarInactivar']);
 
-    // routes/api.php
     /**
      * Sesiones de usuario
      */

@@ -9,6 +9,7 @@ use App\Http\Requests\Configuracion\UpdateConfigSedeRequest;
 use App\Models\Configuracion\ConfigSede;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ConfigSedeController extends Controller
 {
@@ -109,7 +110,6 @@ class ConfigSedeController extends Controller
      * @bodyParam ubicacion string Ubicación de la sede. Example: "Centro de la ciudad"
      * @bodyParam divi_poli_id integer ID de la división política. Example: 1
      * @bodyParam estado boolean Estado de la sede (activo/inactivo). Example: true
-     * @bodyParam numeracion_unificada boolean Numeración unificada de radicados. Example: true
      *
      * @response 201 {
      *   "status": true,
@@ -144,6 +144,9 @@ class ConfigSedeController extends Controller
             DB::beginTransaction();
 
             $validatedData = $request->validated();
+
+            // Filtrar solo los campos que existen en el modelo
+            $validatedData = array_intersect_key($validatedData, array_flip((new ConfigSede())->getFillable()));
 
             // Convertir estado a booleano si se proporciona
             if (isset($validatedData['estado'])) {
@@ -230,7 +233,6 @@ class ConfigSedeController extends Controller
      * @bodyParam ubicacion string Ubicación de la sede. Example: "Centro de la ciudad"
      * @bodyParam divi_poli_id integer ID de la división política. Example: 1
      * @bodyParam estado boolean Estado de la sede (activo/inactivo). Example: true
-     * @bodyParam numeracion_unificada boolean Numeración unificada de radicados. Example: true
      *
      * @response 200 {
      *   "status": true,
@@ -266,12 +268,48 @@ class ConfigSedeController extends Controller
 
             $validatedData = $request->validated();
 
-            // Convertir estado a booleano si se proporciona
+            // Filtrar solo los campos que existen en el modelo
+            $validatedData = array_intersect_key($validatedData, array_flip($sede->getFillable()));
+
+            // Convertir estado a entero (0 o 1) si se proporciona
             if (isset($validatedData['estado'])) {
-                $validatedData['estado'] = filter_var($validatedData['estado'], FILTER_VALIDATE_BOOLEAN);
+                $validatedData['estado'] = filter_var($validatedData['estado'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
             }
 
-            $sede->update($validatedData);
+            // Debug: Log los datos que se van a actualizar
+            Log::info('Actualizando sede', [
+                'sede_id' => $sede->id,
+                'datos_validados' => $validatedData,
+                'datos_originales' => $request->all(),
+                'datos_antes_update' => $sede->toArray()
+            ]);
+
+            // Verificar si hay cambios antes de actualizar
+            $cambios = array_diff_assoc($validatedData, $sede->toArray());
+            Log::info('Cambios detectados', [
+                'cambios' => $cambios,
+                'hay_cambios' => !empty($cambios)
+            ]);
+
+            $resultado = $sede->update($validatedData);
+
+            Log::info('Resultado de la actualización', [
+                'resultado' => $resultado,
+                'datos_despues_update' => $sede->fresh()->toArray()
+            ]);
+
+            // Si no se actualizó, intentar con una aproximación diferente
+            if (!$resultado) {
+                Log::warning('Update falló, intentando con fill y save');
+
+                $sede->fill($validatedData);
+                $resultado = $sede->save();
+
+                Log::info('Resultado con fill y save', [
+                    'resultado' => $resultado,
+                    'datos_despues_fill_save' => $sede->fresh()->toArray()
+                ]);
+            }
 
             DB::commit();
 
@@ -281,6 +319,11 @@ class ConfigSedeController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Error al actualizar sede', [
+                'sede_id' => $sede->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return $this->errorResponse('Error al actualizar la sede', $e->getMessage(), 500);
         }
     }
