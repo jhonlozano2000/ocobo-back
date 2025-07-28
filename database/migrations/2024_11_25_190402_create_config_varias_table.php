@@ -28,7 +28,10 @@ return new class extends Migration
 
         DB::table('config_varias')->insert([
             ['clave' => 'formato_num_radicado_reci', 'valor' => 'YYYYMMDD-#####', 'descripcion' => 'Formato del número de radicado'],
-            ['clave' => 'numeracion_unificada', 'valor' => 'true', 'descripcion' => 'Configuración de numeración unificada de radicados'],
+            ['clave' => 'numeracion_unificada', 'valor' => 'true', 'descripcion' => 'Define si la numeración de radicados es unificada o por ventanilla'],
+        ]);
+
+        DB::table('config_varias')->insert([
             ['clave' => 'multi_sede', 'valor' => '0', 'descripcion' => 'Configuración de múltiples sedes (0: deshabilitado, 1: habilitado)'],
             ['clave' => 'backups_automaticos', 'valor' => '0', 'descripcion' => 'Habilitar backups automáticos (0: deshabilitado, 1: habilitado)'],
             ['clave' => 'frecuencia_backups', 'valor' => 'Diario', 'descripcion' => 'Intervalo de backups automáticos (Diario, Lunes, Martes, Miercoles, Jueves, Viernes, Sabado, Domingo)'],

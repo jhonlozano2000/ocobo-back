@@ -44,6 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
      * Configuraciones varias
      */
     Route::get('config-varias', [ConfigVariasController::class, 'index'])->name('config.varias.list');
+    Route::post('config-varias', [ConfigVariasController::class, 'store'])->name('config.varias.store');
     Route::put('config-varias/{clave}', [ConfigVariasController::class, 'update'])->name('config.varias.update');
 
     Route::get('config-num-radicado', [ConfigNumRadicadoController::class, 'getConfiguracion'])->name('config.num.radicado.getConfiguracion');

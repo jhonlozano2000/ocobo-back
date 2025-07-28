@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\Configuracion\configVentanilla;
+use App\Models\Configuracion\ConfigSede;
 use App\Models\ControlAcceso\UserNotificationSetting;
 use App\Models\ControlAcceso\UsersSession;
 use App\Models\VentanillaUnica\VentanillaUnica;
@@ -139,5 +140,61 @@ class User extends Authenticatable
     public function notificationSettings()
     {
         return $this->hasOne(UserNotificationSetting::class);
+    }
+
+    /**
+     * Obtiene las sedes asociadas al usuario a través de la tabla pivot.
+     */
+    public function sedes()
+    {
+        return $this->belongsToMany(ConfigSede::class, 'users_sedes', 'user_id', 'sede_id')
+            ->withPivot('estado', 'observaciones')
+            ->withTimestamps();
+    }
+
+    /**
+     * Obtiene solo las sedes activas del usuario.
+     */
+    public function sedesActivas()
+    {
+        return $this->belongsToMany(ConfigSede::class, 'users_sedes', 'user_id', 'sede_id')
+            ->withPivot('estado', 'observaciones')
+            ->wherePivot('estado', true)
+            ->withTimestamps();
+    }
+
+    /**
+     * Asigna una sede al usuario.
+     */
+    public function asignarSede($sedeId, $observaciones = null)
+    {
+        return $this->sedes()->attach($sedeId, [
+            'estado' => true,
+            'observaciones' => $observaciones
+        ]);
+    }
+
+    /**
+     * Desasigna una sede del usuario.
+     */
+    public function desasignarSede($sedeId)
+    {
+        return $this->sedes()->detach($sedeId);
+    }
+
+    /**
+     * Activa la relación con una sede específica.
+     */
+    public function activarSede($sedeId)
+    {
+        return $this->sedes()->updateExistingPivot($sedeId, ['estado' => true]);
+    }
+
+    /**
+     * Desactiva la relación con una sede específica.
+     */
+    public function desactivarSede($sedeId)
+    {
+        return $this->sedes()->updateExistingPivot($sedeId, ['estado' => false]);
     }
 }

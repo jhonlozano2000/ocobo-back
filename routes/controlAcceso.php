@@ -4,6 +4,7 @@ use App\Http\Controllers\ControlAcceso\NotificationSettingsController;
 use App\Http\Controllers\ControlAcceso\RoleController;
 use App\Http\Controllers\ControlAcceso\UserController;
 use App\Http\Controllers\ControlAcceso\UserSessionController;
+use App\Http\Controllers\ControlAcceso\UserSedeController;
 use App\Http\Controllers\ControlAcceso\UserVentanillaController;
 use Illuminate\Support\Facades\Route;
 
@@ -54,4 +55,11 @@ Route::middleware('auth:sanctum')->group(function () {
      * Gestión de ventanillas por usuario
      */
     Route::resource('/user-ventanillas', UserVentanillaController::class)->except('create', 'edit');
+
+    /**
+     * Gestión de relaciones usuario-sede
+     */
+    Route::resource('/user-sedes', UserSedeController::class)->except('create', 'edit');
+    Route::get('/users/{userId}/sedes', [UserSedeController::class, 'getUserSedes']);
+    Route::get('/sedes/{sedeId}/users', [UserSedeController::class, 'getSedeUsers']);
 });
