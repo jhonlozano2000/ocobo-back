@@ -74,9 +74,15 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'Config - Listas -> Mostrar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Listas -> Eliminar'])->syncRoles([$Rol1]);
 
+        /**
+         * Configuración de otras configuraciones
+         */
         Permission::create(['name' => 'Config - Otras configuraciones -> Listar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Otras configuraciones -> Editar'])->syncRoles([$Rol1]);
 
+        /**
+         * Configuración de sedes
+         */
         Permission::create(['name' => 'Config - Sedes -> Listar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Sedes -> Crear'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Config - Sedes -> Editar'])->syncRoles([$Rol1]);

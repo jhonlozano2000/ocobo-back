@@ -6,7 +6,7 @@ Aplicación gestora del proceso de gestión documental desarrollada en Laravel.
 
 ## 📋 Descripción
 
-OCOBO-BACK es una aplicación web desarrollada en Laravel que gestiona procesos documentales de manera eficiente y organizada. El sistema proporciona una API RESTful robusta para la gestión de usuarios, roles, permisos, configuración del sistema, gestión documental y control de calidad.
+OCOBO-BACK es una aplicación web desarrollada en Laravel que gestiona procesos documentales de manera eficiente y organizada. El sistema proporciona una API RESTful robusta para la gestión de usuarios, roles, permisos, configuración del sistema, gestión documental, clasificación documental y control de calidad.
 
 ## 🚀 Características Principales
 
@@ -15,12 +15,14 @@ OCOBO-BACK es una aplicación web desarrollada en Laravel que gestiona procesos 
 - **Control de Acceso**: Sistema de roles y permisos con Spatie Laravel-Permission
 - **Configuración del Sistema**: Módulos de configuración para división política, sedes, listas, etc.
 - **Gestión Documental**: Procesos de radicación y clasificación documental
+- **Clasificación Documental**: Sistema completo de TRD (Tabla de Retención Documental) con versiones
 - **Control de Calidad**: Gestión de organigramas y estructuras organizacionales
 - **Ventanilla Única**: Sistema completo de gestión de ventanillas y radicaciones
 - **API RESTful**: Endpoints bien documentados y estructurados
 - **Validaciones Robustas**: Form Request classes para validaciones centralizadas
 - **Manejo de Errores**: Sistema consistente de respuestas de error
 - **Estadísticas Avanzadas**: Análisis detallado de datos y métricas
+- **Importación de Datos**: Soporte para importación de TRD desde archivos Excel
 
 ## 🏗️ Arquitectura del Proyecto
 
@@ -132,6 +134,36 @@ GET    /api/calidad/organigrama/dependencias        # Listar solo dependencias
 GET    /api/calidad/organigrama/oficinas            # Listar oficinas con cargos
 ```
 
+#### 📚 **Clasificación Documental**
+- **ClasificacionDocumentalTRDController**: Gestión completa de elementos TRD (Series, SubSeries, Tipos de Documento)
+- **ClasificacionDocumentalTRDVersionController**: Gestión de versiones de TRD con estados (TEMP, ACTIVO, HISTORICO)
+
+**Endpoints principales:**
+```
+# TRD (Tabla de Retención Documental)
+GET    /api/trd                                    # Listar elementos TRD
+POST   /api/trd                                    # Crear elemento TRD
+GET    /api/trd/{id}                               # Obtener elemento TRD
+PUT    /api/trd/{id}                               # Actualizar elemento TRD
+DELETE /api/trd/{id}                               # Eliminar elemento TRD
+POST   /api/trd/importar                           # Importar TRD desde Excel
+GET    /api/trd/estadisticas/{dependenciaId}       # Estadísticas por dependencia
+GET    /api/trd/dependencia/{dependenciaId}        # Listar por dependencia
+
+# Estadísticas avanzadas
+GET    /api/trd/estadisticas/totales               # Estadísticas totales del sistema
+GET    /api/trd/estadisticas/por-dependencias      # Estadísticas detalladas por dependencias
+GET    /api/trd/estadisticas/comparativas          # Estadísticas comparativas entre dependencias
+
+# Versiones TRD
+GET    /api/trd-versiones                          # Listar versiones TRD
+POST   /api/trd-versiones                          # Crear nueva versión
+GET    /api/trd-versiones/{id}                     # Obtener versión específica
+POST   /api/trd-versiones/aprobar/{dependenciaId}  # Aprobar versión
+GET    /api/trd-versiones/pendientes/aprobar       # Versiones pendientes por aprobar
+GET    /api/trd-versiones/estadisticas/{dependenciaId} # Estadísticas de versiones
+```
+
 #### 📋 **Ventanilla Única**
 - **VentanillaUnicaController**: Gestión de ventanillas únicas por sede
 - **PermisosVentanillaUnicaController**: Gestión de permisos de usuarios a ventanillas
@@ -193,6 +225,8 @@ GET    /api/ventanilla/radica-recibida/{id}/responsables    # Responsables por r
 - **Documentación**: PHPDoc completo
 - **Manejo de Archivos**: Laravel Storage con ArchivoHelper personalizado
 - **Transacciones**: Database transactions para integridad de datos
+- **Procesamiento de Excel**: PhpOffice/PhpSpreadsheet para importación de TRD
+- **Análisis Estadístico**: Cálculos avanzados de mediana, desviación estándar y coeficientes de variación
 
 ## 📦 Instalación
 
@@ -315,6 +349,10 @@ Todos los módulos principales incluyen endpoints de estadísticas que proporcio
 - **Análisis Jerárquico**: Estructuras organizacionales, relaciones padre-hijo
 - **Rankings y Tendencias**: Elementos más utilizados, actividad reciente
 - **Distribución Temporal**: Análisis por períodos (mes, año, histórico)
+- **Estadísticas Comparativas**: Rankings entre dependencias con métricas avanzadas
+- **Análisis de Rendimiento**: Coeficientes de variación, medianas y desviaciones estándar
+- **Distribución Porcentual**: Análisis de distribución por tipos y categorías
+- **Métricas Empresariales**: Estadísticas de configuración y uso del sistema
 
 ### 🔄 **Gestión de Archivos**
 
@@ -322,6 +360,10 @@ Todos los módulos principales incluyen endpoints de estadísticas que proporcio
 - **Múltiples Discos**: Soporte para diferentes tipos de almacenamiento
 - **Validación Dinámica**: Tamaños y tipos de archivo configurables
 - **Auditoría**: Historial de eliminaciones y cambios
+- **Sistema de Logos**: Gestión de logos empresariales con validaciones
+- **Almacenamiento Configurable**: Discos personalizados para diferentes tipos de archivos
+- **Gestión de Firmas**: Sistema de gestión de firmas de usuarios
+- **Avatars de Usuario**: Sistema de gestión de avatares con validaciones
 
 ### 🏗️ **Estructuras Jerárquicas**
 
@@ -330,12 +372,32 @@ Todos los módulos principales incluyen endpoints de estadísticas que proporcio
 - **Ventanillas**: Configuración y gestión de ventanillas por sede
 - **Relaciones Complejas**: Muchos a muchos, relaciones recursivas
 
+### 📚 **Sistema de Clasificación Documental**
+
+- **TRD Completa**: Gestión de Series, SubSeries y Tipos de Documento
+- **Sistema de Versiones**: Control de versiones con estados (TEMP, ACTIVO, HISTORICO)
+- **Validación Jerárquica**: Validaciones automáticas de jerarquía y dependencias
+- **Importación Masiva**: Importación de TRD desde archivos Excel con validaciones
+- **Estadísticas Avanzadas**: 
+  - Estadísticas totales del sistema con distribución porcentual
+  - Análisis por dependencias con paginación y ordenamiento
+  - Estadísticas comparativas con rankings y métricas estadísticas avanzadas
+  - Distribución porcentual por tipos de elementos
+  - Análisis de rendimiento con coeficientes de variación
+- **Workflow de Aprobación**: Sistema de aprobación de versiones con control de estados
+- **Análisis de Rendimiento**: Coeficientes de variación, medianas y desviaciones estándar
+- **Cálculos Estadísticos**: Métricas avanzadas como mediana, desviación estándar y rankings
+
 ### ⚙️ **Configuración Dinámica**
 
 - **ConfigVarias**: Configuraciones flexibles del sistema
 - **Numeración Unificada**: Sistema de numeración configurable
 - **Listas Maestras**: Gestión de catálogos y referencias
 - **Servidores de Archivos**: Configuración de almacenamiento
+- **Información Empresarial**: Gestión de datos de la empresa (NIT, razón social, logo, etc.)
+- **Configuración de Backups**: Configuración de backups automáticos y frecuencia
+- **Sistema Multi-Sede**: Configuración para múltiples sedes
+- **Gestión de Archivos**: Sistema de almacenamiento con múltiples discos
 
 ## 🧪 Testing
 
@@ -390,6 +452,25 @@ app/
 - ✅ Estadísticas avanzadas en UserVentanillaController
 - ✅ Optimización de validaciones de estado
 - ✅ Manejo mejorado de errores
+
+### **Módulo Configuración**
+- ✅ Migración de `numeracion_unificada` de `config_sedes` a `config_varias`
+- ✅ Implementación de información empresarial en `config_varias`
+- ✅ Sistema de gestión de logos empresariales con ArchivoHelper
+- ✅ Configuración de backups automáticos y frecuencia
+- ✅ Optimización de ConfigVariasController con métodos simplificados
+- ✅ Validaciones mejoradas para archivos y configuraciones
+- ✅ Sistema de almacenamiento con múltiples discos
+
+### **Módulo Clasificación Documental**
+- ✅ Controladores completamente optimizados con ApiResponseTrait
+- ✅ Sistema de versiones TRD con estados y workflow de aprobación
+- ✅ Validaciones jerárquicas robustas con Form Requests
+- ✅ Importación masiva desde Excel con PhpSpreadsheet
+- ✅ Estadísticas avanzadas con análisis comparativo y métricas estadísticas
+- ✅ Modelos mejorados con scopes, relaciones y métodos de utilidad
+- ✅ Rutas organizadas y documentadas con prefijos lógicos
+- ✅ Sistema de estadísticas con rankings, medianas y desviaciones estándar
 
 ## 🤝 Contribución
 
