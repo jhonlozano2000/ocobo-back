@@ -122,6 +122,12 @@ class RoleSeeder extends Seeder
         /**
          * Calidad
          */
+        Permission::create(['name' => 'Calidad - Organigrama -> Listar'])->syncRoles([$Rol1, $Rol5]);
+        Permission::create(['name' => 'Calidad - Organigrama -> Crear'])->syncRoles([$Rol1, $Rol5]);
+        Permission::create(['name' => 'Calidad - Organigrama -> Editar'])->syncRoles([$Rol1, $Rol5]);
+        Permission::create(['name' => 'Calidad - Organigrama -> Mostrar'])->syncRoles([$Rol1, $Rol5]);
+        Permission::create(['name' => 'Calidad - Organigrama -> Eliminar'])->syncRoles([$Rol1, $Rol5]);
+
         Permission::create(['name' => 'Calidad -> Crear procesos'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Calidad -> Crear Macro Procesos'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'Calidad -> Crear Procedimientos'])->syncRoles([$Rol1]);
