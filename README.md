@@ -2,6 +2,10 @@
 
 Aplicación gestora del proceso de gestión documental desarrollada en Laravel.
 
+**Versión**: 2.0  
+**Última actualización**: Julio 2025  
+**Estado**: En desarrollo activo
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 ## 📋 Descripción
@@ -23,6 +27,10 @@ OCOBO-BACK es una aplicación web desarrollada en Laravel que gestiona procesos 
 - **Manejo de Errores**: Sistema consistente de respuestas de error
 - **Estadísticas Avanzadas**: Análisis detallado de datos y métricas
 - **Importación de Datos**: Soporte para importación de TRD desde archivos Excel
+- **Estructura Jerárquica**: Soporte completo para organigramas con relaciones padre-hijo recursivas
+- **Configuración Centralizada**: Sistema de configuraciones varias con numeración unificada
+- **Gestión de Archivos**: Manejo seguro de uploads con validaciones avanzadas
+- **Logging Avanzado**: Sistema de logs detallado para debugging y monitoreo
 
 ## 🏗️ Arquitectura del Proyecto
 
@@ -106,6 +114,12 @@ GET    /api/config/listas-detalles                  # Detalles de listas
 GET    /api/config/config-varias                    # Configuraciones varias
 POST   /api/config/config-varias                    # Crear configuración
 PUT    /api/config/config-varias/{clave}            # Actualizar configuración
+
+# Numeración unificada
+GET    /api/config/config-varias/numeracion-unificada # Obtener configuración de numeración unificada
+PUT    /api/config/config-varias/numeracion-unificada # Actualizar numeración unificada
+
+# Configuración de numeración de radicados
 GET    /api/config/config-num-radicado              # Configuración de numeración
 PUT    /api/config/config-num-radicado              # Actualizar numeración
 
@@ -130,7 +144,7 @@ POST   /api/calidad/organigrama                     # Crear nodo del organigrama
 GET    /api/calidad/organigrama/{id}                # Obtener nodo específico
 PUT    /api/calidad/organigrama/{id}                # Actualizar nodo
 DELETE /api/calidad/organigrama/{id}                # Eliminar nodo
-GET    /api/calidad/organigrama/dependencias        # Listar solo dependencias
+GET    /api/calidad/organigrama/dependencias        # Listar dependencias en estructura jerárquica
 GET    /api/calidad/organigrama/oficinas            # Listar oficinas con cargos
 ```
 
@@ -339,6 +353,34 @@ Todas las respuestas siguen el formato:
 - `404` - Not Found
 - `500` - Server Error
 
+## 🛠️ Stack Tecnológico
+
+### Backend
+- **Framework**: Laravel 10.x
+- **PHP**: 8.1+
+- **Base de datos**: MySQL/MariaDB
+- **Autenticación**: Laravel Sanctum
+- **Autorización**: Spatie Laravel-Permission
+- **Validaciones**: Form Request Classes
+- **API**: RESTful con ApiResponseTrait
+
+### Funcionalidades Técnicas
+- **Migraciones**: Control de versiones de BD con seeders
+- **Modelos Eloquent**: Relaciones complejas y scopes avanzados
+- **Helpers Personalizados**: ArchivoHelper para gestión de archivos
+- **Logging**: Sistema de logs avanzado con Laravel Log
+- **Importación**: PhpSpreadsheet para archivos Excel
+- **Estructuras Jerárquicas**: Relaciones recursivas padre-hijo
+- **Configuración Dinámica**: Sistema de configuraciones centralizadas
+
+### Características de Desarrollo
+- **Request Classes**: Validaciones centralizadas y reutilizables
+- **Traits**: Código reutilizable (ApiResponseTrait)
+- **Scopes**: Filtros de consulta reutilizables en modelos
+- **Seeders**: Datos de prueba y configuración inicial
+- **Documentación**: PHPDoc completo en controladores
+- **Estructura Modular**: Organización por módulos funcionales
+
 ## 🎯 Características Avanzadas
 
 ### 📊 **Sistema de Estadísticas**
@@ -461,6 +503,7 @@ app/
 - ✅ Optimización de ConfigVariasController con métodos simplificados
 - ✅ Validaciones mejoradas para archivos y configuraciones
 - ✅ Sistema de almacenamiento con múltiples discos
+- ✅ Endpoints específicos para numeración unificada con validaciones booleanas
 
 ### **Módulo Clasificación Documental**
 - ✅ Controladores completamente optimizados con ApiResponseTrait
@@ -471,6 +514,14 @@ app/
 - ✅ Modelos mejorados con scopes, relaciones y métodos de utilidad
 - ✅ Rutas organizadas y documentadas con prefijos lógicos
 - ✅ Sistema de estadísticas con rankings, medianas y desviaciones estándar
+
+### **Módulo Calidad**
+- ✅ Gestión completa de organigramas con estructura jerárquica
+- ✅ Soporte para relaciones padre-hijo recursivas
+- ✅ Endpoint optimizado para listar dependencias en estructura de árbol
+- ✅ Validaciones robustas para nodos del organigrama
+- ✅ Estadísticas detalladas del organigrama
+- ✅ Sistema de scopes para filtrado por tipo y nivel
 
 ## 🤝 Contribución
 
