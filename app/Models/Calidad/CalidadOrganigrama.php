@@ -21,6 +21,8 @@ class CalidadOrganigrama extends Model
         'parent'
     ];
 
+
+
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
@@ -54,8 +56,7 @@ class CalidadOrganigrama extends Model
     public function childrenDependencias()
     {
         return $this->hasMany(CalidadOrganigrama::class, 'parent')
-            ->where('tipo', 'Dependencia')
-            ->with('childrenDependencias');
+            ->where('tipo', 'Dependencia');
     }
 
     /**
@@ -175,6 +176,7 @@ class CalidadOrganigrama extends Model
     {
         $jerarquia = [];
         $nodoActual = $this;
+        $parentId = $this->attributes['parent'] ?? null;
 
         while ($nodoActual) {
             array_unshift($jerarquia, [
@@ -183,7 +185,17 @@ class CalidadOrganigrama extends Model
                 'nom_organico' => $nodoActual->nom_organico,
                 'cod_organico' => $nodoActual->cod_organico
             ]);
-            $nodoActual = $nodoActual->parent;
+
+            if ($parentId) {
+                $nodoActual = self::find($parentId);
+                if ($nodoActual) {
+                    $parentId = $nodoActual->attributes['parent'] ?? null;
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
         }
 
         return $jerarquia;
@@ -196,7 +208,7 @@ class CalidadOrganigrama extends Model
      */
     public function isDependenciaRaiz(): bool
     {
-        return $this->tipo === 'Dependencia' && is_null($this->parent);
+        return $this->tipo === 'Dependencia' && is_null($this->attributes['parent'] ?? null);
     }
 
     /**
@@ -237,11 +249,15 @@ class CalidadOrganigrama extends Model
     public function getNivel(): int
     {
         $nivel = 1;
-        $nodoActual = $this->parent;
+        $parentId = $this->attributes['parent'] ?? null;
 
-        while ($nodoActual) {
+        while ($parentId) {
             $nivel++;
-            $nodoActual = $nodoActual->parent;
+            $parent = self::find($parentId);
+            if (!$parent) {
+                break;
+            }
+            $parentId = $parent->attributes['parent'] ?? null;
         }
 
         return $nivel;
@@ -255,5 +271,15 @@ class CalidadOrganigrama extends Model
     public function trds()
     {
         return $this->hasMany(ClasificacionDocumentalTRD::class, 'dependencia_id');
+    }
+
+    /**
+     * Accessor para la propiedad parent.
+     *
+     * @return mixed
+     */
+    public function getParentAttribute()
+    {
+        return $this->attributes['parent'] ?? null;
     }
 }

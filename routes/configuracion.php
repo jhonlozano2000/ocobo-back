@@ -48,6 +48,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('config-varias', [ConfigVariasController::class, 'store'])->name('config.varias.store');
     Route::put('config-varias/{clave}', [ConfigVariasController::class, 'update'])->name('config.varias.update');
 
+    // Rutas específicas para numeración unificada
+    Route::get('config-varias/numeracion-unificada', [ConfigVariasController::class, 'getNumeracionUnificada'])->name('config.varias.numeracion.unificada.get');
+    Route::put('config-varias/numeracion-unificada', [ConfigVariasController::class, 'updateNumeracionUnificada'])->name('config.varias.numeracion.unificada.update');
+
     Route::get('config-num-radicado', [ConfigNumRadicadoController::class, 'getConfiguracion'])->name('config.num.radicado.getConfiguracion');
     Route::put('config-num-radicado', [ConfigNumRadicadoController::class, 'updateConfiguracion'])->name('config.num.radicado.updateConfiguracion');
 

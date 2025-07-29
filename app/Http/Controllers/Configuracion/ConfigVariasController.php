@@ -311,4 +311,80 @@ class ConfigVariasController extends Controller
             return $this->errorResponse('Error al actualizar la configuración', $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Obtiene la configuración de numeración unificada.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Configuración de numeración unificada obtenida exitosamente",
+     *   "data": {
+     *     "numeracion_unificada": true,
+     *     "descripcion": "Define si la numeración de radicados es unificada o por ventanilla"
+     *   }
+     * }
+     */
+    public function getNumeracionUnificada()
+    {
+        try {
+            $numeracionUnificada = ConfigVarias::getNumeracionUnificada();
+
+            return $this->successResponse([
+                'numeracion_unificada' => $numeracionUnificada,
+                'descripcion' => 'Define si la numeración de radicados es unificada o por ventanilla'
+            ], 'Configuración de numeración unificada obtenida exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener la configuración de numeración unificada', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Actualiza la configuración de numeración unificada.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     *
+     * @bodyParam numeracion_unificada boolean Configuración de numeración unificada. Example: true
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Configuración de numeración unificada actualizada exitosamente",
+     *   "data": {
+     *     "numeracion_unificada": true
+     *   }
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Error de validación",
+     *   "errors": {
+     *     "numeracion_unificada": ["El campo numeración unificada es obligatorio."]
+     *   }
+     * }
+     */
+    public function updateNumeracionUnificada(Request $request)
+    {
+        try {
+            $request->validate([
+                'numeracion_unificada' => [
+                    'required',
+                    'boolean'
+                ]
+            ], [
+                'numeracion_unificada.required' => 'El campo numeración unificada es obligatorio.',
+                'numeracion_unificada.boolean' => 'El campo numeración unificada debe ser verdadero o falso.'
+            ]);
+
+            $numeracionUnificada = $request->boolean('numeracion_unificada');
+            ConfigVarias::setNumeracionUnificada($numeracionUnificada);
+
+            return $this->successResponse([
+                'numeracion_unificada' => $numeracionUnificada
+            ], 'Configuración de numeración unificada actualizada exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al actualizar la configuración de numeración unificada', $e->getMessage(), 500);
+        }
+    }
 }

@@ -9,6 +9,7 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\Calidad\CalidadOrganigrama;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CalidadOrganigramaController extends Controller
 {
@@ -155,7 +156,7 @@ class CalidadOrganigramaController extends Controller
             DB::commit();
 
             return $this->successResponse(
-                $organigrama->load('parent'),
+                $organigrama,
                 'Nodo creado correctamente',
                 201
             );
@@ -205,7 +206,8 @@ class CalidadOrganigramaController extends Controller
     public function show(CalidadOrganigrama $calidadOrganigrama)
     {
         try {
-            $organigrama = $calidadOrganigrama->load(['parent', 'children']);
+            Log::info('=== MÉTODO SHOW EJECUTÁNDOSE ===');
+            $organigrama = $calidadOrganigrama->load(['children']);
 
             return $this->successResponse($organigrama, 'Nodo obtenido correctamente');
         } catch (\Exception $e) {
@@ -266,7 +268,7 @@ class CalidadOrganigramaController extends Controller
             DB::commit();
 
             return $this->successResponse(
-                $calidadOrganigrama->load('parent'),
+                $calidadOrganigrama,
                 'Nodo actualizado correctamente'
             );
         } catch (\Exception $e) {
@@ -374,7 +376,11 @@ class CalidadOrganigramaController extends Controller
     public function listDependencias(Request $request)
     {
         try {
-            $query = CalidadOrganigrama::dependenciasRaiz()->with('childrenDependencias');
+            Log::info('=== MÉTODO LISTDEPENDENCIAS EJECUTÁNDOSE ===');
+
+            // Obtener solo las dependencias raíz (sin padre) con toda la jerarquía de dependencias
+            $query = CalidadOrganigrama::dependenciasRaiz()->with('children');
+            Log::info('Query dependencias raíz con jerarquía completa creada');
 
             // Aplicar filtro de búsqueda si se proporciona
             if ($request->filled('search')) {
@@ -387,13 +393,20 @@ class CalidadOrganigramaController extends Controller
 
             // Paginar si se solicita
             if ($request->filled('per_page')) {
+                Log::info('Ejecutando paginate');
                 $dependencias = $query->paginate($request->per_page);
             } else {
+                Log::info('Ejecutando get');
                 $dependencias = $query->get();
             }
 
+            Log::info('Dependencias obtenidas: ' . $dependencias->count());
+            Log::info('Primera dependencia: ' . ($dependencias->first() ? $dependencias->first()->nom_organico : 'No hay dependencias'));
+
             return $this->successResponse($dependencias, 'Lista de dependencias obtenida');
         } catch (\Exception $e) {
+            Log::error('Error en listDependencias: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             return $this->errorResponse('Error al obtener las dependencias', $e->getMessage(), 500);
         }
     }
