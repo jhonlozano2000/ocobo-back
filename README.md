@@ -19,7 +19,7 @@ OCOBO-BACK es una aplicación web desarrollada en Laravel que gestiona procesos 
 - **Control de Acceso**: Sistema de roles y permisos con Spatie Laravel-Permission
 - **Configuración del Sistema**: Módulos de configuración para división política, sedes, listas, etc.
 - **Gestión Documental**: Procesos de radicación y clasificación documental
-- **Clasificación Documental**: Sistema completo de TRD (Tabla de Retención Documental) con versiones
+- **Clasificación Documental**: Sistema completo de TRD (Tabla de Retención Documental) con versiones y datos de prueba
 - **Control de Calidad**: Gestión de organigramas y estructuras organizacionales
 - **Ventanilla Única**: Sistema completo de gestión de ventanillas y radicaciones
 - **API RESTful**: Endpoints bien documentados y estructurados
@@ -31,6 +31,7 @@ OCOBO-BACK es una aplicación web desarrollada en Laravel que gestiona procesos 
 - **Configuración Centralizada**: Sistema de configuraciones varias con numeración unificada
 - **Gestión de Archivos**: Manejo seguro de uploads con validaciones avanzadas
 - **Logging Avanzado**: Sistema de logs detallado para debugging y monitoreo
+- **Datos de Prueba**: Seeders completos con datos de prueba para todos los módulos
 
 ## 🏗️ Arquitectura del Proyecto
 
@@ -51,7 +52,7 @@ POST   /api/control-acceso/users                    # Crear usuario
 GET    /api/control-acceso/users/{id}               # Obtener usuario
 PUT    /api/control-acceso/users/{id}               # Actualizar usuario
 DELETE /api/control-acceso/users/{id}               # Eliminar usuario
-GET    /api/control-acceso/users/estadisticas       # Estadísticas de usuarios
+GET    /api/control-acceso/users/stats/estadisticas # Estadísticas de usuarios
 PUT    /api/control-acceso/users/profile            # Actualizar perfil
 PUT    /api/control-acceso/users/password           # Cambiar contraseña
 POST   /api/control-acceso/users/activar-inactivar  # Activar/desactivar cuenta
@@ -76,7 +77,7 @@ DELETE /api/control-acceso/users-sedes/{id}              # Eliminar relación
 - **ConfigListaController**: Gestión de listas maestras
 - **ConfigListaDetalleController**: Detalles de listas maestras
 - **ConfigServerArchivoController**: Configuración de servidores de archivos
-- **ConfigVariasController**: Configuraciones varias del sistema (incluye numeración unificada)
+- **ConfigVariasController**: Configuraciones varias del sistema (incluye numeración unificada e información empresarial)
 - **ConfigNumRadicadoController**: Configuración de numeración de radicados
 - **ConfigVentanillasController**: Configuración de ventanillas con estadísticas
 
@@ -110,7 +111,7 @@ PUT    /api/config/listas/{id}                      # Actualizar lista maestra
 DELETE /api/config/listas/{id}                      # Eliminar lista maestra
 GET    /api/config/listas-detalles                  # Detalles de listas
 
-# Configuraciones varias
+# Configuraciones varias (incluye información empresarial)
 GET    /api/config/config-varias                    # Configuraciones varias
 POST   /api/config/config-varias                    # Crear configuración
 PUT    /api/config/config-varias/{clave}            # Actualizar configuración
@@ -155,27 +156,27 @@ GET    /api/calidad/organigrama/oficinas            # Listar oficinas con cargos
 **Endpoints principales:**
 ```
 # TRD (Tabla de Retención Documental)
-GET    /api/trd                                    # Listar elementos TRD
-POST   /api/trd                                    # Crear elemento TRD
-GET    /api/trd/{id}                               # Obtener elemento TRD
-PUT    /api/trd/{id}                               # Actualizar elemento TRD
-DELETE /api/trd/{id}                               # Eliminar elemento TRD
-POST   /api/trd/importar                           # Importar TRD desde Excel
-GET    /api/trd/estadisticas/{dependenciaId}       # Estadísticas por dependencia
-GET    /api/trd/dependencia/{dependenciaId}        # Listar por dependencia
+GET    /api/clasifica-documental/trd                # Listar elementos TRD
+POST   /api/clasifica-documental/trd                # Crear elemento TRD
+GET    /api/clasifica-documental/trd/{id}           # Obtener elemento TRD
+PUT    /api/clasifica-documental/trd/{id}           # Actualizar elemento TRD
+DELETE /api/clasifica-documental/trd/{id}           # Eliminar elemento TRD
+POST   /api/clasifica-documental/trd/importar       # Importar TRD desde Excel
+GET    /api/clasifica-documental/trd/estadisticas/{dependenciaId} # Estadísticas por dependencia
+GET    /api/clasifica-documental/trd/dependencia/{dependenciaId}  # Listar por dependencia
 
 # Estadísticas avanzadas
-GET    /api/trd/estadisticas/totales               # Estadísticas totales del sistema
-GET    /api/trd/estadisticas/por-dependencias      # Estadísticas detalladas por dependencias
-GET    /api/trd/estadisticas/comparativas          # Estadísticas comparativas entre dependencias
+GET    /api/clasifica-documental/trd/estadisticas/totales          # Estadísticas totales del sistema
+GET    /api/clasifica-documental/trd/estadisticas/por-dependencias # Estadísticas detalladas por dependencias
+GET    /api/clasifica-documental/trd/estadisticas/comparativas     # Estadísticas comparativas entre dependencias
 
 # Versiones TRD
-GET    /api/trd-versiones                          # Listar versiones TRD
-POST   /api/trd-versiones                          # Crear nueva versión
-GET    /api/trd-versiones/{id}                     # Obtener versión específica
-POST   /api/trd-versiones/aprobar/{dependenciaId}  # Aprobar versión
-GET    /api/trd-versiones/pendientes/aprobar       # Versiones pendientes por aprobar
-GET    /api/trd-versiones/estadisticas/{dependenciaId} # Estadísticas de versiones
+GET    /api/clasifica-documental/trd-versiones                      # Listar versiones TRD
+POST   /api/clasifica-documental/trd-versiones                      # Crear nueva versión
+GET    /api/clasifica-documental/trd-versiones/{id}                 # Obtener versión específica
+POST   /api/clasifica-documental/trd-versiones/aprobar/{dependenciaId} # Aprobar versión
+GET    /api/clasifica-documental/trd-versiones/pendientes/aprobar   # Versiones pendientes por aprobar
+GET    /api/clasifica-documental/trd-versiones/estadisticas/{dependenciaId} # Estadísticas de versiones
 ```
 
 #### 📋 **Ventanilla Única**
@@ -429,6 +430,8 @@ Todos los módulos principales incluyen endpoints de estadísticas que proporcio
 - **Workflow de Aprobación**: Sistema de aprobación de versiones con control de estados
 - **Análisis de Rendimiento**: Coeficientes de variación, medianas y desviaciones estándar
 - **Cálculos Estadísticos**: Métricas avanzadas como mediana, desviación estándar y rankings
+- **Datos de Prueba TRD**: Seeder completo con 8 registros (2 Series, 3 SubSeries, 3 Tipos de Documento)
+- **Estructura Jerárquica**: Datos organizados en jerarquía padre-hijo para pruebas completas
 
 ### ⚙️ **Configuración Dinámica**
 
@@ -494,6 +497,7 @@ app/
 - ✅ Estadísticas avanzadas en UserVentanillaController
 - ✅ Optimización de validaciones de estado
 - ✅ Manejo mejorado de errores
+- ✅ Corrección de rutas para evitar conflictos (estadísticas en `/users/stats/estadisticas`)
 
 ### **Módulo Configuración**
 - ✅ Migración de `numeracion_unificada` de `config_sedes` a `config_varias`
@@ -514,6 +518,8 @@ app/
 - ✅ Modelos mejorados con scopes, relaciones y métodos de utilidad
 - ✅ Rutas organizadas y documentadas con prefijos lógicos
 - ✅ Sistema de estadísticas con rankings, medianas y desviaciones estándar
+- ✅ **Datos de Prueba TRD**: Seeder completo con 8 registros (2 Series, 3 SubSeries, 3 Tipos de Documento)
+- ✅ **Estructura Jerárquica**: Datos organizados en jerarquía padre-hijo para pruebas completas
 
 ### **Módulo Calidad**
 - ✅ Gestión completa de organigramas con estructura jerárquica
