@@ -11,6 +11,7 @@ use Database\Seeders\Configuracion\SedesSeeder;
 use Database\Seeders\ControlAcceso\RoleSeeder;
 use Database\Seeders\ControlAcceso\UsersSeeder;
 use Database\Seeders\Gestion\TercerosSeed;
+use Database\Seeders\ClasificacionDocumental\TRDSeed;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -34,5 +35,6 @@ class DatabaseSeeder extends Seeder
         $this->call(ListaSeed::class);
         $this->call(TercerosSeed::class);
         $this->call(SedesSeeder::class);
+        $this->call(TRDSeed::class);
     }
 }
