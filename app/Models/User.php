@@ -116,7 +116,7 @@ class User extends Authenticatable
      */
     public function cargos()
     {
-        return $this->belongsToMany(CalidadOrganigrama::class, 'users_cargos', 'user_id', 'cargo_id')
+        return $this->belongsToMany(CalidadOrganigrama::class, 'users_cargos', 'user_id', 'organigrama_id')
             ->withPivot('fecha_inicio', 'fecha_fin', 'observaciones', 'estado')
             ->withTimestamps();
     }
@@ -147,7 +147,7 @@ class User extends Authenticatable
         // Crear nueva asignación de cargo
         return UserCargo::create([
             'user_id' => $this->id,
-            'cargo_id' => $cargoId,
+            'organigrama_id' => $cargoId,
             'fecha_inicio' => $fechaInicio ?? now()->format('Y-m-d'),
             'observaciones' => $observaciones,
             'estado' => true

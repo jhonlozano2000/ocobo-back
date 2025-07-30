@@ -282,7 +282,7 @@ class CalidadOrganigrama extends Model
      */
     public function asignaciones()
     {
-        return $this->hasMany(UserCargo::class, 'cargo_id')
+        return $this->hasMany(UserCargo::class, 'organigrama_id')
             ->with('user')
             ->orderBy('fecha_inicio', 'desc');
     }
@@ -294,7 +294,7 @@ class CalidadOrganigrama extends Model
      */
     public function usuariosActivos()
     {
-        return $this->hasMany(UserCargo::class, 'cargo_id')
+        return $this->hasMany(UserCargo::class, 'organigrama_id')
             ->with('user')
             ->where('estado', true)
             ->whereNull('fecha_fin');
@@ -307,7 +307,7 @@ class CalidadOrganigrama extends Model
      */
     public function usuarios()
     {
-        return $this->belongsToMany(User::class, 'users_cargos', 'cargo_id', 'user_id')
+        return $this->belongsToMany(User::class, 'users_cargos', 'organigrama_id', 'user_id')
             ->withPivot('fecha_inicio', 'fecha_fin', 'observaciones', 'estado')
             ->withTimestamps();
     }
@@ -319,7 +319,7 @@ class CalidadOrganigrama extends Model
      */
     public function usuariosActivosRelacion()
     {
-        return $this->belongsToMany(User::class, 'users_cargos', 'cargo_id', 'user_id')
+        return $this->belongsToMany(User::class, 'users_cargos', 'organigrama_id', 'user_id')
             ->withPivot('fecha_inicio', 'fecha_fin', 'observaciones', 'estado')
             ->wherePivot('estado', true)
             ->wherePivotNull('fecha_fin')

@@ -27,7 +27,7 @@ class ListUserCargosRequest extends FormRequest
                 'integer',
                 'exists:users,id'
             ],
-            'cargo_id' => [
+            'organigrama_id' => [
                 'nullable',
                 'integer',
                 'exists:calidad_organigrama,id'
@@ -77,8 +77,8 @@ class ListUserCargosRequest extends FormRequest
             'user_id.integer' => 'El ID del usuario debe ser un número entero.',
             'user_id.exists' => 'El usuario especificado no existe.',
 
-            'cargo_id.integer' => 'El ID del cargo debe ser un número entero.',
-            'cargo_id.exists' => 'El cargo especificado no existe.',
+            'organigrama_id.integer' => 'El ID del cargo debe ser un número entero.',
+            'organigrama_id.exists' => 'El cargo especificado no existe.',
 
             'estado.boolean' => 'El estado debe ser verdadero o falso.',
 
@@ -124,7 +124,7 @@ class ListUserCargosRequest extends FormRequest
     {
         return [
             'user_id' => 'usuario',
-            'cargo_id' => 'cargo',
+            'organigrama_id' => 'cargo',
             'estado' => 'estado',
             'fecha_desde' => 'fecha desde',
             'fecha_hasta' => 'fecha hasta',
