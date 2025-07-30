@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ControlAcceso\NotificationSettingsController;
 use App\Http\Controllers\ControlAcceso\RoleController;
+use App\Http\Controllers\ControlAcceso\UserCargoController;
 use App\Http\Controllers\ControlAcceso\UserController;
 use App\Http\Controllers\ControlAcceso\UserSessionController;
 use App\Http\Controllers\ControlAcceso\UserSedeController;
@@ -63,4 +64,33 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::resource('/user-sedes', UserSedeController::class)->except('create', 'edit');
     Route::get('/users/{userId}/sedes', [UserSedeController::class, 'getUserSedes']);
     Route::get('/sedes/{sedeId}/users', [UserSedeController::class, 'getSedeUsers']);
+
+    /**
+     * ==================== GESTIÓN DE CARGOS USUARIOS ====================
+     */
+
+    // Rutas principales de gestión de cargos
+    Route::prefix('user-cargos')->group(function () {
+        // Listar asignaciones con filtros
+        Route::get('/', [UserCargoController::class, 'index'])->name('user-cargos.index');
+
+        // Asignar cargo a usuario
+        Route::post('/asignar', [UserCargoController::class, 'asignarCargo'])->name('user-cargos.asignar');
+
+        // Finalizar asignación de cargo
+        Route::put('/finalizar/{asignacionId}', [UserCargoController::class, 'finalizarCargo'])->name('user-cargos.finalizar');
+
+        // Consultas específicas por usuario
+        Route::get('/usuario/{userId}/activo', [UserCargoController::class, 'cargoActivoUsuario'])->name('user-cargos.usuario.activo');
+        Route::get('/usuario/{userId}/historial', [UserCargoController::class, 'historialUsuario'])->name('user-cargos.usuario.historial');
+
+        // Consultas específicas por cargo
+        Route::get('/cargo/{cargoId}/usuarios', [UserCargoController::class, 'usuariosCargo'])->name('user-cargos.cargo.usuarios');
+
+        // Estadísticas y reportes
+        Route::get('/estadisticas', [UserCargoController::class, 'estadisticas'])->name('user-cargos.estadisticas');
+
+        // Cargos disponibles
+        Route::get('/cargos-disponibles', [UserCargoController::class, 'cargosDisponibles'])->name('user-cargos.disponibles');
+    });
 });

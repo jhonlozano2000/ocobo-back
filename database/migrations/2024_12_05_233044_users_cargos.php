@@ -8,21 +8,55 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
+     *
+     * Crea la tabla pivot users_cargos para relacionar usuarios con cargos del organigrama.
+     * Permite gestionar el histórico de cargos de cada usuario con fechas de inicio y fin.
      */
     public function up(): void
     {
         Schema::create('users_cargos', function (Blueprint $table) {
             $table->id();
 
-            $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('organigrama_id');
+            // Relaciones
+            $table->foreignId('user_id')
+                ->constrained('users')
+                ->onUpdate('cascade')
+                ->onDelete('cascade')
+                ->comment('ID del usuario');
 
-            $table->date('start_date');
-            $table->date('end_date')->nullable();
+            $table->foreignId('cargo_id')
+                ->constrained('calidad_organigrama')
+                ->onUpdate('cascade')
+                ->onDelete('cascade')
+                ->comment('ID del cargo en el organigrama');
+
+            // Fechas de vigencia del cargo
+            $table->date('fecha_inicio')
+                ->comment('Fecha de inicio en el cargo');
+
+            $table->date('fecha_fin')
+                ->nullable()
+                ->comment('Fecha de fin en el cargo (null = cargo activo)');
+
+            // Información adicional
+            $table->string('observaciones', 500)
+                ->nullable()
+                ->comment('Observaciones sobre la asignación del cargo');
+
+            $table->boolean('estado')
+                ->default(true)
+                ->comment('Estado de la asignación (true = activo, false = inactivo)');
+
+            // Auditoría
             $table->timestamps();
 
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('organigrama_id')->references('id')->on('calidad_organigrama')->onDelete('cascade');
+            // Índices para optimizar consultas
+            $table->index(['user_id', 'estado']);
+            $table->index(['cargo_id', 'estado']);
+            $table->index(['fecha_inicio', 'fecha_fin']);
+
+            // Constraint: Solo puede haber un cargo activo por usuario
+            // Nota: Este constraint se maneja a nivel de aplicación debido a limitaciones de MySQL
         });
     }
 
@@ -31,6 +65,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users_cargo');
+        Schema::dropIfExists('users_cargos');
     }
 };
