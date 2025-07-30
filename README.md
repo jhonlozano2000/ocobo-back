@@ -144,7 +144,7 @@ POST   /api/calidad/organigrama                     # Crear nodo del organigrama
 GET    /api/calidad/organigrama/{id}                # Obtener nodo específico
 PUT    /api/calidad/organigrama/{id}                # Actualizar nodo
 DELETE /api/calidad/organigrama/{id}                # Eliminar nodo
-GET    /api/calidad/organigrama/dependencias        # Listar dependencias en estructura jerárquica
+GET    /api/calidad/organigrama/dependencias        # Listar dependencias en formato árbol visual
 GET    /api/calidad/organigrama/oficinas            # Listar oficinas con cargos
 ```
 

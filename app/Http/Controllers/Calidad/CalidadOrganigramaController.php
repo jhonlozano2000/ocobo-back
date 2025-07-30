@@ -40,6 +40,14 @@ class CalidadOrganigramaController extends Controller
      *       "cod_organico": "DG001",
      *       "observaciones": "Dirección principal",
      *       "parent": null,
+     *       "nivel": 0,
+     *       "icono": {
+     *         "nombre": "folder",
+     *         "color": "#FFA500",
+     *         "clase": "fa-folder"
+     *       },
+     *       "expandido": true,
+     *       "tieneHijos": true,
      *       "children": [
      *         {
      *           "id": 2,
@@ -47,13 +55,29 @@ class CalidadOrganigramaController extends Controller
      *           "nom_organico": "Oficina de Atención",
      *           "cod_organico": "OA001",
      *           "parent": 1,
+     *           "nivel": 1,
+     *           "icono": {
+     *             "nombre": "folder-open",
+     *             "color": "#4CAF50",
+     *             "clase": "fa-folder-open"
+     *           },
+     *           "expandido": true,
+     *           "tieneHijos": true,
      *           "children": [
      *             {
      *               "id": 3,
      *               "tipo": "Cargo",
      *               "nom_organico": "Director",
      *               "cod_organico": "DIR001",
-     *               "parent": 2
+     *               "parent": 2,
+     *               "nivel": 2,
+     *               "icono": {
+     *                 "nombre": "user",
+     *                 "color": "#2196F3",
+     *                 "clase": "fa-user"
+     *               },
+     *               "expandido": true,
+     *               "tieneHijos": false
      *             }
      *           ]
      *         }
@@ -92,8 +116,13 @@ class CalidadOrganigramaController extends Controller
             // Paginar si se solicita
             if ($request->filled('per_page')) {
                 $organigrama = $query->paginate($request->per_page);
+                // Para paginación, transformar solo los items
+                $organigrama->getCollection()->transform(function ($items) {
+                    return $this->formatearParaArbol(collect([$items]))[0];
+                });
             } else {
                 $organigrama = $query->get();
+                $organigrama = $this->formatearParaArbol($organigrama);
             }
 
             return $this->successResponse($organigrama, 'Organigrama obtenido correctamente');
@@ -378,7 +407,7 @@ class CalidadOrganigramaController extends Controller
         try {
             Log::info('=== MÉTODO LISTDEPENDENCIAS EJECUTÁNDOSE ===');
 
-            // Obtener solo las dependencias raíz (sin padre) con toda la jerarquía de dependencias
+            // Obtener solo las dependencias raíz (sin padre) con toda la jerarquía
             $query = CalidadOrganigrama::dependenciasRaiz()->with('children');
             Log::info('Query dependencias raíz con jerarquía completa creada');
 
@@ -400,15 +429,89 @@ class CalidadOrganigramaController extends Controller
                 $dependencias = $query->get();
             }
 
+            // Transformar los datos para el formato de árbol
+            $dependenciasFormateadas = $this->formatearParaArbol($dependencias);
+
             Log::info('Dependencias obtenidas: ' . $dependencias->count());
             Log::info('Primera dependencia: ' . ($dependencias->first() ? $dependencias->first()->nom_organico : 'No hay dependencias'));
 
-            return $this->successResponse($dependencias, 'Lista de dependencias obtenida');
+            return $this->successResponse($dependenciasFormateadas, 'Lista de dependencias obtenida');
         } catch (\Exception $e) {
             Log::error('Error en listDependencias: ' . $e->getMessage());
             Log::error('Stack trace: ' . $e->getTraceAsString());
             return $this->errorResponse('Error al obtener las dependencias', $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Formatear los datos para estructura de árbol visual
+     *
+     * @param \Illuminate\Database\Eloquent\Collection $items
+     * @param int $nivel
+     * @return array
+     */
+    private function formatearParaArbol($items, $nivel = 0)
+    {
+        $resultado = [];
+
+        foreach ($items as $item) {
+            $nodoFormateado = [
+                'id' => $item->id,
+                'tipo' => $item->tipo,
+                'nom_organico' => $item->nom_organico,
+                'cod_organico' => $item->cod_organico,
+                'observaciones' => $item->observaciones,
+                'parent' => $item->parent,
+                'nivel' => $nivel,
+                'icono' => $this->obtenerIcono($item->tipo),
+                'expandido' => true,
+                'tieneHijos' => $item->children && $item->children->count() > 0,
+                'created_at' => $item->created_at,
+                'updated_at' => $item->updated_at,
+            ];
+
+            // Si tiene hijos, agregarlos recursivamente
+            if ($item->children && $item->children->count() > 0) {
+                $nodoFormateado['children'] = $this->formatearParaArbol($item->children, $nivel + 1);
+            }
+
+            $resultado[] = $nodoFormateado;
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Obtener el icono correspondiente según el tipo
+     *
+     * @param string $tipo
+     * @return array
+     */
+    private function obtenerIcono($tipo)
+    {
+        $iconos = [
+            'Dependencia' => [
+                'nombre' => 'folder',
+                'color' => '#FFA500',
+                'clase' => 'fa-folder'
+            ],
+            'Oficina' => [
+                'nombre' => 'folder-open',
+                'color' => '#4CAF50',
+                'clase' => 'fa-folder-open'
+            ],
+            'Cargo' => [
+                'nombre' => 'user',
+                'color' => '#2196F3',
+                'clase' => 'fa-user'
+            ]
+        ];
+
+        return $iconos[$tipo] ?? [
+            'nombre' => 'circle',
+            'color' => '#9E9E9E',
+            'clase' => 'fa-circle'
+        ];
     }
 
     /**
