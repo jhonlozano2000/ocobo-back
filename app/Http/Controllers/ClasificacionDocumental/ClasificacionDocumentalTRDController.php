@@ -411,14 +411,14 @@ class ClasificacionDocumentalTRDController extends Controller
      * Importa elementos TRD desde un archivo Excel.
      *
      * Este método permite importar masivamente elementos TRD desde un archivo Excel,
-     * procesando automáticamente la estructura jerárquica y creando versiones
-     * temporales que requieren aprobación antes de ser activadas.
+     * extrayendo automáticamente el código de dependencia desde la celda E4,
+     * procesando la estructura jerárquica y creando versiones temporales
+     * que requieren aprobación antes de ser activadas.
      *
      * @param ImportarTRDRequest $request La solicitud HTTP con el archivo Excel
      * @return \Illuminate\Http\JsonResponse Respuesta JSON con el resultado de la importación
      *
-     * @bodyParam archivo file required Archivo Excel con datos TRD (.xlsx, .xls). Example: trd_data.xlsx
-     * @bodyParam dependencia_id integer required ID de la dependencia para la importación. Example: 1
+     * @bodyParam archivo file required Archivo Excel con datos TRD (.xlsx, .xls) con código de dependencia en celda E4. Example: trd_data.xlsx
      *
      * @response 200 {
      *   "status": true,
@@ -430,10 +430,11 @@ class ClasificacionDocumentalTRDController extends Controller
      *     "tipos_documento_creados": 5,
      *     "version_id": 1,
      *     "archivo_procesado": "trd_data.xlsx",
+     *     "codigo_dependencia_extraido": "GRE",
      *     "dependencia": {
-     *       "id": 1,
-     *       "nom_organico": "JUNTA DIRECTIVA",
-     *       "cod_organico": "JD001"
+     *       "id": 3,
+     *       "nom_organico": "GERENCIA",
+     *       "cod_organico": "GRE"
      *     },
      *     "fecha_importacion": "2025-07-30T11:35:27.000000Z"
      *   }
@@ -441,11 +442,12 @@ class ClasificacionDocumentalTRDController extends Controller
      *
      * @response 422 {
      *   "status": false,
-     *   "message": "Error de validación",
-     *   "errors": {
-     *     "archivo": ["El archivo debe ser un archivo Excel válido"],
-     *     "dependencia_id": ["La dependencia no existe"]
-     *   }
+     *   "message": "No se encontró el código de dependencia en la celda E4 del archivo Excel"
+     * }
+     *
+     * @response 404 {
+     *   "status": false,
+     *   "message": "No se encontró una dependencia con el código: XYZ"
      * }
      *
      * @response 500 {
@@ -462,11 +464,26 @@ class ClasificacionDocumentalTRDController extends Controller
             // Procesar archivo Excel
             $filePath = $this->procesarArchivoExcel($request);
 
-            // Obtener dependencia
-            $dependencia = $this->obtenerDependencia($request->dependencia_id);
+            // Leer el archivo Excel para extraer el código de dependencia de la celda E4
+            $spreadsheet = IOFactory::load($filePath);
+            $worksheet = $spreadsheet->getActiveSheet();
+
+            // Extraer código de dependencia desde la celda E4
+            $codigoDependencia = trim($worksheet->getCell('E4')->getValue() ?? '');
+
+            if (empty($codigoDependencia)) {
+                $this->limpiarArchivoTemporal($filePath);
+                return $this->errorResponse('No se encontró el código de dependencia en la celda E4 del archivo Excel', null, 422);
+            }
+
+            // Buscar dependencia por código orgánico
+            $dependencia = CalidadOrganigrama::where('cod_organico', $codigoDependencia)
+                ->where('tipo', 'Dependencia')
+                ->first();
 
             if (!$dependencia) {
-                return $this->errorResponse('Dependencia no encontrada', null, 404);
+                $this->limpiarArchivoTemporal($filePath);
+                return $this->errorResponse("No se encontró una dependencia con el código: {$codigoDependencia}", null, 404);
             }
 
             // Verificar si ya existe una versión pendiente
@@ -493,7 +510,8 @@ class ClasificacionDocumentalTRDController extends Controller
                 'subseries_creadas' => $version->trds()->where('tipo', 'SubSerie')->count(),
                 'tipos_documento_creados' => $version->trds()->where('tipo', 'TipoDocumento')->count(),
                 'version_id' => $version->id,
-                'archivo_procesado' => $request->file('archivo')->getClientOriginalName(),
+                'archivo_procesado' => $request->hasFile('archivo') ? $request->file('archivo')->getClientOriginalName() : 'archivo_importado.xlsx',
+                'codigo_dependencia_extraido' => $codigoDependencia,
                 'dependencia' => $dependencia,
                 'fecha_importacion' => now()
             ];
@@ -770,14 +788,14 @@ class ClasificacionDocumentalTRDController extends Controller
                 'total_subseries' => $totalSubSeries,
                 'total_tipos_documento' => $totalTiposDocumento,
                 'total_dependencias' => $totalDependencias,
-                'elementos_por_dependencia' => [
+                /* 'elementos_por_dependencia' => [
                     'promedio' => round($promedio, 2),
                     'maxima' => $maxima,
                     'minima' => $minima
                 ],
                 'distribucion_por_tipo' => $distribucionPorTipo,
                 'dependencias_mas_activas' => $dependenciasMasActivas,
-                'fecha_actualizacion' => now()->format('Y-m-d H:i:s')
+                'fecha_actualizacion' => now()->format('Y-m-d H:i:s') */
             ];
 
             return $this->successResponse($data, 'Estadísticas totales obtenidas exitosamente');
@@ -905,200 +923,7 @@ class ClasificacionDocumentalTRDController extends Controller
         }
     }
 
-    /**
-     * Obtiene estadísticas comparativas entre dependencias.
-     *
-     * Este método retorna un análisis comparativo de las dependencias
-     * incluyendo rankings, promedios, métricas de rendimiento y análisis
-     * estadístico avanzado con medianas y desviaciones estándar.
-     *
-     * @param Request $request La solicitud HTTP con parámetros de filtrado
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con estadísticas comparativas
-     *
-     * @queryParam limit integer Número de dependencias a incluir en el ranking (por defecto: 10). Example: 5
-     * @queryParam tipo string Filtrar por tipo específico (Serie, SubSerie, TipoDocumento). Example: "Serie"
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Estadísticas comparativas obtenidas exitosamente",
-     *   "data": {
-     *     "ranking_dependencias": [
-     *       {
-     *         "posicion": 1,
-     *         "dependencia": "JUNTA DIRECTIVA",
-     *         "codigo": "JD001",
-     *         "total_elementos": 8,
-     *         "series": 2,
-     *         "subseries": 3,
-     *         "tipos_documento": 3,
-     *         "puntuacion": 100.0,
-     *         "porcentaje_del_promedio": 100.0
-     *       }
-     *     ],
-     *     "metricas_generales": {
-     *       "promedio_elementos": 8.0,
-     *       "mediana_elementos": 8.0,
-     *       "desviacion_estandar": 0.0,
-     *       "total_dependencias_analizadas": 1
-     *     },
-     *     "distribucion_por_tipo": {
-     *       "Serie": {
-     *         "promedio": 2.0,
-     *         "maxima": 2,
-     *         "minima": 2,
-     *         "total": 2
-     *       },
-     *       "SubSerie": {
-     *         "promedio": 3.0,
-     *         "maxima": 3,
-     *         "minima": 3,
-     *         "total": 3
-     *       },
-     *       "TipoDocumento": {
-     *         "promedio": 3.0,
-     *         "maxima": 3,
-     *         "minima": 3,
-     *         "total": 3
-     *       }
-     *     },
-     *     "analisis_rendimiento": {
-     *       "dependencias_sobre_promedio": 1,
-     *       "dependencias_bajo_promedio": 0,
-     *       "dependencias_en_promedio": 0,
-     *       "coeficiente_variacion": 0.0
-     *     },
-     *     "filtros_aplicados": {
-     *       "tipo": "Todos",
-     *       "limit": 10
-     *     }
-     *   }
-     * }
-     *
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al obtener estadísticas comparativas",
-     *   "error": "Mensaje de error específico"
-     * }
-     */
-    public function estadisticasComparativas(Request $request)
-    {
-        try {
-            $limit = $request->get('limit', 10);
-            $tipo = $request->get('tipo');
 
-            // Consulta base
-            $query = ClasificacionDocumentalTRD::selectRaw('
-                dependencia_id,
-                COUNT(*) as total_elementos,
-                SUM(CASE WHEN tipo = "Serie" THEN 1 ELSE 0 END) as series,
-                SUM(CASE WHEN tipo = "SubSerie" THEN 1 ELSE 0 END) as subseries,
-                SUM(CASE WHEN tipo = "TipoDocumento" THEN 1 ELSE 0 END) as tipos_documento
-            ')
-                ->groupBy('dependencia_id')
-                ->with('dependencia:id,nom_organico,cod_organico');
-
-            // Filtrar por tipo si se especifica
-            if ($tipo && in_array($tipo, ['Serie', 'SubSerie', 'TipoDocumento'])) {
-                $query->where('tipo', $tipo);
-            }
-
-            $estadisticas = $query->get();
-
-            // Calcular métricas generales
-            $totales = $estadisticas->pluck('total_elementos');
-            $promedio = $totales->avg();
-            $mediana = $this->calcularMediana($totales->toArray());
-            $desviacion = $this->calcularDesviacionEstandar($totales->toArray(), $promedio);
-
-            // Crear ranking de dependencias
-            $ranking = $estadisticas
-                ->sortByDesc('total_elementos')
-                ->take($limit)
-                ->map(function ($item, $index) use ($promedio) {
-                    $puntuacion = $promedio > 0 ? round(($item->total_elementos / $promedio) * 100, 2) : 0;
-
-                    return [
-                        'posicion' => $index + 1,
-                        'dependencia' => $item->dependencia->nom_organico ?? 'N/A',
-                        'codigo' => $item->dependencia->cod_organico ?? 'N/A',
-                        'total_elementos' => $item->total_elementos,
-                        'series' => $item->series,
-                        'subseries' => $item->subseries,
-                        'tipos_documento' => $item->tipos_documento,
-                        'puntuacion' => $puntuacion,
-                        'porcentaje_del_promedio' => $promedio > 0 ? round(($item->total_elementos / $promedio) * 100, 2) : 0
-                    ];
-                });
-
-            // Calcular distribución por tipo
-            $distribucionPorTipo = [];
-            if ($tipo) {
-                $campo = match ($tipo) {
-                    'Serie' => 'series',
-                    'SubSerie' => 'subseries',
-                    'TipoDocumento' => 'tipos_documento',
-                    default => 'total_elementos'
-                };
-
-                $valores = $estadisticas->pluck($campo);
-                $distribucionPorTipo[$tipo] = [
-                    'promedio' => round($valores->avg(), 2),
-                    'maxima' => $valores->max(),
-                    'minima' => $valores->min(),
-                    'total' => $valores->sum()
-                ];
-            } else {
-                $distribucionPorTipo = [
-                    'Serie' => [
-                        'promedio' => round($estadisticas->avg('series'), 2),
-                        'maxima' => $estadisticas->max('series'),
-                        'minima' => $estadisticas->min('series'),
-                        'total' => $estadisticas->sum('series')
-                    ],
-                    'SubSerie' => [
-                        'promedio' => round($estadisticas->avg('subseries'), 2),
-                        'maxima' => $estadisticas->max('subseries'),
-                        'minima' => $estadisticas->min('subseries'),
-                        'total' => $estadisticas->sum('subseries')
-                    ],
-                    'TipoDocumento' => [
-                        'promedio' => round($estadisticas->avg('tipos_documento'), 2),
-                        'maxima' => $estadisticas->max('tipos_documento'),
-                        'minima' => $estadisticas->min('tipos_documento'),
-                        'total' => $estadisticas->sum('tipos_documento')
-                    ]
-                ];
-            }
-
-            // Análisis de rendimiento
-            $analisisRendimiento = [
-                'dependencias_sobre_promedio' => $estadisticas->where('total_elementos', '>', $promedio)->count(),
-                'dependencias_bajo_promedio' => $estadisticas->where('total_elementos', '<', $promedio)->count(),
-                'dependencias_en_promedio' => $estadisticas->where('total_elementos', $promedio)->count(),
-                'coeficiente_variacion' => $promedio > 0 ? round(($desviacion / $promedio) * 100, 2) : 0
-            ];
-
-            $data = [
-                'ranking_dependencias' => $ranking,
-                'metricas_generales' => [
-                    'promedio_elementos' => round($promedio, 2),
-                    'mediana_elementos' => round($mediana, 2),
-                    'desviacion_estandar' => round($desviacion, 2),
-                    'total_dependencias_analizadas' => $estadisticas->count()
-                ],
-                'distribucion_por_tipo' => $distribucionPorTipo,
-                'analisis_rendimiento' => $analisisRendimiento,
-                'filtros_aplicados' => [
-                    'tipo' => $tipo ?? 'Todos',
-                    'limit' => $limit
-                ]
-            ];
-
-            return $this->successResponse($data, 'Estadísticas comparativas obtenidas exitosamente');
-        } catch (\Exception $e) {
-            return $this->errorResponse('Error al obtener estadísticas comparativas', $e->getMessage(), 500);
-        }
-    }
 
     /**
      * Valida la jerarquía de elementos TRD según su tipo.
@@ -1156,18 +981,26 @@ class ClasificacionDocumentalTRDController extends Controller
      */
     private function procesarArchivoExcel(ImportarTRDRequest $request): string
     {
-        $file = $request->file('archivo');
-        $fileName = time() . '_' . $file->getClientOriginalName();
-        $filePath = storage_path('app/temp/' . $fileName);
-
-        // Crear directorio temporal si no existe
-        if (!file_exists(dirname($filePath))) {
-            mkdir(dirname($filePath), 0755, true);
+        // Verificar que el archivo existe
+        if (!$request->hasFile('archivo')) {
+            throw new \Exception('No se ha proporcionado ningún archivo');
         }
 
-        $file->move(dirname($filePath), $fileName);
+        $file = $request->file('archivo');
 
-        return $filePath;
+        // Verificar que el archivo es válido
+        if (!$file || !$file->isValid()) {
+            throw new \Exception('El archivo proporcionado no es válido');
+        }
+
+        // Generar nombre único para el archivo temporal
+        $fileName = time() . '_' . \Illuminate\Support\Str::random(10) . '.' . $file->getClientOriginalExtension();
+
+        // Guardar el archivo usando Storage (más seguro que move)
+        $storedPath = $file->storeAs('temp', $fileName, 'local');
+
+        // Retornar la ruta completa del archivo
+        return storage_path('app/' . $storedPath);
     }
 
     /**
@@ -1275,19 +1108,19 @@ class ClasificacionDocumentalTRDController extends Controller
                     break;
                 case 'SubSerie':
                     if ($idSerie === null) {
-                        continue; // SubSerie sin Serie padre
+                        continue 2; // SubSerie sin Serie padre - saltar al siguiente elemento del bucle
                     }
                     $parent = $idSerie;
                     $idSubSerie = null;
                     break;
                 case 'TipoDocumento':
                     if ($idSubSerie === null) {
-                        continue; // TipoDocumento sin SubSerie padre
+                        continue 2; // TipoDocumento sin SubSerie padre - saltar al siguiente elemento del bucle
                     }
                     $parent = $idSubSerie;
                     break;
                 default:
-                    continue; // Tipo no válido
+                    continue 2; // Tipo no válido - saltar al siguiente elemento del bucle
             }
 
             // Crear elemento TRD
@@ -1331,58 +1164,5 @@ class ClasificacionDocumentalTRDController extends Controller
         if (file_exists($filePath)) {
             unlink($filePath);
         }
-    }
-
-    /**
-     * Calcula la mediana de un array de números.
-     *
-     * Este método calcula la mediana (valor central) de un conjunto
-     * de números, ordenándolos primero y luego tomando el valor central.
-     *
-     * @param array $numeros Array de números para calcular la mediana
-     * @return float La mediana calculada
-     */
-    private function calcularMediana(array $numeros): float
-    {
-        if (empty($numeros)) {
-            return 0.0;
-        }
-
-        sort($numeros);
-        $count = count($numeros);
-        $middle = floor($count / 2);
-
-        if ($count % 2 === 0) {
-            // Número par de elementos, promedio de los dos centrales
-            return ($numeros[$middle - 1] + $numeros[$middle]) / 2;
-        } else {
-            // Número impar de elementos, valor central
-            return $numeros[$middle];
-        }
-    }
-
-    /**
-     * Calcula la desviación estándar de un array de números.
-     *
-     * Este método calcula la desviación estándar de un conjunto de números,
-     * que es una medida de la dispersión de los datos respecto a la media.
-     *
-     * @param array $numeros Array de números para calcular la desviación estándar
-     * @param float $promedio El promedio de los números (calculado previamente)
-     * @return float La desviación estándar calculada
-     */
-    private function calcularDesviacionEstandar(array $numeros, float $promedio): float
-    {
-        if (empty($numeros)) {
-            return 0.0;
-        }
-
-        $sumaCuadrados = 0;
-        foreach ($numeros as $numero) {
-            $sumaCuadrados += pow($numero - $promedio, 2);
-        }
-
-        $varianza = $sumaCuadrados / count($numeros);
-        return sqrt($varianza);
     }
 }

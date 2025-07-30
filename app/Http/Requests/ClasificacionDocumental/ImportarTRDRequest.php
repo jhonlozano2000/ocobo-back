@@ -22,8 +22,7 @@ class ImportarTRDRequest extends FormRequest
     public function rules()
     {
         return [
-            'file' => 'required|file|mimes:xlsx|max:2048',
-            //'dependencia_id' => 'required|exists:calidad_organigrama,id'
+            'archivo' => 'required|file|mimes:xlsx,xls|max:2048'
         ];
     }
 
@@ -33,12 +32,10 @@ class ImportarTRDRequest extends FormRequest
     public function messages()
     {
         return [
-            'file.required' => 'Debe adjuntar un archivo para importar la TRD.',
-            'file.file' => 'El archivo debe ser un archivo válido.',
-            'file.mimes' => 'El archivo debe estar en formato Excel (.xlsx).',
-            'file.max' => 'El tamaño del archivo no debe superar los 2MB.',
-            /* 'dependencia_id.required' => 'Debe seleccionar una dependencia para importar la TRD.',
-            'dependencia_id.exists' => 'La dependencia seleccionada no existe en el sistema.' */
+            'archivo.required' => 'Debe adjuntar un archivo para importar la TRD.',
+            'archivo.file' => 'El archivo debe ser un archivo válido.',
+            'archivo.mimes' => 'El archivo debe estar en formato Excel (.xlsx o .xls).',
+            'archivo.max' => 'El tamaño del archivo no debe superar los 2MB.'
         ];
     }
 }

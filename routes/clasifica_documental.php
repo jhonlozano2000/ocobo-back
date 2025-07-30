@@ -19,15 +19,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{id}', [ClasificacionDocumentalTRDController::class, 'update'])->name('trd.update');
         Route::delete('/{id}', [ClasificacionDocumentalTRDController::class, 'destroy'])->name('trd.destroy');
 
-        // Rutas específicas
-        Route::post('/importar', [ClasificacionDocumentalTRDController::class, 'importarTRD'])->name('trd.importar');
-        Route::get('/estadisticas/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'estadistica'])->name('trd.estadisticas');
-        Route::get('/dependencia/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'listarPorDependencia'])->name('trd.por-dependencia');
+        // Rutas específicas (las más específicas primero)
+        Route::post('/import-trd', [ClasificacionDocumentalTRDController::class, 'importarTRD'])->name('trd.importar');
 
-        // Nuevas rutas de estadísticas
+        // Rutas de estadísticas específicas (deben ir antes de la ruta con parámetro)
         Route::get('/estadisticas/totales', [ClasificacionDocumentalTRDController::class, 'estadisticasTotales'])->name('trd.estadisticas.totales');
         Route::get('/estadisticas/por-dependencias', [ClasificacionDocumentalTRDController::class, 'estadisticasPorDependencias'])->name('trd.estadisticas.por-dependencias');
-        Route::get('/estadisticas/comparativas', [ClasificacionDocumentalTRDController::class, 'estadisticasComparativas'])->name('trd.estadisticas.comparativas');
+
+        // Rutas con parámetros (deben ir después de las específicas)
+        Route::get('/estadisticas/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'estadistica'])->name('trd.estadisticas');
+        Route::get('/dependencia/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'listarPorDependencia'])->name('trd.por-dependencia');
     });
 
     /**
