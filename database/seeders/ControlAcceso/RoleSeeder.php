@@ -14,6 +14,8 @@ class RoleSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->command->info('* Creando roles');
+
         $Rol1 = Role::create(['name' => 'Administrador']);
         $Rol2 = Role::create(['name' => 'Radicador correspondencia recibida']);
         $Rol3 = Role::create(['name' => 'Radicador correspondencia enviada']);
@@ -22,6 +24,7 @@ class RoleSeeder extends Seeder
         $Rol6 = Role::create(['name' => 'Digitalizador']);
         $Rol7 = Role::create(['name' => 'Mi espacion']);
 
+        $this->command->info('✅ Roles creados exitosamente');
 
         /**
          * Control de acceso
