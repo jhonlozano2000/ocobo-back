@@ -24,7 +24,7 @@ return new class extends Migration
                 ->onDelete('cascade')
                 ->comment('ID del usuario');
 
-            $table->foreignId('organigrama_id')
+            $table->foreignId('cargo_id')
                 ->constrained('calidad_organigrama')
                 ->onUpdate('cascade')
                 ->onDelete('cascade')
@@ -52,7 +52,7 @@ return new class extends Migration
 
             // Índices para optimizar consultas
             $table->index(['user_id', 'estado']);
-            $table->index(['organigrama_id', 'estado']);
+            $table->index(['cargo_id', 'estado']);
             $table->index(['fecha_inicio', 'fecha_fin']);
 
             // Constraint: Solo puede haber un cargo activo por usuario

@@ -17,7 +17,7 @@ class UserCargo extends Model
 
     protected $fillable = [
         'user_id',
-        'organigrama_id',
+        'cargo_id',
         'fecha_inicio',
         'fecha_fin',
         'observaciones',
@@ -49,7 +49,7 @@ class UserCargo extends Model
      */
     public function cargo()
     {
-        return $this->belongsTo(CalidadOrganigrama::class, 'organigrama_id');
+        return $this->belongsTo(CalidadOrganigrama::class, 'cargo_id');
     }
 
     /**
@@ -113,7 +113,7 @@ class UserCargo extends Model
      */
     public function scopeDelCargo(Builder $query, int $cargoId): Builder
     {
-        return $query->where('organigrama_id', $cargoId);
+        return $query->where('cargo_id', $cargoId);
     }
 
     /**

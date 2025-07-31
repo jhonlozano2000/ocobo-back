@@ -30,7 +30,7 @@ class AsignarCargoRequest extends FormRequest
                 'integer',
                 'exists:users,id'
             ],
-            'organigrama_id' => [
+            'cargo_id' => [
                 'required',
                 'integer',
                 'exists:calidad_organigrama,id',
@@ -69,9 +69,9 @@ class AsignarCargoRequest extends FormRequest
             'user_id.integer' => 'El ID del usuario debe ser un número entero.',
             'user_id.exists' => 'El usuario especificado no existe.',
 
-            'organigrama_id.required' => 'El ID del cargo es obligatorio.',
-            'organigrama_id.integer' => 'El ID del cargo debe ser un número entero.',
-            'organigrama_id.exists' => 'El cargo especificado no existe.',
+            'cargo_id.required' => 'El ID del cargo es obligatorio.',
+            'cargo_id.integer' => 'El ID del cargo debe ser un número entero.',
+            'cargo_id.exists' => 'El cargo especificado no existe.',
 
             'fecha_inicio.date' => 'La fecha de inicio debe ser una fecha válida.',
             'fecha_inicio.after_or_equal' => 'La fecha de inicio no puede ser anterior a 5 años.',
@@ -111,7 +111,7 @@ class AsignarCargoRequest extends FormRequest
     {
         return [
             'user_id' => 'usuario',
-            'organigrama_id' => 'cargo',
+            'cargo_id' => 'cargo',
             'fecha_inicio' => 'fecha de inicio',
             'observaciones' => 'observaciones',
             'finalizar_cargo_anterior' => 'finalizar cargo anterior'
@@ -125,21 +125,21 @@ class AsignarCargoRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             // Validar que el usuario no tenga ya el mismo cargo activo
-            if ($this->user_id && $this->organigrama_id) {
+            if ($this->user_id && $this->cargo_id) {
                 $user = User::find($this->user_id);
-                if ($user && $user->cargoActivo && $user->cargoActivo->organigrama_id == $this->organigrama_id) {
-                    $validator->errors()->add('organigrama_id', 'El usuario ya tiene este cargo asignado actualmente.');
+                if ($user && $user->cargoActivo && $user->cargoActivo->cargo_id == $this->cargo_id) {
+                    $validator->errors()->add('cargo_id', 'El usuario ya tiene este cargo asignado actualmente.');
                 }
             }
 
             // Validar que el cargo no esté ocupado por otro usuario (si aplica)
-            if ($this->organigrama_id) {
-                $cargo = CalidadOrganigrama::find($this->organigrama_id);
+            if ($this->cargo_id) {
+                $cargo = CalidadOrganigrama::find($this->cargo_id);
                 if ($cargo && $cargo->tieneUsuariosAsignados()) {
                     $usuarioActivo = $cargo->getUsuarioActivo();
                     if ($usuarioActivo && $usuarioActivo->user_id != $this->user_id) {
                         $validator->errors()->add(
-                            'organigrama_id',
+                            'cargo_id',
                             'Este cargo ya está asignado a otro usuario: ' .
                                 $usuarioActivo->user->nombres . ' ' . $usuarioActivo->user->apellidos
                         );

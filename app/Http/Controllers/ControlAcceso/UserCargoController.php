@@ -33,8 +33,8 @@ class UserCargoController extends Controller
                 $query->delUsuario($request->user_id);
             }
 
-            if ($request->organigrama_id) {
-                $query->delCargo($request->organigrama_id);
+            if ($request->cargo_id) {
+                $query->delCargo($request->cargo_id);
             }
 
             if ($request->has('estado') && $request->estado !== null) {
@@ -71,7 +71,7 @@ class UserCargoController extends Controller
                 'asignaciones_activas' => UserCargo::activos()->count(),
                 'asignaciones_finalizadas' => UserCargo::finalizados()->count(),
                 'usuarios_con_cargo' => UserCargo::activos()->distinct('user_id')->count(),
-                'cargos_ocupados' => UserCargo::activos()->distinct('organigrama_id')->count()
+                'cargos_ocupados' => UserCargo::activos()->distinct('cargo_id')->count()
             ];
 
             $data = [
@@ -79,7 +79,7 @@ class UserCargoController extends Controller
                 'estadisticas' => $estadisticas,
                 'filtros_aplicados' => $request->only([
                     'user_id',
-                    'organigrama_id',
+                    'cargo_id',
                     'estado',
                     'fecha_desde',
                     'fecha_hasta',
@@ -105,7 +105,7 @@ class UserCargoController extends Controller
     {
         try {
             $user = User::findOrFail($request->user_id);
-            $cargo = CalidadOrganigrama::findOrFail($request->organigrama_id);
+            $cargo = CalidadOrganigrama::findOrFail($request->cargo_id);
 
             // Verificar que es un cargo válido
             if (!$cargo->puedeAsignarUsuarios()) {
@@ -118,7 +118,7 @@ class UserCargoController extends Controller
 
             // Asignar el cargo
             $asignacion = $user->asignarCargo(
-                $request->organigrama_id,
+                $request->cargo_id,
                 $request->fecha_inicio,
                 $request->observaciones
             );
@@ -329,7 +329,7 @@ class UserCargoController extends Controller
                     'asignaciones_finalizadas' => UserCargo::finalizados()->count(),
                     'usuarios_con_cargo' => UserCargo::activos()->distinct('user_id')->count(),
                     'usuarios_sin_cargo' => User::whereDoesntHave('cargoActivo')->count(),
-                    'cargos_ocupados' => UserCargo::activos()->distinct('organigrama_id')->count(),
+                    'cargos_ocupados' => UserCargo::activos()->distinct('cargo_id')->count(),
                     'cargos_disponibles' => CalidadOrganigrama::disponibles()->count()
                 ],
                 'por_tipo_organigrama' => CalidadOrganigrama::selectRaw('
@@ -337,7 +337,7 @@ class UserCargoController extends Controller
                     COUNT(*) as total_elementos,
                     COUNT(CASE WHEN EXISTS(
                         SELECT 1 FROM users_cargos uc
-                        WHERE uc.organigrama_id = calidad_organigrama.id
+                        WHERE uc.cargo_id = calidad_organigrama.id
                         AND uc.estado = true
                         AND uc.fecha_fin IS NULL
                     ) THEN 1 END) as elementos_ocupados
@@ -355,12 +355,12 @@ class UserCargoController extends Controller
                         ]];
                     }),
                 'top_cargos_mas_rotacion' => UserCargo::selectRaw('
-                    organigrama_id,
+                    cargo_id,
                     COUNT(*) as total_asignaciones,
                     COUNT(CASE WHEN estado = false THEN 1 END) as asignaciones_finalizadas
                 ')
                     ->with('cargo:id,nom_organico,cod_organico')
-                    ->groupBy('organigrama_id')
+                    ->groupBy('cargo_id')
                     ->having('total_asignaciones', '>', 1)
                     ->orderByDesc('total_asignaciones')
                     ->limit(10)
