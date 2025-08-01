@@ -132,20 +132,9 @@ class AsignarCargoRequest extends FormRequest
                 }
             }
 
-            // Validar que el cargo no esté ocupado por otro usuario (si aplica)
-            if ($this->cargo_id) {
-                $cargo = CalidadOrganigrama::find($this->cargo_id);
-                if ($cargo && $cargo->tieneUsuariosAsignados()) {
-                    $usuarioActivo = $cargo->getUsuarioActivo();
-                    if ($usuarioActivo && $usuarioActivo->user_id != $this->user_id) {
-                        $validator->errors()->add(
-                            'cargo_id',
-                            'Este cargo ya está asignado a otro usuario: ' .
-                                $usuarioActivo->user->nombres . ' ' . $usuarioActivo->user->apellidos
-                        );
-                    }
-                }
-            }
+            // NOTA: Se removió la validación que impedía que múltiples usuarios
+            // tengan el mismo cargo, ahora se permite que varios usuarios
+            // compartan el mismo cargo simultáneamente.
         });
     }
 }

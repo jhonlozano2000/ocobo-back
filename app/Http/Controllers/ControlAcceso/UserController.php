@@ -23,14 +23,19 @@ class UserController extends Controller
     use ApiResponseTrait;
 
     /**
-     * Obtiene un listado de todos los usuarios del sistema.
+     * Obtiene un listado de usuarios del sistema con opciones de filtrado.
      *
-     * Este método retorna todos los usuarios registrados en el sistema junto con
-     * sus relaciones (cargos, roles, permisos) y URLs de archivos (avatar, firma).
-     * Es útil para interfaces de administración donde se necesita mostrar una
-     * lista completa de usuarios.
+     * Este método retorna usuarios con diferentes opciones de filtrado y carga de relaciones.
+     * Puede incluir información detallada de cargos activos, filtrar por estado, búsqueda, etc.
+     * Es útil para diferentes interfaces que necesiten mostrar usuarios con distintos niveles de detalle.
      *
+     * @param Request $request La solicitud HTTP con filtros opcionales
      * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de usuarios
+     *
+     * @queryParam incluir_cargos boolean optional Incluir información detallada del cargo activo. Example: true
+     * @queryParam solo_activos boolean optional Solo incluir usuarios con estado activo (1). Example: true
+     * @queryParam search string optional Buscar por nombre, apellido o email. Example: "Juan"
+     * @queryParam con_oficina boolean optional Incluir información de oficina/sede activa. Example: true
      *
      * @response 200 {
      *   "status": true,
@@ -43,14 +48,41 @@ class UserController extends Controller
      *       "estado": 1,
      *       "avatar_url": "http://example.com/avatars/user.jpg",
      *       "firma_url": "http://example.com/firmas/user.jpg",
-     *       "cargos": [],
+     *       "cargo": {
+     *         "id": 1,
+     *         "nom_organico": "Jefe de Sistemas",
+     *         "cod_organico": "JS001",
+     *         "tipo": "Cargo",
+     *         "fecha_inicio": "2024-01-15"
+     *       },
+     *       "oficina": {
+     *         "id": 1,
+     *         "nombre": "Oficina Principal",
+     *         "codigo": "OP001"
+     *       },
      *       "roles": [
      *         {
      *           "id": 1,
-     *           "name": "Administrador"
+     *           "name": "Administrador",
+     *           "guard_name": "web",
+     *           "created_at": "2024-01-15T10:00:00.000000Z",
+     *           "updated_at": "2024-01-15T10:00:00.000000Z"
      *         }
      *       ],
-     *       "permissions": []
+     *       "cargos": [
+     *         {
+     *           "id": 22,
+     *           "tipo": "Cargo",
+     *           "nom_organico": "Control interno",
+     *           "cod_organico": null,
+     *           "pivot": {
+     *             "user_id": 1,
+     *             "cargo_id": 22,
+     *             "fecha_inicio": "2024-01-15",
+     *             "estado": 1
+     *           }
+     *         }
+     *       ]
      *     }
      *   ],
      *   "message": "Listado de usuarios obtenido exitosamente"
@@ -62,10 +94,34 @@ class UserController extends Controller
      *   "error": "Error message"
      * }
      */
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $users = User::with(['cargos', 'roles', 'permissions'])
+            // Si se solicita información de cargos o oficinas, usamos consulta con joins
+            if ($request->boolean('incluir_cargos') || $request->boolean('con_oficina')) {
+                return $this->indexConCargosYOficinas($request);
+            }
+
+            // Consulta estándar con relaciones de Eloquent
+            $query = User::with(['cargos', 'roles']);
+
+            // Filtro opcional: solo usuarios activos
+            if ($request->boolean('solo_activos')) {
+                $query->where('estado', 1);
+            }
+
+            // Filtro opcional: búsqueda por nombre, apellido o email
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('nombres', 'like', "%{$search}%")
+                        ->orWhere('apellidos', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+
+            $users = $query->orderBy('nombres')
+                ->orderBy('apellidos')
                 ->get()
                 ->each->append(['avatar_url', 'firma_url']);
 
@@ -73,6 +129,125 @@ class UserController extends Controller
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener el listado de usuarios', $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Método privado para obtener usuarios con información detallada de cargos y oficinas.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    private function indexConCargosYOficinas(Request $request)
+    {
+        $selectFields = [
+            'users.id',
+            'users.nombres',
+            'users.apellidos',
+            'users.email',
+            'users.num_docu',
+            'users.estado',
+            'users.avatar',
+            'users.firma'
+        ];
+
+        // Agregar campos de cargo si se solicita
+        if ($request->boolean('incluir_cargos')) {
+            $selectFields = array_merge($selectFields, [
+                'calidad_organigrama.id as cargo_id',
+                'calidad_organigrama.nom_organico as cargo_nombre',
+                'calidad_organigrama.cod_organico as cargo_codigo',
+                'calidad_organigrama.tipo as cargo_tipo',
+                'users_cargos.fecha_inicio',
+                'users_cargos.observaciones'
+            ]);
+        }
+
+        // Agregar campos de oficina si se solicita
+        if ($request->boolean('con_oficina')) {
+            $selectFields = array_merge($selectFields, [
+                'config_sedes.id as oficina_id',
+                'config_sedes.nombre as oficina_nombre',
+                'config_sedes.codigo as oficina_codigo',
+                'config_sedes.direccion as oficina_direccion'
+            ]);
+        }
+
+        $query = User::select($selectFields);
+
+        // Left join con cargos si se solicita
+        if ($request->boolean('incluir_cargos')) {
+            $query->leftJoin('users_cargos', function ($join) {
+                $join->on('users.id', '=', 'users_cargos.user_id')
+                    ->where('users_cargos.estado', true)
+                    ->whereNull('users_cargos.fecha_fin');
+            })
+                ->leftJoin('calidad_organigrama', 'users_cargos.cargo_id', '=', 'calidad_organigrama.id');
+        }
+
+        // Left join con oficinas si se solicita
+        if ($request->boolean('con_oficina')) {
+            $query->leftJoin('users_sedes', function ($join) {
+                $join->on('users.id', '=', 'users_sedes.user_id')
+                    ->where('users_sedes.estado', true);
+            })
+                ->leftJoin('config_sedes', 'users_sedes.sede_id', '=', 'config_sedes.id');
+        }
+
+        // Aplicar filtros
+        if ($request->boolean('solo_activos')) {
+            $query->where('users.estado', 1);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('users.nombres', 'like', "%{$search}%")
+                    ->orWhere('users.apellidos', 'like', "%{$search}%")
+                    ->orWhere('users.email', 'like', "%{$search}%");
+            });
+        }
+
+        $usuarios = $query->orderBy('users.nombres')
+            ->orderBy('users.apellidos')
+            ->get()
+            ->map(function ($user) use ($request) {
+                $userData = [
+                    'id' => $user->id,
+                    'nombres' => $user->nombres,
+                    'apellidos' => $user->apellidos,
+                    'email' => $user->email,
+                    'num_docu' => $user->num_docu,
+                    'estado' => $user->estado,
+                    'avatar_url' => \App\Helpers\ArchivoHelper::obtenerUrl($user->avatar, 'avatars'),
+                    'firma_url' => \App\Helpers\ArchivoHelper::obtenerUrl($user->firma, 'firmas'),
+                ];
+
+                // Agregar información de cargo si se solicita
+                if ($request->boolean('incluir_cargos')) {
+                    $userData['cargo'] = isset($user->cargo_id) ? [
+                        'id' => $user->cargo_id,
+                        'nom_organico' => $user->cargo_nombre,
+                        'cod_organico' => $user->cargo_codigo,
+                        'tipo' => $user->cargo_tipo,
+                        'fecha_inicio' => $user->fecha_inicio,
+                        'observaciones' => $user->observaciones
+                    ] : null;
+                }
+
+                // Agregar información de oficina si se solicita
+                if ($request->boolean('con_oficina')) {
+                    $userData['oficina'] = isset($user->oficina_id) ? [
+                        'id' => $user->oficina_id,
+                        'nombre' => $user->oficina_nombre,
+                        'codigo' => $user->oficina_codigo,
+                        'direccion' => $user->oficina_direccion
+                    ] : null;
+                }
+
+                return $userData;
+            });
+
+        return $this->successResponse($usuarios, 'Listado de usuarios obtenido exitosamente');
     }
 
     /**
@@ -166,6 +341,18 @@ class UserController extends Controller
                 $user->syncRoles($request->roles);
             }
 
+            // Asignar cargo si se proporciona
+            if ($request->has('cargo_id') && $request->cargo_id) {
+                $fechaInicio = $request->fecha_inicio_cargo ?? now()->format('Y-m-d');
+                $observaciones = $request->observaciones_cargo;
+
+                $user->asignarCargo(
+                    $request->cargo_id,
+                    $fechaInicio,
+                    $observaciones
+                );
+            }
+
             DB::commit();
 
             return $this->successResponse(
@@ -246,9 +433,14 @@ class UserController extends Controller
      * Actualiza un usuario existente en el sistema.
      *
      * Este método permite modificar los datos de un usuario existente, incluyendo
-     * la actualización de archivos (avatar y firma) y roles. El proceso se ejecuta
+     * la actualización de archivos (avatar y firma), roles y cargos. El proceso se ejecuta
      * dentro de una transacción para garantizar la integridad de los datos.
      * Los archivos antiguos se eliminan solo después de que la actualización sea exitosa.
+     *
+     * COMPORTAMIENTO DE CARGOS:
+     * - Si se envía 'cargo_id' con un valor: Se asigna ese cargo al usuario (finalizando cargo anterior)
+     * - Si se envía 'cargo_id' como null/vacío: Se deshabilitan TODOS los cargos activos del usuario
+     * - Si NO se envía 'cargo_id': Los cargos del usuario NO se modifican
      *
      * @param UpdateUserRequest $request La solicitud HTTP validada con los datos actualizados
      * @param User $user El usuario a actualizar (inyectado por Laravel)
@@ -267,6 +459,9 @@ class UserController extends Controller
      * @bodyParam roles array Array de nombres de roles. Example: ["admin", "editor"]
      * @bodyParam avatar file Archivo de avatar. Example: "new_user.jpg"
      * @bodyParam firma file Archivo de firma. Example: "new_signature.jpg"
+     * @bodyParam cargo_id integer optional ID del cargo a asignar (null/vacío deshabilita todos los cargos). Example: 123
+     * @bodyParam fecha_inicio_cargo string optional Fecha de inicio del cargo. Example: "2024-01-15"
+     * @bodyParam observaciones_cargo string optional Observaciones del cargo. Example: "Cargo temporal"
      *
      * @response 200 {
      *   "status": true,
@@ -334,6 +529,24 @@ class UserController extends Controller
             // Sincronizar roles
             if ($request->has('roles')) {
                 $user->syncRoles($request->roles);
+            }
+
+            // Manejo de cargos
+            if ($request->has('cargo_id')) {
+                if ($request->cargo_id) {
+                    // Si se envía un cargo_id, asignar ese cargo
+                    $fechaInicio = $request->fecha_inicio_cargo ?? now()->format('Y-m-d');
+                    $observaciones = $request->observaciones_cargo;
+
+                    $user->asignarCargo(
+                        $request->cargo_id,
+                        $fechaInicio,
+                        $observaciones
+                    );
+                } else {
+                    // Si cargo_id es null o vacío, deshabilitar todos los cargos del usuario
+                    $this->deshabilitarTodosCargosUsuario($user);
+                }
             }
 
             DB::commit();
@@ -696,14 +909,18 @@ class UserController extends Controller
     }
 
     /**
-     * Lista usuarios que tienen cargos activos.
+     * Lista todos los usuarios con sus respectivos cargos (incluye usuarios sin cargo).
      *
-     * Este método retorna todos los usuarios que tienen al menos un cargo activo
-     * asignado junto con la información detallada de su cargo y dependencia.
-     * Solo incluye usuarios que efectivamente tengan un cargo activo (estado = true
-     * y fecha_fin = null).
+     * Este método retorna todos los usuarios del sistema junto con la información
+     * de su cargo activo si lo tienen. Los usuarios que no tienen cargo asignado
+     * aparecerán con cargo = null. Es útil para obtener una vista completa de
+     * todos los usuarios y su estado de asignación de cargos.
      *
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de usuarios con cargos activos
+     * @param Request $request La solicitud HTTP con filtros opcionales
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de usuarios y sus cargos
+     *
+     * @queryParam solo_activos boolean optional Solo incluir usuarios con estado activo (1). Example: true
+     * @queryParam search string optional Buscar por nombre, apellido o email. Example: "Juan"
      *
      * @response 200 {
      *   "status": true,
@@ -723,21 +940,30 @@ class UserController extends Controller
      *         "fecha_inicio": "2024-01-15",
      *         "observaciones": "Cargo principal"
      *       }
+     *     },
+     *     {
+     *       "id": 2,
+     *       "nombres": "María",
+     *       "apellidos": "García",
+     *       "email": "maria.garcia@example.com",
+     *       "num_docu": "87654321",
+     *       "estado": 1,
+     *       "cargo": null
      *     }
      *   ],
-     *   "message": "Listado de usuarios con cargos activos obtenido exitosamente"
+     *   "message": "Listado de usuarios con sus respectivos cargos obtenido exitosamente"
      * }
      *
      * @response 500 {
      *   "status": false,
-     *   "message": "Error al obtener el listado de usuarios con cargos activos",
+     *   "message": "Error al obtener el listado de usuarios",
      *   "error": "Error message"
      * }
      */
-    public function usuariosConCargosActivos()
+    public function usuariosConCargosActivos(Request $request)
     {
         try {
-            $usuarios = User::select([
+            $query = User::select([
                 'users.id',
                 'users.nombres',
                 'users.apellidos',
@@ -751,14 +977,30 @@ class UserController extends Controller
                 'users_cargos.fecha_inicio',
                 'users_cargos.observaciones'
             ])
-                // Inner join para incluir SOLO usuarios que tengan cargo activo
-                ->join('users_cargos', function ($join) {
+                // Left join para incluir TODOS los usuarios, tengan o no cargo
+                ->leftJoin('users_cargos', function ($join) {
                     $join->on('users.id', '=', 'users_cargos.user_id')
                         ->where('users_cargos.estado', true)
                         ->whereNull('users_cargos.fecha_fin');
                 })
-                ->join('calidad_organigrama', 'users_cargos.cargo_id', '=', 'calidad_organigrama.id')
-                ->orderBy('users.nombres')
+                ->leftJoin('calidad_organigrama', 'users_cargos.cargo_id', '=', 'calidad_organigrama.id');
+
+            // Filtro opcional: solo usuarios activos
+            if ($request->filled('solo_activos') && $request->boolean('solo_activos')) {
+                $query->where('users.estado', 1);
+            }
+
+            // Filtro opcional: búsqueda por nombre, apellido o email
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('users.nombres', 'like', "%{$search}%")
+                        ->orWhere('users.apellidos', 'like', "%{$search}%")
+                        ->orWhere('users.email', 'like', "%{$search}%");
+                });
+            }
+
+            $usuarios = $query->orderBy('users.nombres')
                 ->orderBy('users.apellidos')
                 ->get()
                 ->map(function ($user) {
@@ -769,24 +1011,24 @@ class UserController extends Controller
                         'email' => $user->email,
                         'num_docu' => $user->num_docu,
                         'estado' => $user->estado,
-                        'cargo' => [
+                        'cargo' => $user->cargo_id ? [
                             'id' => $user->cargo_id,
                             'nom_organico' => $user->cargo_nombre,
                             'cod_organico' => $user->cargo_codigo,
                             'tipo' => $user->cargo_tipo,
                             'fecha_inicio' => $user->fecha_inicio,
                             'observaciones' => $user->observaciones
-                        ]
+                        ] : null
                     ];
                 });
 
             return $this->successResponse(
                 $usuarios,
-                'Listado de usuarios con cargos activos obtenido exitosamente'
+                'Listado de usuarios con sus respectivos cargos obtenido exitosamente'
             );
         } catch (\Exception $e) {
             return $this->errorResponse(
-                'Error al obtener el listado de usuarios con cargos activos',
+                'Error al obtener el listado de usuarios',
                 $e->getMessage(),
                 500
             );
@@ -854,5 +1096,28 @@ class UserController extends Controller
             DB::rollBack();
             return $this->errorResponse('Error al desactivar la cuenta', $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Deshabilita todos los cargos activos de un usuario.
+     *
+     * Este método privado finaliza todos los cargos activos del usuario,
+     * estableciendo estado = false y fecha_fin = fecha actual.
+     *
+     * @param User $user El usuario al que se le deshabilitarán los cargos
+     * @return void
+     */
+    private function deshabilitarTodosCargosUsuario(User $user): void
+    {
+        // Actualizar todos los cargos activos del usuario
+        DB::table('users_cargos')
+            ->where('user_id', $user->id)
+            ->where('estado', true)
+            ->whereNull('fecha_fin')
+            ->update([
+                'estado' => false,
+                'fecha_fin' => now()->format('Y-m-d'),
+                'updated_at' => now()
+            ]);
     }
 }

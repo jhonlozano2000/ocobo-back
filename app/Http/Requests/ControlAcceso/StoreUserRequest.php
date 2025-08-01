@@ -112,6 +112,32 @@ class StoreUserRequest extends FormRequest
                 'image',
                 'max:2048' // 2MB máximo
             ],
+
+            // Campos opcionales para asignación de cargo
+            'cargo_id' => [
+                'nullable',
+                'integer',
+                'exists:calidad_organigrama,id',
+                function ($attribute, $value, $fail) {
+                    if ($value) {
+                        $cargo = \App\Models\Calidad\CalidadOrganigrama::find($value);
+                        if ($cargo && $cargo->tipo !== 'Cargo') {
+                            $fail('El elemento seleccionado no es un cargo válido.');
+                        }
+                    }
+                }
+            ],
+
+            'fecha_inicio_cargo' => [
+                'nullable',
+                'date'
+            ],
+
+            'observaciones_cargo' => [
+                'nullable',
+                'string',
+                'max:500'
+            ],
         ];
     }
 
@@ -175,6 +201,15 @@ class StoreUserRequest extends FormRequest
             'firma.file' => 'La firma debe ser un archivo.',
             'firma.image' => 'La firma debe ser una imagen.',
             'firma.max' => 'La firma no puede superar los 2MB.',
+
+            // Mensajes para campos de cargo
+            'cargo_id.integer' => 'El ID del cargo debe ser un número entero.',
+            'cargo_id.exists' => 'El cargo especificado no existe.',
+
+            'fecha_inicio_cargo.date' => 'La fecha de inicio del cargo debe ser una fecha válida.',
+
+            'observaciones_cargo.string' => 'Las observaciones del cargo deben ser texto.',
+            'observaciones_cargo.max' => 'Las observaciones del cargo no pueden tener más de 500 caracteres.',
         ];
     }
 
@@ -200,6 +235,9 @@ class StoreUserRequest extends FormRequest
             'roles.*' => 'rol',
             'avatar' => 'avatar',
             'firma' => 'firma',
+            'cargo_id' => 'cargo',
+            'fecha_inicio_cargo' => 'fecha de inicio del cargo',
+            'observaciones_cargo' => 'observaciones del cargo',
         ];
     }
 }
