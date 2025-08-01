@@ -17,6 +17,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Rutas específicas de usuarios (deben ir DESPUÉS del resource)
     Route::get('/users/stats/estadisticas', [UserController::class, 'estadisticas']);
+    Route::get('/users/activos-con-oficina-y-dependencia', [UserController::class, 'usuariosActivosConOficinaYDependencia']);
+    Route::get('/users/con-cargos-activos', [UserController::class, 'usuariosConCargosActivos']);
 
     /**
      * Roles y permisos

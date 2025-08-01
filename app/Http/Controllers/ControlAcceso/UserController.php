@@ -581,6 +581,219 @@ class UserController extends Controller
     }
 
     /**
+     * Lista usuarios activos con su respectiva oficina y dependencia.
+     *
+     * Este método retorna todos los usuarios que tienen estado activo junto con
+     * la información de su oficina (sede) activa y dependencia (cargo) activa.
+     * Es útil para reportes y consultas administrativas donde se necesita ver
+     * la estructura organizacional actual.
+     *
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de usuarios activos
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "nombres": "Juan",
+     *       "apellidos": "Pérez",
+     *       "email": "juan.perez@example.com",
+     *       "num_docu": "12345678",
+     *       "oficina": {
+     *         "id": 1,
+     *         "nombre": "Oficina Principal",
+     *         "codigo": "OP001",
+     *         "direccion": "Calle 123 #45-67"
+     *       },
+     *       "dependencia": {
+     *         "id": 1,
+     *         "nom_organico": "Sistemas",
+     *         "cod_organico": "SIS001",
+     *         "tipo": "Cargo"
+     *       }
+     *     }
+     *   ],
+     *   "message": "Listado de usuarios activos con oficina y dependencia obtenido exitosamente"
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener el listado de usuarios activos",
+     *   "error": "Error message"
+     * }
+     */
+    public function usuariosActivosConOficinaYDependencia()
+    {
+        try {
+            $usuarios = User::select([
+                'users.id',
+                'users.nombres',
+                'users.apellidos',
+                'users.email',
+                'users.num_docu',
+                'config_sedes.id as oficina_id',
+                'config_sedes.nombre as oficina_nombre',
+                'config_sedes.codigo as oficina_codigo',
+                'config_sedes.direccion as oficina_direccion',
+                'calidad_organigrama.id as dependencia_id',
+                'calidad_organigrama.nom_organico as dependencia_nombre',
+                'calidad_organigrama.cod_organico as dependencia_codigo',
+                'calidad_organigrama.tipo as dependencia_tipo'
+            ])
+                ->where('users.estado', 1) // Solo usuarios activos
+
+                // Join con sedes activas
+                ->leftJoin('users_sedes', function ($join) {
+                    $join->on('users.id', '=', 'users_sedes.user_id')
+                        ->where('users_sedes.estado', true);
+                })
+                ->leftJoin('config_sedes', 'users_sedes.sede_id', '=', 'config_sedes.id')
+
+                // Join con cargos activos
+                ->leftJoin('users_cargos', function ($join) {
+                    $join->on('users.id', '=', 'users_cargos.user_id')
+                        ->where('users_cargos.estado', true)
+                        ->whereNull('users_cargos.fecha_fin');
+                })
+                ->leftJoin('calidad_organigrama', 'users_cargos.cargo_id', '=', 'calidad_organigrama.id')
+
+                ->orderBy('users.nombres')
+                ->orderBy('users.apellidos')
+                ->get()
+                ->map(function ($user) {
+                    return [
+                        'id' => $user->id,
+                        'nombres' => $user->nombres,
+                        'apellidos' => $user->apellidos,
+                        'email' => $user->email,
+                        'num_docu' => $user->num_docu,
+                        'oficina' => $user->oficina_id ? [
+                            'id' => $user->oficina_id,
+                            'nombre' => $user->oficina_nombre,
+                            'codigo' => $user->oficina_codigo,
+                            'direccion' => $user->oficina_direccion
+                        ] : null,
+                        'dependencia' => $user->dependencia_id ? [
+                            'id' => $user->dependencia_id,
+                            'nom_organico' => $user->dependencia_nombre,
+                            'cod_organico' => $user->dependencia_codigo,
+                            'tipo' => $user->dependencia_tipo
+                        ] : null
+                    ];
+                });
+
+            return $this->successResponse(
+                $usuarios,
+                'Listado de usuarios activos con oficina y dependencia obtenido exitosamente'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse(
+                'Error al obtener el listado de usuarios activos',
+                $e->getMessage(),
+                500
+            );
+        }
+    }
+
+    /**
+     * Lista usuarios que tienen cargos activos.
+     *
+     * Este método retorna todos los usuarios que tienen al menos un cargo activo
+     * asignado junto con la información detallada de su cargo y dependencia.
+     * Solo incluye usuarios que efectivamente tengan un cargo activo (estado = true
+     * y fecha_fin = null).
+     *
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de usuarios con cargos activos
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "nombres": "Juan",
+     *       "apellidos": "Pérez",
+     *       "email": "juan.perez@example.com",
+     *       "num_docu": "12345678",
+     *       "estado": 1,
+     *       "cargo": {
+     *         "id": 1,
+     *         "nom_organico": "Jefe de Sistemas",
+     *         "cod_organico": "JS001",
+     *         "tipo": "Cargo",
+     *         "fecha_inicio": "2024-01-15",
+     *         "observaciones": "Cargo principal"
+     *       }
+     *     }
+     *   ],
+     *   "message": "Listado de usuarios con cargos activos obtenido exitosamente"
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener el listado de usuarios con cargos activos",
+     *   "error": "Error message"
+     * }
+     */
+    public function usuariosConCargosActivos()
+    {
+        try {
+            $usuarios = User::select([
+                'users.id',
+                'users.nombres',
+                'users.apellidos',
+                'users.email',
+                'users.num_docu',
+                'users.estado',
+                'calidad_organigrama.id as cargo_id',
+                'calidad_organigrama.nom_organico as cargo_nombre',
+                'calidad_organigrama.cod_organico as cargo_codigo',
+                'calidad_organigrama.tipo as cargo_tipo',
+                'users_cargos.fecha_inicio',
+                'users_cargos.observaciones'
+            ])
+                // Inner join para incluir SOLO usuarios que tengan cargo activo
+                ->join('users_cargos', function ($join) {
+                    $join->on('users.id', '=', 'users_cargos.user_id')
+                        ->where('users_cargos.estado', true)
+                        ->whereNull('users_cargos.fecha_fin');
+                })
+                ->join('calidad_organigrama', 'users_cargos.cargo_id', '=', 'calidad_organigrama.id')
+                ->orderBy('users.nombres')
+                ->orderBy('users.apellidos')
+                ->get()
+                ->map(function ($user) {
+                    return [
+                        'id' => $user->id,
+                        'nombres' => $user->nombres,
+                        'apellidos' => $user->apellidos,
+                        'email' => $user->email,
+                        'num_docu' => $user->num_docu,
+                        'estado' => $user->estado,
+                        'cargo' => [
+                            'id' => $user->cargo_id,
+                            'nom_organico' => $user->cargo_nombre,
+                            'cod_organico' => $user->cargo_codigo,
+                            'tipo' => $user->cargo_tipo,
+                            'fecha_inicio' => $user->fecha_inicio,
+                            'observaciones' => $user->observaciones
+                        ]
+                    ];
+                });
+
+            return $this->successResponse(
+                $usuarios,
+                'Listado de usuarios con cargos activos obtenido exitosamente'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse(
+                'Error al obtener el listado de usuarios con cargos activos',
+                $e->getMessage(),
+                500
+            );
+        }
+    }
+
+    /**
      * Desactiva la cuenta del usuario autenticado.
      *
      * Este método permite al usuario autenticado desactivar su cuenta.
