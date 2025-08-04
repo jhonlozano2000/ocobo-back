@@ -332,4 +332,48 @@ class ConfigListaDetalleController extends Controller
             return $this->errorResponse('Error al eliminar el detalle', $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Obtiene estadísticas básicas de las listas y detalles del sistema.
+     *
+     * Este método proporciona información estadística simple sobre el total
+     * de listas y el total de detalles de listas en el sistema.
+     *
+     * @param Request $request La solicitud HTTP
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las estadísticas
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Estadísticas obtenidas exitosamente",
+     *   "data": {
+     *     "total_listas": 12,
+     *     "total_detalles": 150
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener las estadísticas",
+     *   "error": "Error message"
+     * }
+     */
+    public function estadisticas(Request $request)
+    {
+        try {
+            // Total de listas que tienen detalles
+            $totalListas = ConfigListaDetalle::distinct('lista_id')->count();
+
+            // Total de detalles de listas
+            $totalDetalles = ConfigListaDetalle::count();
+
+            $estadisticas = [
+                'total_listas' => $totalListas,
+                'total_detalles' => $totalDetalles
+            ];
+
+            return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
+        }
+    }
 }

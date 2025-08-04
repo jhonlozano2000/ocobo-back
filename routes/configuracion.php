@@ -34,6 +34,10 @@ Route::middleware('auth:sanctum')->group(function () {
      * Listas
      */
     Route::apiResource('listas', ConfigListaController::class)->parameters(['listas' => 'lista'])->except('create', 'edit');
+
+    // Ruta para estadísticas de detalles de listas (debe ir antes del resource)
+    Route::get('/listas-detalles/estadisticas', [ConfigListaDetalleController::class, 'estadisticas'])->name('listas.detalles.estadisticas');
+
     Route::apiResource('listas-detalles', ConfigListaDetalleController::class)->parameters(['listas-detalles' => 'lista_detalle'])->except('create', 'edit');
 
     /**
