@@ -26,7 +26,6 @@ class ConfigListaDetalleController extends Controller
      *
      * @queryParam lista_id integer Filtrar por ID de lista. Example: 1
      * @queryParam search string Buscar por código o nombre. Example: "CC"
-     * @queryParam estado integer Filtrar por estado (0 inactivo, 1 activo). Example: 1
      * @queryParam per_page integer Número de elementos por página (por defecto: 15). Example: 20
      *
      * @response 200 {
@@ -38,9 +37,8 @@ class ConfigListaDetalleController extends Controller
      *       "lista_id": 1,
      *       "codigo": "CC",
      *       "nombre": "Cédula de Ciudadanía",
-     *       "descripcion": "Documento de identidad colombiano",
-     *       "orden": 1,
-     *       "estado": 1,
+     *       "created_at": "2024-01-15T10:30:00.000000Z",
+     *       "updated_at": "2024-01-15T10:30:00.000000Z",
      *       "lista": {
      *         "id": 1,
      *         "cod": "TIPOS",
@@ -74,12 +72,10 @@ class ConfigListaDetalleController extends Controller
                 });
             }
 
-            if ($request->filled('estado')) {
-                $query->where('estado', $request->estado);
-            }
 
-            // Ordenar por orden y nombre
-            $query->orderBy('orden', 'asc')->orderBy('nombre', 'asc');
+
+            // Ordenar por nombre
+            $query->orderBy('nombre', 'asc');
 
             // Paginar si se solicita
             if ($request->filled('per_page')) {
@@ -99,17 +95,14 @@ class ConfigListaDetalleController extends Controller
      * Crea un nuevo detalle de lista en el sistema.
      *
      * Este método permite crear un nuevo detalle de lista con validación
-     * de datos y conversión automática del campo estado.
+     * de datos.
      *
      * @param StoreConfigListaDetalleRequest $request La solicitud HTTP validada
      * @return \Illuminate\Http\JsonResponse Respuesta JSON con el detalle creado
      *
      * @bodyParam lista_id integer required ID de la lista asociada. Example: 1
-     * @bodyParam codigo string required Código del detalle. Example: "CC"
+     * @bodyParam codigo string Código del detalle. Example: "CC"
      * @bodyParam nombre string required Nombre del detalle. Example: "Cédula de Ciudadanía"
-     * @bodyParam descripcion string Descripción del detalle. Example: "Documento de identidad colombiano"
-     * @bodyParam orden integer Orden de presentación. Example: 1
-     * @bodyParam estado boolean Estado del detalle (activo/inactivo). Example: true
      *
      * @response 201 {
      *   "status": true,
@@ -119,9 +112,8 @@ class ConfigListaDetalleController extends Controller
      *     "lista_id": 1,
      *     "codigo": "CC",
      *     "nombre": "Cédula de Ciudadanía",
-     *     "descripcion": "Documento de identidad colombiano",
-     *     "orden": 1,
-     *     "estado": 1,
+     *     "created_at": "2024-01-15T10:30:00.000000Z",
+     *     "updated_at": "2024-01-15T10:30:00.000000Z",
      *     "lista": {
      *       "id": 1,
      *       "cod": "TIPOS",
@@ -150,11 +142,6 @@ class ConfigListaDetalleController extends Controller
             DB::beginTransaction();
 
             $validatedData = $request->validated();
-
-            // Convertir estado a booleano si se proporciona
-            if (isset($validatedData['estado'])) {
-                $validatedData['estado'] = filter_var($validatedData['estado'], FILTER_VALIDATE_BOOLEAN);
-            }
 
             $detalle = ConfigListaDetalle::create($validatedData);
 
@@ -190,9 +177,8 @@ class ConfigListaDetalleController extends Controller
      *     "lista_id": 1,
      *     "codigo": "CC",
      *     "nombre": "Cédula de Ciudadanía",
-     *     "descripcion": "Documento de identidad colombiano",
-     *     "orden": 1,
-     *     "estado": 1,
+     *     "created_at": "2024-01-15T10:30:00.000000Z",
+     *     "updated_at": "2024-01-15T10:30:00.000000Z",
      *     "lista": {
      *       "id": 1,
      *       "cod": "TIPOS",
@@ -227,8 +213,7 @@ class ConfigListaDetalleController extends Controller
     /**
      * Actualiza un detalle de lista existente en el sistema.
      *
-     * Este método permite modificar los datos de un detalle de lista existente,
-     * incluyendo conversión automática del campo estado.
+     * Este método permite modificar los datos de un detalle de lista existente.
      *
      * @param UpdateConfigListaDetalleRequest $request La solicitud HTTP validada
      * @param ConfigListaDetalle $listaDetalle El detalle a actualizar (inyectado por Laravel)
@@ -237,9 +222,6 @@ class ConfigListaDetalleController extends Controller
      * @bodyParam lista_id integer ID de la lista asociada. Example: 1
      * @bodyParam codigo string Código del detalle. Example: "CC"
      * @bodyParam nombre string Nombre del detalle. Example: "Cédula de Ciudadanía"
-     * @bodyParam descripcion string Descripción del detalle. Example: "Documento de identidad colombiano"
-     * @bodyParam orden integer Orden de presentación. Example: 1
-     * @bodyParam estado boolean Estado del detalle (activo/inactivo). Example: true
      *
      * @response 200 {
      *   "status": true,
@@ -249,9 +231,8 @@ class ConfigListaDetalleController extends Controller
      *     "lista_id": 1,
      *     "codigo": "CC",
      *     "nombre": "Cédula de Ciudadanía",
-     *     "descripcion": "Documento de identidad colombiano",
-     *     "orden": 1,
-     *     "estado": 1
+     *     "created_at": "2024-01-15T10:30:00.000000Z",
+     *     "updated_at": "2024-01-15T10:30:00.000000Z"
      *   }
      * }
      *
@@ -259,7 +240,7 @@ class ConfigListaDetalleController extends Controller
      *   "status": false,
      *   "message": "Datos de validación incorrectos",
      *   "error": {
-     *     "orden": ["El orden debe ser al menos 1."]
+     *     "nombre": ["El campo nombre es obligatorio."]
      *   }
      * }
      *
@@ -275,11 +256,6 @@ class ConfigListaDetalleController extends Controller
             DB::beginTransaction();
 
             $validatedData = $request->validated();
-
-            // Convertir estado a booleano si se proporciona
-            if (isset($validatedData['estado'])) {
-                $validatedData['estado'] = filter_var($validatedData['estado'], FILTER_VALIDATE_BOOLEAN);
-            }
 
             $listaDetalle->update($validatedData);
 

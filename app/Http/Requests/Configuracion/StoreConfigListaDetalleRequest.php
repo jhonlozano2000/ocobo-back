@@ -30,28 +30,14 @@ class StoreConfigListaDetalleRequest extends FormRequest
                 'exists:config_listas,id'
             ],
             'codigo' => [
-                'required',
+                'nullable',
                 'string',
                 'max:20'
             ],
             'nombre' => [
                 'required',
                 'string',
-                'max:100'
-            ],
-            'descripcion' => [
-                'nullable',
-                'string',
-                'max:255'
-            ],
-            'orden' => [
-                'nullable',
-                'integer',
-                'min:1'
-            ],
-            'estado' => [
-                'nullable',
-                'in:0,1,true,false'
+                'max:70'
             ]
         ];
     }
@@ -67,17 +53,11 @@ class StoreConfigListaDetalleRequest extends FormRequest
             'lista_id.required' => 'El ID de la lista es obligatorio.',
             'lista_id.integer' => 'El ID de la lista debe ser un número entero.',
             'lista_id.exists' => 'La lista seleccionada no existe.',
-            'codigo.required' => 'El código es obligatorio.',
             'codigo.string' => 'El código debe ser una cadena de texto.',
             'codigo.max' => 'El código no puede superar los 20 caracteres.',
             'nombre.required' => 'El nombre es obligatorio.',
             'nombre.string' => 'El nombre debe ser una cadena de texto.',
-            'nombre.max' => 'El nombre no puede superar los 100 caracteres.',
-            'descripcion.string' => 'La descripción debe ser una cadena de texto.',
-            'descripcion.max' => 'La descripción no puede superar los 255 caracteres.',
-            'orden.integer' => 'El orden debe ser un número entero.',
-            'orden.min' => 'El orden debe ser al menos 1.',
-            'estado.in' => 'El estado debe ser 0, 1, true o false.',
+            'nombre.max' => 'El nombre no puede superar los 70 caracteres.',
         ];
     }
 
@@ -91,10 +71,7 @@ class StoreConfigListaDetalleRequest extends FormRequest
         return [
             'lista_id' => 'lista',
             'codigo' => 'código',
-            'nombre' => 'nombre',
-            'descripcion' => 'descripción',
-            'orden' => 'orden',
-            'estado' => 'estado'
+            'nombre' => 'nombre'
         ];
     }
 }
