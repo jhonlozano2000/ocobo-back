@@ -25,7 +25,7 @@ class GestionTerceroRequest extends FormRequest
         $terceroId = $this->route('gestion_tercero'); // Capturar correctamente el ID de la URL
 
         return [
-            'municipio_id' => 'nullable|exists:config_divi_poli,id',
+            'divi_poli_id' => 'nullable|exists:config_divi_poli,id',
             'num_docu_nit' => [
                 'nullable',
                 'string',
@@ -45,7 +45,7 @@ class GestionTerceroRequest extends FormRequest
     public function messages()
     {
         return [
-            'municipio_id.exists' => 'El municipio seleccionado no es válido.',
+            'divi_poli_id.exists' => 'La división política seleccionada no es válida.',
 
             'num_docu_nit.unique' => 'El número de documento o NIT ya está registrado.',
             'num_docu_nit.string' => 'El número de documento o NIT debe ser una cadena de texto.',

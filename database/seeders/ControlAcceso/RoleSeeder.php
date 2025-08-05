@@ -180,7 +180,12 @@ class RoleSeeder extends Seeder
         /**
          * Gestion
          */
-        Permission::create(['name' => 'Gestión -> Terceros'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Gestión - Terceros -> Listar'])->syncRoles([$Rol1, $Rol6]);
+        Permission::create(['name' => 'Gestión - Terceros -> Crear'])->syncRoles([$Rol1, $Rol6]);
+        Permission::create(['name' => 'Gestión - Terceros -> Editar'])->syncRoles([$Rol1, $Rol6]);
+        Permission::create(['name' => 'Gestión - Terceros -> Mostrar'])->syncRoles([$Rol1, $Rol6]);
+        Permission::create(['name' => 'Gestión - Terceros -> Eliminar'])->syncRoles([$Rol1, $Rol6]);
+        Permission::create(['name' => 'Gestión - Terceros -> Exportar'])->syncRoles([$Rol1, $Rol6]);
 
         /**
          * Digitalizaxion

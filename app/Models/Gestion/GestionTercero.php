@@ -13,9 +13,7 @@ class GestionTercero extends Model
     protected $table = 'gestion_terceros';
 
     protected $fillable = [
-        'pais_id',
-        'departamento_id',
-        'municipio_id',
+        'divi_poli_id',
         'num_docu_nit',
         'nom_razo_soci',
         'direccion',
@@ -26,18 +24,8 @@ class GestionTercero extends Model
         'notifica_msm'
     ];
 
-    public function pais()
+    public function divisionPolitica()
     {
-        return $this->belongsTo(ConfigDiviPoli::class, 'pais_id');
-    }
-
-    public function departamento()
-    {
-        return $this->belongsTo(ConfigDiviPoli::class, 'departamento_id');
-    }
-
-    public function municipio()
-    {
-        return $this->belongsTo(ConfigDiviPoli::class, 'municipio_id');
+        return $this->belongsTo(ConfigDiviPoli::class, 'divi_poli_id');
     }
 }
