@@ -262,4 +262,79 @@ class UserCargo extends Model
 
         return $query->get();
     }
+
+    /**
+     * Scope para obtener cargos de usuarios activos.
+     *
+     * @param Builder $query
+     * @return Builder
+     */
+    public function scopeConUsuariosActivos(Builder $query): Builder
+    {
+        return $query->whereHas('user', function ($q) {
+            $q->where('estado', 1);
+        });
+    }
+
+    /**
+     * Scope para filtrar por tipo de cargo.
+     *
+     * @param Builder $query
+     * @param string $tipo
+     * @return Builder
+     */
+    public function scopeDelTipo(Builder $query, string $tipo): Builder
+    {
+        return $query->whereHas('cargo', function ($q) use ($tipo) {
+            $q->where('tipo', $tipo);
+        });
+    }
+
+    /**
+     * Scope para obtener cargos vigentes en un rango de fechas.
+     *
+     * @param Builder $query
+     * @param string|Carbon $fechaInicio
+     * @param string|Carbon|null $fechaFin
+     * @return Builder
+     */
+    public function scopeVigentesEnRango(Builder $query, $fechaInicio, $fechaFin = null): Builder
+    {
+        $fechaInicio = Carbon::parse($fechaInicio)->format('Y-m-d');
+        $fechaFin = $fechaFin ? Carbon::parse($fechaFin)->format('Y-m-d') : null;
+
+        return $query->where(function ($q) use ($fechaInicio, $fechaFin) {
+            // Cargos que inician antes o en la fecha de fin
+            $q->where('fecha_inicio', '<=', $fechaFin ?? now()->format('Y-m-d'));
+
+            // Y que terminan después de la fecha de inicio (o no han terminado)
+            $q->where(function ($subQ) use ($fechaInicio) {
+                $subQ->whereNull('fecha_fin')
+                    ->orWhere('fecha_fin', '>=', $fechaInicio);
+            });
+        });
+    }
+
+    /**
+     * Obtiene estadísticas de asignaciones de cargos.
+     *
+     * @return array
+     */
+    public static function obtenerEstadisticas(): array
+    {
+        $totalAsignaciones = self::count();
+        $asignacionesActivas = self::activos()->count();
+        $asignacionesFinalizadas = self::finalizados()->count();
+        $usuariosConCargo = self::activos()->distinct('user_id')->count();
+        $cargosConUsuarios = self::activos()->distinct('cargo_id')->count();
+
+        return [
+            'total_asignaciones' => $totalAsignaciones,
+            'asignaciones_activas' => $asignacionesActivas,
+            'asignaciones_finalizadas' => $asignacionesFinalizadas,
+            'usuarios_con_cargo' => $usuariosConCargo,
+            'cargos_con_usuarios' => $cargosConUsuarios,
+            'porcentaje_activas' => $totalAsignaciones > 0 ? round(($asignacionesActivas / $totalAsignaciones) * 100, 2) : 0
+        ];
+    }
 }

@@ -848,6 +848,7 @@ class UserController extends Controller
                 'config_sedes.nombre as oficina_nombre',
                 'config_sedes.codigo as oficina_codigo',
                 'config_sedes.direccion as oficina_direccion',
+                'config_sedes.estado as oficina_estado',
                 'calidad_organigrama.id as dependencia_id',
                 'calidad_organigrama.nom_organico as dependencia_nombre',
                 'calidad_organigrama.cod_organico as dependencia_codigo',
@@ -855,12 +856,15 @@ class UserController extends Controller
             ])
                 ->where('users.estado', 1) // Solo usuarios activos
 
-                // Join con sedes activas
+                // Join con sedes activas - Solo sedes que estén activas también
                 ->leftJoin('users_sedes', function ($join) {
                     $join->on('users.id', '=', 'users_sedes.user_id')
                         ->where('users_sedes.estado', true);
                 })
-                ->leftJoin('config_sedes', 'users_sedes.sede_id', '=', 'config_sedes.id')
+                ->leftJoin('config_sedes', function ($join) {
+                    $join->on('users_sedes.sede_id', '=', 'config_sedes.id')
+                        ->where('config_sedes.estado', true); // Solo sedes activas
+                })
 
                 // Join con cargos activos
                 ->leftJoin('users_cargos', function ($join) {
@@ -880,7 +884,7 @@ class UserController extends Controller
                         'apellidos' => $user->apellidos,
                         'email' => $user->email,
                         'num_docu' => $user->num_docu,
-                        'oficina' => $user->oficina_id ? [
+                        'oficina' => ($user->oficina_id && $user->oficina_estado) ? [
                             'id' => $user->oficina_id,
                             'nombre' => $user->oficina_nombre,
                             'codigo' => $user->oficina_codigo,
@@ -1095,6 +1099,187 @@ class UserController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->errorResponse('Error al desactivar la cuenta', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Lista todos los usuarios con sus respectivos cargos activos.
+     *
+     * Este método retorna todos los usuarios del sistema junto con la información
+     * de su cargo activo si lo tienen. Los usuarios que no tienen cargo asignado
+     * aparecerán con cargo = null. Es útil para obtener una vista completa de
+     * todos los usuarios y su estado de asignación de cargos.
+     *
+     * @param Request $request La solicitud HTTP con filtros opcionales
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de usuarios y sus cargos
+     *
+     * @queryParam solo_activos boolean optional Solo incluir usuarios con estado activo (1). Example: true
+     * @queryParam search string optional Buscar por nombre, apellido o email. Example: "Juan"
+     * @queryParam incluir_roles boolean optional Incluir roles del usuario. Example: true
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "nombres": "Juan",
+     *       "apellidos": "Pérez",
+     *       "email": "juan.perez@example.com",
+     *       "num_docu": "12345678",
+     *       "estado": 1,
+     *       "avatar_url": "http://example.com/avatars/user.jpg",
+     *       "firma_url": "http://example.com/firmas/user.jpg",
+     *       "cargo": {
+     *         "id": 1,
+     *         "nom_organico": "Jefe de Sistemas",
+     *         "cod_organico": "JS001",
+     *         "tipo": "Cargo",
+     *         "fecha_inicio": "2024-01-15",
+     *         "observaciones": "Cargo principal"
+     *       },
+     *       "roles": [
+     *         {
+     *           "id": 1,
+     *           "name": "admin"
+     *         }
+     *       ]
+     *     }
+     *   ],
+     *   "message": "Listado de usuarios con sus respectivos cargos obtenido exitosamente"
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener el listado de usuarios",
+     *   "error": "Error message"
+     * }
+     */
+    public function listarUsuariosConCargos(Request $request)
+    {
+        try {
+            $query = User::select([
+                'users.id',
+                'users.nombres',
+                'users.apellidos',
+                'users.email',
+                'users.num_docu',
+                'users.estado',
+                'users.avatar',
+                'users.firma',
+                'calidad_organigrama.id as cargo_id',
+                'calidad_organigrama.nom_organico as cargo_nombre',
+                'calidad_organigrama.cod_organico as cargo_codigo',
+                'calidad_organigrama.tipo as cargo_tipo',
+                'users_cargos.fecha_inicio',
+                'users_cargos.observaciones'
+            ])
+                // Left join para incluir TODOS los usuarios, tengan o no cargo
+                ->leftJoin('users_cargos', function ($join) {
+                    $join->on('users.id', '=', 'users_cargos.user_id')
+                        ->where('users_cargos.estado', true)
+                        ->whereNull('users_cargos.fecha_fin');
+                })
+                ->leftJoin('calidad_organigrama', 'users_cargos.cargo_id', '=', 'calidad_organigrama.id');
+
+            // Filtro opcional: solo usuarios activos
+            if ($request->filled('solo_activos') && $request->boolean('solo_activos')) {
+                $query->where('users.estado', 1);
+            }
+
+            // Filtro opcional: búsqueda por nombre, apellido o email
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('users.nombres', 'like', "%{$search}%")
+                        ->orWhere('users.apellidos', 'like', "%{$search}%")
+                        ->orWhere('users.email', 'like', "%{$search}%");
+                });
+            }
+
+            $usuarios = $query->orderBy('users.nombres')
+                ->orderBy('users.apellidos')
+                ->get()
+                ->map(function ($user) use ($request) {
+                    $userData = [
+                        'id' => $user->id,
+                        'nombres' => $user->nombres,
+                        'apellidos' => $user->apellidos,
+                        'email' => $user->email,
+                        'num_docu' => $user->num_docu,
+                        'estado' => $user->estado,
+                        'avatar_url' => ArchivoHelper::obtenerUrl($user->avatar, 'avatars'),
+                        'firma_url' => ArchivoHelper::obtenerUrl($user->firma, 'firmas'),
+                        'cargo' => $user->cargo_id ? [
+                            'id' => $user->cargo_id,
+                            'nom_organico' => $user->cargo_nombre,
+                            'cod_organico' => $user->cargo_codigo,
+                            'tipo' => $user->cargo_tipo,
+                            'fecha_inicio' => $user->fecha_inicio,
+                            'observaciones' => $user->observaciones
+                        ] : null
+                    ];
+
+                    // Incluir roles si se solicita
+                    if ($request->boolean('incluir_roles')) {
+                        $userModel = User::find($user->id);
+                        $userData['roles'] = $userModel->roles->map(function ($role) {
+                            return [
+                                'id' => $role->id,
+                                'name' => $role->name,
+                                'guard_name' => $role->guard_name
+                            ];
+                        });
+                    }
+
+                    return $userData;
+                });
+
+            return $this->successResponse(
+                $usuarios,
+                'Listado de usuarios con sus respectivos cargos obtenido exitosamente'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse(
+                'Error al obtener el listado de usuarios',
+                $e->getMessage(),
+                500
+            );
+        }
+    }
+
+    /**
+     * Método de depuración para verificar relaciones de usuarios.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function debugUsuariosRelaciones()
+    {
+        try {
+            $debug = [
+                'usuarios_activos' => User::where('estado', 1)->count(),
+                'total_users_sedes' => DB::table('users_sedes')->count(),
+                'total_users_cargos' => DB::table('users_cargos')->count(),
+                'total_config_sedes' => DB::table('config_sedes')->count(),
+                'total_calidad_organigrama' => DB::table('calidad_organigrama')->count(),
+                'users_sedes_activas' => DB::table('users_sedes')->where('estado', true)->count(),
+                'users_cargos_activos' => DB::table('users_cargos')->where('estado', true)->whereNull('fecha_fin')->count(),
+                'config_sedes_activas' => DB::table('config_sedes')->where('estado', true)->count(),
+            ];
+
+            // Verificar relaciones específicas del usuario admin
+            $adminUser = User::where('email', 'admin@admin.com')->first();
+            if ($adminUser) {
+                $debug['admin_user'] = [
+                    'id' => $adminUser->id,
+                    'estado' => $adminUser->estado,
+                    'sedes_asignadas' => DB::table('users_sedes')->where('user_id', $adminUser->id)->get(),
+                    'cargos_asignados' => DB::table('users_cargos')->where('user_id', $adminUser->id)->get(),
+                ];
+            }
+
+            return $this->successResponse($debug, 'Información de depuración obtenida');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener información de depuración', $e->getMessage(), 500);
         }
     }
 

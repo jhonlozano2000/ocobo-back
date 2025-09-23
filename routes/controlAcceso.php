@@ -11,12 +11,18 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
     /**
-     * Usuarios
+     * Usuarios - Rutas específicas PRIMERO para evitar conflictos con resource
+     */
+    Route::get('/users/stats/estadisticas', [UserController::class, 'estadisticas']);
+    Route::get('/users/usuarios-con-cargos', [UserController::class, 'listarUsuariosConCargos']);
+    Route::get('/users/usuarios-activos-con-oficina-dependencia', [UserController::class, 'usuariosActivosConOficinaYDependencia']);
+    Route::get('/users/usuarios-con-cargos-activos', [UserController::class, 'usuariosConCargosActivos']);
+    Route::get('/users/debug-relaciones', [UserController::class, 'debugUsuariosRelaciones']);
+
+    /**
+     * Usuarios - Resource routes
      */
     Route::resource('/users', UserController::class)->except('create', 'edit');
-
-    // Rutas específicas de usuarios (deben ir DESPUÉS del resource)
-    Route::get('/users/stats/estadisticas', [UserController::class, 'estadisticas']);
 
     /**
      * Roles y permisos

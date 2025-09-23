@@ -15,7 +15,7 @@ class TRDSeed extends Seeder
     {
         // Obtener una dependencia existente
         $dependencia = CalidadOrganigrama::first();
-        
+
         if (!$dependencia) {
             $this->command->error('No hay dependencias disponibles. Ejecuta primero OrganigramaSeed.');
             return;
@@ -169,4 +169,4 @@ class TRDSeed extends Seeder
         $this->command->info("   - 3 SubSeries");
         $this->command->info("   - 3 Tipos de Documento");
     }
-} 
+}
