@@ -18,6 +18,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/users/usuarios-activos-con-oficina-dependencia', [UserController::class, 'usuariosActivosConOficinaYDependencia']);
     Route::get('/users/usuarios-con-cargos-activos', [UserController::class, 'usuariosConCargosActivos']);
     Route::get('/users/debug-relaciones', [UserController::class, 'debugUsuariosRelaciones']);
+    Route::get('/users/debug-oficinas-cargos', [UserController::class, 'debugOficinasYCargos']);
+    Route::get('/users/debug-organigrama-estructura', [UserController::class, 'debugOrganigramaEstructura']);
 
     /**
      * Usuarios - Resource routes

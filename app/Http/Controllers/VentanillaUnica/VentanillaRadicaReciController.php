@@ -534,4 +534,98 @@ class VentanillaRadicaReciController extends Controller
             return $this->errorResponse('Error al obtener las radicaciones', $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Obtiene estadísticas generales de las radicaciones recibidas.
+     *
+     * Este método proporciona estadísticas detalladas sobre las radicaciones
+     * incluyendo totales, radicaciones faltantes, y radicaciones próximas a vencer.
+     *
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las estadísticas
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Estadísticas obtenidas exitosamente",
+     *   "data": {
+     *     "total_radicados": 150,
+     *     "faltan_archivo_digital": 25,
+     *     "faltan_imprimir_rotulo": 30,
+     *     "proximos_a_vencer": {
+     *       "8_dias": 5,
+     *       "5_dias": 8,
+     *       "3_dias": 3
+     *     },
+     *     "radicados_vencidos": 12
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener las estadísticas",
+     *   "error": "Error message"
+     * }
+     */
+    public function estadisticas()
+    {
+        try {
+            $fechaActual = Carbon::now()->format('Y-m-d');
+            $fecha8Dias = Carbon::now()->addDays(8)->format('Y-m-d');
+            $fecha5Dias = Carbon::now()->addDays(5)->format('Y-m-d');
+            $fecha3Dias = Carbon::now()->addDays(3)->format('Y-m-d');
+
+            // Total de radicados
+            $totalRadicados = VentanillaRadicaReci::count();
+
+            // Radicados que faltan archivo digital (archivo_radica es null o vacío)
+            $faltanArchivoDigital = VentanillaRadicaReci::where(function ($query) {
+                $query->whereNull('archivo_radica')
+                    ->orWhere('archivo_radica', '');
+            })->count();
+
+            // Radicados que faltan imprimir rótulo (asumimos que hay un campo para esto)
+            // Si no existe el campo, podemos usar otro criterio o crear uno
+            $faltanImprimirRotulo = VentanillaRadicaReci::where('estado', '!=', 'rotulo_impreso')->count();
+
+            // Radicados próximos a vencer
+            $proximosAVencer = [
+                '8_dias' => VentanillaRadicaReci::where('fec_venci', $fecha8Dias)->count(),
+                '5_dias' => VentanillaRadicaReci::where('fec_venci', $fecha5Dias)->count(),
+                '3_dias' => VentanillaRadicaReci::where('fec_venci', $fecha3Dias)->count(),
+            ];
+
+            // Radicados ya vencidos
+            $radicadosVencidos = VentanillaRadicaReci::where('fec_venci', '<', $fechaActual)->count();
+
+            // Radicados creados hoy
+            $radicadosHoy = VentanillaRadicaReci::whereDate('created_at', $fechaActual)->count();
+
+            // Radicados de la semana actual
+            $radicadosEstaSemana = VentanillaRadicaReci::whereBetween('created_at', [
+                Carbon::now()->startOfWeek()->format('Y-m-d'),
+                Carbon::now()->endOfWeek()->format('Y-m-d')
+            ])->count();
+
+            // Radicados del mes actual
+            $radicadosEsteMes = VentanillaRadicaReci::whereMonth('created_at', Carbon::now()->month)
+                ->whereYear('created_at', Carbon::now()->year)
+                ->count();
+
+            $estadisticas = [
+                'total_radicados' => $totalRadicados,
+                'faltan_archivo_digital' => $faltanArchivoDigital,
+                'faltan_imprimir_rotulo' => $faltanImprimirRotulo,
+                'proximos_a_vencer' => $proximosAVencer,
+                'radicados_vencidos' => $radicadosVencidos,
+                'radicados_hoy' => $radicadosHoy,
+                'radicados_esta_semana' => $radicadosEstaSemana,
+                'radicados_este_mes' => $radicadosEsteMes,
+                'porcentaje_con_archivo' => $totalRadicados > 0 ? round((($totalRadicados - $faltanArchivoDigital) / $totalRadicados) * 100, 2) : 0,
+                'porcentaje_rotulos_impresos' => $totalRadicados > 0 ? round((($totalRadicados - $faltanImprimirRotulo) / $totalRadicados) * 100, 2) : 0,
+            ];
+
+            return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
+        }
+    }
 }

@@ -813,16 +813,24 @@ class UserController extends Controller
      *       "email": "juan.perez@example.com",
      *       "num_docu": "12345678",
      *       "oficina": {
-     *         "id": 1,
-     *         "nombre": "Oficina Principal",
-     *         "codigo": "OP001",
-     *         "direccion": "Calle 123 #45-67"
+     *         "id": 2,
+     *         "nom_organico": "Oficina Principal",
+     *         "cod_organico": "OP001",
+     *         "tipo": "Oficina"
      *       },
      *       "dependencia": {
      *         "id": 1,
-     *         "nom_organico": "Sistemas",
-     *         "cod_organico": "SIS001",
-     *         "tipo": "Cargo"
+     *         "nom_organico": "Dirección de Sistemas",
+     *         "cod_organico": "DS001",
+     *         "tipo": "Dependencia"
+     *       },
+     *       "cargo": {
+     *         "id": 3,
+     *         "nom_organico": "Analista de Sistemas",
+     *         "cod_organico": "AS001",
+     *         "tipo": "Cargo",
+     *         "fecha_inicio": "2024-01-15",
+     *         "observaciones": "Cargo principal"
      *       }
      *     }
      *   ],
@@ -838,65 +846,88 @@ class UserController extends Controller
     public function usuariosActivosConOficinaYDependencia()
     {
         try {
-            $usuarios = User::select([
-                'users.id',
-                'users.nombres',
-                'users.apellidos',
-                'users.email',
-                'users.num_docu',
-                'config_sedes.id as oficina_id',
-                'config_sedes.nombre as oficina_nombre',
-                'config_sedes.codigo as oficina_codigo',
-                'config_sedes.direccion as oficina_direccion',
-                'config_sedes.estado as oficina_estado',
-                'calidad_organigrama.id as dependencia_id',
-                'calidad_organigrama.nom_organico as dependencia_nombre',
-                'calidad_organigrama.cod_organico as dependencia_codigo',
-                'calidad_organigrama.tipo as dependencia_tipo'
+            // Obtener usuarios activos con sus cargos activos y relaciones
+            $usuarios = User::with([
+                'cargoActivo.cargo.parent.parent', // Cargo -> Oficina -> Dependencia
+                'cargoActivo.cargo.parent' // Cargo -> Oficina (si existe)
             ])
-                ->where('users.estado', 1) // Solo usuarios activos
-
-                // Join con sedes activas - Solo sedes que estén activas también
-                ->leftJoin('users_sedes', function ($join) {
-                    $join->on('users.id', '=', 'users_sedes.user_id')
-                        ->where('users_sedes.estado', true);
-                })
-                ->leftJoin('config_sedes', function ($join) {
-                    $join->on('users_sedes.sede_id', '=', 'config_sedes.id')
-                        ->where('config_sedes.estado', true); // Solo sedes activas
-                })
-
-                // Join con cargos activos
-                ->leftJoin('users_cargos', function ($join) {
-                    $join->on('users.id', '=', 'users_cargos.user_id')
-                        ->where('users_cargos.estado', true)
-                        ->whereNull('users_cargos.fecha_fin');
-                })
-                ->leftJoin('calidad_organigrama', 'users_cargos.cargo_id', '=', 'calidad_organigrama.id')
-
-                ->orderBy('users.nombres')
-                ->orderBy('users.apellidos')
+                ->where('estado', 1)
+                ->orderBy('nombres')
+                ->orderBy('apellidos')
                 ->get()
                 ->map(function ($user) {
-                    return [
+                    $cargoActivo = $user->cargoActivo;
+
+                    // Inicializar datos base del usuario
+                    $usuarioData = [
                         'id' => $user->id,
                         'nombres' => $user->nombres,
                         'apellidos' => $user->apellidos,
                         'email' => $user->email,
                         'num_docu' => $user->num_docu,
-                        'oficina' => ($user->oficina_id && $user->oficina_estado) ? [
-                            'id' => $user->oficina_id,
-                            'nombre' => $user->oficina_nombre,
-                            'codigo' => $user->oficina_codigo,
-                            'direccion' => $user->oficina_direccion
-                        ] : null,
-                        'dependencia' => $user->dependencia_id ? [
-                            'id' => $user->dependencia_id,
-                            'nom_organico' => $user->dependencia_nombre,
-                            'cod_organico' => $user->dependencia_codigo,
-                            'tipo' => $user->dependencia_tipo
-                        ] : null
+                        'oficina' => null,
+                        'dependencia' => null,
+                        'cargo' => null
                     ];
+
+                    // Si el usuario tiene cargo activo
+                    if ($cargoActivo && $cargoActivo->cargo) {
+                        $cargo = $cargoActivo->cargo;
+
+                        // Información del cargo
+                        $usuarioData['cargo'] = [
+                            'id' => $cargo->id,
+                            'nom_organico' => $cargo->nom_organico,
+                            'cod_organico' => $cargo->cod_organico,
+                            'tipo' => $cargo->tipo,
+                            'fecha_inicio' => $cargoActivo->fecha_inicio?->format('Y-m-d'),
+                            'observaciones' => $cargoActivo->observaciones
+                        ];
+
+                        // Buscar la oficina (padre del cargo) - Cargar explícitamente la relación
+                        $oficina = null;
+                        if ($cargo->parent) {
+                            // Si parent es un ID, cargar el modelo completo
+                            if (is_numeric($cargo->parent)) {
+                                $oficina = \App\Models\Calidad\CalidadOrganigrama::with('parent')->find($cargo->parent);
+                            } elseif (is_object($cargo->parent)) {
+                                $oficina = $cargo->parent;
+                            }
+                        }
+
+
+                        if ($oficina && is_object($oficina) && isset($oficina->tipo)) {
+                            if ($oficina->tipo === 'Oficina') {
+                                $usuarioData['oficina'] = [
+                                    'id' => $oficina->id,
+                                    'nom_organico' => $oficina->nom_organico,
+                                    'cod_organico' => $oficina->cod_organico,
+                                    'tipo' => $oficina->tipo
+                                ];
+
+                                // Buscar la dependencia (padre de la oficina) - Verificar que sea un objeto
+                                $dependencia = $oficina->parent;
+                                if ($dependencia && is_object($dependencia) && isset($dependencia->tipo) && $dependencia->tipo === 'Dependencia') {
+                                    $usuarioData['dependencia'] = [
+                                        'id' => $dependencia->id,
+                                        'nom_organico' => $dependencia->nom_organico,
+                                        'cod_organico' => $dependencia->cod_organico,
+                                        'tipo' => $dependencia->tipo
+                                    ];
+                                }
+                            } elseif ($oficina->tipo === 'Dependencia') {
+                                // Si el cargo está directamente bajo una dependencia (sin oficina intermedia)
+                                $usuarioData['dependencia'] = [
+                                    'id' => $oficina->id,
+                                    'nom_organico' => $oficina->nom_organico,
+                                    'cod_organico' => $oficina->cod_organico,
+                                    'tipo' => $oficina->tipo
+                                ];
+                            }
+                        }
+                    }
+
+                    return $usuarioData;
                 });
 
             return $this->successResponse(
@@ -1280,6 +1311,103 @@ class UserController extends Controller
             return $this->successResponse($debug, 'Información de depuración obtenida');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener información de depuración', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Método de depuración específico para oficinas y cargos.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function debugOficinasYCargos()
+    {
+        try {
+            $debug = [];
+
+            // Verificar todas las oficinas disponibles
+            $debug['oficinas_disponibles'] = DB::table('config_sedes')
+                ->where('estado', true)
+                ->select('id', 'nombre', 'codigo', 'direccion', 'estado')
+                ->get();
+
+            // Verificar todas las asignaciones de usuarios a oficinas
+            $debug['asignaciones_oficinas'] = DB::table('users_sedes')
+                ->join('users', 'users_sedes.user_id', '=', 'users.id')
+                ->join('config_sedes', 'users_sedes.sede_id', '=', 'config_sedes.id')
+                ->select(
+                    'users.id as user_id',
+                    'users.nombres',
+                    'users.apellidos',
+                    'users.email',
+                    'config_sedes.id as sede_id',
+                    'config_sedes.nombre as sede_nombre',
+                    'users_sedes.estado as asignacion_estado'
+                )
+                ->get();
+
+            // Verificar todas las asignaciones de usuarios a cargos
+            $debug['asignaciones_cargos'] = DB::table('users_cargos')
+                ->join('users', 'users_cargos.user_id', '=', 'users.id')
+                ->join('calidad_organigrama', 'users_cargos.cargo_id', '=', 'calidad_organigrama.id')
+                ->select(
+                    'users.id as user_id',
+                    'users.nombres',
+                    'users.apellidos',
+                    'users.email',
+                    'calidad_organigrama.id as cargo_id',
+                    'calidad_organigrama.nom_organico',
+                    'users_cargos.fecha_inicio',
+                    'users_cargos.estado as asignacion_estado'
+                )
+                ->get();
+
+            return $this->successResponse($debug, 'Información de oficinas y cargos obtenida');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener información de oficinas y cargos', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Método de depuración para verificar la estructura del organigrama.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function debugOrganigramaEstructura()
+    {
+        try {
+            $debug = [];
+
+            // Verificar estructura del organigrama
+            $debug['organigrama_tipos'] = DB::table('calidad_organigrama')
+                ->select('tipo', DB::raw('COUNT(*) as cantidad'))
+                ->groupBy('tipo')
+                ->get();
+
+            // Verificar jerarquía del organigrama
+            $debug['organigrama_jerarquia'] = DB::table('calidad_organigrama')
+                ->select('id', 'tipo', 'nom_organico', 'cod_organico', 'parent')
+                ->orderBy('parent')
+                ->orderBy('tipo')
+                ->get();
+
+            // Verificar usuario admin específico
+            $adminUser = User::where('email', 'admin@admin.com')->first();
+            if ($adminUser) {
+                $debug['admin_cargo_activo'] = $adminUser->cargoActivo;
+                if ($adminUser->cargoActivo) {
+                    $debug['admin_cargo_info'] = $adminUser->cargoActivo->cargo;
+                    if ($adminUser->cargoActivo->cargo) {
+                        $debug['admin_cargo_parent'] = $adminUser->cargoActivo->cargo->parent;
+                        if ($adminUser->cargoActivo->cargo->parent) {
+                            $debug['admin_cargo_parent_parent'] = $adminUser->cargoActivo->cargo->parent->parent;
+                        }
+                    }
+                }
+            }
+
+            return $this->successResponse($debug, 'Información de estructura del organigrama obtenida');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener información del organigrama', $e->getMessage(), 500);
         }
     }
 

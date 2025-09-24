@@ -44,6 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
      */
     Route::apiResource('radica-recibida', VentanillaRadicaReciController::class)->except('create', 'edit');
     Route::get('/radica-recibida-admin/listar', [VentanillaRadicaReciController::class, 'listarRadicados']);
+    Route::get('/radica-recibida/estadisticas', [VentanillaRadicaReciController::class, 'estadisticas']);
 
     /**
      * Archivos de Radicaciones
