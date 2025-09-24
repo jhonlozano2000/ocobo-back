@@ -312,10 +312,10 @@ class CalidadOrganigramaController extends Controller
      * Este método permite eliminar un nodo solo si no tiene elementos hijos,
      * manteniendo la integridad de la estructura jerárquica.
      *
-     * @param CalidadOrganigrama $calidadOrganigrama El nodo a eliminar (inyectado por Laravel)
+     * @param int $id El ID del nodo a eliminar
      * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la eliminación
      *
-     * @urlParam calidadOrganigrama integer required El ID del nodo a eliminar. Example: 1
+     * @urlParam id integer required El ID del nodo a eliminar. Example: 1
      *
      * @response 200 {
      *   "status": true,
@@ -338,10 +338,22 @@ class CalidadOrganigramaController extends Controller
      *   "error": "Error message"
      * }
      */
-    public function destroy(CalidadOrganigrama $calidadOrganigrama)
+    public function destroy(int $id)
     {
         try {
             DB::beginTransaction();
+
+            // Buscar el nodo por ID
+            $calidadOrganigrama = CalidadOrganigrama::find($id);
+
+            // Verificar si el nodo existe
+            if (!$calidadOrganigrama) {
+                return $this->errorResponse(
+                    'Nodo no encontrado',
+                    null,
+                    404
+                );
+            }
 
             // Verificar si tiene hijos
             if ($calidadOrganigrama->children()->count() > 0) {
@@ -352,6 +364,7 @@ class CalidadOrganigramaController extends Controller
                 );
             }
 
+            // Eliminar el nodo
             $calidadOrganigrama->delete();
 
             DB::commit();
