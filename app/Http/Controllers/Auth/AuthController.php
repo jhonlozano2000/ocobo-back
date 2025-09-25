@@ -47,7 +47,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Autentica un usuario y retorna token con roles y permisos.
+     * Autentica un usuario y retorna token con roles, permisos, cargo, oficina y dependencia.
      */
     public function login(AuthLoginRequest $request)
     {
@@ -81,7 +81,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Obtiene la información del usuario autenticado.
+     * Obtiene la información del usuario autenticado incluyendo cargo, oficina y dependencia.
      */
     public function getMe(Request $request)
     {

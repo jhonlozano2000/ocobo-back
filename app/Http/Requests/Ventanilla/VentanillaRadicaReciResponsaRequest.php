@@ -22,21 +22,25 @@ class VentanillaRadicaReciResponsaRequest extends FormRequest
     public function rules()
     {
         return [
-            '*.radica_reci_id' => 'required|exists:ventanilla_radica_reci,id',
-            '*.users_cargos_id' => 'required|exists:users,id',
-            '*.custodio' => 'required|boolean',
+            'responsables' => 'required|array|min:1',
+            'responsables.*.radica_reci_id' => 'required|exists:ventanilla_radica_reci,id',
+            'responsables.*.user_id' => 'required|exists:users,id',
+            'responsables.*.custodio' => 'required|boolean',
         ];
     }
 
     public function messages()
     {
         return [
-            '*.radica_reci_id.required' => 'El campo radica_reci_id es obligatorio.',
-            '*.radica_reci_id.exists' => 'El radica_reci_id proporcionado no existe.',
-            '*.users_cargos_id.required' => 'El campo users_cargos_id es obligatorio.',
-            '*.users_cargos_id.exists' => 'El usuario proporcionado no existe.',
-            '*.custodio.required' => 'El campo custodio es obligatorio.',
-            '*.custodio.boolean' => 'El campo custodio debe ser verdadero o falso.',
+            'responsables.required' => 'El array de responsables es obligatorio.',
+            'responsables.array' => 'Los responsables deben ser un array.',
+            'responsables.min' => 'Debe enviar al menos un responsable.',
+            'responsables.*.radica_reci_id.required' => 'El ID de la radicación es obligatorio.',
+            'responsables.*.radica_reci_id.exists' => 'La radicación proporcionada no existe.',
+            'responsables.*.user_id.required' => 'El ID del usuario es obligatorio.',
+            'responsables.*.user_id.exists' => 'El usuario proporcionado no existe.',
+            'responsables.*.custodio.required' => 'El campo custodio es obligatorio.',
+            'responsables.*.custodio.boolean' => 'El campo custodio debe ser verdadero o falso.',
         ];
     }
 }

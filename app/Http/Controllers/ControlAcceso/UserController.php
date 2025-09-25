@@ -26,8 +26,10 @@ class UserController extends Controller
      * Obtiene un listado de usuarios del sistema con opciones de filtrado.
      *
      * Este método retorna usuarios con diferentes opciones de filtrado y carga de relaciones.
-     * Puede incluir información detallada de cargos activos, filtrar por estado, búsqueda, etc.
-     * Es útil para diferentes interfaces que necesiten mostrar usuarios con distintos niveles de detalle.
+     * Incluye automáticamente el cargo activo del usuario junto con su dependencia/oficina
+     * directamente relacionada. Puede incluir información detallada adicional, filtrar por
+     * estado, búsqueda, etc. Es útil para diferentes interfaces que necesiten mostrar usuarios
+     * con distintos niveles de detalle.
      *
      * @param Request $request La solicitud HTTP con filtros opcionales
      * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de usuarios
@@ -49,16 +51,19 @@ class UserController extends Controller
      *       "avatar_url": "http://example.com/avatars/user.jpg",
      *       "firma_url": "http://example.com/firmas/user.jpg",
      *       "cargo": {
-     *         "id": 1,
-     *         "nom_organico": "Jefe de Sistemas",
-     *         "cod_organico": "JS001",
+     *         "id": 23,
+     *         "nom_organico": "Gerente",
+     *         "cod_organico": null,
      *         "tipo": "Cargo",
-     *         "fecha_inicio": "2024-01-15"
+     *         "fecha_inicio": "2024-01-15",
+     *         "observaciones": null
      *       },
-     *       "oficina": {
-     *         "id": 1,
-     *         "nombre": "Oficina Principal",
-     *         "codigo": "OP001"
+     *       "oficina": null,
+     *       "dependencia": {
+     *         "id": 3,
+     *         "nom_organico": "GERENCIA",
+     *         "cod_organico": "100",
+     *         "tipo": "Dependencia"
      *       },
      *       "roles": [
      *         {
@@ -67,20 +72,6 @@ class UserController extends Controller
      *           "guard_name": "web",
      *           "created_at": "2024-01-15T10:00:00.000000Z",
      *           "updated_at": "2024-01-15T10:00:00.000000Z"
-     *         }
-     *       ],
-     *       "cargos": [
-     *         {
-     *           "id": 22,
-     *           "tipo": "Cargo",
-     *           "nom_organico": "Control interno",
-     *           "cod_organico": null,
-     *           "pivot": {
-     *             "user_id": 1,
-     *             "cargo_id": 22,
-     *             "fecha_inicio": "2024-01-15",
-     *             "estado": 1
-     *           }
      *         }
      *       ]
      *     }
@@ -103,7 +94,7 @@ class UserController extends Controller
             }
 
             // Consulta estándar con relaciones de Eloquent
-            $query = User::with(['cargos', 'roles']);
+            $query = User::with(['roles', 'cargoActivo.cargo']);
 
             // Filtro opcional: solo usuarios activos
             if ($request->boolean('solo_activos')) {
@@ -123,7 +114,69 @@ class UserController extends Controller
             $users = $query->orderBy('nombres')
                 ->orderBy('apellidos')
                 ->get()
-                ->each->append(['avatar_url', 'firma_url']);
+                ->map(function ($user) {
+                    $userData = $user->append(['avatar_url', 'firma_url'])->toArray();
+
+                    // Eliminar campos redundantes
+                    unset($userData['cargos']);
+                    unset($userData['cargo_activo']);
+
+                    // Agregar información de cargo, oficina y dependencia
+                    $userData['cargo'] = null;
+                    $userData['oficina'] = null;
+                    $userData['dependencia'] = null;
+
+                    if ($user->cargoActivo && $user->cargoActivo->cargo) {
+                        $cargo = $user->cargoActivo->cargo;
+
+                        // Información del cargo
+                        $userData['cargo'] = [
+                            'id' => $cargo->id,
+                            'nom_organico' => $cargo->nom_organico,
+                            'cod_organico' => $cargo->cod_organico,
+                            'tipo' => $cargo->tipo,
+                            'fecha_inicio' => $user->cargoActivo->fecha_inicio?->format('Y-m-d'),
+                            'observaciones' => $user->cargoActivo->observaciones
+                        ];
+
+                        // Usar el método getJerarquiaCompleta() para obtener la jerarquía
+                        $jerarquia = $cargo->getJerarquiaCompleta();
+
+                        // Buscar la dependencia y oficina directamente relacionadas al cargo
+                        $cargoIndex = -1;
+
+                        // Encontrar la posición del cargo en la jerarquía
+                        foreach ($jerarquia as $index => $nivel) {
+                            if ($nivel['id'] === $cargo->id && $nivel['tipo'] === 'Cargo') {
+                                $cargoIndex = $index;
+                                break;
+                            }
+                        }
+
+                        // Si encontramos el cargo, buscar su dependencia/oficina padre directa
+                        if ($cargoIndex > 0) {
+                            $parentDirecto = $jerarquia[$cargoIndex - 1]; // El elemento anterior es el padre directo
+
+                            if ($parentDirecto['tipo'] === 'Oficina') {
+                                $userData['oficina'] = [
+                                    'id' => $parentDirecto['id'],
+                                    'nom_organico' => $parentDirecto['nom_organico'],
+                                    'cod_organico' => $parentDirecto['cod_organico'],
+                                    'tipo' => $parentDirecto['tipo']
+                                ];
+                            } elseif ($parentDirecto['tipo'] === 'Dependencia') {
+                                $userData['dependencia'] = [
+                                    'id' => $parentDirecto['id'],
+                                    'nom_organico' => $parentDirecto['nom_organico'],
+                                    'cod_organico' => $parentDirecto['cod_organico'],
+                                    'tipo' => $parentDirecto['tipo']
+                                ];
+                            }
+                        }
+                    }
+
+                    return $userData;
+                });
 
             return $this->successResponse($users, 'Listado de usuarios obtenido exitosamente');
         } catch (\Exception $e) {

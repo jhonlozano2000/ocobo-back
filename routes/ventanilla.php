@@ -42,9 +42,12 @@ Route::middleware('auth:sanctum')->group(function () {
     /**
      * Correspondencia Recibida (Radicaciones)
      */
-    Route::apiResource('radica-recibida', VentanillaRadicaReciController::class)->except('create', 'edit');
-    Route::get('/radica-recibida-admin/listar', [VentanillaRadicaReciController::class, 'listarRadicados']);
+    // Rutas específicas ANTES de la ruta apiResource para evitar conflictos
     Route::get('/radica-recibida/estadisticas', [VentanillaRadicaReciController::class, 'estadisticas']);
+    Route::get('/radica-recibida-admin/listar', [VentanillaRadicaReciController::class, 'listarRadicados']);
+
+    // Ruta apiResource (debe ir después de las rutas específicas)
+    Route::apiResource('radica-recibida', VentanillaRadicaReciController::class)->except('create', 'edit');
 
     /**
      * Archivos de Radicaciones
@@ -61,5 +64,8 @@ Route::middleware('auth:sanctum')->group(function () {
      * Responsables de Radicaciones
      */
     Route::apiResource('responsables', VentanillaRadicaReciResponsaController::class)->except('create', 'edit');
+
+    // Rutas específicas para responsables de radicaciones
     Route::get('/radica-recibida/{radica_reci_id}/responsables', [VentanillaRadicaReciResponsaController::class, 'getByRadicado']);
+    Route::post('/radica-recibida/{radica_reci_id}/responsables', [VentanillaRadicaReciResponsaController::class, 'assignToRadicado']);
 });

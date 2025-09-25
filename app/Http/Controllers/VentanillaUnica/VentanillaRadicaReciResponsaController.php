@@ -135,28 +135,26 @@ class VentanillaRadicaReciResponsaController extends Controller
         try {
             DB::beginTransaction();
 
-            $data = $request->all();
+            // Validar y procesar los datos
+            $validatedData = $request->validated();
 
-            // Validar que sea un arreglo indexado
-            if (!is_array($data) || empty($data)) {
-                return $this->errorResponse('Los datos deben ser un arreglo no vacío', null, 400);
+            // Verificar que se envíe el array de responsables
+            if (!isset($validatedData['responsables']) || !is_array($validatedData['responsables']) || empty($validatedData['responsables'])) {
+                return $this->errorResponse('Se debe enviar un array de responsables no vacío', null, 400);
             }
 
-            // Validar y procesar los datos
-            $responsables = $request->validated();
+            $responsables = $validatedData['responsables'];
+            $responsablesCreados = [];
 
-            // Insertar los registros
-            VentanillaRadicaReciResponsa::insert($responsables);
-
-            // Obtener los registros recién insertados para retornar
-            $radicaReciId = $responsables[0]['radica_reci_id'];
-            $insertados = VentanillaRadicaReciResponsa::with(['usuarioCargo', 'radicado'])
-                ->where('radica_reci_id', $radicaReciId)
-                ->get();
+            // Crear cada responsable individualmente para obtener los IDs
+            foreach ($responsables as $responsableData) {
+                $responsable = VentanillaRadicaReciResponsa::create($responsableData);
+                $responsablesCreados[] = $responsable->load(['usuarioCargo', 'radicado']);
+            }
 
             DB::commit();
 
-            return $this->successResponse($insertados, 'Responsables asignados exitosamente', 201);
+            return $this->successResponse($responsablesCreados, 'Responsables asignados exitosamente', 201);
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->errorResponse('Error al asignar responsables', $e->getMessage(), 500);
@@ -401,6 +399,96 @@ class VentanillaRadicaReciResponsaController extends Controller
             return $this->successResponse($responsables, 'Responsables de la radicación obtenidos exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener los responsables', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Asigna responsables a una radicación específica.
+     *
+     * Este método permite asignar múltiples responsables a una radicación específica
+     * usando el ID de la radicación en la URL.
+     *
+     * @param int $radica_reci_id ID de la radicación
+     * @param Request $request Array de responsables a asignar
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con los responsables asignados
+     *
+     * @urlParam radica_reci_id integer required El ID de la radicación. Example: 1
+     * @bodyParam responsables array required Array de responsables. Example: [{"user_id": 1, "custodio": true}]
+     *
+     * @response 201 {
+     *   "status": true,
+     *   "message": "Responsables asignados exitosamente",
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "radica_reci_id": 1,
+     *       "user_id": 1,
+     *       "custodio": true
+     *     }
+     *   ]
+     * }
+     *
+     * @response 400 {
+     *   "status": false,
+     *   "message": "Se debe enviar un array de responsables no vacío"
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Error de validación",
+     *   "errors": {
+     *     "responsables": ["Los responsables son obligatorios."]
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al asignar responsables",
+     *   "error": "Error message"
+     *   }
+     */
+    public function assignToRadicado($radica_reci_id, Request $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Validar que se envíe el array de responsables
+            $request->validate([
+                'responsables' => 'required|array|min:1',
+                'responsables.*.user_id' => 'required|exists:users,id',
+                'responsables.*.custodio' => 'required|boolean',
+            ], [
+                'responsables.required' => 'El array de responsables es obligatorio.',
+                'responsables.array' => 'Los responsables deben ser un array.',
+                'responsables.min' => 'Debe enviar al menos un responsable.',
+                'responsables.*.user_id.required' => 'El ID del usuario es obligatorio.',
+                'responsables.*.user_id.exists' => 'El usuario proporcionado no existe.',
+                'responsables.*.custodio.required' => 'El campo custodio es obligatorio.',
+                'responsables.*.custodio.boolean' => 'El campo custodio debe ser verdadero o falso.',
+            ]);
+
+            $responsables = $request->input('responsables');
+            $responsablesCreados = [];
+
+            // Crear cada responsable individualmente para obtener los IDs
+            foreach ($responsables as $responsableData) {
+                $responsable = VentanillaRadicaReciResponsa::create([
+                    'radica_reci_id' => $radica_reci_id,
+                    'user_id' => $responsableData['user_id'],
+                    'custodio' => $responsableData['custodio']
+                ]);
+                $responsablesCreados[] = $responsable->load(['usuarioCargo', 'radicado']);
+            }
+
+            DB::commit();
+
+            return $this->successResponse($responsablesCreados, 'Responsables asignados exitosamente', 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            return $this->errorResponse('Error de validación', $e->errors(), 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse('Error al asignar responsables', $e->getMessage(), 500);
         }
     }
 }

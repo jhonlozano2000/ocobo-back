@@ -26,6 +26,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/estadisticas/totales', [ClasificacionDocumentalTRDController::class, 'estadisticasTotales'])->name('trd.estadisticas.totales');
         Route::get('/estadisticas/por-dependencias', [ClasificacionDocumentalTRDController::class, 'estadisticasPorDependencias'])->name('trd.estadisticas.por-dependencias');
 
+        // Ruta para clasificaciones por dependencia en estructura jerárquica
+        Route::get('/por-dependencia/{dependencia_id}', [ClasificacionDocumentalTRDController::class, 'clasificacionesPorDependencia'])->name('trd.clasificaciones.por-dependencia');
+
         // Rutas con parámetros (deben ir después de las específicas)
         Route::get('/estadisticas/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'estadistica'])->name('trd.estadisticas');
         Route::get('/dependencia/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'listarPorDependencia'])->name('trd.por-dependencia');

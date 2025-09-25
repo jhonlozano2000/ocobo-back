@@ -19,6 +19,9 @@ return new class extends Migration
             $table->unsignedBigInteger('clasifica_documen_id')->comment('Clasificacion documetnal');
             $table->foreign('clasifica_documen_id')->references('id')->on('clasificacion_documental_trd');
 
+            $table->unsignedBigInteger('usuario_crea')->nullable()->comment('Usuario que creó el radicado');
+            $table->foreign('usuario_crea')->references('id')->on('users');
+
             $table->unsignedBigInteger('tercero_id');
             $table->foreign('tercero_id')->references('id')->on('gestion_terceros');
 
@@ -28,15 +31,19 @@ return new class extends Migration
             $table->unsignedBigInteger('config_server_id')->nullable()->comment('Rutal de almacenamiento de los archivos digitalizados');
             $table->foreign('config_server_id')->references('id')->on('config_server_archivos');
 
-            $table->unsignedBigInteger('uploaded_by')->nullable()->comment('Usuario que subió el archivo');
-            $table->foreign('uploaded_by')->references('id')->on('users');
-
             $table->date('fec_venci')->nullable()->comment('Fecha de vencimeinto del radicado');
+            $table->date('fec_docu')->nullable()->comment('Fecha del documento del radicado');
             $table->integer('num_folios')->default(0)->comment('Numero de folios del radicado');
             $table->integer('num_anexos')->default(0)->comment('Numero de anexos del radicado');
             $table->string('descrip_anexos', 300)->nullable()->comment('Descripcion de los anexos');
             $table->string('asunto', 300)->nullable();
-            $table->string('archivo_radica', 100)->nullable()->comment('Archivo digitalizado');
+            $table->string('radicado_respuesta', 300)->nullable()->comment('Radicado de respuesta');
+            $table->string('archivo_digital', 100)->nullable()->comment('Nombre del archivo digitalizado');
+
+            $table->unsignedBigInteger('uploaded_by')->nullable()->comment('Usuario que subió el archivo');
+            $table->foreign('uploaded_by')->references('id')->on('users');
+
+            $table->boolean('impri_rotulo')->default(1)->comment('Estado de la impresion del rotulo');
 
             $table->timestamps();
         });

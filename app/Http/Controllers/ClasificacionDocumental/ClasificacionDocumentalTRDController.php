@@ -1152,6 +1152,139 @@ class ClasificacionDocumentalTRDController extends Controller
     }
 
     /**
+     * Obtiene las clasificaciones documentales por dependencia en estructura jerárquica.
+     *
+     * Este método retorna todas las clasificaciones documentales (Series, SubSeries y Tipos de Documento)
+     * que pertenecen a una dependencia específica, organizadas en una estructura de árbol jerárquico.
+     * Incluye información de la dependencia y formatea los nombres con el tipo entre corchetes.
+     *
+     * @param int $dependencia_id ID de la dependencia
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la estructura jerárquica
+     *
+     * @urlParam dependencia_id integer required ID de la dependencia. Example: 3
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Clasificaciones por dependencia obtenidas exitosamente",
+     *   "data": {
+     *     "dependencia": {
+     *       "id": 3,
+     *       "nom_organico": "GERENCIA",
+     *       "cod_organico": "100",
+     *       "tipo": "Dependencia"
+     *     },
+     *     "clasificaciones": [
+     *       {
+     *         "id": 1,
+     *         "cod": "1",
+     *         "nom": "[SERIE] Correspondencia",
+     *         "a_g": "5",
+     *         "a_c": "15",
+     *         "children": [
+     *           {
+     *             "id": 2,
+     *             "cod": "1.1",
+     *             "nom": "[SUBSERIE] Cartas",
+     *             "children": [...]
+     *           }
+     *         ]
+     *       }
+     *     ]
+     *   }
+     * }
+     *
+     * @response 404 {
+     *   "status": false,
+     *   "message": "Dependencia no encontrada",
+     *   "data": null
+     * }
+     */
+    public function clasificacionesPorDependencia(int $dependencia_id)
+    {
+        try {
+            // Verificar que la dependencia existe
+            $dependencia = CalidadOrganigrama::find($dependencia_id);
+
+            if (!$dependencia) {
+                return $this->errorResponse('Dependencia no encontrada', 404);
+            }
+
+            // Obtener todas las clasificaciones de la dependencia
+            $clasificaciones = ClasificacionDocumentalTRD::where('dependencia_id', $dependencia_id)
+                ->where('estado', true)
+                ->orderBy('cod')
+                ->get();
+
+            // Debug temporal: Información sobre la consulta
+            $debugInfo = [
+                'dependencia_id_buscado' => $dependencia_id,
+                'total_clasificaciones_encontradas' => $clasificaciones->count(),
+                'clasificaciones_ids' => $clasificaciones->pluck('id')->toArray(),
+                'clasificaciones_codigos' => $clasificaciones->pluck('cod')->toArray(),
+                'clasificaciones_tipos' => $clasificaciones->pluck('tipo')->toArray()
+            ];
+
+            // Construir el árbol jerárquico
+            $arbol = $this->construirArbolClasificaciones($clasificaciones);
+
+            // Preparar respuesta con información de la dependencia
+            $response = [
+                'dependencia' => [
+                    'id' => $dependencia->id,
+                    'nom_organico' => $dependencia->nom_organico,
+                    'cod_organico' => $dependencia->cod_organico,
+                    'tipo' => $dependencia->tipo
+                ],
+                'clasificaciones' => $arbol,
+                'debug' => $debugInfo  // Información temporal de depuración
+            ];
+
+            return $this->successResponse($response, 'Clasificaciones por dependencia obtenidas exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener las clasificaciones por dependencia: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Construye el árbol jerárquico de clasificaciones documentales.
+     *
+     * Este método organiza las clasificaciones en una estructura de árbol
+     * basada en las relaciones padre-hijo, formateando los nombres con el tipo.
+     *
+     * @param \Illuminate\Database\Eloquent\Collection $clasificaciones Colección de clasificaciones
+     * @param int|null $parentId ID del elemento padre (null para elementos raíz)
+     * @return array Estructura de árbol jerárquico
+     */
+    private function construirArbolClasificaciones($clasificaciones, $parentId = null)
+    {
+        $arbol = [];
+
+        foreach ($clasificaciones as $clasificacion) {
+            // Solo procesar elementos del nivel actual
+            if ($clasificacion->parent == $parentId) {
+                $elemento = [
+                    'id' => $clasificacion->id,
+                    'cod' => $clasificacion->cod,
+                    'nom' => $clasificacion->nom,
+                    'tipo' => $clasificacion->tipo,
+                    'a_g' => $clasificacion->a_g,
+                    'a_c' => $clasificacion->a_c,
+                    'ct' => $clasificacion->ct,
+                    'e' => $clasificacion->e,
+                    'm_d' => $clasificacion->m_d,
+                    's' => $clasificacion->s,
+                    'procedimiento' => $clasificacion->procedimiento,
+                    'children' => $this->construirArbolClasificaciones($clasificaciones, $clasificacion->id)
+                ];
+
+                $arbol[] = $elemento;
+            }
+        }
+
+        return $arbol;
+    }
+
+    /**
      * Limpia el archivo temporal después del procesamiento.
      *
      * Este método elimina el archivo Excel temporal que se utilizó

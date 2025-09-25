@@ -13,18 +13,22 @@ class VentanillaRadicaReci extends Model
     protected $table = 'ventanilla_radica_reci';
 
     protected $fillable = [
+        'num_radicado',
         'clasifica_documen_id',
+        'usuario_crea',
         'tercero_id',
         'medio_recep_id',
         'config_server_id',
         'fec_venci',
+        'fec_docu',
         'num_folios',
         'num_anexos',
         'descrip_anexos',
         'asunto',
-        'archivo_radica',
-        'num_radicado',
+        'radicado_respuesta',
+        'archivo_digital',
         'uploaded_by',
+        'impri_rotulo',
     ];
 
     protected static function boot()
@@ -42,6 +46,11 @@ class VentanillaRadicaReci extends Model
     public function clasificacionDocumental()
     {
         return $this->belongsTo(\App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::class, 'clasifica_documen_id');
+    }
+
+    public function usuarioCreaRadicado()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'usuario_crea');
     }
 
     public function tercero()

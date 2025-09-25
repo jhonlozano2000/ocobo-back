@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use App\Helpers\ArchivoHelper;
+use App\Models\VentanillaUnica\VentanillaRadicaReci;
 
 class User extends Authenticatable
 {
@@ -287,5 +288,10 @@ class User extends Authenticatable
     public function desactivarSede($sedeId)
     {
         return $this->sedes()->updateExistingPivot($sedeId, ['estado' => false]);
+    }
+
+    public function usuarioCreaRadicado()
+    {
+        return $this->hasMany(VentanillaRadicaReci::class, 'usuario_crea');
     }
 }

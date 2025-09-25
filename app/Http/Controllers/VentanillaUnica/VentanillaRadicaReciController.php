@@ -152,6 +152,8 @@ class VentanillaRadicaReciController extends Controller
      * @bodyParam tercero_id integer required ID del tercero. Example: 1
      * @bodyParam medio_recep_id integer required ID del medio de recepción. Example: 1
      * @bodyParam config_server_id integer ID del servidor de archivos. Example: 1
+     * @bodyParam usuario_crea integer ID del usuario que crea el radicado (se asigna automáticamente). Example: 1
+     * @bodyParam uploaded_by integer ID del usuario que sube el archivo (se asigna automáticamente). Example: 1
      * @bodyParam fec_venci string Fecha de vencimiento (YYYY-MM-DD). Example: "2024-01-15"
      * @bodyParam num_folios integer required Número de folios. Example: 5
      * @bodyParam num_anexos integer required Número de anexos. Example: 2
@@ -166,6 +168,7 @@ class VentanillaRadicaReciController extends Controller
      *     "num_radicado": "20240101-00001",
      *     "clasifica_documen_id": 1,
      *     "tercero_id": 1,
+     *     "usuario_crea": 1,
      *     "created_at": "2024-01-01T10:00:00.000000Z"
      *   }
      * }
@@ -192,15 +195,13 @@ class VentanillaRadicaReciController extends Controller
             // Validar la solicitud
             $validatedData = $request->validated();
 
-            // Obtener la dependencia del custodio desde la solicitud
-            $cod_dependencia = $this->obtenerDependenciaCustodio($validatedData['responsables'] ?? []);
-
-            // Generar el número de radicado usando la dependencia del custodio
-            $num_radicado = $this->generarNumeroRadicado($cod_dependencia);
+            // Generar el número de radicado (sin dependencia específica por ahora)
+            $num_radicado = $this->generarNumeroRadicado();
 
             // Crear el radicado con los datos enviados
             $radicado = new VentanillaRadicaReci($validatedData);
             $radicado->num_radicado = $num_radicado;
+            $radicado->usuario_crea = auth()->id(); // Asignar usuario que crea el radicado
 
             // Guardar el radicado
             $radicado->save();
@@ -405,7 +406,7 @@ class VentanillaRadicaReciController extends Controller
     /**
      * Genera un número de radicado único basado en la configuración del sistema.
      *
-     * @param string|null $cod_dependencia Código de la dependencia
+     * @param string|null $cod_dependencia Código de la dependencia (opcional)
      * @return string Número de radicado generado
      */
     private function generarNumeroRadicado($cod_dependencia = null)
@@ -539,7 +540,8 @@ class VentanillaRadicaReciController extends Controller
      * Obtiene estadísticas generales de las radicaciones recibidas.
      *
      * Este método proporciona estadísticas detalladas sobre las radicaciones
-     * incluyendo totales, radicaciones faltantes, y radicaciones próximas a vencer.
+     * incluyendo totales por estado (pendientes, en proceso, finalizados),
+     * radicaciones con archivos, radicaciones faltantes, y radicaciones próximas a vencer.
      *
      * @return \Illuminate\Http\JsonResponse Respuesta JSON con las estadísticas
      *
@@ -548,6 +550,10 @@ class VentanillaRadicaReciController extends Controller
      *   "message": "Estadísticas obtenidas exitosamente",
      *   "data": {
      *     "total_radicados": 150,
+     *     "total_pendientes": 20,
+     *     "total_proceso": 80,
+     *     "total_finalizados": 50,
+     *     "total_con_archivos": 125,
      *     "faltan_archivo_digital": 25,
      *     "faltan_imprimir_rotulo": 30,
      *     "proximos_a_vencer": {
@@ -555,7 +561,12 @@ class VentanillaRadicaReciController extends Controller
      *       "5_dias": 8,
      *       "3_dias": 3
      *     },
-     *     "radicados_vencidos": 12
+     *     "radicados_vencidos": 12,
+     *     "radicados_hoy": 5,
+     *     "radicados_esta_semana": 15,
+     *     "radicados_este_mes": 45,
+     *     "porcentaje_con_archivo": 83.33,
+     *     "porcentaje_rotulos_impresos": 80.0
      *   }
      * }
      *
@@ -584,7 +595,7 @@ class VentanillaRadicaReciController extends Controller
 
             // Radicados que faltan imprimir rótulo (asumimos que hay un campo para esto)
             // Si no existe el campo, podemos usar otro criterio o crear uno
-            $faltanImprimirRotulo = VentanillaRadicaReci::where('estado', '!=', 'rotulo_impreso')->count();
+            $faltanImprimirRotulo = VentanillaRadicaReci::where('impri_rotulo', '!=', 1)->count();
 
             // Radicados próximos a vencer
             $proximosAVencer = [
@@ -610,8 +621,35 @@ class VentanillaRadicaReciController extends Controller
                 ->whereYear('created_at', Carbon::now()->year)
                 ->count();
 
+            // Nuevas estadísticas solicitadas
+            $totalConArchivos = $totalRadicados - $faltanArchivoDigital;
+
+            // Calcular estados basados en la lógica del negocio:
+            // - Pendientes: Radicados sin archivos y sin responsables
+            // - En proceso: Radicados con archivos pero sin finalizar
+            // - Finalizados: Radicados completos (con archivos y responsables)
+
+            $totalPendientes = VentanillaRadicaReci::where(function ($query) {
+                $query->whereNull('archivo_radica')
+                    ->orWhere('archivo_radica', '');
+            })->whereDoesntHave('responsables')->count();
+
+            $totalEnProceso = VentanillaRadicaReci::whereNotNull('archivo_radica')
+                ->where('archivo_radica', '!=', '')
+                ->whereHas('responsables')
+                ->count();
+
+            $totalFinalizados = VentanillaRadicaReci::whereNotNull('archivo_radica')
+                ->where('archivo_radica', '!=', '')
+                ->whereHas('responsables')
+                ->count(); // Por ahora igual que en proceso, se puede ajustar según criterios específicos
+
             $estadisticas = [
                 'total_radicados' => $totalRadicados,
+                'total_pendientes' => $totalPendientes,
+                'total_proceso' => $totalEnProceso,
+                'total_finalizados' => $totalFinalizados,
+                'total_con_archivos' => $totalConArchivos,
                 'faltan_archivo_digital' => $faltanArchivoDigital,
                 'faltan_imprimir_rotulo' => $faltanImprimirRotulo,
                 'proximos_a_vencer' => $proximosAVencer,
