@@ -432,7 +432,8 @@ class UserController extends Controller
      * Obtiene un usuario específico por su ID.
      *
      * Este método permite obtener la información detallada de un usuario específico,
-     * incluyendo sus URLs de archivos (avatar y firma). Es útil para mostrar
+     * incluyendo sus URLs de archivos (avatar y firma), roles, y su cargo activo
+     * junto con la dependencia/oficina directamente relacionada. Es útil para mostrar
      * los detalles de un usuario o para formularios de edición.
      *
      * @param string $id El ID del usuario a obtener
@@ -449,7 +450,29 @@ class UserController extends Controller
      *     "apellidos": "Pérez García",
      *     "email": "juan.perez@example.com",
      *     "avatar_url": "http://example.com/avatars/user.jpg",
-     *     "firma_url": "http://example.com/firmas/signature.jpg"
+     *     "firma_url": "http://example.com/firmas/signature.jpg",
+     *     "cargo": {
+     *       "id": 23,
+     *       "nom_organico": "Gerente",
+     *       "cod_organico": null,
+     *       "tipo": "Cargo",
+     *       "fecha_inicio": "2024-01-15",
+     *       "observaciones": null
+     *     },
+     *     "oficina": null,
+     *     "dependencia": {
+     *       "id": 3,
+     *       "nom_organico": "GERENCIA",
+     *       "cod_organico": "100",
+     *       "tipo": "Dependencia"
+     *     },
+     *     "roles": [
+     *       {
+     *         "id": 1,
+     *         "name": "Administrador",
+     *         "guard_name": "web"
+     *       }
+     *     ]
      *   }
      * }
      *
@@ -467,14 +490,71 @@ class UserController extends Controller
     public function show(string $id)
     {
         try {
-            $user = User::find($id);
+            $user = User::with(['roles', 'cargoActivo.cargo'])->find($id);
 
             if (!$user) {
                 return $this->errorResponse('Usuario no encontrado', null, 404);
             }
 
+            // Preparar datos del usuario
+            $userData = $user->append(['avatar_url', 'firma_url'])->toArray();
+
+            // Agregar información de cargo, oficina y dependencia
+            $userData['cargo'] = null;
+            $userData['oficina'] = null;
+            $userData['dependencia'] = null;
+
+            if ($user->cargoActivo && $user->cargoActivo->cargo) {
+                $cargo = $user->cargoActivo->cargo;
+
+                // Información del cargo
+                $userData['cargo'] = [
+                    'id' => $cargo->id,
+                    'nom_organico' => $cargo->nom_organico,
+                    'cod_organico' => $cargo->cod_organico,
+                    'tipo' => $cargo->tipo,
+                    'fecha_inicio' => $user->cargoActivo->fecha_inicio?->format('Y-m-d'),
+                    'observaciones' => $user->cargoActivo->observaciones
+                ];
+
+                // Usar el método getJerarquiaCompleta() para obtener la jerarquía
+                $jerarquia = $cargo->getJerarquiaCompleta();
+
+                // Buscar la dependencia y oficina directamente relacionadas al cargo
+                $cargoIndex = -1;
+
+                // Encontrar la posición del cargo en la jerarquía
+                foreach ($jerarquia as $index => $nivel) {
+                    if ($nivel['id'] === $cargo->id && $nivel['tipo'] === 'Cargo') {
+                        $cargoIndex = $index;
+                        break;
+                    }
+                }
+
+                // Si encontramos el cargo, buscar su dependencia/oficina padre directa
+                if ($cargoIndex > 0) {
+                    $parentDirecto = $jerarquia[$cargoIndex - 1]; // El elemento anterior es el padre directo
+
+                    if ($parentDirecto['tipo'] === 'Oficina') {
+                        $userData['oficina'] = [
+                            'id' => $parentDirecto['id'],
+                            'nom_organico' => $parentDirecto['nom_organico'],
+                            'cod_organico' => $parentDirecto['cod_organico'],
+                            'tipo' => $parentDirecto['tipo']
+                        ];
+                    } elseif ($parentDirecto['tipo'] === 'Dependencia') {
+                        $userData['dependencia'] = [
+                            'id' => $parentDirecto['id'],
+                            'nom_organico' => $parentDirecto['nom_organico'],
+                            'cod_organico' => $parentDirecto['cod_organico'],
+                            'tipo' => $parentDirecto['tipo']
+                        ];
+                    }
+                }
+            }
+
             return $this->successResponse(
-                $user->append(['avatar_url', 'firma_url']),
+                $userData,
                 'Usuario encontrado exitosamente'
             );
         } catch (\Exception $e) {
