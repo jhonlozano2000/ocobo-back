@@ -271,6 +271,22 @@ class ConfigListaDetalleController extends Controller
         }
     }
 
+
+    /**
+     * Obtiene todos los detalles de lista activos.
+     *
+     * Este método retorna todos los detalles de lista activos.
+     *
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con los detalles de lista activos
+     */
+    public function DetallesActivos($id)
+    {
+        return $this->successResponse(
+            ConfigListaDetalle::where('id', $id)->where('estado', true)->get(),
+            'Detalles de lista activos obtenidos exitosamente'
+        );
+    }
+
     /**
      * Elimina un detalle de lista del sistema.
      *

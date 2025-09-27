@@ -19,7 +19,7 @@ return new class extends Migration
 
             $table->string('codigo', 20)->nullable();
             $table->string('nombre', 70);
-
+            $table->boolean('estado')->default(true);
             $table->timestamps();
         });
     }

@@ -249,6 +249,24 @@ class ConfigListaController extends Controller
     }
 
     /**
+     * Obtiene todas las listas maestras con el detalle activas.
+     *
+     * Este método retorna todas las listas maestras activas.
+     *
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las listas activas
+     */
+    public function listasActivasDetalle($id)
+    {
+        return $this->successResponse(
+            ConfigLista::with(['detalles' => function ($query) {
+                $query->where('estado', true);
+            }])->where('id', $id)->where('estado', true)->get(),
+            'Listas activas y detalles activos obtenidos exitosamente'
+        );
+    }
+
+
+    /**
      * Elimina una lista maestra del sistema.
      *
      * Este método permite eliminar una lista maestra específica, verificando

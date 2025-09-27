@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('cod', 10);
             $table->string('nombre', 70);
+            $table->boolean('estado')->default(true);
             $table->timestamps();
         });
     }

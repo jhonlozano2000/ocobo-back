@@ -10,7 +10,7 @@ class ConfigLista extends Model
     use HasFactory;
 
     protected $table = 'config_listas';
-    protected $fillable = ['cod', 'nombre'];
+    protected $fillable = ['cod', 'nombre', 'estado'];
 
     public function detalles()
     {
