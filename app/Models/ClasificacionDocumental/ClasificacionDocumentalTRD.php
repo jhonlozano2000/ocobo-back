@@ -285,4 +285,110 @@ class ClasificacionDocumentalTRD extends Model
         $tiposValidos = $this->getTiposPadreValidos();
         return in_array($padre->tipo, $tiposValidos);
     }
+
+    /**
+     * Obtiene la información de la Serie asociada a este elemento.
+     * 
+     * @return array|null Array con información de la Serie o null si no se encuentra
+     */
+    public function getSerie(): ?array
+    {
+        // Si es una Serie
+        if ($this->isSerie()) {
+            return [
+                'id' => $this->id,
+                'cod' => $this->cod,
+                'nom' => $this->nom,
+                'tipo' => $this->tipo
+            ];
+        }
+
+        // Si es una SubSerie, buscar su Serie padre
+        if ($this->isSubSerie()) {
+            $parent = $this->parent;
+            
+            // Si parent es un entero (ID), cargar el modelo
+            if (is_int($parent)) {
+                $parent = self::find($parent);
+            }
+            
+            if ($parent && is_object($parent) && $parent->isSerie()) {
+                return [
+                    'id' => $parent->id,
+                    'cod' => $parent->cod,
+                    'nom' => $parent->nom,
+                    'tipo' => $parent->tipo
+                ];
+            }
+        }
+
+        // Si es un TipoDocumento, buscar la Serie (abuelo)
+        if ($this->isTipoDocumento()) {
+            $parent = $this->parent; // SubSerie
+            
+            // Si parent es un entero (ID), cargar el modelo
+            if (is_int($parent)) {
+                $parent = self::find($parent);
+            }
+            
+            if ($parent && is_object($parent) && $parent->isSubSerie()) {
+                $grandParent = $parent->parent; // Serie
+                
+                // Si grandParent es un entero (ID), cargar el modelo
+                if (is_int($grandParent)) {
+                    $grandParent = self::find($grandParent);
+                }
+                
+                if ($grandParent && is_object($grandParent) && $grandParent->isSerie()) {
+                    return [
+                        'id' => $grandParent->id,
+                        'cod' => $grandParent->cod,
+                        'nom' => $grandParent->nom,
+                        'tipo' => $grandParent->tipo
+                    ];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Obtiene la información de la SubSerie asociada a este elemento.
+     * 
+     * @return array|null Array con información de la SubSerie o null si no se encuentra
+     */
+    public function getSubSerie(): ?array
+    {
+        // Si es una SubSerie
+        if ($this->isSubSerie()) {
+            return [
+                'id' => $this->id,
+                'cod' => $this->cod,
+                'nom' => $this->nom,
+                'tipo' => $this->tipo
+            ];
+        }
+
+        // Si es un TipoDocumento, buscar su SubSerie padre
+        if ($this->isTipoDocumento()) {
+            $parent = $this->parent;
+            
+            // Si parent es un entero (ID), cargar el modelo
+            if (is_int($parent)) {
+                $parent = self::find($parent);
+            }
+            
+            if ($parent && is_object($parent) && $parent->isSubSerie()) {
+                return [
+                    'id' => $parent->id,
+                    'cod' => $parent->cod,
+                    'nom' => $parent->nom,
+                    'tipo' => $parent->tipo
+                ];
+            }
+        }
+
+        return null;
+    }
 }

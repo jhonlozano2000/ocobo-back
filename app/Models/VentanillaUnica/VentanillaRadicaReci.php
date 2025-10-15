@@ -37,9 +37,9 @@ class VentanillaRadicaReci extends Model
 
         static::deleted(function ($radicado) {
             // Usar ArchivoHelper para eliminar el archivo si existe
-            if ($radicado->archivo_radica) {
-                ArchivoHelper::eliminarArchivo($radicado->archivo_radica, 'radicaciones_recibidas');
-            }
+            if ($radicado->archivo_digital) {
+            ArchivoHelper::eliminarArchivo($radicado->archivo_digital, 'radicaciones_recibidas');
+        }
         });
     }
 
@@ -82,13 +82,21 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Obtiene los usuarios responsables a través de la tabla pivot.
+     * Obtiene los usuarios responsables a través de la tabla pivot con users_cargos.
      */
     public function usuariosResponsables()
     {
-        return $this->belongsToMany(\App\Models\User::class, 'ventanilla_radica_reci_responsa', 'radica_reci_id', 'user_id')
-            ->withPivot('custodio')
+        return $this->belongsToMany(\App\Models\ControlAcceso\UserCargo::class, 'ventanilla_radica_reci_responsa', 'radica_reci_id', 'users_cargos_id')
+            ->withPivot('custodio', 'fechor_visto')
             ->withTimestamps();
+    }
+
+    /**
+     * Obtiene los archivos adicionales asociados al radicado.
+     */
+    public function archivos()
+    {
+        return $this->hasMany(VentanillaRadicaReciArchivo::class, 'radicado_id');
     }
 
     /**
@@ -110,9 +118,17 @@ class VentanillaRadicaReci extends Model
     /**
      * Verifica si la radicación tiene archivos.
      */
+    public function tieneArchivoDigital()
+    {
+        return !empty($this->archivo_digital);
+    }
+
+    /**
+     * Verifica si la radicación tiene archivos (digital o adicionales).
+     */
     public function tieneArchivos()
     {
-        return !empty($this->archivo_radica);
+        return $this->tieneArchivoDigital() || $this->archivos()->exists();
     }
 
     /**
@@ -142,9 +158,9 @@ class VentanillaRadicaReci extends Model
      *
      * @return string|null
      */
-    public function getArchivoUrlAttribute()
+    public function getUrlArchivoDigital()
     {
-        return ArchivoHelper::obtenerUrl($this->archivo_radica, 'radicaciones_recibidas');
+        return ArchivoHelper::obtenerUrl($this->archivo_digital, 'radicaciones_recibidas');
     }
 
     /**
@@ -152,18 +168,18 @@ class VentanillaRadicaReci extends Model
      *
      * @return array|null
      */
-    public function getArchivoInfoAttribute()
+    public function getInfoArchivoDigital()
     {
-        if (!$this->archivo_radica) {
+        if (!$this->archivo_digital) {
             return null;
         }
 
         return [
-            'nombre' => basename($this->archivo_radica),
-            'url' => $this->archivo_url,
-            'tamaño' => \Storage::disk('radicaciones_recibidas')->size($this->archivo_radica),
-            'tipo' => \Storage::disk('radicaciones_recibidas')->mimeType($this->archivo_radica),
-            'extension' => pathinfo($this->archivo_radica, PATHINFO_EXTENSION)
+            'nombre' => basename($this->archivo_digital),
+            'url' => $this->getUrlArchivoDigital(),
+            'tamaño' => \Storage::disk('radicaciones_recibidas')->size($this->archivo_digital),
+            'tipo' => \Storage::disk('radicaciones_recibidas')->mimeType($this->archivo_digital),
+            'extension' => pathinfo($this->archivo_digital, PATHINFO_EXTENSION)
         ];
     }
 }

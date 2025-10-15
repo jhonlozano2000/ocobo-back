@@ -46,6 +46,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/radica-recibida/estadisticas', [VentanillaRadicaReciController::class, 'estadisticas']);
     Route::get('/radica-recibida-admin/listar', [VentanillaRadicaReciController::class, 'listarRadicados']);
 
+    // Ruta específica para actualizar asunto
+    Route::put('/radica-recibida/{id}/asunto', [VentanillaRadicaReciController::class, 'updateAsunto']);
+
+    // Ruta específica para actualizar fechas (fecha de vencimiento y fecha del documento)
+    Route::put('/radica-recibida/{id}/fechas', [VentanillaRadicaReciController::class, 'updateFechas']);
+
+    // Ruta para actualizar clasificación documental
+    Route::put('/radica-recibida/{id}/clasificacion-documental', [VentanillaRadicaReciController::class, 'updateClasificacionDocumental']);
+
+    // Ruta para enviar notificaciones por correo electrónico
+    Route::post('/radica-recibida/{id}/notificar', [VentanillaRadicaReciController::class, 'enviarNotificacion']);
+
     // Ruta apiResource (debe ir después de las rutas específicas)
     Route::apiResource('radica-recibida', VentanillaRadicaReciController::class)->except('create', 'edit');
 

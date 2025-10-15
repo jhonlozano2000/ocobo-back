@@ -8,12 +8,26 @@ use App\Http\Requests\Ventanilla\UploadArchivoRequest;
 use App\Helpers\ArchivoHelper;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\VentanillaUnica\VentanillaRadicaReci;
+use App\Models\VentanillaUnica\VentanillaRadicaReciArchivo;
 use App\Models\VentanillaUnica\VentanillaRadicaReciArchivoEliminado;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Controlador para la gestión de archivos de radicaciones recibidas.
+ *
+ * Este controlador maneja dos tipos de archivos:
+ * 1. Archivo digital principal (campo archivo_digital en ventanilla_radica_reci)
+ * 2. Archivos adicionales (tabla ventanilla_radica_reci_archivos)
+ *
+ * Utiliza ArchivoHelper para la gestión segura de archivos en el disco 'radicaciones_recibidas'.
+ *
+ * @package App\Http\Controllers\VentanillaUnica
+ * @author Sistema OCOBO
+ * @version 1.0
+ */
 class VentanillaRadicaReciArchivosController extends Controller
 {
     use ApiResponseTrait;
@@ -75,14 +89,14 @@ class VentanillaRadicaReciArchivosController extends Controller
             }
 
             // Usar ArchivoHelper para guardar el archivo
-            $archivoActual = $radicado->archivo_radica;
+            $archivoActual = $radicado->archivo_digital;
             $nuevoArchivo = ArchivoHelper::guardarArchivo($request, 'archivo', 'radicaciones_recibidas', $archivoActual);
 
             // Guardar quién subió el archivo (si hay usuario autenticado)
             $usuario = Auth::check() ? Auth::user() : null;
 
             $radicado->update([
-                'archivo_radica' => $nuevoArchivo,
+                'archivo_digital' => $nuevoArchivo,
                 'uploaded_by' => $usuario ? $usuario->id : null,
             ]);
 
@@ -135,17 +149,17 @@ class VentanillaRadicaReciArchivosController extends Controller
         try {
             $radicado = VentanillaRadicaReci::find($id);
 
-            if (!$radicado || !$radicado->archivo_radica) {
+            if (!$radicado || !$radicado->archivo_digital) {
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 
             // Verificar que el archivo existe usando ArchivoHelper
-            $fileUrl = ArchivoHelper::obtenerUrl($radicado->archivo_radica, 'radicaciones_recibidas');
+            $fileUrl = ArchivoHelper::obtenerUrl($radicado->archivo_digital, 'radicaciones_recibidas');
             if (!$fileUrl) {
                 return $this->errorResponse('El archivo no existe en el servidor', null, 404);
             }
 
-            return \Storage::disk('radicaciones_recibidas')->download($radicado->archivo_radica);
+            return \Storage::disk('radicaciones_recibidas')->download($radicado->archivo_digital);
         } catch (\Exception $e) {
             return $this->errorResponse('Error al descargar el archivo', $e->getMessage(), 500);
         }
@@ -190,11 +204,11 @@ class VentanillaRadicaReciArchivosController extends Controller
 
             $radicado = VentanillaRadicaReci::find($id);
 
-            if (!$radicado || !$radicado->archivo_radica) {
+            if (!$radicado || !$radicado->archivo_digital) {
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 
-            $archivoEliminado = $radicado->archivo_radica;
+            $archivoEliminado = $radicado->archivo_digital;
 
             // Usar ArchivoHelper para eliminar el archivo
             ArchivoHelper::eliminarArchivo($archivoEliminado, 'radicaciones_recibidas');
@@ -209,7 +223,7 @@ class VentanillaRadicaReciArchivosController extends Controller
             ]);
 
             // Limpiar el campo en la tabla principal
-            $radicado->update(['archivo_radica' => null]);
+            $radicado->update(['archivo_digital' => null]);
 
             DB::commit();
 
@@ -325,20 +339,20 @@ class VentanillaRadicaReciArchivosController extends Controller
         try {
             $radicado = VentanillaRadicaReci::with('usuarioSubio')->find($id);
 
-            if (!$radicado || !$radicado->archivo_radica) {
+            if (!$radicado || !$radicado->archivo_digital) {
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 
             // Usar ArchivoHelper para obtener la URL del archivo
-            $fileUrl = ArchivoHelper::obtenerUrl($radicado->archivo_radica, 'radicaciones_recibidas');
+            $fileUrl = ArchivoHelper::obtenerUrl($radicado->archivo_digital, 'radicaciones_recibidas');
             if (!$fileUrl) {
                 return $this->errorResponse('El archivo no existe en el servidor', null, 404);
             }
 
             $fileInfo = [
-                'file_name' => basename($radicado->archivo_radica),
-                'file_size' => \Storage::disk('radicaciones_recibidas')->size($radicado->archivo_radica),
-                'file_type' => \Storage::disk('radicaciones_recibidas')->mimeType($radicado->archivo_radica),
+                'file_name' => basename($radicado->archivo_digital),
+                'file_size' => \Storage::disk('radicaciones_recibidas')->size($radicado->archivo_digital),
+                'file_type' => \Storage::disk('radicaciones_recibidas')->mimeType($radicado->archivo_digital),
                 'uploaded_at' => $radicado->updated_at,
                 'uploaded_by' => $radicado->usuarioSubio ?
                     $radicado->usuarioSubio->nombres . ' ' . $radicado->usuarioSubio->apellidos :
@@ -349,6 +363,167 @@ class VentanillaRadicaReciArchivosController extends Controller
             return $this->successResponse($fileInfo, 'Información del archivo obtenida exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener información del archivo', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Sube archivos adicionales asociados a una radicación específica.
+     *
+     * Este método permite subir múltiples archivos adicionales a una radicación existente,
+     * almacenándolos en la tabla ventanilla_radica_reci_archivos.
+     *
+     * @param int $id ID de la radicación
+     * @param Request $request La solicitud HTTP
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con información de los archivos subidos
+     */
+    public function uploadAdditionalFiles($id, Request $request)
+    {
+        try {
+            $request->validate([
+                'archivos' => 'required|array',
+                'archivos.*' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png,gif|max:10240', // 10MB max
+            ]);
+
+            $radicado = VentanillaRadicaReci::find($id);
+            if (!$radicado) {
+                return $this->errorResponse('Radicación no encontrada', null, 404);
+            }
+
+            $archivosSubidos = [];
+
+            foreach ($request->file('archivos') as $archivo) {
+                // Usar ArchivoHelper para guardar cada archivo
+                $rutaArchivo = ArchivoHelper::guardarArchivo(
+                    new \Illuminate\Http\Request(['archivo' => $archivo]),
+                    'archivo',
+                    'radicaciones_recibidas'
+                );
+
+                // Crear registro en la tabla de archivos adicionales
+                $archivoAdicional = VentanillaRadicaReciArchivo::create([
+                    'radicado_id' => $radicado->id,
+                    'archivo' => $rutaArchivo
+                ]);
+
+                $archivosSubidos[] = [
+                    'id' => $archivoAdicional->id,
+                    'nombre' => basename($rutaArchivo),
+                    'ruta' => $rutaArchivo,
+                    'url' => ArchivoHelper::obtenerUrl($rutaArchivo, 'radicaciones_recibidas'),
+                    'tamaño' => \Storage::disk('radicaciones_recibidas')->size($rutaArchivo),
+                    'tipo' => \Storage::disk('radicaciones_recibidas')->mimeType($rutaArchivo)
+                ];
+            }
+
+            return $this->successResponse(
+                'Archivos adicionales subidos exitosamente',
+                $archivosSubidos
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al subir archivos adicionales', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Lista todos los archivos adicionales de una radicación.
+     *
+     * @param int $id ID de la radicación
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function listAdditionalFiles($id)
+    {
+        try {
+            $radicado = VentanillaRadicaReci::with('archivos')->find($id);
+
+            if (!$radicado) {
+                return $this->errorResponse('Radicación no encontrada', null, 404);
+            }
+
+            $archivos = $radicado->archivos->map(function ($archivo) {
+                return [
+                    'id' => $archivo->id,
+                    'nombre' => basename($archivo->archivo),
+                    'ruta' => $archivo->archivo,
+                    'url' => ArchivoHelper::obtenerUrl($archivo->archivo, 'radicaciones_recibidas'),
+                    'tamaño' => \Storage::disk('radicaciones_recibidas')->size($archivo->archivo),
+                    'tipo' => \Storage::disk('radicaciones_recibidas')->mimeType($archivo->archivo),
+                    'fecha_subida' => $archivo->created_at
+                ];
+            });
+
+            return $this->successResponse(
+                'Archivos adicionales obtenidos exitosamente',
+                $archivos
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener archivos adicionales', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Descarga un archivo adicional específico.
+     *
+     * @param int $id ID de la radicación
+     * @param int $archivoId ID del archivo adicional
+     * @return \Illuminate\Http\Response
+     */
+    public function downloadAdditionalFile($id, $archivoId)
+    {
+        try {
+            $archivo = VentanillaRadicaReciArchivo::where('radicado_id', $id)
+                ->where('id', $archivoId)
+                ->first();
+
+            if (!$archivo) {
+                return $this->errorResponse('Archivo no encontrado', null, 404);
+            }
+
+            // Verificar que el archivo existe usando ArchivoHelper
+            $fileUrl = ArchivoHelper::obtenerUrl($archivo->archivo, 'radicaciones_recibidas');
+            if (!$fileUrl) {
+                return $this->errorResponse('El archivo no existe en el servidor', null, 404);
+            }
+
+            return \Storage::disk('radicaciones_recibidas')->download($archivo->archivo);
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al descargar el archivo', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Elimina un archivo adicional específico.
+     *
+     * @param int $id ID de la radicación
+     * @param int $archivoId ID del archivo adicional
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteAdditionalFile($id, $archivoId)
+    {
+        try {
+            DB::beginTransaction();
+
+            $archivo = VentanillaRadicaReciArchivo::where('radicado_id', $id)
+                ->where('id', $archivoId)
+                ->first();
+
+            if (!$archivo) {
+                return $this->errorResponse('Archivo no encontrado', null, 404);
+            }
+
+            $rutaArchivo = $archivo->archivo;
+
+            // Usar ArchivoHelper para eliminar el archivo del disco
+            ArchivoHelper::eliminarArchivo($rutaArchivo, 'radicaciones_recibidas');
+
+            // Eliminar el registro de la base de datos
+            $archivo->delete();
+
+            DB::commit();
+
+            return $this->successResponse('Archivo adicional eliminado exitosamente');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse('Error al eliminar el archivo adicional', $e->getMessage(), 500);
         }
     }
 }

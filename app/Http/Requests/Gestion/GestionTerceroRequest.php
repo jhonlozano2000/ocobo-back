@@ -22,7 +22,7 @@ class GestionTerceroRequest extends FormRequest
      */
     public function rules()
     {
-        $terceroId = $this->route('gestion_tercero'); // Capturar correctamente el ID de la URL
+        $terceroId = $this->route('tercero'); // Capturar correctamente el ID de la URL
 
         return [
             'divi_poli_id' => 'nullable|exists:config_divi_poli,id',

@@ -23,8 +23,7 @@ class VentanillaRadicaReciResponsaRequest extends FormRequest
     {
         return [
             'responsables' => 'required|array|min:1',
-            'responsables.*.radica_reci_id' => 'required|exists:ventanilla_radica_reci,id',
-            'responsables.*.user_id' => 'required|exists:users,id',
+            'responsables.*.users_cargos_id' => 'required|exists:users_cargos,id',
             'responsables.*.custodio' => 'required|boolean',
         ];
     }
@@ -35,10 +34,8 @@ class VentanillaRadicaReciResponsaRequest extends FormRequest
             'responsables.required' => 'El array de responsables es obligatorio.',
             'responsables.array' => 'Los responsables deben ser un array.',
             'responsables.min' => 'Debe enviar al menos un responsable.',
-            'responsables.*.radica_reci_id.required' => 'El ID de la radicación es obligatorio.',
-            'responsables.*.radica_reci_id.exists' => 'La radicación proporcionada no existe.',
-            'responsables.*.user_id.required' => 'El ID del usuario es obligatorio.',
-            'responsables.*.user_id.exists' => 'El usuario proporcionado no existe.',
+            'responsables.*.users_cargos_id.required' => 'El ID del cargo del usuario es obligatorio.',
+            'responsables.*.users_cargos_id.exists' => 'El cargo del usuario proporcionado no existe.',
             'responsables.*.custodio.required' => 'El campo custodio es obligatorio.',
             'responsables.*.custodio.boolean' => 'El campo custodio debe ser verdadero o falso.',
         ];

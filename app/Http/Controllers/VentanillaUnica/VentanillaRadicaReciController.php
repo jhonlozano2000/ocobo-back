@@ -13,6 +13,8 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Mail\RadicadoNotification;
+use Illuminate\Support\Facades\Mail;
 
 class VentanillaRadicaReciController extends Controller
 {
@@ -73,18 +75,24 @@ class VentanillaRadicaReciController extends Controller
     {
         try {
             $query = VentanillaRadicaReci::with([
-                'clasificacionDocumental',
+                'clasificacionDocumental.parent.parent', // Solo devolver id, tipo, cod y nom de la clasificación documental
                 'tercero',
-                'medioRecepcion',
-                'servidorArchivos'
+                'medioRecepcion:id,nombre', // Solo devolver id y nombre del medio de recepción
+                'servidorArchivos',
+                'usuariosResponsables.user', // Relación user necesaria para getDetalleCompleto()
+                'usuariosResponsables.cargo.parent.parent' // Cargar toda la jerarquía del cargo para getJerarquiaCompleta()
             ])
                 ->select([
                     'id',
                     'num_radicado',
                     'created_at',
                     'fec_venci',
-                    'archivo_radica',
-                    'asunto'
+                    'archivo_digital',
+                    'asunto',
+                    'clasifica_documen_id',
+                    'tercero_id',
+                    'medio_recep_id',
+                    'config_server_id'
                 ]);
 
             // Aplicar filtros si se proporcionan
@@ -115,22 +123,9 @@ class VentanillaRadicaReciController extends Controller
             $perPage = $request->get('per_page', 10);
             $radicados = $query->paginate($perPage);
 
-            // Transformar los datos para incluir los nuevos campos
+            // Transformar los datos para incluir los nuevos campos usando métodos de los modelos
             $radicados->getCollection()->transform(function ($radicado) {
-                return [
-                    'id' => $radicado->id,
-                    'num_radicado' => $radicado->num_radicado,
-                    'dias_para_vencer' => $radicado->dias_para_vencer,
-                    'tiene_archivos' => $radicado->tieneArchivos(),
-                    'archivo_info' => $radicado->archivo_info,
-                    'created_at' => $radicado->created_at->format('Y-m-d H:i:s'),
-                    'fec_venci' => $radicado->fec_venci ? $radicado->fec_venci->format('Y-m-d') : null,
-                    'asunto' => $radicado->asunto,
-                    'clasificacion_documental' => $radicado->clasificacionDocumental,
-                    'tercero' => $radicado->tercero,
-                    'medio_recepcion' => $radicado->medioRecepcion,
-                    'servidor_archivos' => $radicado->servidorArchivos
-                ];
+                return $radicado;
             });
 
             return $this->successResponse($radicados, 'Listado de radicaciones obtenido exitosamente');
@@ -587,10 +582,10 @@ class VentanillaRadicaReciController extends Controller
             // Total de radicados
             $totalRadicados = VentanillaRadicaReci::count();
 
-            // Radicados que faltan archivo digital (archivo_radica es null o vacío)
+            // Radicados que faltan archivo digital (archivo_digital es null o vacío)
             $faltanArchivoDigital = VentanillaRadicaReci::where(function ($query) {
-                $query->whereNull('archivo_radica')
-                    ->orWhere('archivo_radica', '');
+                $query->whereNull('archivo_digital')
+                    ->orWhere('archivo_digital', '');
             })->count();
 
             // Radicados que faltan imprimir rótulo (asumimos que hay un campo para esto)
@@ -630,17 +625,17 @@ class VentanillaRadicaReciController extends Controller
             // - Finalizados: Radicados completos (con archivos y responsables)
 
             $totalPendientes = VentanillaRadicaReci::where(function ($query) {
-                $query->whereNull('archivo_radica')
-                    ->orWhere('archivo_radica', '');
+                $query->whereNull('archivo_digital')
+                    ->orWhere('archivo_digital', '');
             })->whereDoesntHave('responsables')->count();
 
-            $totalEnProceso = VentanillaRadicaReci::whereNotNull('archivo_radica')
-                ->where('archivo_radica', '!=', '')
+            $totalEnProceso = VentanillaRadicaReci::whereNotNull('archivo_digital')
+                ->where('archivo_digital', '!=', '')
                 ->whereHas('responsables')
                 ->count();
 
-            $totalFinalizados = VentanillaRadicaReci::whereNotNull('archivo_radica')
-                ->where('archivo_radica', '!=', '')
+            $totalFinalizados = VentanillaRadicaReci::whereNotNull('archivo_digital')
+                ->where('archivo_digital', '!=', '')
                 ->whereHas('responsables')
                 ->count(); // Por ahora igual que en proceso, se puede ajustar según criterios específicos
 
@@ -664,6 +659,344 @@ class VentanillaRadicaReciController extends Controller
             return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Actualiza el asunto de una radicación específica.
+     *
+     * Este método permite modificar el asunto de una radicación solo si
+     * ningún responsable ha visto el documento (fechor_visto es null).
+     *
+     * @param int $id ID de la radicación
+     * @param Request $request La solicitud HTTP con el nuevo asunto
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el resultado
+     *
+     * @urlParam id integer required El ID de la radicación. Example: 1
+     * @bodyParam asunto string required El nuevo asunto del documento. Example: "Nuevo asunto actualizado"
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Asunto actualizado exitosamente",
+     *   "data": {
+     *     "id": 1,
+     *     "asunto": "Nuevo asunto actualizado",
+     *     "updated_at": "2024-01-01T10:00:00.000000Z"
+     *   }
+     * }
+     *
+     * @response 400 {
+     *   "status": false,
+     *   "message": "No se puede editar el asunto porque al menos un responsable ya ha visto el documento"
+     * }
+     *
+     * @response 404 {
+     *   "status": false,
+     *   "message": "Radicación no encontrada"
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Error de validación",
+     *   "errors": {
+     *     "asunto": ["El asunto es obligatorio."]
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al actualizar el asunto",
+     *   "error": "Error message"
+     * }
+     */
+    public function updateAsunto($id, Request $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Validar la entrada
+            $request->validate([
+                'asunto' => 'required|string|max:300'
+            ]);
+
+            $radicado = VentanillaRadicaReci::find($id);
+
+            if (!$radicado) {
+                return $this->errorResponse('Radicación no encontrada', null, 404);
+            }
+
+            // Verificar si algún responsable ya ha visto el documento
+            $responsableVisto = $radicado->responsables()->whereNotNull('fechor_visto')->exists();
+
+            if ($responsableVisto) {
+                return $this->errorResponse(
+                    'No se puede editar el asunto porque al menos un responsable ya ha visto el documento',
+                    null,
+                    400
+                );
+            }
+
+            // Actualizar el asunto
+            $radicado->update(['asunto' => $request->asunto]);
+
+            DB::commit();
+
+            return $this->successResponse(
+                [
+                    'id' => $radicado->id,
+                    'asunto' => $radicado->asunto,
+                    'updated_at' => $radicado->updated_at
+                ],
+                'Asunto actualizado exitosamente'
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            return $this->errorResponse('Error de validación', $e->errors(), 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse('Error al actualizar el asunto', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Actualiza las fechas de un radicado (fecha de vencimiento y fecha del documento)
+     * Solo permite la actualización si ningún responsable ha visto el documento
+     *
+     * @param int $id ID del radicado
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateFechas(Request $request, $id)
+    {
+        try {
+            // Buscar el radicado
+            $radicado = VentanillaRadicaReci::find($id);
+
+            if (!$radicado) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Radicado no encontrado'
+                ], 404);
+            }
+
+            // Verificar si algún responsable ya ha visto el documento
+            $responsableVisto = VentanillaRadicaReciResponsa::where('radica_reci_id', $id)
+                ->whereNotNull('fechor_visto')
+                ->exists();
+
+            if ($responsableVisto) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No se pueden actualizar las fechas porque al menos un responsable ya ha visto el documento'
+                ], 422);
+            }
+
+            // Validar los datos de entrada
+            $validator = \Validator::make($request->all(), [
+                'fec_venci' => 'nullable|date',
+                'fec_docu' => 'nullable|date'
+            ], [
+                'fec_venci.date' => 'La fecha de vencimiento debe ser una fecha válida',
+                'fec_docu.date' => 'La fecha del documento debe ser una fecha válida'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Error de validación',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Actualizar solo los campos proporcionados
+            $updateData = [];
+            if ($request->has('fec_venci')) {
+                $updateData['fec_venci'] = $request->fec_venci;
+            }
+            if ($request->has('fec_docu')) {
+                $updateData['fec_docu'] = $request->fec_docu;
+            }
+
+            if (empty($updateData)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No se proporcionaron fechas para actualizar'
+                ], 422);
+            }
+
+            $radicado->update($updateData);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Fechas actualizadas exitosamente',
+                'data' => [
+                    'id' => $radicado->id,
+                    'fec_venci' => $radicado->fec_venci,
+                    'fec_docu' => $radicado->fec_docu,
+                    'updated_at' => $radicado->updated_at
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Error al actualizar las fechas',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Actualiza la clasificación documental de una radicación recibida.
+     * Solo permite la actualización si ningún responsable ha visto el documento.
+     *
+     * @param int $id ID de la radicación
+     * @param Request $request La solicitud HTTP
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON
+     */
+    public function updateClasificacionDocumental($id, Request $request)
+    {
+        try {
+            // Validar los datos de entrada
+            $request->validate([
+                'clasifica_documen_id' => 'required|integer|exists:clasificacion_documental_trd,id'
+            ], [
+                'clasifica_documen_id.required' => 'La clasificación documental es obligatoria.',
+                'clasifica_documen_id.integer' => 'La clasificación documental debe ser un número entero.',
+                'clasifica_documen_id.exists' => 'La clasificación documental no es válida.'
+            ]);
+
+            // Buscar la radicación
+            $radicacion = VentanillaRadicaReci::find($id);
+
+            if (!$radicacion) {
+                return $this->errorResponse('Radicación no encontrada', null, 404);
+            }
+
+            // Verificar si algún responsable ha visto el documento
+            $responsableHaVisto = VentanillaRadicaReciResponsa::where('radica_reci_id', $id)
+                ->whereNotNull('fechor_visto')
+                ->exists();
+
+            if ($responsableHaVisto) {
+                return $this->errorResponse(
+                    'No se puede editar la clasificación documental porque al menos un responsable ya ha visto el documento',
+                    null,
+                    422
+                );
+            }
+
+            // Actualizar la clasificación documental
+            $radicacion->clasifica_documen_id = $request->clasifica_documen_id;
+            $radicacion->save();
+
+            return $this->successResponse(
+                $radicacion->fresh(['clasificacionDocumental']),
+                'Clasificación documental actualizada exitosamente'
+            );
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->errorResponse('Error de validación', $e->errors(), 422);
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al actualizar la clasificación documental', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Envía notificación por correo electrónico sobre un radicado.
+     *
+     * Este método permite enviar notificaciones por correo electrónico a los responsables
+     * de un radicado, incluyendo información detallada del documento y archivos adjuntos.
+     *
+     * @param int $id ID del radicado
+     * @param Request $request La solicitud HTTP
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando el envío
+     *
+     * @urlParam id integer required El ID del radicado. Example: 1
+     * @bodyParam tipo string Tipo de notificación (asignacion, actualizacion, vencimiento). Example: "asignacion"
+     * @bodyParam emails array Lista de correos electrónicos adicionales. Example: ["usuario@example.com"]
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Notificaciones enviadas exitosamente",
+     *   "data": {
+     *     "radicado_id": 1,
+     *     "emails_enviados": ["responsable1@example.com", "responsable2@example.com"],
+     *     "total_enviados": 2,
+     *     "tipo_notificacion": "asignacion"
+     *   }
+     * }
+     *
+     * @response 404 {
+     *   "status": false,
+     *   "message": "Radicado no encontrado"
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Error de validación",
+     *   "errors": {
+     *     "tipo": ["El tipo de notificación debe ser válido."]
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al enviar las notificaciones",
+     *   "error": "Error message"
+     * }
+     */
+    public function enviarNotificacion($id, Request $request)
+    {
+        try {
+            // Validar la entrada
+            $request->validate([
+                'tipo' => 'sometimes|string|in:asignacion,actualizacion,vencimiento',
+                'emails' => 'sometimes|array',
+                'emails.*' => 'email'
+            ]);
+
+            $radicado = VentanillaRadicaReci::with([
+                'responsables.userCargo.user',
+                'clasificacionDocumental',
+                'tercero'
+            ])->find($id);
+
+            if (!$radicado) {
+                return $this->errorResponse('Radicado no encontrado', null, 404);
+            }
+
+            $tipo = $request->get('tipo', 'asignacion');
+            $emailsAdicionales = $request->get('emails', []);
+            $emailsEnviados = [];
+
+            // Obtener emails de los responsables
+            foreach ($radicado->responsables as $responsable) {
+                if ($responsable->userCargo && $responsable->userCargo->user && $responsable->userCargo->user->email) {
+                    $email = $responsable->userCargo->user->email;
+                    if (!in_array($email, $emailsEnviados)) {
+                        Mail::to($email)->send(new RadicadoNotification($radicado, $tipo));
+                        $emailsEnviados[] = $email;
+                    }
+                }
+            }
+
+            // Enviar a emails adicionales
+            foreach ($emailsAdicionales as $email) {
+                if (!in_array($email, $emailsEnviados)) {
+                    Mail::to($email)->send(new RadicadoNotification($radicado, $tipo));
+                    $emailsEnviados[] = $email;
+                }
+            }
+
+            return $this->successResponse([
+                'radicado_id' => $radicado->id,
+                'emails_enviados' => $emailsEnviados,
+                'total_enviados' => count($emailsEnviados),
+                'tipo_notificacion' => $tipo
+            ], 'Notificaciones enviadas exitosamente');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->errorResponse('Error de validación', $e->errors(), 422);
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al enviar las notificaciones', $e->getMessage(), 500);
         }
     }
 }

@@ -447,34 +447,20 @@ class VentanillaRadicaReciResponsaController extends Controller
      *   "error": "Error message"
      *   }
      */
-    public function assignToRadicado($radica_reci_id, Request $request)
+    public function assignToRadicado($radica_reci_id, VentanillaRadicaReciResponsaRequest $request)
     {
         try {
             DB::beginTransaction();
 
-            // Validar que se envíe el array de responsables
-            $request->validate([
-                'responsables' => 'required|array|min:1',
-                'responsables.*.user_id' => 'required|exists:users,id',
-                'responsables.*.custodio' => 'required|boolean',
-            ], [
-                'responsables.required' => 'El array de responsables es obligatorio.',
-                'responsables.array' => 'Los responsables deben ser un array.',
-                'responsables.min' => 'Debe enviar al menos un responsable.',
-                'responsables.*.user_id.required' => 'El ID del usuario es obligatorio.',
-                'responsables.*.user_id.exists' => 'El usuario proporcionado no existe.',
-                'responsables.*.custodio.required' => 'El campo custodio es obligatorio.',
-                'responsables.*.custodio.boolean' => 'El campo custodio debe ser verdadero o falso.',
-            ]);
-
-            $responsables = $request->input('responsables');
+            $validatedData = $request->validated();
+            $responsables = $validatedData['responsables'];
             $responsablesCreados = [];
 
             // Crear cada responsable individualmente para obtener los IDs
             foreach ($responsables as $responsableData) {
                 $responsable = VentanillaRadicaReciResponsa::create([
                     'radica_reci_id' => $radica_reci_id,
-                    'user_id' => $responsableData['user_id'],
+                    'users_cargos_id' => $responsableData['users_cargos_id'],
                     'custodio' => $responsableData['custodio']
                 ]);
                 $responsablesCreados[] = $responsable->load(['usuarioCargo', 'radicado']);

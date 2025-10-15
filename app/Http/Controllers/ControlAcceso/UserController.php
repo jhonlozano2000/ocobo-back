@@ -1009,7 +1009,8 @@ class UserController extends Controller
 
                         // Información del cargo
                         $usuarioData['cargo'] = [
-                            'id' => $cargo->id,
+                            'id' => $cargoActivo->id, // ID de users_cargos, no del organigrama
+                            'organigrama_id' => $cargo->id, // ID del organigrama
                             'nom_organico' => $cargo->nom_organico,
                             'cod_organico' => $cargo->cod_organico,
                             'tipo' => $cargo->tipo,

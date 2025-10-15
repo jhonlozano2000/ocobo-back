@@ -13,12 +13,14 @@ class VentanillaRadicaReciResponsa extends Model
 
     protected $fillable = [
         'radica_reci_id',
-        'user_id',
-        'custodio'
+        'users_cargos_id',
+        'custodio',
+        'fechor_visto'
     ];
 
     protected $casts = [
         'custodio' => 'boolean',
+        'fechor_visto' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];
