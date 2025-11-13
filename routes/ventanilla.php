@@ -47,13 +47,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/radica-recibida-admin/listar', [VentanillaRadicaReciController::class, 'listarRadicados']);
 
     // Ruta específica para actualizar asunto
-    Route::put('/radica-recibida/{id}/asunto', [VentanillaRadicaReciController::class, 'updateAsunto']);
+    Route::put('/radica-recibida/{id}/update-asunto', [VentanillaRadicaReciController::class, 'updateAsunto']);
 
     // Ruta específica para actualizar fechas (fecha de vencimiento y fecha del documento)
-    Route::put('/radica-recibida/{id}/fechas', [VentanillaRadicaReciController::class, 'updateFechas']);
+    Route::put('/radica-recibida/{id}/update-fechas', [VentanillaRadicaReciController::class, 'updateFechas']);
 
     // Ruta para actualizar clasificación documental
-    Route::put('/radica-recibida/{id}/clasificacion-documental', [VentanillaRadicaReciController::class, 'updateClasificacionDocumental']);
+    Route::put('/radica-recibida/{id}/update-clasificacion-documental', [VentanillaRadicaReciController::class, 'updateClasificacionDocumental']);
 
     // Ruta para enviar notificaciones por correo electrónico
     Route::post('/radica-recibida/{id}/notificar', [VentanillaRadicaReciController::class, 'enviarNotificacion']);
@@ -65,11 +65,20 @@ Route::middleware('auth:sanctum')->group(function () {
      * Archivos de Radicaciones
      */
     Route::prefix('radica-recibida/{id}')->group(function () {
-        Route::post('/archivos', [VentanillaRadicaReciArchivosController::class, 'upload']);
-        Route::get('/archivos', [VentanillaRadicaReciArchivosController::class, 'download']);
-        Route::delete('/archivos', [VentanillaRadicaReciArchivosController::class, 'deleteFile']);
-        Route::get('/archivos/info', [VentanillaRadicaReciArchivosController::class, 'getFileInfo']);
-        Route::get('/archivos/historial', [VentanillaRadicaReciArchivosController::class, 'historialEliminaciones']);
+        // Rutas específicas para archivos adjuntos adicionales (DEBEN IR PRIMERO)
+        Route::get('/archivos/adjuntos/listar', [VentanillaRadicaReciArchivosController::class, 'listarArchivosAdjuntos']);
+        Route::get('/archivos/adjuntos/descargar', [VentanillaRadicaReciArchivosController::class, 'descargarArchivoAdjunto']);
+        Route::delete('/archivos/adjuntos/eliminar', [VentanillaRadicaReciArchivosController::class, 'eliminarArchivoAdjunto']);
+
+        // Rutas específicas para historial (también específicas)
+        Route::get('/archivos/historial/archivos-eliminados', [VentanillaRadicaReciArchivosController::class, 'historialEliminaciones']);
+        Route::get('/archivos/info/', [VentanillaRadicaReciArchivosController::class, 'getFileInfo']);
+
+        // Rutas generales para archivo principal (van al final)
+        Route::post('/archivos/upload', [VentanillaRadicaReciArchivosController::class, 'upload']);
+        Route::post('/archivos/upload-adjuntos', [VentanillaRadicaReciArchivosController::class, 'subirArchivosAdjuntos']);
+        Route::get('/archivos/download', [VentanillaRadicaReciArchivosController::class, 'download']);
+        Route::delete('/archivos/delete', [VentanillaRadicaReciArchivosController::class, 'deleteFile']);
     });
 
     /**

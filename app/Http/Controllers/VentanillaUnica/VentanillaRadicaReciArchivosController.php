@@ -5,6 +5,7 @@ namespace App\Http\Controllers\VentanillaUnica;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\Ventanilla\UploadArchivoRequest;
+use App\Http\Requests\Ventanilla\UploadArchivosAdjuntosRequest;
 use App\Helpers\ArchivoHelper;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\VentanillaUnica\VentanillaRadicaReci;
@@ -373,17 +374,12 @@ class VentanillaRadicaReciArchivosController extends Controller
      * almacenándolos en la tabla ventanilla_radica_reci_archivos.
      *
      * @param int $id ID de la radicación
-     * @param Request $request La solicitud HTTP
+     * @param UploadArchivosAdjuntosRequest $request La solicitud HTTP validada
      * @return \Illuminate\Http\JsonResponse Respuesta JSON con información de los archivos subidos
      */
-    public function uploadAdditionalFiles($id, Request $request)
+    public function subirArchivosAdjuntos($id, UploadArchivosAdjuntosRequest $request)
     {
         try {
-            $request->validate([
-                'archivos' => 'required|array',
-                'archivos.*' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png,gif|max:10240', // 10MB max
-            ]);
-
             $radicado = VentanillaRadicaReci::find($id);
             if (!$radicado) {
                 return $this->errorResponse('Radicación no encontrada', null, 404);
@@ -430,7 +426,7 @@ class VentanillaRadicaReciArchivosController extends Controller
      * @param int $id ID de la radicación
      * @return \Illuminate\Http\JsonResponse
      */
-    public function listAdditionalFiles($id)
+    public function listarArchivosAdjuntos($id)
     {
         try {
             $radicado = VentanillaRadicaReci::with('archivos')->find($id);
@@ -467,7 +463,7 @@ class VentanillaRadicaReciArchivosController extends Controller
      * @param int $archivoId ID del archivo adicional
      * @return \Illuminate\Http\Response
      */
-    public function downloadAdditionalFile($id, $archivoId)
+    public function descargarArchivoAdjunto($id, $archivoId)
     {
         try {
             $archivo = VentanillaRadicaReciArchivo::where('radicado_id', $id)
@@ -497,7 +493,7 @@ class VentanillaRadicaReciArchivosController extends Controller
      * @param int $archivoId ID del archivo adicional
      * @return \Illuminate\Http\JsonResponse
      */
-    public function deleteAdditionalFile($id, $archivoId)
+    public function eliminarArchivoAdjunto($id, $archivoId)
     {
         try {
             DB::beginTransaction();

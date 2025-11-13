@@ -118,6 +118,14 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'Radicar -> Cores. Recibida -> Mostrar'])->syncRoles([$Rol1, $Rol2]);
         Permission::create(['name' => 'Radicar -> Cores. Recibida -> Eliminar'])->syncRoles([$Rol1, $Rol2]);
         Permission::create(['name' => 'Radicar -> Cores. Recibida -> Exportar'])->syncRoles([$Rol1, $Rol2]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Subir digital'])->syncRoles([$Rol1, $Rol2]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Subir adjuntos'])->syncRoles([$Rol1, $Rol2]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Eliminar digital'])->syncRoles([$Rol1, $Rol2]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Eliminar adjuntos'])->syncRoles([$Rol1, $Rol2]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Actualizar asunto'])->syncRoles([$Rol1, $Rol2]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Atualizar fechas de radicados'])->syncRoles([$Rol1, $Rol2]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Actualizar clasificacion de radicados'])->syncRoles([$Rol1, $Rol2]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Notificar Email'])->syncRoles([$Rol1, $Rol2]);
 
         Permission::create(['name' => 'Radicar -> Cores. Enviada -> Listar'])->syncRoles([$Rol1, $Rol3]);
         Permission::create(['name' => 'Radicar -> Cores. Enviada -> Crear'])->syncRoles([$Rol1]);

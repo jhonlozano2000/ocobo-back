@@ -19,19 +19,14 @@ Route::middleware('auth:sanctum')->get('user', function (Request $request) {
     return $request->user();
 });
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register'])
+    ->withoutMiddleware(\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class);
+Route::post('/login', [AuthController::class, 'login'])
+    ->withoutMiddleware(\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/getme', [AuthController::class, 'getMe']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
-    Route::post('/register', [AuthController::class, 'register']);
 });
 
-Route::middleware('auth:sanctum')->post('/logout', function (Request $request) {
-    auth()->logout(); // para tokens API
-    $request->session()->invalidate(); // para cookies
-    $request->session()->regenerateToken();
-
-    return response()->json(['message' => 'Sesión cerrada.']);
-});
+Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);

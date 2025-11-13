@@ -9,6 +9,10 @@ use App\Http\Requests\Ventanilla\ListRadicadosRequest;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\User;
 use App\Models\VentanillaUnica\VentanillaRadicaReci;
+use App\Models\VentanillaUnica\VentanillaRadicaReciResponsa;
+use App\Models\VentanillaUnica\VentanillaRadicaReciArchivos;
+use App\Models\VentanillaUnica\VentanillaRadicaReciArchivoEliminado;
+use App\Models\VentanillaUnica\VentanillaRadicaReciOptimizedView;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -74,59 +78,20 @@ class VentanillaRadicaReciController extends Controller
     public function index(ListRadicadosRequest $request)
     {
         try {
-            $query = VentanillaRadicaReci::with([
-                'clasificacionDocumental.parent.parent', // Solo devolver id, tipo, cod y nom de la clasificación documental
-                'tercero',
-                'medioRecepcion:id,nombre', // Solo devolver id y nombre del medio de recepción
-                'servidorArchivos',
-                'usuariosResponsables.user', // Relación user necesaria para getDetalleCompleto()
-                'usuariosResponsables.cargo.parent.parent' // Cargar toda la jerarquía del cargo para getJerarquiaCompleta()
-            ])
-                ->select([
-                    'id',
-                    'num_radicado',
-                    'created_at',
-                    'fec_venci',
-                    'archivo_digital',
-                    'asunto',
-                    'clasifica_documen_id',
-                    'tercero_id',
-                    'medio_recep_id',
-                    'config_server_id'
-                ]);
+            // Usar la vista optimizada en lugar de la consulta compleja
+            $query = VentanillaRadicaReciOptimizedView::query();
 
-            // Aplicar filtros si se proporcionan
-            if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('num_radicado', 'like', "%{$search}%")
-                        ->orWhere('asunto', 'like', "%{$search}%");
-                });
-            }
-
-            if ($request->filled('fecha_desde') && $request->filled('fecha_hasta')) {
-                $query->whereBetween('created_at', [$request->fecha_desde, $request->fecha_hasta]);
-            }
-
-            if ($request->filled('clasifica_documen_id')) {
-                $query->where('clasifica_documen_id', $request->clasifica_documen_id);
-            }
-
-            if ($request->filled('tercero_id')) {
-                $query->where('tercero_id', $request->tercero_id);
-            }
-
-            // Ordenar por fecha de creación (más recientes primero)
-            $query->orderBy('created_at', 'desc');
+            // Aplicar filtros usando los scopes del modelo optimizado
+            $query->search($request->search)
+                  ->fechaEntre($request->fecha_desde, $request->fecha_hasta)
+                  ->clasificacionDocumental($request->clasifica_documen_id)
+                  ->tercero($request->tercero_id)
+                  ->medioRecepcion($request->medio_recep_id)
+                  ->ordenadoPorFecha();
 
             // Paginar
             $perPage = $request->get('per_page', 10);
             $radicados = $query->paginate($perPage);
-
-            // Transformar los datos para incluir los nuevos campos usando métodos de los modelos
-            $radicados->getCollection()->transform(function ($radicado) {
-                return $radicado;
-            });
 
             return $this->successResponse($radicados, 'Listado de radicaciones obtenido exitosamente');
         } catch (\Exception $e) {
