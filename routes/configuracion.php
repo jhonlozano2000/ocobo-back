@@ -18,17 +18,17 @@ Route::middleware('auth:sanctum')->group(function () {
      * División política
      */
     // Ruta para estadísticas de división política (debe ir antes del resource)
-    Route::get('/divipoli/estadisticas', [ConfigDiviPoliController::class, 'estadisticas'])->name('divipoli.estadisticas');
+    Route::get('/division-politica/estadisticas', [ConfigDiviPoliController::class, 'estadisticas'])->name('divipoli.estadisticas');
 
-    Route::apiResource('divipoli', ConfigDiviPoliController::class)->parameters(['divipoli' => 'config_divi_poli',])->names('divipoli')->except('create', 'edit');
+    Route::apiResource('division-politica', ConfigDiviPoliController::class)->parameters(['divipoli' => 'config_divi_poli',])->names('divipoli')->except('create', 'edit');
 
     // Rutas para listar países, departamentos y municipios
-    Route::get('/divipoli/list/paises', [ConfigDiviPoliController::class, 'paises'])->name('divipoli.list.paises');
-    Route::get('/divipoli/list/departamentos/{paisId}', [ConfigDiviPoliController::class, 'departamentos'])->name('divipoli.list.departamentos');
-    Route::get('/divipoli/list/municipios/{departamentoId}', [ConfigDiviPoliController::class, 'municipios'])->name('divipoli.list.municipios');
+    Route::get('/division-politica/list/paises', [ConfigDiviPoliController::class, 'paises'])->name('divipoli.list.paises');
+    Route::get('/division-politica/list/departamentos/{paisId}', [ConfigDiviPoliController::class, 'departamentos'])->name('divipoli.list.departamentos');
+    Route::get('/division-politica/list/municipios/{departamentoId}', [ConfigDiviPoliController::class, 'municipios'])->name('divipoli.list.municipios');
 
     // Ruta para obtener estructura jerárquica completa
-    Route::get('/divipoli/list/divi-poli-completa', [ConfigDiviPoliController::class, 'diviPoliCompleta'])->name('divipoli.list.divi.poli.completa');
+    Route::get('/division-politica/list/divi-poli-completa', [ConfigDiviPoliController::class, 'diviPoliCompleta'])->name('divipoli.list.divi.poli.completa');
 
     /**
      * Listas
