@@ -62,7 +62,7 @@ class ConfigDiviPoliController extends Controller
     public function index(ListConfigDiviPoliRequest $request)
     {
         try {
-            $query = ConfigDiviPoli::with(['parent', 'children']);
+            $query = ConfigDiviPoli::with(['padre', 'children']);
 
             // Aplicar filtros si se proporcionan
             if ($request->filled('tipo')) {
@@ -153,7 +153,7 @@ class ConfigDiviPoliController extends Controller
             DB::commit();
 
             return $this->successResponse(
-                $diviPoli->load(['parent', 'children']),
+                $diviPoli->load(['padre', 'children']),
                 'División política creada exitosamente',
                 201
             );
@@ -208,7 +208,7 @@ class ConfigDiviPoliController extends Controller
     {
         try {
             return $this->successResponse(
-                $configDiviPoli->load(['parent', 'children']),
+                $configDiviPoli->load(['padre', 'children']),
                 'División política encontrada exitosamente'
             );
         } catch (\Exception $e) {
@@ -267,7 +267,7 @@ class ConfigDiviPoliController extends Controller
             DB::commit();
 
             return $this->successResponse(
-                $configDiviPoli->load(['parent', 'children']),
+                $configDiviPoli->load(['padre', 'children']),
                 'División política actualizada exitosamente'
             );
         } catch (\Exception $e) {
@@ -303,9 +303,15 @@ class ConfigDiviPoliController extends Controller
      *   "error": "Error message"
      * }
      */
-    public function destroy(ConfigDiviPoli $configDiviPoli)
+    public function destroy($id)
     {
         try {
+            $configDiviPoli = ConfigDiviPoli::find($id);
+
+            if (!$configDiviPoli) {
+                return $this->errorResponse('División política no encontrada', null, 404);
+            }
+
             DB::beginTransaction();
 
             // Verificar si tiene dependencias (hijos)

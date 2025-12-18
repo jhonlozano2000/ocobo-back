@@ -13,7 +13,7 @@ class ConfigDiviPoli extends Model
     protected $fillable = ['parent', 'codigo', 'nombre', 'tipo'];
 
     // Relación con el padre (División política superior)
-    public function parent()
+    public function padre()
     {
         return $this->belongsTo(ConfigDiviPoli::class, 'parent');
     }
