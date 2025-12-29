@@ -26,6 +26,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/division-politica/list/paises', [ConfigDiviPoliController::class, 'paises'])->name('divipoli.list.paises');
     Route::get('/division-politica/list/departamentos/{paisId}', [ConfigDiviPoliController::class, 'departamentos'])->name('divipoli.list.departamentos');
     Route::get('/division-politica/list/municipios/{departamentoId}', [ConfigDiviPoliController::class, 'municipios'])->name('divipoli.list.municipios');
+    Route::get('/division-politica/list/por-tipo/{tipo}', [ConfigDiviPoliController::class, 'listarPorTipo'])->name('divipoli.list.por.tipo');
 
     // Ruta para obtener estructura jerárquica completa
     Route::get('/division-politica/list/divi-poli-completa', [ConfigDiviPoliController::class, 'diviPoliCompleta'])->name('divipoli.list.divi.poli.completa');

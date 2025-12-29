@@ -493,6 +493,66 @@ class ConfigDiviPoliController extends Controller
     }
 
     /**
+     * Obtiene un listado de divisiones políticas filtradas por tipo.
+     *
+     * Este método retorna todas las divisiones políticas de un tipo específico
+     * (Pais, Departamento o Municipio), ordenadas por nombre.
+     *
+     * @param string $tipo El tipo de división política (Pais, Departamento, Municipio)
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de divisiones políticas
+     *
+     * @urlParam tipo string required El tipo de división política. Example: "Departamento"
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Listado de divisiones políticas obtenido exitosamente",
+     *   "data": [
+     *     {
+     *       "id": 2,
+     *       "codigo": "CUN",
+     *       "nombre": "Cundinamarca",
+     *       "tipo": "Departamento",
+     *       "parent": 1
+     *     }
+     *   ]
+     * }
+     *
+     * @response 400 {
+     *   "status": false,
+     *   "message": "Tipo de división política no válido"
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener el listado de divisiones políticas",
+     *   "error": "Error message"
+     * }
+     */
+    public function listarPorTipo(string $tipo)
+    {
+        try {
+            // Validar que el tipo sea válido
+            $tiposValidos = ['Pais', 'Departamento', 'Municipio'];
+            if (!in_array($tipo, $tiposValidos)) {
+                return $this->errorResponse(
+                    'Tipo de división política no válido. Los tipos válidos son: ' . implode(', ', $tiposValidos),
+                    null,
+                    400
+                );
+            }
+
+            $divisiones = ConfigDiviPoli::where('tipo', $tipo)
+                ->with(['padre', 'children'])
+                ->orderBy('nombre', 'asc')
+                ->get();
+
+            return $this->successResponse($divisiones, 'Listado de divisiones políticas obtenido exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener el listado de divisiones políticas', $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Obtiene estadísticas generales de las divisiones políticas del sistema.
      *
      * Este método proporciona información estadística sobre las divisiones políticas,
