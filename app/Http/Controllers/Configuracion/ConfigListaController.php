@@ -265,6 +265,164 @@ class ConfigListaController extends Controller
         );
     }
 
+    /**
+     * Obtiene todas las listas maestras con sus detalles.
+     *
+     * Este método retorna todas las listas maestras (cabezas) con todos sus detalles asociados.
+     * Útil para obtener la estructura completa de todas las listas del sistema.
+     *
+     * @param Request $request La solicitud HTTP que puede contener parámetros de filtrado
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las listas y sus detalles
+     *
+     * @queryParam search string Buscar por código o nombre de lista. Example: "TIPOS"
+     * @queryParam per_page integer Número de elementos por página (por defecto: 15). Example: 20
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Listas con detalles obtenidas exitosamente",
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "cod": "TIPOS",
+     *       "nombre": "Tipos de Documento",
+     *       "estado": true,
+     *       "detalles": [
+     *         {
+     *           "id": 1,
+     *           "lista_id": 1,
+     *           "codigo": "CC",
+     *           "nombre": "Cédula de Ciudadanía",
+     *           "estado": true
+     *         },
+     *         {
+     *           "id": 2,
+     *           "lista_id": 1,
+     *           "codigo": "CE",
+     *           "nombre": "Cédula de Extranjería",
+     *           "estado": true
+     *         }
+     *       ]
+     *     }
+     *   ]
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener las listas con detalles",
+     *   "error": "Error message"
+     * }
+     */
+    public function listaDetalle(Request $request)
+    {
+        try {
+            // Construir la consulta con join para obtener cabeza y detalle en una estructura plana
+            $query = DB::table('config_listas as lista')
+                ->leftJoin('config_listas_detalles as detalle', 'lista.id', '=', 'detalle.lista_id')
+                ->select([
+                    'lista.id',
+                    'lista.cod',
+                    'lista.nombre',
+                    'lista.estado',
+                    'lista.created_at',
+                    'lista.updated_at',
+                    'detalle.id as id_detalle',
+                    'detalle.codigo',
+                    'detalle.nombre as nombre_detalle',
+                    'detalle.estado as estado_detalle'
+                ]);
+
+            // Aplicar filtros si se proporcionan
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('lista.cod', 'like', "%{$search}%")
+                        ->orWhere('lista.nombre', 'like', "%{$search}%")
+                        ->orWhere('detalle.codigo', 'like', "%{$search}%")
+                        ->orWhere('detalle.nombre', 'like', "%{$search}%");
+                });
+            }
+
+            // Ordenar por código de lista y código de detalle
+            $query->orderBy('lista.cod', 'asc')
+                ->orderBy('detalle.codigo', 'asc');
+
+            // Paginar si se solicita
+            if ($request->filled('per_page')) {
+                $perPage = $request->per_page;
+                $resultados = $query->paginate($perPage);
+            } else {
+                $resultados = $query->get();
+            }
+
+            return $this->successResponse($resultados, 'Listas con detalles obtenidas exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener las listas con detalles', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Obtiene todas las listas maestras (cabezas) sin detalles.
+     *
+     * Este método retorna únicamente las listas maestras (cabezas) sin incluir
+     * sus detalles asociados. Útil para obtener un listado simple de las listas.
+     *
+     * @param Request $request La solicitud HTTP que puede contener parámetros de filtrado
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las listas (cabezas)
+     *
+     * @queryParam search string Buscar por código o nombre de lista. Example: "TIPOS"
+     * @queryParam per_page integer Número de elementos por página (por defecto: 15). Example: 20
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Listas obtenidas exitosamente",
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "cod": "TIPOS",
+     *       "nombre": "Tipos de Documento",
+     *       "estado": true,
+     *       "created_at": "2024-01-15T10:30:00.000000Z",
+     *       "updated_at": "2024-01-15T10:30:00.000000Z"
+     *     }
+     *   ]
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener las listas",
+     *   "error": "Error message"
+     * }
+     */
+    public function listaCabeza(Request $request)
+    {
+        try {
+            $query = ConfigLista::query();
+
+            // Aplicar filtros si se proporcionan
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('cod', 'like', "%{$search}%")
+                        ->orWhere('nombre', 'like', "%{$search}%");
+                });
+            }
+
+            // Ordenar por código
+            $query->orderBy('cod', 'asc');
+
+            // Paginar si se solicita
+            if ($request->filled('per_page')) {
+                $perPage = $request->per_page;
+                $listas = $query->paginate($perPage);
+            } else {
+                $listas = $query->get();
+            }
+
+            return $this->successResponse($listas, 'Listas obtenidas exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener las listas', $e->getMessage(), 500);
+        }
+    }
 
     /**
      * Elimina una lista maestra del sistema.

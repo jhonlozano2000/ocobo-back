@@ -72,8 +72,6 @@ class ConfigListaDetalleController extends Controller
                 });
             }
 
-
-
             // Ordenar por nombre
             $query->orderBy('nombre', 'asc');
 

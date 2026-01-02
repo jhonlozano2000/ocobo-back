@@ -36,6 +36,10 @@ Route::middleware('auth:sanctum')->group(function () {
      */
     // Ruta para obtener todas las listas maestras con el detalle activas
     Route::get('/listas-detalles/activas/{lista_id}', [ConfigListaController::class, 'listasActivasDetalle'])->name('listas.activas');
+    // Ruta para obtener todas las listas con sus detalles
+    Route::get('/listas-con-detalle', [ConfigListaController::class, 'listaDetalle'])->name('listas.detalle');
+    // Ruta para obtener solo las listas (cabezas) sin detalles
+    Route::get('/listas-cabeza', [ConfigListaController::class, 'listaCabeza'])->name('listas.cabeza');
     Route::apiResource('listas', ConfigListaController::class)->parameters(['listas' => 'lista'])->except('create', 'edit');
 
     // Ruta para estadísticas de detalles de listas (debe ir antes del resource)

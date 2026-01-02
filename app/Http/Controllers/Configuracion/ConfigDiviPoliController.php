@@ -62,27 +62,86 @@ class ConfigDiviPoliController extends Controller
     public function index(ListConfigDiviPoliRequest $request)
     {
         try {
-            $query = ConfigDiviPoli::with(['padre', 'children']);
+            $query = ConfigDiviPoli::select([
+                'config_divi_poli.id',
+                'config_divi_poli.parent',
+                'config_divi_poli.codigo',
+                'config_divi_poli.nombre',
+                'config_divi_poli.tipo',
+                DB::raw("CASE
+                    WHEN config_divi_poli.tipo = 'Pais' THEN config_divi_poli.codigo
+                    WHEN config_divi_poli.tipo = 'Departamento' THEN pais_directo.codigo
+                    WHEN config_divi_poli.tipo = 'Municipio' THEN pais.codigo
+                    ELSE NULL
+                END as pais_codigo"),
+                DB::raw("CASE
+                    WHEN config_divi_poli.tipo = 'Pais' THEN config_divi_poli.nombre
+                    WHEN config_divi_poli.tipo = 'Departamento' THEN pais_directo.nombre
+                    WHEN config_divi_poli.tipo = 'Municipio' THEN pais.nombre
+                    ELSE NULL
+                END as pais_nombre"),
+                DB::raw("CASE
+                    WHEN config_divi_poli.tipo = 'Departamento' THEN config_divi_poli.codigo
+                    WHEN config_divi_poli.tipo = 'Municipio' THEN departamento.codigo
+                    ELSE NULL
+                END as departamento_codigo"),
+                DB::raw("CASE
+                    WHEN config_divi_poli.tipo = 'Departamento' THEN config_divi_poli.nombre
+                    WHEN config_divi_poli.tipo = 'Municipio' THEN departamento.nombre
+                    ELSE NULL
+                END as departamento_nombre"),
+                DB::raw("CASE
+                    WHEN config_divi_poli.tipo = 'Municipio' THEN config_divi_poli.codigo
+                    ELSE NULL
+                END as municipio_codigo"),
+                DB::raw("CASE
+                    WHEN config_divi_poli.tipo = 'Municipio' THEN config_divi_poli.nombre
+                    ELSE NULL
+                END as municipio_nombre")
+            ])
+                ->leftJoin('config_divi_poli as departamento', function ($join) {
+                    $join->on('config_divi_poli.parent', '=', 'departamento.id')
+                        ->where('departamento.tipo', '=', 'Departamento');
+                })
+                ->leftJoin('config_divi_poli as pais', function ($join) {
+                    $join->on('departamento.parent', '=', 'pais.id')
+                        ->where('pais.tipo', '=', 'Pais');
+                })
+                ->leftJoin('config_divi_poli as pais_directo', function ($join) {
+                    $join->on('config_divi_poli.parent', '=', 'pais_directo.id')
+                        ->where('pais_directo.tipo', '=', 'Pais');
+                });
 
             // Aplicar filtros si se proporcionan
             if ($request->filled('tipo')) {
-                $query->where('tipo', $request->validated('tipo'));
+                $query->where('config_divi_poli.tipo', $request->validated('tipo'));
             }
 
             if ($request->filled('parent')) {
-                $query->where('parent', $request->validated('parent'));
+                $query->where('config_divi_poli.parent', $request->validated('parent'));
             }
 
             if ($request->filled('search')) {
                 $search = $request->validated('search');
                 $query->where(function ($q) use ($search) {
-                    $q->where('nombre', 'like', "%{$search}%")
-                        ->orWhere('codigo', 'like', "%{$search}%");
+                    $q->where('config_divi_poli.nombre', 'like', "%{$search}%")
+                        ->orWhere('config_divi_poli.codigo', 'like', "%{$search}%")
+                        ->orWhere('departamento.nombre', 'like', "%{$search}%")
+                        ->orWhere('pais.nombre', 'like', "%{$search}%")
+                        ->orWhere('pais_directo.nombre', 'like', "%{$search}%");
                 });
             }
 
-            // Ordenar por tipo y nombre
-            $query->orderBy('tipo', 'asc')->orderBy('nombre', 'asc');
+            // Ordenar por: Pais, Departamento, Municipio y luego por nombre
+            $query->orderByRaw("CASE
+                WHEN config_divi_poli.tipo = 'Pais' THEN 1
+                WHEN config_divi_poli.tipo = 'Departamento' THEN 2
+                WHEN config_divi_poli.tipo = 'Municipio' THEN 3
+                ELSE 4
+            END")
+                ->orderBy('pais_nombre', 'asc')
+                ->orderBy('departamento_nombre', 'asc')
+                ->orderBy('config_divi_poli.nombre', 'asc');
 
             // Paginar si se solicita
             if ($request->filled('per_page')) {
@@ -257,12 +316,25 @@ class ConfigDiviPoliController extends Controller
      *   "error": "Error message"
      * }
      */
-    public function update(UpdateConfigDiviPoliRequest $request, ConfigDiviPoli $configDiviPoli)
+    public function update(UpdateConfigDiviPoliRequest $request, $id)
     {
         try {
             DB::beginTransaction();
 
-            $configDiviPoli->update($request->validated());
+            // Buscar el modelo por ID
+            $configDiviPoli = ConfigDiviPoli::findOrFail($id);
+
+            // Obtener solo los campos que están presentes en la petición y validados
+            $validatedData = $request->validated();
+
+            // Actualizar el modelo con los datos validados
+            if (!empty($validatedData)) {
+                $configDiviPoli->fill($validatedData);
+                $configDiviPoli->save();
+            }
+
+            // Refrescar el modelo para obtener los datos actualizados
+            $configDiviPoli->refresh();
 
             DB::commit();
 
