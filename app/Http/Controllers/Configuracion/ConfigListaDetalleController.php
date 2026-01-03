@@ -139,7 +139,13 @@ class ConfigListaDetalleController extends Controller
         try {
             DB::beginTransaction();
 
+            // Obtener los datos validados
             $validatedData = $request->validated();
+
+            // Asegurar que el estado tenga un valor por defecto si no se proporciona
+            if (!isset($validatedData['estado'])) {
+                $validatedData['estado'] = true;
+            }
 
             $detalle = ConfigListaDetalle::create($validatedData);
 
@@ -253,9 +259,24 @@ class ConfigListaDetalleController extends Controller
         try {
             DB::beginTransaction();
 
-            $validatedData = $request->validated();
+            // Obtener solo los campos permitidos que están presentes en la petición
+            $allowedFields = ['lista_id', 'codigo', 'nombre'];
+            $dataToUpdate = [];
 
-            $listaDetalle->update($validatedData);
+            foreach ($allowedFields as $field) {
+                if ($request->has($field)) {
+                    $dataToUpdate[$field] = $request->input($field);
+                }
+            }
+
+            // Actualizar el modelo con los datos
+            if (!empty($dataToUpdate)) {
+                $listaDetalle->fill($dataToUpdate);
+                $listaDetalle->save();
+            }
+
+            // Refrescar el modelo para obtener los datos actualizados
+            $listaDetalle->refresh();
 
             DB::commit();
 
