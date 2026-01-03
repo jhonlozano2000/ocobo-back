@@ -15,7 +15,7 @@ return new class extends Migration
         Schema::create('config_varias', function (Blueprint $table) {
             $table->id();
             $table->string('clave', 100)->unique(); // Identificador de la configuración
-            $table->string('valor', 255); // Valor de la configuración
+            $table->string('valor', 255)->nullable(); // Valor de la configuración
             $table->string('descripcion', 255)->nullable(); // Explicación de la configuración
             $table->timestamps();
         });

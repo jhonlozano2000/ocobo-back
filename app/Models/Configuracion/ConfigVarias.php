@@ -11,7 +11,7 @@ class ConfigVarias extends Model
 
     protected $table = 'config_varias';
 
-    protected $fillable = ['clave', 'valor', 'descripcion'];
+    protected $fillable = ['clave', 'valor', 'descripcion', 'tipo', 'estado'];
 
     public static function getValor($clave, $default = null)
     {

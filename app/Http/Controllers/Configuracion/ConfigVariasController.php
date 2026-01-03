@@ -9,7 +9,6 @@ use App\Http\Requests\Configuracion\UpdateConfigVariasRequest;
 use App\Models\Configuracion\ConfigVarias;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class ConfigVariasController extends Controller
 {
@@ -149,39 +148,24 @@ class ConfigVariasController extends Controller
                 $validatedData['estado'] = filter_var($validatedData['estado'], FILTER_VALIDATE_BOOLEAN);
             }
 
-            // Debug: Log de información
-            Log::info('ConfigVariasController store', [
-                'validatedData' => $validatedData,
-                'allData' => $request->all()
-            ]);
-
             // Manejar subida de archivos para configuraciones específicas
             if ($validatedData['clave'] === 'logo_empresa') {
                 // Buscar cualquier archivo en la request
                 $archivos = $request->allFiles();
-                Log::info('Archivos encontrados', ['archivos' => array_keys($archivos)]);
 
                 if (!empty($archivos)) {
                     // Tomar el primer archivo encontrado
                     $campoArchivo = array_keys($archivos)[0];
-                    Log::info('Procesando archivo de logo', ['campo' => $campoArchivo]);
-
                     $nuevoLogo = ConfigVarias::guardarLogoEmpresa($request, $campoArchivo);
                     if ($nuevoLogo) {
                         $validatedData['valor'] = $nuevoLogo;
-                        Log::info('Logo guardado', [
-                            'nuevoLogo' => $nuevoLogo,
-                            'longitud' => strlen($nuevoLogo)
-                        ]);
                     }
                 } elseif (!isset($validatedData['valor']) || empty($validatedData['valor'])) {
                     // Si no hay archivo y no hay valor, retornar error
-                    Log::error('Error: No hay archivo ni valor');
                     return $this->errorResponse('Error de validación', ['valor' => ['El valor es obligatorio cuando no se proporciona un archivo.']], 422);
                 }
             } elseif (!isset($validatedData['valor']) || empty($validatedData['valor'])) {
                 // Para otras configuraciones, validar que se proporcione un valor
-                Log::error('Error: No hay valor para configuración');
                 return $this->errorResponse('Error de validación', ['valor' => ['El valor es obligatorio.']], 422);
             }
 
@@ -263,45 +247,38 @@ class ConfigVariasController extends Controller
                 $validatedData['estado'] = filter_var($validatedData['estado'], FILTER_VALIDATE_BOOLEAN);
             }
 
-            // Debug: Log de información
-            Log::info('ConfigVariasController update', [
-                'clave' => $clave,
-                'hasFile' => $request->hasFile('archivo'),
-                'validatedData' => $validatedData,
-                'allData' => $request->all()
-            ]);
-
             // Manejar subida de archivos para configuraciones específicas
             if ($clave === 'logo_empresa') {
                 // Buscar cualquier archivo en la request
                 $archivos = $request->allFiles();
-                Log::info('Archivos encontrados', ['archivos' => array_keys($archivos)]);
 
                 if (!empty($archivos)) {
                     // Tomar el primer archivo encontrado
                     $campoArchivo = array_keys($archivos)[0];
-                    Log::info('Procesando archivo de logo', ['campo' => $campoArchivo]);
-
                     $nuevoLogo = ConfigVarias::guardarLogoEmpresa($request, $campoArchivo);
                     if ($nuevoLogo) {
                         $validatedData['valor'] = $nuevoLogo;
-                        Log::info('Logo guardado', [
-                            'nuevoLogo' => $nuevoLogo,
-                            'longitud' => strlen($nuevoLogo)
-                        ]);
                     }
-                } elseif (!isset($validatedData['valor']) || empty($validatedData['valor'])) {
-                    // Si no hay archivo y no hay valor, retornar error
-                    Log::error('Error: No hay archivo ni valor');
-                    return $this->errorResponse('Error de validación', ['valor' => ['El valor es obligatorio cuando no se proporciona un archivo.']], 422);
                 }
-            } elseif (!isset($validatedData['valor']) || empty($validatedData['valor'])) {
-                // Para otras configuraciones, validar que se proporcione un valor
-                Log::error('Error: No hay valor para configuración');
-                return $this->errorResponse('Error de validación', ['valor' => ['El valor es obligatorio.']], 422);
             }
 
-            $config->update($validatedData);
+            // Obtener solo los campos que están presentes en la petición
+            $allowedFields = ['valor', 'descripcion', 'tipo', 'estado'];
+            $dataToUpdate = [];
+            foreach ($allowedFields as $field) {
+                if ($request->has($field)) {
+                    $dataToUpdate[$field] = $request->input($field);
+                }
+            }
+
+            // Actualizar el modelo con los datos
+            if (!empty($dataToUpdate)) {
+                $config->fill($dataToUpdate);
+                $config->save();
+            }
+
+            // Refrescar el modelo para obtener los datos actualizados
+            $config->refresh();
 
             DB::commit();
 
