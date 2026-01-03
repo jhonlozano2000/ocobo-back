@@ -860,4 +860,137 @@ class ConfigDiviPoliController extends Controller
             return $this->errorResponse('Error al obtener la estructura jerárquica de países', $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Carga recursivamente una división política con toda su jerarquía.
+     *
+     * Este método carga una división política específica con todos sus ancestros
+     * (padre, abuelo, etc.) y todos sus descendientes (hijos, nietos, etc.)
+     * de forma recursiva. Útil para obtener la estructura completa de una
+     * división política específica.
+     *
+     * @param int $id El ID de la división política a cargar
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la división política y su jerarquía completa
+     *
+     * @urlParam id integer required El ID de la división política. Example: 1
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "División política cargada recursivamente exitosamente",
+     *   "data": {
+     *     "id": 2,
+     *     "codigo": "CUN",
+     *     "nombre": "Cundinamarca",
+     *     "tipo": "Departamento",
+     *     "parent": 1,
+     *     "ancestros": [
+     *       {
+     *         "id": 1,
+     *         "codigo": "CO",
+     *         "nombre": "Colombia",
+     *         "tipo": "Pais"
+     *       }
+     *     ],
+     *     "descendientes": [
+     *       {
+     *         "id": 3,
+     *         "codigo": "BOG",
+     *         "nombre": "Bogotá D.C.",
+     *         "tipo": "Municipio",
+     *         "parent": 2,
+     *         "descendientes": []
+     *       }
+     *     ]
+     *   }
+     * }
+     *
+     * @response 404 {
+     *   "status": false,
+     *   "message": "División política no encontrada"
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al cargar la división política recursivamente",
+     *   "error": "Error message"
+     * }
+     */
+    public function cargarRecursivo($id)
+    {
+        try {
+            $diviPoli = ConfigDiviPoli::findOrFail($id);
+
+            // Cargar ancestros recursivamente (padre, abuelo, etc.)
+            $ancestros = $this->cargarAncestros($diviPoli);
+
+            // Cargar descendientes recursivamente (hijos, nietos, etc.)
+            $descendientes = $this->cargarDescendientes($diviPoli);
+
+            $resultado = [
+                'id' => $diviPoli->id,
+                'codigo' => $diviPoli->codigo,
+                'nombre' => $diviPoli->nombre,
+                'tipo' => $diviPoli->tipo,
+                'parent' => $diviPoli->parent,
+                'created_at' => $diviPoli->created_at,
+                'updated_at' => $diviPoli->updated_at,
+                'ancestros' => $ancestros,
+                'descendientes' => $descendientes
+            ];
+
+            return $this->successResponse($resultado, 'División política cargada recursivamente exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al cargar la división política recursivamente', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Carga recursivamente los ancestros de una división política.
+     *
+     * @param ConfigDiviPoli $diviPoli La división política
+     * @return array Array de ancestros
+     */
+    private function cargarAncestros(ConfigDiviPoli $diviPoli)
+    {
+        $ancestros = [];
+        $actual = $diviPoli->padre;
+
+        while ($actual) {
+            $ancestros[] = [
+                'id' => $actual->id,
+                'codigo' => $actual->codigo,
+                'nombre' => $actual->nombre,
+                'tipo' => $actual->tipo,
+                'parent' => $actual->parent
+            ];
+            $actual = $actual->padre;
+        }
+
+        return $ancestros;
+    }
+
+    /**
+     * Carga recursivamente los descendientes de una división política.
+     *
+     * @param ConfigDiviPoli $diviPoli La división política
+     * @return array Array de descendientes
+     */
+    private function cargarDescendientes(ConfigDiviPoli $diviPoli)
+    {
+        $descendientes = [];
+        $hijos = $diviPoli->children;
+
+        foreach ($hijos as $hijo) {
+            $descendientes[] = [
+                'id' => $hijo->id,
+                'codigo' => $hijo->codigo,
+                'nombre' => $hijo->nombre,
+                'tipo' => $hijo->tipo,
+                'parent' => $hijo->parent,
+                'descendientes' => $this->cargarDescendientes($hijo)
+            ];
+        }
+
+        return $descendientes;
+    }
 }

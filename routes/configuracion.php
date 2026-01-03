@@ -19,6 +19,8 @@ Route::middleware('auth:sanctum')->group(function () {
      */
     // Ruta para estadísticas de división política (debe ir antes del resource)
     Route::get('/division-politica/estadisticas', [ConfigDiviPoliController::class, 'estadisticas'])->name('divipoli.estadisticas');
+    // Ruta para cargar recursivamente una división política
+    Route::get('/division-politica/{id}/recursivo', [ConfigDiviPoliController::class, 'cargarRecursivo'])->name('divipoli.recursivo');
 
     Route::apiResource('division-politica', ConfigDiviPoliController::class)->parameters(['divipoli' => 'config_divi_poli',])->names('divipoli')->except('create', 'edit');
 
@@ -50,6 +52,8 @@ Route::middleware('auth:sanctum')->group(function () {
     /**
      * Servidores de archivos
      */
+    // Ruta para estadísticas de servidores de archivos (debe ir antes del resource)
+    Route::get('servidores-archivos/estadisticas', [ConfigServerArchivoController::class, 'estadisticas'])->name('servidores.archivos.estadisticas');
     Route::apiResource('servidores-archivos', ConfigServerArchivoController::class)->parameters(['servidores-archivos' => 'config_server_archivo',])->except('create', 'edit');
 
     /**
@@ -69,9 +73,9 @@ Route::middleware('auth:sanctum')->group(function () {
     /**
      * Sedes
      */
+    // Ruta para estadísticas de sedes (debe ir antes del resource)
+    Route::get('sedes-estadisticas', [ConfigSedeController::class, 'estadisticas'])->name('sedes.estadisticas');
     Route::apiResource('sedes', ConfigSedeController::class)->except('create', 'edit');
-    //Route::apiResource('ventanillas', ConfigVentanillasController::class)->except('create', 'edit');;
-    Route::get('sedes-estadisticas', [ConfigSedeController::class, 'estadisticas'])->name('deses.estadisticas');
 
     /**
      * Ventanillas de Configuración

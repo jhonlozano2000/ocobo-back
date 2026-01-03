@@ -24,41 +24,34 @@ class UpdateConfigServerArchivoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nombre' => [
+            'proceso_id' => [
                 'sometimes',
+                'integer',
+                'exists:config_listas_detalles,id'
+            ],
+            'host' => [
+                'sometimes',
+                'string',
+                'max:15'
+            ],
+            'ruta' => [
+                'nullable',
                 'string',
                 'max:100'
             ],
-            'url' => [
-                'sometimes',
-                'url',
-                'max:255'
-            ],
-            'puerto' => [
-                'sometimes',
-                'integer',
-                'min:1',
-                'max:65535'
-            ],
-            'usuario' => [
+            'user' => [
                 'sometimes',
                 'string',
-                'max:50'
+                'max:20'
             ],
             'password' => [
-                'sometimes',
-                'string',
-                'max:100'
-            ],
-            'ruta_base' => [
-                'sometimes',
-                'string',
-                'max:255'
-            ],
-            'proceso_id' => [
                 'nullable',
-                'integer',
-                'exists:procesos,id'
+                'string'
+            ],
+            'detalle' => [
+                'nullable',
+                'string',
+                'max:200'
             ],
             'estado' => [
                 'nullable',
@@ -75,21 +68,17 @@ class UpdateConfigServerArchivoRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'nombre.string' => 'El nombre debe ser una cadena de texto.',
-            'nombre.max' => 'El nombre no puede superar los 100 caracteres.',
-            'url.url' => 'La URL debe tener un formato válido.',
-            'url.max' => 'La URL no puede superar los 255 caracteres.',
-            'puerto.integer' => 'El puerto debe ser un número entero.',
-            'puerto.min' => 'El puerto debe ser al menos 1.',
-            'puerto.max' => 'El puerto no puede exceder 65535.',
-            'usuario.string' => 'El usuario debe ser una cadena de texto.',
-            'usuario.max' => 'El usuario no puede superar los 50 caracteres.',
-            'password.string' => 'La contraseña debe ser una cadena de texto.',
-            'password.max' => 'La contraseña no puede superar los 100 caracteres.',
-            'ruta_base.string' => 'La ruta base debe ser una cadena de texto.',
-            'ruta_base.max' => 'La ruta base no puede superar los 255 caracteres.',
             'proceso_id.integer' => 'El ID del proceso debe ser un número entero.',
             'proceso_id.exists' => 'El proceso seleccionado no existe.',
+            'host.string' => 'El host debe ser una cadena de texto.',
+            'host.max' => 'El host no puede superar los 15 caracteres.',
+            'ruta.string' => 'La ruta debe ser una cadena de texto.',
+            'ruta.max' => 'La ruta no puede superar los 100 caracteres.',
+            'user.string' => 'El usuario debe ser una cadena de texto.',
+            'user.max' => 'El usuario no puede superar los 20 caracteres.',
+            'password.string' => 'La contraseña debe ser una cadena de texto.',
+            'detalle.string' => 'El detalle debe ser una cadena de texto.',
+            'detalle.max' => 'El detalle no puede superar los 200 caracteres.',
             'estado.in' => 'El estado debe ser 0, 1, true o false.',
         ];
     }
@@ -102,13 +91,12 @@ class UpdateConfigServerArchivoRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'nombre' => 'nombre del servidor',
-            'url' => 'URL',
-            'puerto' => 'puerto',
-            'usuario' => 'usuario',
-            'password' => 'contraseña',
-            'ruta_base' => 'ruta base',
             'proceso_id' => 'proceso',
+            'host' => 'host',
+            'ruta' => 'ruta',
+            'user' => 'usuario',
+            'password' => 'contraseña',
+            'detalle' => 'detalle',
             'estado' => 'estado'
         ];
     }

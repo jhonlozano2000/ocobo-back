@@ -9,7 +9,6 @@ use App\Http\Requests\Configuracion\UpdateConfigSedeRequest;
 use App\Models\Configuracion\ConfigSede;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class ConfigSedeController extends Controller
 {
@@ -276,40 +275,12 @@ class ConfigSedeController extends Controller
                 $validatedData['estado'] = filter_var($validatedData['estado'], FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
             }
 
-            // Debug: Log los datos que se van a actualizar
-            Log::info('Actualizando sede', [
-                'sede_id' => $sede->id,
-                'datos_validados' => $validatedData,
-                'datos_originales' => $request->all(),
-                'datos_antes_update' => $sede->toArray()
-            ]);
+            // Actualizar el modelo
+            $sede->fill($validatedData);
+            $sede->save();
 
-            // Verificar si hay cambios antes de actualizar
-            $cambios = array_diff_assoc($validatedData, $sede->toArray());
-            Log::info('Cambios detectados', [
-                'cambios' => $cambios,
-                'hay_cambios' => !empty($cambios)
-            ]);
-
-            $resultado = $sede->update($validatedData);
-
-            Log::info('Resultado de la actualización', [
-                'resultado' => $resultado,
-                'datos_despues_update' => $sede->fresh()->toArray()
-            ]);
-
-            // Si no se actualizó, intentar con una aproximación diferente
-            if (!$resultado) {
-                Log::warning('Update falló, intentando con fill y save');
-
-                $sede->fill($validatedData);
-                $resultado = $sede->save();
-
-                Log::info('Resultado con fill y save', [
-                    'resultado' => $resultado,
-                    'datos_despues_fill_save' => $sede->fresh()->toArray()
-                ]);
-            }
+            // Refrescar el modelo para obtener los datos actualizados
+            $sede->refresh();
 
             DB::commit();
 
@@ -319,11 +290,6 @@ class ConfigSedeController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error al actualizar sede', [
-                'sede_id' => $sede->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
             return $this->errorResponse('Error al actualizar la sede', $e->getMessage(), 500);
         }
     }

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('proceso_id');
             $table->foreign('proceso_id')->on('config_listas_detalles')->references('id');
 
-            $table->string('host', 11);
+            $table->string('host', 15);
             $table->string('ruta', 100)->nullable();
             $table->string('user', 20);
             $table->string('password');

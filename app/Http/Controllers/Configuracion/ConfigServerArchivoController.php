@@ -24,7 +24,7 @@ class ConfigServerArchivoController extends Controller
      * @param Request $request La solicitud HTTP que puede contener parámetros de filtrado
      * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de servidores
      *
-     * @queryParam search string Buscar por nombre o URL. Example: "FTP"
+     * @queryParam search string Buscar por host, usuario, ruta o detalle. Example: "ftp"
      * @queryParam estado integer Filtrar por estado (0 inactivo, 1 activo). Example: 1
      * @queryParam per_page integer Número de elementos por página (por defecto: 15). Example: 20
      *
@@ -34,11 +34,11 @@ class ConfigServerArchivoController extends Controller
      *   "data": [
      *     {
      *       "id": 1,
-     *       "nombre": "Servidor FTP Principal",
-     *       "url": "ftp://example.com",
-     *       "puerto": 21,
-     *       "usuario": "ftpuser",
-     *       "ruta_base": "/archivos",
+     *       "proceso_id": 1,
+     *       "host": "192.168.1.1",
+     *       "ruta": "/archivos",
+     *       "user": "ftpuser",
+     *       "detalle": "Servidor FTP Principal",
      *       "estado": 1,
      *       "proceso": {
      *         "id": 1,
@@ -63,17 +63,20 @@ class ConfigServerArchivoController extends Controller
             if ($request->filled('search')) {
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
-                    $q->where('nombre', 'like', "%{$search}%")
-                        ->orWhere('url', 'like', "%{$search}%");
+                    $q->where('host', 'like', "%{$search}%")
+                        ->orWhere('user', 'like', "%{$search}%")
+                        ->orWhere('ruta', 'like', "%{$search}%")
+                        ->orWhere('detalle', 'like', "%{$search}%");
                 });
             }
 
             if ($request->filled('estado')) {
-                $query->where('estado', $request->estado);
+                $estado = filter_var($request->estado, FILTER_VALIDATE_BOOLEAN);
+                $query->where('estado', $estado);
             }
 
-            // Ordenar por nombre
-            $query->orderBy('nombre', 'asc');
+            // Ordenar por host
+            $query->orderBy('host', 'asc');
 
             // Paginar si se solicita
             if ($request->filled('per_page')) {
@@ -269,12 +272,25 @@ class ConfigServerArchivoController extends Controller
 
             $validatedData = $request->validated();
 
+            // Si el password no viene o está vacío, removerlo de los datos a actualizar
+            if (!isset($validatedData['password']) || empty($validatedData['password'])) {
+                unset($validatedData['password']);
+            }
+
+            // Filtrar solo los campos que existen en el modelo
+            $validatedData = array_intersect_key($validatedData, array_flip($configServerArchivo->getFillable()));
+
             // Convertir estado a booleano si se proporciona
             if (isset($validatedData['estado'])) {
                 $validatedData['estado'] = filter_var($validatedData['estado'], FILTER_VALIDATE_BOOLEAN);
             }
 
-            $configServerArchivo->update($validatedData);
+            // Actualizar el modelo
+            $configServerArchivo->fill($validatedData);
+            $configServerArchivo->save();
+
+            // Refrescar el modelo para obtener los datos actualizados
+            $configServerArchivo->refresh();
 
             DB::commit();
 
@@ -323,6 +339,69 @@ class ConfigServerArchivoController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->errorResponse('Error al eliminar el servidor', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Obtiene estadísticas de servidores de archivos del sistema.
+     *
+     * Este método proporciona estadísticas generales sobre los servidores de archivos,
+     * incluyendo el total de servidores, servidores activos/inactivos y distribución
+     * por proceso. Es útil para dashboards de administración.
+     *
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las estadísticas
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Estadísticas obtenidas exitosamente",
+     *   "data": {
+     *     "total_servidores": 5,
+     *     "servidores_activos": 4,
+     *     "servidores_inactivos": 1,
+     *     "servidores_por_proceso": {
+     *       "1": 2,
+     *       "2": 1
+     *     },
+     *     "servidores_sin_proceso": 2
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener las estadísticas",
+     *   "error": "Error message"
+     * }
+     */
+    public function estadisticas()
+    {
+        try {
+            $totalServidores = ConfigServerArchivo::count();
+            $servidoresActivos = ConfigServerArchivo::where('estado', 1)->count();
+            $servidoresInactivos = ConfigServerArchivo::where('estado', 0)->count();
+
+            // Servidores por proceso con nombre del proceso
+            $servidoresPorProceso = DB::table('config_server_archivos as servidor')
+                ->join('config_listas_detalles as proceso', 'servidor.proceso_id', '=', 'proceso.id')
+                ->selectRaw('proceso.nombre, COUNT(*) as total')
+                ->whereNotNull('servidor.proceso_id')
+                ->groupBy('proceso.nombre')
+                ->pluck('total', 'nombre')
+                ->toArray();
+
+            // Servidores sin proceso
+            $servidoresSinProceso = ConfigServerArchivo::whereNull('proceso_id')->count();
+
+            $estadisticas = [
+                'total_servidores' => $totalServidores,
+                'servidores_activos' => $servidoresActivos,
+                'servidores_inactivos' => $servidoresInactivos,
+                'servidores_por_proceso' => $servidoresPorProceso,
+                'servidores_sin_proceso' => $servidoresSinProceso,
+            ];
+
+            return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
         }
     }
 }

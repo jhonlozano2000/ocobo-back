@@ -3,7 +3,7 @@
 namespace App\Http\Requests\Configuracion;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class UpdateConfigSedeRequest extends FormRequest
 {
@@ -26,15 +26,6 @@ class UpdateConfigSedeRequest extends FormRequest
     {
         // Remover campos que ya no existen en el modelo
         $this->request->remove('numeracion_unificada');
-
-        // Debug: Log el route parameter
-        $sedeId = $this->route('sede');
-        Log::info('UpdateConfigSedeRequest - Route parameter', [
-            'route_sede' => $sedeId,
-            'route_sede_type' => gettype($sedeId),
-            'route_sede_id' => $sedeId ? (is_object($sedeId) ? $sedeId->id : $sedeId) : 'NULL',
-            'all_route_parameters' => $this->route()->parameters()
-        ]);
     }
 
     /**
@@ -44,8 +35,9 @@ class UpdateConfigSedeRequest extends FormRequest
      */
     public function rules(): array
     {
-        $sedeId = $this->route('sede');
-        $sedeIdValue = $sedeId ? (is_object($sedeId) ? $sedeId->id : $sedeId) : 'NULL';
+        // Obtener el ID de la sede desde la ruta
+        $sede = $this->route('sede');
+        $sedeId = is_object($sede) ? $sede->id : $sede;
 
         return [
             'nombre' => [
@@ -57,7 +49,7 @@ class UpdateConfigSedeRequest extends FormRequest
                 'sometimes',
                 'string',
                 'max:20',
-                'unique:config_sedes,codigo,' . $sedeIdValue
+                Rule::unique('config_sedes', 'codigo')->ignore($sedeId, 'id')
             ],
             'direccion' => [
                 'sometimes',

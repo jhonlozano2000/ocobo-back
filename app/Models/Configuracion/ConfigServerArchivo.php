@@ -19,7 +19,10 @@ class ConfigServerArchivo extends Model
     // Mutator para encriptar el password antes de guardarlo
     public function setPasswordAttribute($value)
     {
-        $this->attributes['password'] = Hash::make($value);
+        // Solo hashear si el valor no está vacío
+        if (!empty($value)) {
+            $this->attributes['password'] = Hash::make($value);
+        }
     }
 
     public function proceso()
