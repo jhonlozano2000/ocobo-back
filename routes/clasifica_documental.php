@@ -4,50 +4,65 @@ use App\Http\Controllers\ClasificacionDocumental\ClasificacionDocumentalTRDContr
 use App\Http\Controllers\ClasificacionDocumental\ClasificacionDocumentalTRDVersionController;
 use Illuminate\Support\Facades\Route;
 
+/**
+ * Rutas del módulo Clasificación Documental
+ *
+ * Prefix aplicado desde RouteServiceProvider: /api/clasifica-documental
+ * Rutas finales: /api/clasifica-documental/trd/* y /api/clasifica-documental/trd-versiones/*
+ */
 Route::middleware('auth:sanctum')->group(function () {
 
     /**
-     * ==================== TRD (Tabla de Retención Documental) ====================
+     * TRD (Tabla de Retención Documental)
+     * Rutas: /api/clasifica-documental/trd/*
      */
+    Route::prefix('trd')->name('clasifica-documental.trd.')->group(function () {
+        // Rutas específicas (deben ir ANTES del resource)
+        // Importar TRD desde Excel
+        Route::post('/import-trd', [ClasificacionDocumentalTRDController::class, 'importarTRD'])->name('importar');
 
-    // Rutas principales de TRD
-    Route::prefix('trd')->group(function () {
-        // CRUD básico
-        Route::get('/', [ClasificacionDocumentalTRDController::class, 'index'])->name('trd.index');
-        Route::post('/', [ClasificacionDocumentalTRDController::class, 'store'])->name('trd.store');
-        Route::get('/{id}', [ClasificacionDocumentalTRDController::class, 'show'])->name('trd.show');
-        Route::put('/{id}', [ClasificacionDocumentalTRDController::class, 'update'])->name('trd.update');
-        Route::delete('/{id}', [ClasificacionDocumentalTRDController::class, 'destroy'])->name('trd.destroy');
-
-        // Rutas específicas (las más específicas primero)
-        Route::post('/import-trd', [ClasificacionDocumentalTRDController::class, 'importarTRD'])->name('trd.importar');
-
-        // Rutas de estadísticas específicas (deben ir antes de la ruta con parámetro)
-        Route::get('/estadisticas/totales', [ClasificacionDocumentalTRDController::class, 'estadisticasTotales'])->name('trd.estadisticas.totales');
-        Route::get('/estadisticas/por-dependencias', [ClasificacionDocumentalTRDController::class, 'estadisticasPorDependencias'])->name('trd.estadisticas.por-dependencias');
+        // Rutas de estadísticas específicas (deben ir antes de las rutas con parámetro)
+        Route::get('/estadisticas/totales', [ClasificacionDocumentalTRDController::class, 'estadisticasTotales'])->name('estadisticas.totales');
+        Route::get('/estadisticas/por-dependencias', [ClasificacionDocumentalTRDController::class, 'estadisticasPorDependencias'])->name('estadisticas.por-dependencias');
 
         // Ruta para clasificaciones por dependencia en estructura jerárquica
-        Route::get('/por-dependencia/{dependencia_id}', [ClasificacionDocumentalTRDController::class, 'clasificacionesPorDependencia'])->name('trd.clasificaciones.por-dependencia');
+        Route::get('/por-dependencia/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'clasificacionesPorDependencia'])->name('clasificaciones.por-dependencia');
 
         // Rutas con parámetros (deben ir después de las específicas)
-        Route::get('/estadisticas/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'estadistica'])->name('trd.estadisticas');
-        Route::get('/dependencia/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'listarPorDependencia'])->name('trd.por-dependencia');
+        Route::get('/estadisticas/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'estadistica'])->name('estadisticas');
+        Route::get('/dependencia/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'listarPorDependencia'])->name('por-dependencia');
+
+        // Resource route (debe ir DESPUÉS de las rutas específicas)
+        Route::apiResource('', ClasificacionDocumentalTRDController::class)
+            ->parameters(['' => 'trd'])
+            ->names([
+                'index' => 'index',
+                'store' => 'store',
+                'show' => 'show',
+                'update' => 'update',
+                'destroy' => 'destroy'
+            ])->except('create', 'edit');
     });
 
     /**
-     * ==================== VERSIONES TRD ====================
+     * Versiones TRD
+     * Rutas: /api/clasifica-documental/trd-versiones/*
      */
+    Route::prefix('trd-versiones')->name('clasifica-documental.trd-versiones.')->group(function () {
+        // Rutas específicas (deben ir ANTES del resource)
+        Route::post('/aprobar/{dependenciaId}', [ClasificacionDocumentalTRDVersionController::class, 'aprobarVersion'])->name('aprobar');
+        Route::get('/pendientes/aprobar', [ClasificacionDocumentalTRDVersionController::class, 'listarPendientesPorAprobar'])->name('pendientes');
+        Route::get('/estadisticas/{dependenciaId}', [ClasificacionDocumentalTRDVersionController::class, 'estadisticas'])->name('estadisticas');
 
-    // Rutas de versiones
-    Route::prefix('trd-versiones')->group(function () {
-        // CRUD básico
-        Route::get('/', [ClasificacionDocumentalTRDVersionController::class, 'index'])->name('trd-versiones.index');
-        Route::post('/', [ClasificacionDocumentalTRDVersionController::class, 'store'])->name('trd-versiones.store');
-        Route::get('/{id}', [ClasificacionDocumentalTRDVersionController::class, 'show'])->name('trd-versiones.show');
-
-        // Rutas específicas
-        Route::post('/aprobar/{dependenciaId}', [ClasificacionDocumentalTRDVersionController::class, 'aprobarVersion'])->name('trd-versiones.aprobar');
-        Route::get('/pendientes/aprobar', [ClasificacionDocumentalTRDVersionController::class, 'listarPendientesPorAprobar'])->name('trd-versiones.pendientes');
-        Route::get('/estadisticas/{dependenciaId}', [ClasificacionDocumentalTRDVersionController::class, 'estadisticas'])->name('trd-versiones.estadisticas');
+        // Resource route (debe ir DESPUÉS de las rutas específicas)
+        Route::apiResource('', ClasificacionDocumentalTRDVersionController::class)
+            ->parameters(['' => 'trdVersion'])
+            ->names([
+                'index' => 'index',
+                'store' => 'store',
+                'show' => 'show',
+                'update' => 'update',
+                'destroy' => 'destroy'
+            ])->except('create', 'edit');
     });
 });
