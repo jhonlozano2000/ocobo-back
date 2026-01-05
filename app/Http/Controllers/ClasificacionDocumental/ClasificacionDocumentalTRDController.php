@@ -411,14 +411,14 @@ class ClasificacionDocumentalTRDController extends Controller
      * Importa elementos TRD desde un archivo Excel.
      *
      * Este método permite importar masivamente elementos TRD desde un archivo Excel,
-     * extrayendo automáticamente el código de dependencia desde la celda E4,
+     * extrayendo automáticamente el código de dependencia desde la celda B4,
      * procesando la estructura jerárquica y creando versiones temporales
      * que requieren aprobación antes de ser activadas.
      *
      * @param ImportarTRDRequest $request La solicitud HTTP con el archivo Excel
      * @return \Illuminate\Http\JsonResponse Respuesta JSON con el resultado de la importación
      *
-     * @bodyParam archivo file required Archivo Excel con datos TRD (.xlsx, .xls) con código de dependencia en celda E4. Example: trd_data.xlsx
+     * @bodyParam archivo file required Archivo Excel con datos TRD (.xlsx, .xls) con código de dependencia en celda B4. Example: trd_data.xlsx
      *
      * @response 200 {
      *   "status": true,
@@ -442,7 +442,7 @@ class ClasificacionDocumentalTRDController extends Controller
      *
      * @response 422 {
      *   "status": false,
-     *   "message": "No se encontró el código de dependencia en la celda E4 del archivo Excel"
+     *   "message": "No se encontró el código de dependencia en la celda B4 del archivo Excel"
      * }
      *
      * @response 404 {
@@ -464,16 +464,16 @@ class ClasificacionDocumentalTRDController extends Controller
             // Procesar archivo Excel
             $filePath = $this->procesarArchivoExcel($request);
 
-            // Leer el archivo Excel para extraer el código de dependencia de la celda E4
+            // Leer el archivo Excel para extraer el código de dependencia de la celda B4
             $spreadsheet = IOFactory::load($filePath);
             $worksheet = $spreadsheet->getActiveSheet();
 
-            // Extraer código de dependencia desde la celda E4
-            $codigoDependencia = trim($worksheet->getCell('E4')->getValue() ?? '');
+            // Extraer código de dependencia desde la celda B4
+            $codigoDependencia = trim($worksheet->getCell('B4')->getValue() ?? '');
 
             if (empty($codigoDependencia)) {
                 $this->limpiarArchivoTemporal($filePath);
-                return $this->errorResponse('No se encontró el código de dependencia en la celda E4 del archivo Excel', null, 422);
+                return $this->errorResponse('No se encontró el código de dependencia en la celda B4 del archivo Excel', null, 422);
             }
 
             // Buscar dependencia por código orgánico
@@ -522,6 +522,46 @@ class ClasificacionDocumentalTRDController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->errorResponse('Error al importar TRD', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Descarga la plantilla Excel para importar TRD.
+     *
+     * Este método permite descargar la plantilla Excel que se utiliza
+     * para importar datos de TRD al sistema.
+     *
+     * @return \Illuminate\Http\Response|\Illuminate\Http\JsonResponse Respuesta de descarga del archivo o error
+     *
+     * @response 200 {
+     *   "file": "binary content"
+     * }
+     *
+     * @response 404 {
+     *   "status": false,
+     *   "message": "Plantilla no encontrada"
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al descargar la plantilla",
+     *   "error": "Error message"
+     * }
+     */
+    public function descargarPlantilla()
+    {
+        try {
+            $rutaArchivo = 'planitllas/Ocobo - Plantilla TRD.xlsx';
+
+            // Verificar que el archivo existe
+            if (!Storage::exists($rutaArchivo)) {
+                return $this->errorResponse('Plantilla no encontrada', null, 404);
+            }
+
+            // Descargar el archivo
+            return Storage::download($rutaArchivo, 'Ocobo - Plantilla TRD.xlsx');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al descargar la plantilla', $e->getMessage(), 500);
         }
     }
 
@@ -1029,7 +1069,7 @@ class ClasificacionDocumentalTRDController extends Controller
     private function tieneVersionPendiente(int $dependenciaId): bool
     {
         return ClasificacionDocumentalTRDVersion::where('dependencia_id', $dependenciaId)
-            ->where('estado', 'TEMP')
+            ->where('estado_version', 'TEMP')
             ->exists();
     }
 
@@ -1044,10 +1084,14 @@ class ClasificacionDocumentalTRDController extends Controller
      */
     private function crearNuevaVersion(int $dependenciaId): ClasificacionDocumentalTRDVersion
     {
+        // Obtener la última versión para calcular el número de la nueva
+        $ultimaVersion = ClasificacionDocumentalTRDVersion::where('dependencia_id', $dependenciaId)
+            ->max('version');
+
         return ClasificacionDocumentalTRDVersion::create([
             'dependencia_id' => $dependenciaId,
-            'estado' => 'TEMP',
-            'fecha_creacion' => now(),
+            'version' => ($ultimaVersion ?? 0) + 1,
+            'estado_version' => 'TEMP',
             'user_register' => auth()->id()
         ]);
     }
@@ -1067,87 +1111,175 @@ class ClasificacionDocumentalTRDController extends Controller
     {
         $idSerie = null;
         $idSubSerie = null;
+        $elementosInsertados = 0;
+        $errores = [];
 
-        $spreadsheet = IOFactory::load($filePath);
-        $sheet = $spreadsheet->getActiveSheet();
-        $data = $sheet->toArray();
+        try {
+            $spreadsheet = IOFactory::load($filePath);
+            $sheet = $spreadsheet->getActiveSheet();
+            $data = $sheet->toArray();
 
-        foreach ($data as $index => $row) {
-            // Saltar filas de encabezado
-            if ($index < 6) {
-                continue;
-            }
+            foreach ($data as $index => $row) {
+                // Saltar filas de encabezado
+                if ($index < 6) {
+                    continue;
+                }
 
-            // Verificar que la fila tenga datos
-            if (empty(array_filter($row))) {
-                continue;
-            }
+                // Verificar que la fila tenga datos (filtrar valores vacíos)
+                $rowFiltrada = array_filter($row, function ($val) {
+                    return !empty(trim($val ?? ''));
+                });
 
-            $tipo = trim($row[0] ?? '');
-            $codigo = trim($row[1] ?? '');
-            $nombre = trim($row[2] ?? '');
-            $ag = trim($row[3] ?? '');
-            $ac = trim($row[4] ?? '');
-            $ct = strtolower(trim($row[5] ?? '')) === 'si';
-            $e = strtolower(trim($row[6] ?? '')) === 'si';
-            $md = strtolower(trim($row[7] ?? '')) === 'si';
-            $s = strtolower(trim($row[8] ?? '')) === 'si';
-            $procedimiento = trim($row[9] ?? '');
+                if (empty($rowFiltrada)) {
+                    continue;
+                }
 
-            // Validar datos mínimos
-            if (empty($tipo) || empty($codigo) || empty($nombre)) {
-                continue;
-            }
+                // Estructura real del archivo:
+                // Columna A: Código (ej: "100")
+                // Columna B: Serie (ej: "01")
+                // Columna C: Subserie (ej: "01" o vacío)
+                // Columna D: Nombre/Serie Documental
+                // Columna E: Archivo Gestión (a_g)
+                // Columna F: Archivo Central (a_c)
+                // Columna G: CT
+                // Columna H: E
+                // Columna I: M/D
+                // Columna J: S
 
-            // Determinar parent según el tipo
-            $parent = null;
-            switch ($tipo) {
-                case 'Serie':
-                    $idSerie = null;
-                    $idSubSerie = null;
-                    break;
-                case 'SubSerie':
-                    if ($idSerie === null) {
-                        continue 2; // SubSerie sin Serie padre - saltar al siguiente elemento del bucle
+                $codigoBase = trim($row[0] ?? ''); // Columna A: Código base
+                $serie = trim($row[1] ?? '');      // Columna B: Serie
+                $subserie = trim($row[2] ?? '');   // Columna C: Subserie
+                $nombre = trim($row[3] ?? '');     // Columna D: Nombre
+                $ag = trim($row[4] ?? '');         // Columna E: Archivo Gestión
+                $ac = trim($row[5] ?? '');         // Columna F: Archivo Central
+                $ct = strtolower(trim($row[6] ?? '')) === 'si' || strtolower(trim($row[6] ?? '')) === 'x';
+                $e = strtolower(trim($row[7] ?? '')) === 'si' || strtolower(trim($row[7] ?? '')) === 'x';
+                $md = strtolower(trim($row[8] ?? '')) === 'si' || strtolower(trim($row[8] ?? '')) === 'x';
+                $s = strtolower(trim($row[9] ?? '')) === 'si' || strtolower(trim($row[9] ?? '')) === 'x';
+                $procedimiento = trim($row[10] ?? ''); // Columna K (si existe)
+
+                // Validar que tenga al menos código base y serie
+                if (empty($codigoBase) || empty($serie)) {
+                    continue;
+                }
+
+                // Determinar tipo y código completo
+                $tipo = '';
+                $codigo = '';
+
+                if (empty($subserie)) {
+                    // Si Subserie está vacía = Serie
+                    $tipo = 'Serie';
+                    $codigo = $serie; // Solo el número de serie
+                } else {
+                    // Si Subserie tiene valor = SubSerie
+                    $tipo = 'SubSerie';
+                    $codigo = $serie . '.' . $subserie; // Serie.Subserie
+                }
+
+                // Validar que tenga nombre
+                if (empty($nombre)) {
+                    continue;
+                }
+
+                // Determinar parent según el tipo y validar jerarquía
+                $parent = null;
+                $saltarFila = false;
+
+                switch ($tipo) {
+                    case 'Serie':
+                        // Resetear jerarquía cuando encontramos una nueva Serie
+                        $idSerie = null;
+                        $idSubSerie = null;
+                        $parent = null;
+                        break;
+                    case 'SubSerie':
+                        if ($idSerie === null) {
+                            $errores[] = "Fila " . ($index + 1) . ": SubSerie '{$codigo}' sin Serie padre";
+                            $saltarFila = true;
+                            break;
+                        }
+                        $parent = $idSerie;
+                        // Resetear SubSerie cuando encontramos una nueva (para que los siguientes TipoDocumento pertenezcan a esta SubSerie)
+                        $idSubSerie = null;
+                        break;
+                    case 'TipoDocumento':
+                        if ($idSubSerie === null) {
+                            $errores[] = "Fila " . ($index + 1) . ": TipoDocumento '{$codigo}' sin SubSerie padre";
+                            $saltarFila = true;
+                            break;
+                        }
+                        $parent = $idSubSerie;
+                        break;
+                    default:
+                        $errores[] = "Fila " . ($index + 1) . ": Tipo no válido '{$tipo}'";
+                        $saltarFila = true;
+                        break;
+                }
+
+                // Saltar esta fila si hay error de jerarquía
+                if ($saltarFila) {
+                    continue;
+                }
+
+                try {
+                    // Limpiar y truncar a_g y a_c a máximo 5 caracteres
+                    $agLimpio = !empty($ag) ? mb_substr(trim($ag), 0, 5) : null;
+                    $acLimpio = !empty($ac) ? mb_substr(trim($ac), 0, 5) : null;
+
+                    // Crear elemento TRD
+                    $elemento = ClasificacionDocumentalTRD::create([
+                        'tipo' => $tipo,
+                        'cod' => $codigo,
+                        'nom' => $nombre,
+                        'parent' => $parent,
+                        'dependencia_id' => $dependenciaId,
+                        'a_g' => $agLimpio,
+                        'a_c' => $acLimpio,
+                        'ct' => $ct,
+                        'e' => $e,
+                        'm_d' => $md,
+                        's' => $s,
+                        'procedimiento' => !empty($procedimiento) ? $procedimiento : null,
+                        'estado' => true,
+                        'user_register' => auth()->id(),
+                        'version_id' => $versionId
+                    ]);
+
+                    $elementosInsertados++;
+
+                    // Actualizar referencias para jerarquía DESPUÉS de crear el elemento
+                    if ($tipo === 'Serie') {
+                        $idSerie = $elemento->id;
+                        $idSubSerie = null; // Resetear SubSerie cuando hay nueva Serie
+                    } elseif ($tipo === 'SubSerie') {
+                        $idSubSerie = $elemento->id;
                     }
-                    $parent = $idSerie;
-                    $idSubSerie = null;
-                    break;
-                case 'TipoDocumento':
-                    if ($idSubSerie === null) {
-                        continue 2; // TipoDocumento sin SubSerie padre - saltar al siguiente elemento del bucle
-                    }
-                    $parent = $idSubSerie;
-                    break;
-                default:
-                    continue 2; // Tipo no válido - saltar al siguiente elemento del bucle
+                    // TipoDocumento no actualiza referencias, mantiene la SubSerie actual
+                } catch (\Exception $e) {
+                    $errores[] = "Fila " . ($index + 1) . ": Error al insertar '{$codigo}' - {$e->getMessage()}";
+                }
             }
 
-            // Crear elemento TRD
-            $elemento = ClasificacionDocumentalTRD::create([
-                'tipo' => $tipo,
-                'cod' => $codigo,
-                'nom' => $nombre,
-                'parent' => $parent,
-                'dependencia_id' => $dependenciaId,
-                'a_g' => $ag,
-                'a_c' => $ac,
-                'ct' => $ct,
-                'e' => $e,
-                'm_d' => $md,
-                's' => $s,
-                'procedimiento' => $procedimiento,
-                'estado' => true,
-                'user_register' => auth()->id(),
-                'version_trd_id' => $versionId
-            ]);
-
-            // Actualizar referencias para jerarquía
-            if ($tipo === 'Serie') {
-                $idSerie = $elemento->id;
-            } elseif ($tipo === 'SubSerie') {
-                $idSubSerie = $elemento->id;
+            // Validar que se insertó al menos un elemento
+            if ($elementosInsertados === 0) {
+                $mensajeError = "No se insertó ningún elemento TRD. ";
+                if (!empty($errores)) {
+                    $mensajeError .= "Errores encontrados: " . implode('; ', array_slice($errores, 0, 10));
+                } else {
+                    $mensajeError .= "Verifique que el archivo tenga datos válidos en las columnas correctas. Total de filas procesadas: " . count($data);
+                }
+                throw new \Exception($mensajeError);
             }
+
+            // Si hay errores pero se insertaron elementos, lanzar advertencia
+            if (!empty($errores) && count($errores) > $elementosInsertados) {
+                throw new \Exception("Se encontraron más errores que elementos insertados. Errores: " . implode('; ', array_slice($errores, 0, 10)));
+            }
+        } catch (\PhpOffice\PhpSpreadsheet\Exception $e) {
+            throw new \Exception("Error al leer el archivo Excel: " . $e->getMessage());
+        } catch (\Exception $e) {
+            throw $e;
         }
     }
 
@@ -1282,6 +1414,55 @@ class ClasificacionDocumentalTRDController extends Controller
         }
 
         return $arbol;
+    }
+
+    /**
+     * Normaliza el tipo de elemento a formato estándar.
+     *
+     * @param string $tipo Tipo de elemento
+     * @return string Tipo normalizado
+     */
+    private function normalizarTipo(string $tipo): string
+    {
+        $tipo = strtolower(trim($tipo));
+
+        if (empty($tipo)) {
+            return '';
+        }
+
+        $mapeo = [
+            'serie' => 'Serie',
+            'subserie' => 'SubSerie',
+            'sub-serie' => 'SubSerie',
+            'sub serie' => 'SubSerie',
+            'tipodocumento' => 'TipoDocumento',
+            'tipo documento' => 'TipoDocumento',
+            'tipo-documento' => 'TipoDocumento',
+            'td' => 'TipoDocumento',
+            'ss' => 'SubSerie',
+            's' => 'Serie'
+        ];
+
+        // Si está en el mapeo, retornar el valor normalizado
+        if (isset($mapeo[$tipo])) {
+            return $mapeo[$tipo];
+        }
+
+        // Intentar coincidencia parcial
+        foreach ($mapeo as $key => $value) {
+            if (strpos($tipo, $key) !== false || strpos($key, $tipo) !== false) {
+                return $value;
+            }
+        }
+
+        // Si no se encuentra, intentar capitalizar y verificar
+        $tipoCapitalizado = ucfirst($tipo);
+        if (in_array($tipoCapitalizado, ['Serie', 'SubSerie', 'TipoDocumento'])) {
+            return $tipoCapitalizado;
+        }
+
+        // Retornar vacío si no se puede normalizar
+        return '';
     }
 
     /**

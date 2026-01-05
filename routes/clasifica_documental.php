@@ -18,6 +18,9 @@ Route::middleware('auth:sanctum')->group(function () {
      */
     Route::prefix('trd')->name('clasifica-documental.trd.')->group(function () {
         // Rutas específicas (deben ir ANTES del resource)
+        // Descargar plantilla Excel para importar TRD
+        Route::get('/plantilla/descargar', [ClasificacionDocumentalTRDController::class, 'descargarPlantilla'])->name('plantilla.descargar');
+        
         // Importar TRD desde Excel
         Route::post('/import-trd', [ClasificacionDocumentalTRDController::class, 'importarTRD'])->name('importar');
 

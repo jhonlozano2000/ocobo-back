@@ -22,7 +22,7 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
      */
     public function rules(): array
     {
-        $trdId = $this->route('id');
+        $trdId = $this->route('trd') ?? $this->route('id');
         $tipo = $this->input('tipo');
 
         $rules = [
@@ -221,7 +221,7 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
      */
     private function validarCambiosPermitidos($validator): void
     {
-        $trdId = $this->route('id');
+        $trdId = $this->route('trd') ?? $this->route('id');
         $trd = \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::find($trdId);
 
         if (!$trd) {
