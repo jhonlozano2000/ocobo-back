@@ -4,6 +4,7 @@ namespace App\Http\Requests\Calidad;
 
 use App\Models\Calidad\CalidadOrganigrama;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class CalidadOrganigramaRequest extends FormRequest
 {
@@ -24,7 +25,27 @@ class CalidadOrganigramaRequest extends FormRequest
      */
     public function rules(): array
     {
-        $id = $this->route('calidadOrganigrama'); // Captura el ID en caso de actualización
+        // Obtener el ID del nodo desde la ruta (puede venir como 'organigrama' o 'calidadOrganigrama')
+        $organigrama = $this->route('organigrama') ?? $this->route('calidadOrganigrama');
+        $organigramaId = null;
+        
+        if ($organigrama) {
+            $organigramaId = is_object($organigrama) ? $organigrama->id : $organigrama;
+        }
+
+        $codOrganicoRules = [
+            'nullable',
+            'string',
+            'max:10',
+        ];
+
+        // Solo aplicar unique si hay un ID (update), y solo si se proporciona cod_organico
+        if ($organigramaId !== null) {
+            $codOrganicoRules[] = Rule::unique('calidad_organigrama', 'cod_organico')->ignore($organigramaId, 'id');
+        } else {
+            $codOrganicoRules[] = Rule::unique('calidad_organigrama', 'cod_organico');
+        }
+
         return [
             'tipo' => [
                 'required',
@@ -37,12 +58,7 @@ class CalidadOrganigramaRequest extends FormRequest
                 'min:2',
                 'max:100'
             ],
-            'cod_organico' => [
-                'nullable',
-                'string',
-                'max:10',
-                'unique:calidad_organigrama,cod_organico,' . $id
-            ],
+            'cod_organico' => $codOrganicoRules,
             'observaciones' => [
                 'nullable',
                 'string',

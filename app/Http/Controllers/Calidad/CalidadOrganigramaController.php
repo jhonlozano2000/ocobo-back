@@ -9,7 +9,6 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\Calidad\CalidadOrganigrama;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class CalidadOrganigramaController extends Controller
 {
@@ -232,10 +231,10 @@ class CalidadOrganigramaController extends Controller
      *   "message": "Nodo no encontrado"
      * }
      */
-    public function show(CalidadOrganigrama $calidadOrganigrama)
+    public function show($id)
     {
         try {
-            Log::info('=== MÉTODO SHOW EJECUTÁNDOSE ===');
+            $calidadOrganigrama = CalidadOrganigrama::findOrFail($id);
             $organigrama = $calidadOrganigrama->load(['children']);
 
             return $this->successResponse($organigrama, 'Nodo obtenido correctamente');
@@ -286,18 +285,30 @@ class CalidadOrganigramaController extends Controller
      *   "error": "Error message"
      * }
      */
-    public function update(CalidadOrganigramaRequest $request, CalidadOrganigrama $calidadOrganigrama)
+    public function update(CalidadOrganigramaRequest $request, $id)
     {
         try {
             DB::beginTransaction();
 
+            // Buscar el modelo por ID
+            $calidadOrganigrama = CalidadOrganigrama::findOrFail($id);
+
             $validatedData = $request->validated();
-            $calidadOrganigrama->update($validatedData);
+
+            // Filtrar solo los campos que existen en el modelo
+            $validatedData = array_intersect_key($validatedData, array_flip($calidadOrganigrama->getFillable()));
+
+            // Actualizar el modelo
+            $calidadOrganigrama->fill($validatedData);
+            $calidadOrganigrama->save();
+
+            // Refrescar el modelo para obtener los datos actualizados
+            $calidadOrganigrama->refresh();
 
             DB::commit();
 
             return $this->successResponse(
-                $calidadOrganigrama,
+                $calidadOrganigrama->load(['children']),
                 'Nodo actualizado correctamente'
             );
         } catch (\Exception $e) {
@@ -312,10 +323,10 @@ class CalidadOrganigramaController extends Controller
      * Este método permite eliminar un nodo solo si no tiene elementos hijos,
      * manteniendo la integridad de la estructura jerárquica.
      *
-     * @param int $id El ID del nodo a eliminar
+     * @param CalidadOrganigrama $calidadOrganigrama El nodo a eliminar (inyectado por Laravel)
      * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la eliminación
      *
-     * @urlParam id integer required El ID del nodo a eliminar. Example: 1
+     * @urlParam calidadOrganigrama integer required El ID del nodo a eliminar. Example: 1
      *
      * @response 200 {
      *   "status": true,
@@ -338,22 +349,13 @@ class CalidadOrganigramaController extends Controller
      *   "error": "Error message"
      * }
      */
-    public function destroy(int $id)
+    public function destroy($id)
     {
         try {
             DB::beginTransaction();
 
-            // Buscar el nodo por ID
-            $calidadOrganigrama = CalidadOrganigrama::find($id);
-
-            // Verificar si el nodo existe
-            if (!$calidadOrganigrama) {
-                return $this->errorResponse(
-                    'Nodo no encontrado',
-                    null,
-                    404
-                );
-            }
+            // Buscar el modelo por ID
+            $calidadOrganigrama = CalidadOrganigrama::findOrFail($id);
 
             // Verificar si tiene hijos
             if ($calidadOrganigrama->children()->count() > 0) {
@@ -418,11 +420,8 @@ class CalidadOrganigramaController extends Controller
     public function listDependencias(Request $request)
     {
         try {
-            Log::info('=== MÉTODO LISTDEPENDENCIAS EJECUTÁNDOSE ===');
-
             // Obtener solo las dependencias raíz (sin padre) con toda la jerarquía
             $query = CalidadOrganigrama::dependenciasRaiz()->with('children');
-            Log::info('Query dependencias raíz con jerarquía completa creada');
 
             // Aplicar filtro de búsqueda si se proporciona
             if ($request->filled('search')) {
@@ -435,23 +434,16 @@ class CalidadOrganigramaController extends Controller
 
             // Paginar si se solicita
             if ($request->filled('per_page')) {
-                Log::info('Ejecutando paginate');
                 $dependencias = $query->paginate($request->per_page);
             } else {
-                Log::info('Ejecutando get');
                 $dependencias = $query->get();
             }
 
             // Transformar los datos para el formato de árbol
             $dependenciasFormateadas = $this->formatearParaArbol($dependencias);
 
-            Log::info('Dependencias obtenidas: ' . $dependencias->count());
-            Log::info('Primera dependencia: ' . ($dependencias->first() ? $dependencias->first()->nom_organico : 'No hay dependencias'));
-
             return $this->successResponse($dependenciasFormateadas, 'Lista de dependencias obtenida');
         } catch (\Exception $e) {
-            Log::error('Error en listDependencias: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
             return $this->errorResponse('Error al obtener las dependencias', $e->getMessage(), 500);
         }
     }

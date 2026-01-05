@@ -316,6 +316,80 @@ Las rutas están organizadas por módulos en archivos separados:
 - `routes/gestion.php` - Rutas de gestión
 - `routes/ventanilla.php` - Rutas de ventanilla única
 
+#### 📐 Convenciones y Estructura de Rutas
+
+**Reglas para definir rutas en el proyecto:**
+
+1. **Organización por módulos:**
+   - Cada módulo tiene su propio archivo de rutas en `routes/`
+   - El prefix del módulo se define en `RouteServiceProvider` (ej: `api/calidad`, `api/config`)
+
+2. **Estructura estándar de rutas:**
+   ```php
+   Route::middleware('auth:sanctum')->group(function () {
+       Route::prefix('recurso')->name('modulo.recurso.')->group(function () {
+           // Rutas específicas ANTES del resource (para evitar conflictos)
+           Route::get('/ruta-especifica', [Controller::class, 'metodo'])->name('ruta-especifica');
+           
+           // Resource route DESPUÉS de las rutas específicas
+           Route::apiResource('', Controller::class)
+               ->parameters(['' => 'recurso'])
+               ->names([
+                   'index' => 'index',
+                   'store' => 'store',
+                   'show' => 'show',
+                   'update' => 'update',
+                   'destroy' => 'destroy'
+               ])->except('create', 'edit');
+       });
+   });
+   ```
+
+3. **Nomenclatura de nombres de rutas:**
+   - Formato: `{modulo}.{recurso}.{accion}`
+   - Ejemplo: `calidad.organigrama.index`, `config.sedes.estadisticas`
+   - Permite buscar rutas por módulo: `php artisan route:list --name="calidad"`
+
+4. **Orden de rutas:**
+   - **SIEMPRE** definir rutas específicas ANTES del `apiResource`
+   - Esto evita conflictos donde Laravel interpreta `/recurso/estadisticas` como `/recurso/{id}`
+
+5. **Parámetros de rutas:**
+   - Usar `->parameters(['' => 'nombreRecurso'])` en `apiResource` para nombres descriptivos
+   - Ejemplo: `{organigrama}` en lugar de `{}`
+
+6. **Ejemplo completo:**
+   ```php
+   /**
+    * Rutas del módulo Calidad
+    * Prefix aplicado desde RouteServiceProvider: /api/calidad
+    * Rutas finales: /api/calidad/organigrama/*
+    */
+   Route::middleware('auth:sanctum')->group(function () {
+       Route::prefix('organigrama')->name('calidad.organigrama.')->group(function () {
+           // Rutas específicas (ANTES del resource)
+           Route::get('/dependencias', [Controller::class, 'listDependencias'])->name('dependencias');
+           Route::get('/estadisticas', [Controller::class, 'estadisticas'])->name('estadisticas');
+           
+           // Resource route (DESPUÉS de las rutas específicas)
+           Route::apiResource('', Controller::class)
+               ->parameters(['' => 'organigrama'])
+               ->names([
+                   'index' => 'index',
+                   'store' => 'store',
+                   'show' => 'show',
+                   'update' => 'update',
+                   'destroy' => 'destroy'
+               ])->except('create', 'edit');
+       });
+   });
+   ```
+
+7. **Resultado final:**
+   - Rutas: `/api/{modulo}/{recurso}/*`
+   - Nombres: `{modulo}.{recurso}.{accion}`
+   - Búsqueda: `php artisan route:list --name="{modulo}"`
+
 ## 📚 Documentación de la API
 
 ### Autenticación
