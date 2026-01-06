@@ -35,7 +35,21 @@ class ArchivoHelper
         }
 
         $nombreArchivo = Str::random(50) . '.' . $file->getClientOriginalExtension();
-        return $file->storeAs('', $nombreArchivo, $disk);
+
+        // Usar el contenido del archivo directamente
+        $contenido = $file->getContent();
+        if (empty($contenido)) {
+            // Fallback: intentar leer desde el path real si getContent() no funciona
+            $realPath = $file->getRealPath();
+            if ($realPath && file_exists($realPath)) {
+                $contenido = file_get_contents($realPath);
+            } else {
+                throw new \Exception('No se pudo leer el contenido del archivo');
+            }
+        }
+
+        $storage->put($nombreArchivo, $contenido);
+        return $nombreArchivo;
     }
 
     /**
@@ -90,8 +104,21 @@ class ArchivoHelper
         foreach ((array)$files as $file) {
             if ($file && $file->isValid()) {
                 $nombreArchivo = Str::random(50) . '.' . $file->getClientOriginalExtension();
-                $ruta = $file->storeAs('', $nombreArchivo, $disk);
-                $rutas[] = $ruta;
+
+                // Usar el contenido del archivo directamente
+                $contenido = $file->getContent();
+                if (empty($contenido)) {
+                    // Fallback: intentar leer desde el path real si getContent() no funciona
+                    $realPath = $file->getRealPath();
+                    if ($realPath && file_exists($realPath)) {
+                        $contenido = file_get_contents($realPath);
+                    } else {
+                        continue; // Saltar este archivo si no se puede leer
+                    }
+                }
+
+                $storage->put($nombreArchivo, $contenido);
+                $rutas[] = $nombreArchivo;
             }
         }
 

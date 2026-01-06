@@ -1,0 +1,35 @@
+---
+alwaysApply: true
+---
+
+# Gestión de Archivos
+
+Siempre usar `ArchivoHelper` para gestionar archivos en el proyecto.
+
+## Métodos disponibles:
+
+- **`guardarArchivo($request, $campo, $disk, $archivoActual)`**: Guarda un archivo y elimina el anterior si existe. Retorna el nombre del archivo guardado o null.
+- **`eliminarArchivo($path, $disk)`**: Elimina un archivo del disco especificado.
+- **`obtenerUrl($path, $disk)`**: Obtiene la URL pública del archivo almacenado.
+- **`guardarMultiples($request, $campo, $disk)`**: Guarda múltiples archivos. Retorna array de rutas.
+- **`eliminarMultiples($paths, $disk)`**: Elimina múltiples archivos del disco.
+
+## Discos disponibles:
+
+- `temp_files`: Archivos temporales
+- `avatars`: Avatares de usuarios
+- `firmas`: Firmas digitales
+- `radicados_recibidos`: Archivos de radicaciones
+- `otros_archivos`: Otros archivos del sistema
+- `local`: Almacenamiento local por defecto
+- `public`: Almacenamiento público
+
+## Uso:
+
+- **SIEMPRE** usar estos métodos en lugar de manejar archivos directamente con `Storage` o `UploadedFile`.
+- Si necesitas la ruta completa (ej: para PhpSpreadsheet), construirla desde la configuración del disco después de guardar:
+  ```php
+  $rutaArchivo = ArchivoHelper::guardarArchivo($request, 'archivo', 'temp_files');
+  $diskConfig = config("filesystems.disks.temp_files");
+  $rutaCompleta = $diskConfig['root'] . '/' . $rutaArchivo;
+  ```

@@ -10,6 +10,7 @@ use App\Http\Requests\ClasificacionDocumental\ImportarTRDRequest;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRDVersion;
 use App\Models\Calidad\CalidadOrganigrama;
+use App\Helpers\ArchivoHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -1021,26 +1022,16 @@ class ClasificacionDocumentalTRDController extends Controller
      */
     private function procesarArchivoExcel(ImportarTRDRequest $request): string
     {
-        // Verificar que el archivo existe
-        if (!$request->hasFile('archivo')) {
-            throw new \Exception('No se ha proporcionado ningún archivo');
+        $rutaArchivo = ArchivoHelper::guardarArchivo($request, 'archivo', 'temp_files');
+
+        if (!$rutaArchivo) {
+            throw new \Exception('No se ha proporcionado ningún archivo válido');
         }
 
-        $file = $request->file('archivo');
+        $diskConfig = config("filesystems.disks.temp_files");
+        $root = $diskConfig['root'] ?? storage_path('app/temp_files');
 
-        // Verificar que el archivo es válido
-        if (!$file || !$file->isValid()) {
-            throw new \Exception('El archivo proporcionado no es válido');
-        }
-
-        // Generar nombre único para el archivo temporal
-        $fileName = time() . '_' . \Illuminate\Support\Str::random(10) . '.' . $file->getClientOriginalExtension();
-
-        // Guardar el archivo usando Storage (más seguro que move)
-        $storedPath = $file->storeAs('temp', $fileName, 'local');
-
-        // Retornar la ruta completa del archivo
-        return storage_path('app/' . $storedPath);
+        return $root . '/' . $rutaArchivo;
     }
 
     /**
@@ -1125,96 +1116,79 @@ class ClasificacionDocumentalTRDController extends Controller
                     continue;
                 }
 
-                // Verificar que la fila tenga datos (filtrar valores vacíos)
-                $rowFiltrada = array_filter($row, function ($val) {
-                    return !empty(trim($val ?? ''));
-                });
+                // Obtener valores de las columnas
+                $columnaA = trim($row[0] ?? '');
+                $columnaB = trim($row[1] ?? '');
+                $columnaC = trim($row[2] ?? '');
+                $columnaD = trim($row[3] ?? ''); // Nombre
+                $columnaE = trim($row[4] ?? ''); // Archivo Gestión
+                $columnaF = trim($row[5] ?? ''); // Archivo Central
+                $columnaG = trim($row[6] ?? ''); // CT
+                $columnaH = trim($row[7] ?? ''); // E
+                $columnaI = trim($row[8] ?? ''); // M/D
+                $columnaJ = trim($row[9] ?? ''); // S
+                $columnaK = trim($row[10] ?? ''); // Procedimiento
 
-                if (empty($rowFiltrada)) {
-                    continue;
-                }
+                // Determinar tipo según las reglas:
+                // 1. Serie: A y B tienen información, C está vacía
+                // 2. SubSerie: A, B y C tienen información
+                // 3. TipoDocumento: A, B y C están todas vacías
 
-                // Estructura real del archivo:
-                // Columna A: Código (ej: "100")
-                // Columna B: Serie (ej: "01")
-                // Columna C: Subserie (ej: "01" o vacío)
-                // Columna D: Nombre/Serie Documental
-                // Columna E: Archivo Gestión (a_g)
-                // Columna F: Archivo Central (a_c)
-                // Columna G: CT
-                // Columna H: E
-                // Columna I: M/D
-                // Columna J: S
+                $tieneA = !empty($columnaA);
+                $tieneB = !empty($columnaB);
+                $tieneC = !empty($columnaC);
 
-                $codigoBase = trim($row[0] ?? ''); // Columna A: Código base
-                $serie = trim($row[1] ?? '');      // Columna B: Serie
-                $subserie = trim($row[2] ?? '');   // Columna C: Subserie
-                $nombre = trim($row[3] ?? '');     // Columna D: Nombre
-                $ag = trim($row[4] ?? '');         // Columna E: Archivo Gestión
-                $ac = trim($row[5] ?? '');         // Columna F: Archivo Central
-                $ct = strtolower(trim($row[6] ?? '')) === 'si' || strtolower(trim($row[6] ?? '')) === 'x';
-                $e = strtolower(trim($row[7] ?? '')) === 'si' || strtolower(trim($row[7] ?? '')) === 'x';
-                $md = strtolower(trim($row[8] ?? '')) === 'si' || strtolower(trim($row[8] ?? '')) === 'x';
-                $s = strtolower(trim($row[9] ?? '')) === 'si' || strtolower(trim($row[9] ?? '')) === 'x';
-                $procedimiento = trim($row[10] ?? ''); // Columna K (si existe)
-
-                // Validar que tenga al menos código base y serie
-                if (empty($codigoBase) || empty($serie)) {
-                    continue;
-                }
-
-                // Determinar tipo y código completo
-                $tipo = '';
-                $codigo = '';
-
-                if (empty($subserie)) {
-                    // Si Subserie está vacía = Serie
-                    $tipo = 'Serie';
-                    $codigo = $serie; // Solo el número de serie
-                } else {
-                    // Si Subserie tiene valor = SubSerie
-                    $tipo = 'SubSerie';
-                    $codigo = $serie . '.' . $subserie; // Serie.Subserie
-                }
-
-                // Validar que tenga nombre
-                if (empty($nombre)) {
-                    continue;
-                }
-
-                // Determinar parent según el tipo y validar jerarquía
+                $tipo = null;
+                $codigo = null;
                 $parent = null;
                 $saltarFila = false;
 
-                switch ($tipo) {
-                    case 'Serie':
-                        // Resetear jerarquía cuando encontramos una nueva Serie
-                        $idSerie = null;
-                        $idSubSerie = null;
-                        $parent = null;
-                        break;
-                    case 'SubSerie':
-                        if ($idSerie === null) {
-                            $errores[] = "Fila " . ($index + 1) . ": SubSerie '{$codigo}' sin Serie padre";
-                            $saltarFila = true;
-                            break;
-                        }
-                        $parent = $idSerie;
-                        // Resetear SubSerie cuando encontramos una nueva (para que los siguientes TipoDocumento pertenezcan a esta SubSerie)
-                        $idSubSerie = null;
-                        break;
-                    case 'TipoDocumento':
-                        if ($idSubSerie === null) {
-                            $errores[] = "Fila " . ($index + 1) . ": TipoDocumento '{$codigo}' sin SubSerie padre";
-                            $saltarFila = true;
-                            break;
-                        }
-                        $parent = $idSubSerie;
-                        break;
-                    default:
-                        $errores[] = "Fila " . ($index + 1) . ": Tipo no válido '{$tipo}'";
+                // Validar que tenga nombre (columna D)
+                if (empty($columnaD)) {
+                    continue;
+                }
+
+                // Determinar tipo
+                if ($tieneA && $tieneB && !$tieneC) {
+                    // Serie: A y B tienen información, C está vacía
+                    $tipo = 'Serie';
+                    $codigo = $columnaB; // Código es columna B
+                    $parent = null; // Serie no tiene parent
+
+                    // Resetear jerarquía cuando encontramos una nueva Serie
+                    $idSerie = null;
+                    $idSubSerie = null;
+                } elseif ($tieneA && $tieneB && $tieneC) {
+                    // SubSerie: A, B y C tienen información
+                    $tipo = 'SubSerie';
+                    $codigo = $columnaC; // Código es solo columna C
+
+                    // Parent debe ser la Serie más reciente
+                    if ($idSerie === null) {
+                        $errores[] = "Fila " . ($index + 1) . ": SubSerie '{$codigo}' sin Serie padre";
                         $saltarFila = true;
-                        break;
+                    } else {
+                        $parent = $idSerie;
+                        // Resetear SubSerie cuando encontramos una nueva
+                        $idSubSerie = null;
+                    }
+                } elseif (!$tieneA && !$tieneB && !$tieneC) {
+                    // TipoDocumento: A, B y C están todas vacías
+                    $tipo = 'TipoDocumento';
+                    $codigo = null; // TipoDocumento no tiene código
+
+                    // Parent puede ser Serie o SubSerie más reciente
+                    if ($idSubSerie !== null) {
+                        $parent = $idSubSerie;
+                    } elseif ($idSerie !== null) {
+                        $parent = $idSerie;
+                    } else {
+                        $errores[] = "Fila " . ($index + 1) . ": TipoDocumento sin Serie o SubSerie padre";
+                        $saltarFila = true;
+                    }
+                } else {
+                    // Caso no válido: combinación no reconocida
+                    continue;
                 }
 
                 // Saltar esta fila si hay error de jerarquía
@@ -1223,15 +1197,31 @@ class ClasificacionDocumentalTRDController extends Controller
                 }
 
                 try {
-                    // Limpiar y truncar a_g y a_c a máximo 5 caracteres
-                    $agLimpio = !empty($ag) ? mb_substr(trim($ag), 0, 5) : null;
-                    $acLimpio = !empty($ac) ? mb_substr(trim($ac), 0, 5) : null;
+                    // Preparar datos según el tipo
+                    $agLimpio = null;
+                    $acLimpio = null;
+                    $ct = false;
+                    $e = false;
+                    $md = false;
+                    $s = false;
+                    $procedimiento = null;
+
+                    // Solo para SubSeries: procesar columnas E, F, G, H, I, J, K
+                    if ($tipo === 'SubSerie') {
+                        $agLimpio = !empty($columnaE) ? mb_substr(trim($columnaE), 0, 5) : null;
+                        $acLimpio = !empty($columnaF) ? mb_substr(trim($columnaF), 0, 5) : null;
+                        $ct = strtolower(trim($columnaG)) === 'si' || strtolower(trim($columnaG)) === 'x';
+                        $e = strtolower(trim($columnaH)) === 'si' || strtolower(trim($columnaH)) === 'x';
+                        $md = strtolower(trim($columnaI)) === 'si' || strtolower(trim($columnaI)) === 'x';
+                        $s = strtolower(trim($columnaJ)) === 'si' || strtolower(trim($columnaJ)) === 'x';
+                        $procedimiento = !empty($columnaK) ? $columnaK : null;
+                    }
 
                     // Crear elemento TRD
                     $elemento = ClasificacionDocumentalTRD::create([
                         'tipo' => $tipo,
                         'cod' => $codigo,
-                        'nom' => $nombre,
+                        'nom' => $columnaD,
                         'parent' => $parent,
                         'dependencia_id' => $dependenciaId,
                         'a_g' => $agLimpio,
@@ -1240,7 +1230,7 @@ class ClasificacionDocumentalTRDController extends Controller
                         'e' => $e,
                         'm_d' => $md,
                         's' => $s,
-                        'procedimiento' => !empty($procedimiento) ? $procedimiento : null,
+                        'procedimiento' => $procedimiento,
                         'estado' => true,
                         'user_register' => auth()->id(),
                         'version_id' => $versionId
@@ -1255,9 +1245,10 @@ class ClasificacionDocumentalTRDController extends Controller
                     } elseif ($tipo === 'SubSerie') {
                         $idSubSerie = $elemento->id;
                     }
-                    // TipoDocumento no actualiza referencias, mantiene la SubSerie actual
+                    // TipoDocumento no actualiza referencias, mantiene la Serie/SubSerie actual
                 } catch (\Exception $e) {
-                    $errores[] = "Fila " . ($index + 1) . ": Error al insertar '{$codigo}' - {$e->getMessage()}";
+                    $codigoDisplay = $codigo ?? 'sin código';
+                    $errores[] = "Fila " . ($index + 1) . ": Error al insertar {$tipo} '{$codigoDisplay}' - {$e->getMessage()}";
                 }
             }
 

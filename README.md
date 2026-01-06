@@ -3,7 +3,7 @@
 Aplicación gestora del proceso de gestión documental desarrollada en Laravel.
 
 **Versión**: 2.0  
-**Última actualización**: Julio 2025  
+**Última actualización**: Diciembre 2024  
 **Estado**: En desarrollo activo
 
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
@@ -17,6 +17,8 @@ OCOBO-BACK es una aplicación web desarrollada en Laravel que gestiona procesos 
 - **Autenticación y Autorización**: Sistema completo de autenticación con Sanctum y control de acceso basado en roles
 - **Gestión de Usuarios**: CRUD completo de usuarios con gestión de archivos (avatars, firmas)
 - **Control de Acceso**: Sistema de roles y permisos con Spatie Laravel-Permission
+- **Gestión de Cargos**: Sistema completo de asignación de cargos a usuarios con historial y estadísticas
+- **Gestión de Terceros**: CRUD de terceros con filtros y estadísticas
 - **Configuración del Sistema**: Módulos de configuración para división política, sedes, listas, etc.
 - **Gestión Documental**: Procesos de radicación y clasificación documental
 - **Clasificación Documental**: Sistema completo de TRD (Tabla de Retención Documental) con versiones y datos de prueba
@@ -33,6 +35,21 @@ OCOBO-BACK es una aplicación web desarrollada en Laravel que gestiona procesos 
 - **Logging Avanzado**: Sistema de logs detallado para debugging y monitoreo
 - **Datos de Prueba**: Seeders completos con datos de prueba para todos los módulos
 
+#### 📊 **Gestión**
+- **GestionTerceroController**: Gestión de terceros con estadísticas y filtros
+
+**Endpoints principales:**
+```
+# Terceros
+GET    /api/gestion/terceros                         # Listar terceros
+POST   /api/gestion/terceros                         # Crear tercero
+GET    /api/gestion/terceros/{id}                    # Obtener tercero
+PUT    /api/gestion/terceros/{id}                    # Actualizar tercero
+DELETE /api/gestion/terceros/{id}                    # Eliminar tercero
+GET    /api/gestion/terceros-estadistica             # Estadísticas de terceros
+GET    /api/gestion/terceros-filter                  # Filtrar terceros
+```
+
 ## 🏗️ Arquitectura del Proyecto
 
 ### Módulos Optimizados
@@ -44,31 +61,70 @@ OCOBO-BACK es una aplicación web desarrollada en Laravel que gestiona procesos 
 - **UserSessionController**: Control de sesiones de usuarios
 - **NotificationSettingsController**: Configuración de notificaciones
 - **UserSedeController**: Gestión de relación muchos a muchos entre usuarios y sedes
+- **UserCargoController**: Gestión de asignación de cargos a usuarios
 
 **Endpoints principales:**
 ```
-GET    /api/control-acceso/users                    # Listar usuarios
-POST   /api/control-acceso/users                    # Crear usuario
-GET    /api/control-acceso/users/{id}               # Obtener usuario
-PUT    /api/control-acceso/users/{id}               # Actualizar usuario
-DELETE /api/control-acceso/users/{id}               # Eliminar usuario
-GET    /api/control-acceso/users/stats/estadisticas # Estadísticas de usuarios
-PUT    /api/control-acceso/users/profile            # Actualizar perfil
-PUT    /api/control-acceso/users/password           # Cambiar contraseña
-POST   /api/control-acceso/users/activar-inactivar  # Activar/desactivar cuenta
+# Usuarios
+GET    /api/control-acceso/users                                    # Listar usuarios
+POST   /api/control-acceso/users                                    # Crear usuario
+GET    /api/control-acceso/users/{id}                               # Obtener usuario
+PUT    /api/control-acceso/users/{id}                               # Actualizar usuario
+DELETE /api/control-acceso/users/{id}                               # Eliminar usuario
+GET    /api/control-acceso/users/stats/estadisticas                 # Estadísticas de usuarios
+GET    /api/control-acceso/users/usuarios-con-cargos                 # Usuarios con cargos asignados
+GET    /api/control-acceso/users/usuarios-activos-con-oficina-dependencia # Usuarios activos con oficina y dependencia
+GET    /api/control-acceso/users/usuarios-con-cargos-activos        # Usuarios con cargos activos
+PUT    /api/control-acceso/user/profile-information                  # Actualizar información de perfil
+PUT    /api/control-acceso/user/changePassword                       # Cambiar contraseña
+POST   /api/control-acceso/user/activar-inactivar                   # Activar/desactivar cuenta
+
+# Roles y Permisos
+GET    /api/control-acceso/roles                                    # Listar roles
+POST   /api/control-acceso/roles                                    # Crear rol
+GET    /api/control-acceso/roles/{id}                               # Obtener rol
+PUT    /api/control-acceso/roles/{id}                               # Actualizar rol
+DELETE /api/control-acceso/roles/{id}                               # Eliminar rol
+GET    /api/control-acceso/roles-usuarios                           # Roles con usuarios asignados
+GET    /api/control-acceso/roles-y-permisos                         # Listar roles y permisos
+GET    /api/control-acceso/permisos                                 # Listar permisos
+
+# Sesiones de Usuario
+GET    /api/control-acceso/user/recent-devices                     # Dispositivos recientes del usuario autenticado
+GET    /api/control-acceso/users/{userId}/sessions                  # Sesiones de un usuario
+DELETE /api/control-acceso/user/sessions/{sessionId}                # Cerrar sesión específica
+
+# Configuración de Notificaciones
+GET    /api/control-acceso/users/notification-settings              # Configuración de notificaciones del usuario autenticado
+PUT    /api/control-acceso/users/notification-settings             # Actualizar configuración de notificaciones
+GET    /api/control-acceso/users/{userId}/notification-settings    # Configuración de notificaciones de un usuario
+PUT    /api/control-acceso/users/{userId}/notification-settings    # Actualizar configuración de notificaciones de un usuario
 
 # Gestión de ventanillas por usuario
-GET    /api/control-acceso/users-ventanillas/estadisticas  # Estadísticas de asignaciones
-GET    /api/control-acceso/users-ventanillas              # Listar asignaciones
-POST   /api/control-acceso/users-ventanillas              # Crear asignación
-PUT    /api/control-acceso/users-ventanillas/{id}         # Actualizar asignación
-DELETE /api/control-acceso/users-ventanillas/{id}         # Eliminar asignación
+GET    /api/control-acceso/users-ventanillas/estadisticas           # Estadísticas de asignaciones
+GET    /api/control-acceso/users-ventanillas                        # Listar asignaciones
+POST   /api/control-acceso/users-ventanillas                       # Crear asignación
+PUT    /api/control-acceso/users-ventanillas/{id}                   # Actualizar asignación
+DELETE /api/control-acceso/users-ventanillas/{id}                   # Eliminar asignación
 
 # Gestión de sedes por usuario
-GET    /api/control-acceso/users-sedes                   # Listar relaciones usuario-sede
-POST   /api/control-acceso/users-sedes                   # Crear relación
-PUT    /api/control-acceso/users-sedes/{id}              # Actualizar relación
-DELETE /api/control-acceso/users-sedes/{id}              # Eliminar relación
+GET    /api/control-acceso/user-sedes                               # Listar relaciones usuario-sede
+POST   /api/control-acceso/user-sedes                               # Crear relación
+GET    /api/control-acceso/user-sedes/{id}                          # Obtener relación
+PUT    /api/control-acceso/user-sedes/{id}                          # Actualizar relación
+DELETE /api/control-acceso/user-sedes/{id}                          # Eliminar relación
+GET    /api/control-acceso/users/{userId}/sedes                     # Sedes de un usuario
+GET    /api/control-acceso/sedes/{sedeId}/users                     # Usuarios de una sede
+
+# Gestión de Cargos de Usuarios
+GET    /api/control-acceso/user-cargos                              # Listar asignaciones de cargos
+POST   /api/control-acceso/user-cargos/asignar                      # Asignar cargo a usuario
+PUT    /api/control-acceso/user-cargos/finalizar/{asignacionId}     # Finalizar asignación de cargo
+GET    /api/control-acceso/user-cargos/usuario/{userId}/activo      # Cargo activo de un usuario
+GET    /api/control-acceso/user-cargos/usuario/{userId}/historial   # Historial de cargos de un usuario
+GET    /api/control-acceso/user-cargos/cargo/{cargoId}/usuarios     # Usuarios de un cargo
+GET    /api/control-acceso/user-cargos/estadisticas                # Estadísticas de asignaciones de cargos
+GET    /api/control-acceso/user-cargos/cargos-disponibles           # Cargos disponibles para asignar
 ```
 
 #### ⚙️ **Configuración**
@@ -84,53 +140,88 @@ DELETE /api/control-acceso/users-sedes/{id}              # Eliminar relación
 **Endpoints principales:**
 ```
 # División Política
-GET    /api/config/divipoli                         # Listar divisiones políticas
-POST   /api/config/divipoli                         # Crear división política
-GET    /api/config/divipoli/{id}                    # Obtener división política
-PUT    /api/config/divipoli/{id}                    # Actualizar división política
-DELETE /api/config/divipoli/{id}                    # Eliminar división política
-GET    /api/config/divipoli/estadisticas            # Estadísticas de división política
-GET    /api/config/divipoli/list/divi-poli-completa # Estructura jerárquica completa
-GET    /api/config/divipoli/list/paises             # Listar países
-GET    /api/config/divipoli/list/departamentos/{id} # Departamentos por país
-GET    /api/config/divipoli/list/municipios/{id}    # Municipios por departamento
+GET    /api/config/division-politica                                # Listar divisiones políticas
+POST   /api/config/division-politica                                # Crear división política
+GET    /api/config/division-politica/{id}                           # Obtener división política
+PUT    /api/config/division-politica/{id}                           # Actualizar división política
+DELETE /api/config/division-politica/{id}                           # Eliminar división política
+GET    /api/config/division-politica/estadisticas                   # Estadísticas de división política
+GET    /api/config/division-politica/{id}/recursivo                 # Cargar división política recursivamente
+GET    /api/config/division-politica/list/divi-poli-completa       # Estructura jerárquica completa
+GET    /api/config/division-politica/list/paises                    # Listar países
+GET    /api/config/division-politica/list/departamentos/{paisId}    # Departamentos por país
+GET    /api/config/division-politica/list/municipios/{departamentoId} # Municipios por departamento
+GET    /api/config/division-politica/list/por-tipo/{tipo}           # Listar por tipo (País, Departamento, Municipio)
 
 # Sedes
-GET    /api/config/sedes                            # Listar sedes
-POST   /api/config/sedes                            # Crear sede
-GET    /api/config/sedes/{id}                       # Obtener sede
-PUT    /api/config/sedes/{id}                       # Actualizar sede
-DELETE /api/config/sedes/{id}                       # Eliminar sede
-GET    /api/config/sedes-estadisticas               # Estadísticas de sedes
+GET    /api/config/sedes                                            # Listar sedes
+POST   /api/config/sedes                                            # Crear sede
+GET    /api/config/sedes/{id}                                       # Obtener sede
+PUT    /api/config/sedes/{id}                                       # Actualizar sede
+DELETE /api/config/sedes/{id}                                       # Eliminar sede
+GET    /api/config/sedes-estadisticas                               # Estadísticas de sedes
 
-# Listas
-GET    /api/config/listas                           # Listar listas maestras
-POST   /api/config/listas                           # Crear lista maestra
-GET    /api/config/listas/{id}                      # Obtener lista maestra
-PUT    /api/config/listas/{id}                      # Actualizar lista maestra
-DELETE /api/config/listas/{id}                      # Eliminar lista maestra
-GET    /api/config/listas-detalles                  # Detalles de listas
+# Listas Maestras
+GET    /api/config/listas                                           # Listar listas maestras
+POST   /api/config/listas                                           # Crear lista maestra
+GET    /api/config/listas/{id}                                       # Obtener lista maestra
+PUT    /api/config/listas/{id}                                       # Actualizar lista maestra
+DELETE /api/config/listas/{id}                                      # Eliminar lista maestra
+GET    /api/config/listas-con-detalle                               # Listas con sus detalles
+GET    /api/config/listas-cabeza                                    # Solo listas (cabezas) sin detalles
+GET    /api/config/listas-detalles/activas/{lista_id}               # Detalles activos de una lista
+
+# Detalles de Listas
+GET    /api/config/listas-detalles                                  # Listar detalles de listas
+POST   /api/config/listas-detalles                                 # Crear detalle de lista
+GET    /api/config/listas-detalles/{id}                             # Obtener detalle de lista
+PUT    /api/config/listas-detalles/{id}                             # Actualizar detalle de lista
+DELETE /api/config/listas-detalles/{id}                             # Eliminar detalle de lista
+GET    /api/config/listas-detalles/estadisticas                     # Estadísticas de detalles de listas
+
+# Servidores de Archivos
+GET    /api/config/servidores-archivos                              # Listar servidores de archivos
+POST   /api/config/servidores-archivos                             # Crear servidor de archivos
+GET    /api/config/servidores-archivos/{id}                        # Obtener servidor de archivos
+PUT    /api/config/servidores-archivos/{id}                        # Actualizar servidor de archivos
+DELETE /api/config/servidores-archivos/{id}                        # Eliminar servidor de archivos
+GET    /api/config/servidores-archivos/estadisticas                 # Estadísticas de servidores de archivos
 
 # Configuraciones varias (incluye información empresarial)
-GET    /api/config/config-varias                    # Configuraciones varias
-POST   /api/config/config-varias                    # Crear configuración
-PUT    /api/config/config-varias/{clave}            # Actualizar configuración
+GET    /api/config/config-varias                                    # Configuraciones varias
+POST   /api/config/config-varias                                    # Crear configuración
+PUT    /api/config/config-varias/{clave}                            # Actualizar configuración
 
 # Numeración unificada
-GET    /api/config/config-varias/numeracion-unificada # Obtener configuración de numeración unificada
-PUT    /api/config/config-varias/numeracion-unificada # Actualizar numeración unificada
+GET    /api/config/config-varias/numeracion-unificada               # Obtener configuración de numeración unificada
+PUT    /api/config/config-varias/numeracion-unificada               # Actualizar numeración unificada
 
 # Configuración de numeración de radicados
-GET    /api/config/config-num-radicado              # Configuración de numeración
-PUT    /api/config/config-num-radicado              # Actualizar numeración
+GET    /api/config/config-num-radicado                              # Configuración de numeración
+PUT    /api/config/config-num-radicado                              # Actualizar numeración
 
 # Ventanillas de configuración
-GET    /api/config/config-ventanillas/estadisticas  # Estadísticas de ventanillas
-GET    /api/config/config-ventanillas               # Listar ventanillas
-POST   /api/config/config-ventanillas               # Crear ventanilla
-GET    /api/config/config-ventanillas/{id}          # Obtener ventanilla
-PUT    /api/config/config-ventanillas/{id}          # Actualizar ventanilla
-DELETE /api/config/config-ventanillas/{id}          # Eliminar ventanilla
+GET    /api/config/config-ventanillas/estadisticas                  # Estadísticas de ventanillas
+GET    /api/config/config-ventanillas                               # Listar ventanillas
+POST   /api/config/config-ventanillas                               # Crear ventanilla
+GET    /api/config/config-ventanillas/{id}                          # Obtener ventanilla
+PUT    /api/config/config-ventanillas/{id}                          # Actualizar ventanilla
+DELETE /api/config/config-ventanillas/{id}                          # Eliminar ventanilla
+
+# Ventanillas dentro de Sedes
+GET    /api/config/sedes/{sedeId}/ventanillas                      # Listar ventanillas de una sede
+POST   /api/config/sedes/{sedeId}/ventanillas                      # Crear ventanilla en una sede
+GET    /api/config/sedes/{sedeId}/ventanillas/{id}                 # Obtener ventanilla de una sede
+PUT    /api/config/sedes/{sedeId}/ventanillas/{id}                 # Actualizar ventanilla de una sede
+DELETE /api/config/sedes/{sedeId}/ventanillas/{id}                 # Eliminar ventanilla de una sede
+
+# Permisos de Ventanillas (en módulo Config)
+POST   /api/config/ventanillas/{ventanilla}/permisos               # Asignar permisos a ventanilla
+GET    /api/config/usuarios/{usuario}/ventanillas                  # Ventanillas permitidas para un usuario
+
+# Tipos Documentales de Ventanillas (en módulo Config)
+POST   /api/config/ventanillas/{ventanilla}/tipos-documentales      # Configurar tipos documentales
+GET    /api/config/ventanillas/{ventanilla}/tipos-documentales      # Listar tipos documentales
 ```
 
 #### 🎯 **Calidad**
@@ -156,24 +247,27 @@ GET    /api/calidad/organigrama/oficinas            # Listar oficinas con cargos
 **Endpoints principales:**
 ```
 # TRD (Tabla de Retención Documental)
-GET    /api/clasifica-documental/trd                # Listar elementos TRD
-POST   /api/clasifica-documental/trd                # Crear elemento TRD
-GET    /api/clasifica-documental/trd/{id}           # Obtener elemento TRD
-PUT    /api/clasifica-documental/trd/{id}           # Actualizar elemento TRD
-DELETE /api/clasifica-documental/trd/{id}           # Eliminar elemento TRD
-POST   /api/clasifica-documental/trd/importar       # Importar TRD desde Excel
-GET    /api/clasifica-documental/trd/estadisticas/{dependenciaId} # Estadísticas por dependencia
-GET    /api/clasifica-documental/trd/dependencia/{dependenciaId}  # Listar por dependencia
+GET    /api/clasifica-documental/trd                                # Listar elementos TRD
+POST   /api/clasifica-documental/trd                                # Crear elemento TRD
+GET    /api/clasifica-documental/trd/{id}                           # Obtener elemento TRD
+PUT    /api/clasifica-documental/trd/{id}                           # Actualizar elemento TRD
+DELETE /api/clasifica-documental/trd/{id}                           # Eliminar elemento TRD
+GET    /api/clasifica-documental/trd/plantilla/descargar            # Descargar plantilla Excel para importar
+POST   /api/clasifica-documental/trd/import-trd                    # Importar TRD desde Excel
+GET    /api/clasifica-documental/trd/estadisticas/{dependenciaId}  # Estadísticas por dependencia
+GET    /api/clasifica-documental/trd/dependencia/{dependenciaId}   # Listar por dependencia
+GET    /api/clasifica-documental/trd/por-dependencia/{dependenciaId} # Clasificaciones por dependencia (estructura jerárquica)
 
 # Estadísticas avanzadas
 GET    /api/clasifica-documental/trd/estadisticas/totales          # Estadísticas totales del sistema
-GET    /api/clasifica-documental/trd/estadisticas/por-dependencias # Estadísticas detalladas por dependencias
-GET    /api/clasifica-documental/trd/estadisticas/comparativas     # Estadísticas comparativas entre dependencias
+GET    /api/clasifica-documental/trd/estadisticas/por-dependencias  # Estadísticas detalladas por dependencias
 
 # Versiones TRD
 GET    /api/clasifica-documental/trd-versiones                      # Listar versiones TRD
-POST   /api/clasifica-documental/trd-versiones                      # Crear nueva versión
+POST   /api/clasifica-documental/trd-versiones                     # Crear nueva versión
 GET    /api/clasifica-documental/trd-versiones/{id}                 # Obtener versión específica
+PUT    /api/clasifica-documental/trd-versiones/{id}                 # Actualizar versión
+DELETE /api/clasifica-documental/trd-versiones/{id}                # Eliminar versión
 POST   /api/clasifica-documental/trd-versiones/aprobar/{dependenciaId} # Aprobar versión
 GET    /api/clasifica-documental/trd-versiones/pendientes/aprobar   # Versiones pendientes por aprobar
 GET    /api/clasifica-documental/trd-versiones/estadisticas/{dependenciaId} # Estadísticas de versiones
@@ -189,44 +283,54 @@ GET    /api/clasifica-documental/trd-versiones/estadisticas/{dependenciaId} # Es
 **Endpoints principales:**
 ```
 # Ventanillas únicas
-GET    /api/ventanilla/sedes/{sedeId}/ventanillas   # Listar ventanillas por sede
-POST   /api/ventanilla/sedes/{sedeId}/ventanillas   # Crear ventanilla
-GET    /api/ventanilla/ventanillas/{id}             # Obtener ventanilla
-PUT    /api/ventanilla/ventanillas/{id}             # Actualizar ventanilla
-DELETE /api/ventanilla/ventanillas/{id}             # Eliminar ventanilla
+GET    /api/ventanilla/sedes/{sedeId}/ventanillas           # Listar ventanillas por sede
+POST   /api/ventanilla/sedes/{sedeId}/ventanillas           # Crear ventanilla
+GET    /api/ventanilla/sedes/{sedeId}/ventanillas/{id}      # Obtener ventanilla
+PUT    /api/ventanilla/sedes/{sedeId}/ventanillas/{id}      # Actualizar ventanilla
+DELETE /api/ventanilla/sedes/{sedeId}/ventanillas/{id}      # Eliminar ventanilla
 
 # Tipos documentales
-POST   /api/ventanilla/ventanillas/{id}/tipos-documentales    # Configurar tipos
-GET    /api/ventanilla/ventanillas/{id}/tipos-documentales    # Listar tipos
+POST   /api/ventanilla/ventanillas/{id}/tipos-documentales  # Configurar tipos documentales
+GET    /api/ventanilla/ventanillas/{id}/tipos-documentales  # Listar tipos documentales
 
 # Permisos
-POST   /api/ventanilla/ventanillas/{id}/permisos             # Asignar permisos
-GET    /api/ventanilla/ventanillas/{id}/usuarios-permitidos  # Listar usuarios permitidos
-DELETE /api/ventanilla/ventanillas/{id}/permisos             # Revocar permisos
-GET    /api/ventanilla/usuarios/{usuarioId}/ventanillas      # Ventanillas permitidas por usuario
+POST   /api/ventanilla/ventanillas/{ventanillaId}/permisos  # Asignar permisos
+GET    /api/ventanilla/ventanillas/{ventanillaId}/usuarios-permitidos # Listar usuarios permitidos
+DELETE /api/ventanilla/ventanillas/{ventanillaId}/permisos/{usuarioId} # Revocar permisos de un usuario
+GET    /api/ventanilla/usuarios/{usuarioId}/ventanillas-permitidas # Ventanillas permitidas por usuario
 
 # Radicaciones
 GET    /api/ventanilla/radica-recibida                      # Listar radicaciones
 POST   /api/ventanilla/radica-recibida                      # Crear radicación
 GET    /api/ventanilla/radica-recibida/{id}                 # Obtener radicación
-PUT    /api/ventanilla/radica-recibida/{id}                 # Actualizar radicación
+PUT    /api/ventanilla/radica-recibida/{id}                # Actualizar radicación
 DELETE /api/ventanilla/radica-recibida/{id}                 # Eliminar radicación
-GET    /api/ventanilla/radica-recibida-admin/listar         # Listado administrativo
+GET    /api/ventanilla/radica-recibida/estadisticas        # Estadísticas de radicaciones
+GET    /api/ventanilla/radica-recibida-admin/listar        # Listado administrativo
+PUT    /api/ventanilla/radica-recibida/{id}/update-asunto   # Actualizar asunto de radicación
+PUT    /api/ventanilla/radica-recibida/{id}/update-fechas   # Actualizar fechas (vencimiento y documento)
+PUT    /api/ventanilla/radica-recibida/{id}/update-clasificacion-documental # Actualizar clasificación documental
+POST   /api/ventanilla/radica-recibida/{id}/notificar      # Enviar notificación por correo electrónico
 
 # Archivos de radicaciones
-POST   /api/ventanilla/radica-recibida/{id}/upload          # Subir archivo
-GET    /api/ventanilla/radica-recibida/{id}/download        # Descargar archivo
-DELETE /api/ventanilla/radica-recibida/{id}/delete-file     # Eliminar archivo
-GET    /api/ventanilla/radica-recibida/{id}/file-info       # Información del archivo
-GET    /api/ventanilla/radica-recibida/{id}/historial       # Historial de eliminaciones
+POST   /api/ventanilla/radica-recibida/{id}/archivos/upload # Subir archivo principal
+POST   /api/ventanilla/radica-recibida/{id}/archivos/upload-adjuntos # Subir archivos adjuntos
+GET    /api/ventanilla/radica-recibida/{id}/archivos/download # Descargar archivo principal
+DELETE /api/ventanilla/radica-recibida/{id}/archivos/delete # Eliminar archivo principal
+GET    /api/ventanilla/radica-recibida/{id}/archivos/info   # Información del archivo principal
+GET    /api/ventanilla/radica-recibida/{id}/archivos/adjuntos/listar # Listar archivos adjuntos
+GET    /api/ventanilla/radica-recibida/{id}/archivos/adjuntos/descargar # Descargar archivo adjunto
+DELETE /api/ventanilla/radica-recibida/{id}/archivos/adjuntos/eliminar # Eliminar archivo adjunto
+GET    /api/ventanilla/radica-recibida/{id}/archivos/historial/archivos-eliminados # Historial de eliminaciones
 
 # Responsables
 GET    /api/ventanilla/responsables                         # Listar responsables
 POST   /api/ventanilla/responsables                         # Crear responsable
 GET    /api/ventanilla/responsables/{id}                    # Obtener responsable
 PUT    /api/ventanilla/responsables/{id}                    # Actualizar responsable
-DELETE /api/ventanilla/responsables/{id}                    # Eliminar responsable
-GET    /api/ventanilla/radica-recibida/{id}/responsables    # Responsables por radicación
+DELETE /api/ventanilla/responsables/{id}                   # Eliminar responsable
+GET    /api/ventanilla/radica-recibida/{radica_reci_id}/responsables # Responsables por radicación
+POST   /api/ventanilla/radica-recibida/{radica_reci_id}/responsables # Asignar responsable a radicación
 ```
 
 ## 🛠️ Tecnologías Utilizadas
@@ -537,7 +641,9 @@ app/
 │   │   ├── ControlAcceso/          # Controladores de control de acceso
 │   │   ├── Configuracion/          # Controladores de configuración
 │   │   ├── Calidad/                # Controladores de calidad
+│   │   ├── ClasificacionDocumental/ # Controladores de clasificación documental
 │   │   ├── VentanillaUnica/        # Controladores de ventanilla única
+│   │   ├── Gestion/                # Controladores de gestión
 │   │   └── ...
 │   ├── Requests/                   # Form Request classes
 │   └── Traits/                     # Traits compartidos (ApiResponseTrait)
@@ -545,7 +651,9 @@ app/
 │   ├── ControlAcceso/              # Modelos de control de acceso
 │   ├── Configuracion/              # Modelos de configuración
 │   ├── Calidad/                    # Modelos de calidad
+│   ├── ClasificacionDocumental/    # Modelos de clasificación documental
 │   ├── VentanillaUnica/            # Modelos de ventanilla única
+│   ├── Gestion/                     # Modelos de gestión
 │   └── ...
 ├── Helpers/                        # Helpers personalizados (ArchivoHelper)
 └── ...
@@ -572,6 +680,11 @@ app/
 - ✅ Optimización de validaciones de estado
 - ✅ Manejo mejorado de errores
 - ✅ Corrección de rutas para evitar conflictos (estadísticas en `/users/stats/estadisticas`)
+- ✅ Sistema completo de gestión de cargos de usuarios (UserCargoController)
+- ✅ Endpoints para usuarios con cargos, cargos activos y relaciones organizacionales
+- ✅ Gestión de sesiones de usuarios con control de dispositivos
+- ✅ Sistema de configuración de notificaciones por usuario
+- ✅ Endpoints de roles y permisos mejorados
 
 ### **Módulo Configuración**
 - ✅ Migración de `numeracion_unificada` de `config_sedes` a `config_varias`
@@ -582,16 +695,22 @@ app/
 - ✅ Validaciones mejoradas para archivos y configuraciones
 - ✅ Sistema de almacenamiento con múltiples discos
 - ✅ Endpoints específicos para numeración unificada con validaciones booleanas
+- ✅ Gestión completa de servidores de archivos con estadísticas
+- ✅ Endpoints mejorados de división política (recursivo, por tipo)
+- ✅ Gestión de listas maestras con detalles y estados activos
+- ✅ Ventanillas integradas dentro del módulo de configuración
 
 ### **Módulo Clasificación Documental**
 - ✅ Controladores completamente optimizados con ApiResponseTrait
 - ✅ Sistema de versiones TRD con estados y workflow de aprobación
 - ✅ Validaciones jerárquicas robustas con Form Requests
 - ✅ Importación masiva desde Excel con PhpSpreadsheet
+- ✅ Descarga de plantilla Excel para importación
 - ✅ Estadísticas avanzadas con análisis comparativo y métricas estadísticas
 - ✅ Modelos mejorados con scopes, relaciones y métodos de utilidad
 - ✅ Rutas organizadas y documentadas con prefijos lógicos
 - ✅ Sistema de estadísticas con rankings, medianas y desviaciones estándar
+- ✅ Endpoint para clasificaciones por dependencia en estructura jerárquica
 - ✅ **Datos de Prueba TRD**: Seeder completo con 8 registros (2 Series, 3 SubSeries, 3 Tipos de Documento)
 - ✅ **Estructura Jerárquica**: Datos organizados en jerarquía padre-hijo para pruebas completas
 
@@ -602,6 +721,20 @@ app/
 - ✅ Validaciones robustas para nodos del organigrama
 - ✅ Estadísticas detalladas del organigrama
 - ✅ Sistema de scopes para filtrado por tipo y nivel
+
+### **Módulo Ventanilla Única**
+- ✅ Gestión completa de radicaciones recibidas con estadísticas
+- ✅ Sistema de actualización parcial (asunto, fechas, clasificación documental)
+- ✅ Notificaciones por correo electrónico de radicaciones
+- ✅ Gestión de archivos principales y adjuntos
+- ✅ Historial de eliminaciones de archivos
+- ✅ Sistema de responsables por radicación
+- ✅ Endpoints mejorados de permisos y tipos documentales
+
+### **Módulo Gestión**
+- ✅ Gestión completa de terceros con CRUD
+- ✅ Sistema de filtrado avanzado de terceros
+- ✅ Estadísticas de terceros
 
 ## 🤝 Contribución
 

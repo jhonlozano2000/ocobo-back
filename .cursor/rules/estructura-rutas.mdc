@@ -1,0 +1,44 @@
+---
+alwaysApply: true
+---
+
+# Estructura de Rutas
+
+## Organización por módulos:
+
+- Cada módulo tiene su archivo en `routes/` (ej: `calidad.php`, `clasifica_documental.php`, `controlAcceso.php`)
+- Se registran en `RouteServiceProvider` con prefix `api/{modulo}`
+
+## Estructura estándar:
+
+```php
+Route::middleware('auth:sanctum')->group(function () {
+    Route::prefix('recurso')->name('modulo.recurso.')->group(function () {
+        // 1. Rutas específicas ANTES del resource
+        Route::get('/ruta-especifica', [Controller::class, 'metodo'])->name('ruta-especifica');
+        
+        // 2. Resource route DESPUÉS de las rutas específicas
+        Route::apiResource('', Controller::class)
+            ->parameters(['' => 'recurso'])
+            ->names([
+                'index' => 'index',
+                'store' => 'store',
+                'show' => 'show',
+                'update' => 'update',
+                'destroy' => 'destroy'
+            ])->except('create', 'edit');
+    });
+});
+```
+
+## Reglas críticas:
+
+1. **Orden de rutas**: SIEMPRE definir rutas específicas ANTES del `apiResource` para evitar conflictos donde Laravel interpreta `/recurso/estadisticas` como `/recurso/{id}`
+
+2. **Nomenclatura de nombres**: 
+   - Formato: `{modulo}.{recurso}.{accion}`
+   - Ejemplo: `calidad.organigrama.index`, `clasifica-documental.trd.importar`
+
+3. **Parámetros**: Usar `->parameters(['' => 'nombreRecurso'])` para nombres descriptivos (ej: `{trd}` en lugar de `{}`)
+
+4. **Middleware**: Todas las rutas API usan `auth:sanctum`. Rutas públicas van fuera del grupo de autenticación.
