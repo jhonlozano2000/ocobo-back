@@ -398,6 +398,123 @@ class UserSedeController extends Controller
     }
 
     /**
+     * Sincroniza las sedes asignadas a un usuario específico.
+     *
+     * Este método permite actualizar las sedes asignadas a un usuario, eliminando
+     * las asignaciones que no están en el array proporcionado y agregando las nuevas.
+     * Cada sede puede incluir información adicional como estado y observaciones.
+     *
+     * @param int $userId ID del usuario
+     * @param Request $request La solicitud HTTP con el array de sedes
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las sedes actualizadas
+     *
+     * @urlParam userId integer required El ID del usuario. Example: 1
+     * @bodyParam sedes array required Array de sedes a asignar. Example: [1, 2, 3]
+     * @bodyParam sedes.*.sede_id integer ID de la sede. Example: 1
+     * @bodyParam sedes.*.estado boolean Estado de la relación (opcional, por defecto true). Example: true
+     * @bodyParam sedes.*.observaciones string Observaciones sobre la asignación (opcional). Example: "Asignación principal"
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Sedes del usuario sincronizadas exitosamente",
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "nombre": "Sede Principal",
+     *       "codigo": "SEDE001",
+     *       "pivot": {
+     *         "estado": true,
+     *         "observaciones": "Asignación principal"
+     *       }
+     *     }
+     *   ]
+     * }
+     *
+     * @response 404 {
+     *   "status": false,
+     *   "message": "Usuario no encontrado"
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Error de validación",
+     *   "errors": {
+     *     "sedes": ["El campo sedes es obligatorio."]
+     *   }
+     * }
+     */
+    public function updateUserSedes($userId, Request $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            $user = User::findOrFail($userId);
+
+            // Validar que se envíe el array de sedes
+            $request->validate([
+                'sedes' => 'required|array',
+                'sedes.*' => 'nullable|integer|exists:config_sedes,id'
+            ], [
+                'sedes.required' => 'El campo sedes es obligatorio.',
+                'sedes.array' => 'El campo sedes debe ser un array.',
+                'sedes.*.integer' => 'Cada sede debe ser un ID válido.',
+                'sedes.*.exists' => 'Una o más sedes no existen.'
+            ]);
+
+            $sedesIds = $request->input('sedes', []);
+
+            // Si se envía un array de objetos con sede_id, extraer solo los IDs
+            if (!empty($sedesIds) && is_array($sedesIds[0] ?? null) && isset($sedesIds[0]['sede_id'])) {
+                $sedesIds = array_column($sedesIds, 'sede_id');
+            }
+
+            // Filtrar valores nulos y vacíos
+            $sedesIds = array_filter($sedesIds, function ($id) {
+                return !is_null($id) && $id !== '';
+            });
+
+            // Preparar datos para sincronización con información adicional
+            $syncData = [];
+            foreach ($sedesIds as $sedeId) {
+                $syncData[$sedeId] = [
+                    'estado' => true,
+                    'observaciones' => null
+                ];
+            }
+
+            // Si se envía información adicional por sede, procesarla
+            if ($request->has('sedes') && is_array($request->sedes)) {
+                foreach ($request->sedes as $sedeData) {
+                    if (isset($sedeData['sede_id']) && isset($syncData[$sedeData['sede_id']])) {
+                        if (isset($sedeData['estado'])) {
+                            $syncData[$sedeData['sede_id']]['estado'] = filter_var($sedeData['estado'], FILTER_VALIDATE_BOOLEAN);
+                        }
+                        if (isset($sedeData['observaciones'])) {
+                            $syncData[$sedeData['sede_id']]['observaciones'] = $sedeData['observaciones'];
+                        }
+                    }
+                }
+            }
+
+            // Sincronizar las sedes del usuario
+            $user->sedes()->sync($syncData);
+
+            DB::commit();
+
+            // Recargar las sedes del usuario
+            $sedes = $user->sedes()->get();
+
+            return $this->successResponse($sedes, 'Sedes del usuario sincronizadas exitosamente');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            return $this->errorResponse('Error de validación', $e->errors(), 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse('Error al sincronizar las sedes del usuario', $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Obtiene los usuarios asignados a una sede específica.
      *
      * Este método permite obtener todos los usuarios que están asignados a una sede,

@@ -135,6 +135,18 @@ GET    /api/control-acceso/users/usuarios-activos-con-oficina-dependencia # Usua
 GET    /api/control-acceso/users/usuarios-con-cargos-activos        # Usuarios con cargos activos
 PUT    /api/control-acceso/user/profile-information                  # Actualizar información de perfil
 
+# Endpoints específicos de usuario
+GET    /api/control-acceso/users/{id}/perfil-completo               # Perfil completo del usuario (datos, cargo, sedes, roles, división política)
+GET    /api/control-acceso/users/{id}/cargo                         # Cargo actual del usuario
+GET    /api/control-acceso/users/{id}/sedes                         # Sedes asignadas al usuario
+GET    /api/control-acceso/users/{id}/permisos                       # Roles y permisos detallados del usuario
+GET    /api/control-acceso/users/{id}/actividad                     # Timeline de actividades/auditoría
+GET    /api/control-acceso/users/{id}/historial                      # Historial completo de cambios
+GET    /api/control-acceso/users/{id}/historial-cargos              # Historial de cambios de cargo
+GET    /api/control-acceso/users/{id}/historial-sedes               # Historial de cambios de sedes
+GET    /api/control-acceso/users/{id}/historial-roles               # Historial de cambios de roles
+GET    /api/control-acceso/users/{id}/conexiones                    # Información de conexiones y sesiones
+
 # Endpoints de Debug (solo desarrollo)
 GET    /api/control-acceso/users/debug-relaciones                    # Debug de relaciones de usuarios
 GET    /api/control-acceso/users/debug-oficinas-cargos               # Debug de oficinas y cargos
@@ -1455,6 +1467,14 @@ routes/
 - ✅ Gestión de sesiones de usuarios con control de dispositivos
 - ✅ Sistema de configuración de notificaciones por usuario
 - ✅ Endpoints de roles y permisos mejorados
+- ✅ Endpoints específicos de usuario: perfil completo, cargo, sedes, permisos
+- ✅ Sistema de historial completo: cambios, cargos, sedes, roles
+- ✅ Timeline de actividades y auditoría de usuarios
+- ✅ Información detallada de conexiones y sesiones
+- ✅ Endpoints específicos de usuario: perfil completo, cargo, sedes, permisos
+- ✅ Sistema de historial completo: cambios, cargos, sedes, roles
+- ✅ Timeline de actividades y auditoría de usuarios
+- ✅ Información detallada de conexiones y sesiones
 
 ### **Módulo Configuración**
 - ✅ Migración de `numeracion_unificada` de `config_sedes` a `config_varias`

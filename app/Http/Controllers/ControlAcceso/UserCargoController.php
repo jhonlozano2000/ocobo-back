@@ -12,6 +12,7 @@ use App\Models\ControlAcceso\UserCargo;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class UserCargoController extends Controller
 {
@@ -20,8 +21,32 @@ class UserCargoController extends Controller
     /**
      * Lista las asignaciones de cargos con filtros opcionales.
      *
-     * @param ListUserCargosRequest $request
-     * @return JsonResponse
+     * Este método retorna un listado paginado de asignaciones de cargos a usuarios
+     * con opciones de filtrado por usuario, cargo, estado, fechas y ordenamiento.
+     * Incluye estadísticas generales y los filtros aplicados en la respuesta.
+     *
+     * @param ListUserCargosRequest $request La solicitud HTTP validada con parámetros de filtrado
+     * @return JsonResponse Respuesta JSON con el listado de asignaciones
+     *
+     * @queryParam user_id integer Filtrar por ID de usuario. Example: 1
+     * @queryParam cargo_id integer Filtrar por ID de cargo. Example: 5
+     * @queryParam estado boolean Filtrar por estado (true activos, false finalizados). Example: true
+     * @queryParam fecha_desde date Filtrar desde fecha de inicio. Example: "2024-01-01"
+     * @queryParam fecha_hasta date Filtrar hasta fecha de inicio. Example: "2024-12-31"
+     * @queryParam incluir_finalizados boolean Incluir asignaciones finalizadas. Example: false
+     * @queryParam sort_by string Campo para ordenar. Example: "fecha_inicio"
+     * @queryParam sort_order string Orden (asc/desc). Example: "desc"
+     * @queryParam per_page integer Número de elementos por página. Example: 15
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Lista de asignaciones de cargos obtenida exitosamente",
+     *   "data": {
+     *     "asignaciones": {...},
+     *     "estadisticas": {...},
+     *     "filtros_aplicados": {...}
+     *   }
+     * }
      */
     public function index(ListUserCargosRequest $request): JsonResponse
     {
@@ -98,17 +123,48 @@ class UserCargoController extends Controller
     /**
      * Asigna un cargo a un usuario.
      *
-     * @param AsignarCargoRequest $request
-     * @return JsonResponse
+     * Este método asigna un cargo específico a un usuario, finalizando automáticamente
+     * cualquier cargo activo previo del usuario. El proceso se ejecuta dentro de una
+     * transacción para garantizar la integridad de los datos.
+     *
+     * @param AsignarCargoRequest $request La solicitud HTTP validada con los datos de asignación
+     * @return JsonResponse Respuesta JSON con la asignación creada
+     *
+     * @bodyParam user_id integer required ID del usuario al que se asignará el cargo. Example: 1
+     * @bodyParam cargo_id integer required ID del cargo a asignar. Example: 5
+     * @bodyParam fecha_inicio date required Fecha de inicio de la asignación. Example: "2024-01-15"
+     * @bodyParam observaciones string Observaciones sobre la asignación. Example: "Asignación principal"
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Cargo asignado exitosamente",
+     *   "data": {
+     *     "asignacion": {...},
+     *     "usuario": {...},
+     *     "cargo": {...}
+     *   }
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Error en la asignación",
+     *   "error": "El elemento seleccionado no es un cargo válido"
+     * }
      */
     public function asignarCargo(AsignarCargoRequest $request): JsonResponse
     {
+
+        DB::beginTransaction();
+
         try {
-            $user = User::findOrFail($request->user_id);
-            $cargo = CalidadOrganigrama::findOrFail($request->cargo_id);
+            $validatedData = $request->validated();
+
+            $user = User::findOrFail($validatedData['user_id']);
+            $cargo = CalidadOrganigrama::findOrFail($validatedData['cargo_id']);
 
             // Verificar que es un cargo válido
             if (!$cargo->puedeAsignarUsuarios()) {
+                DB::rollBack();
                 return $this->errorResponse(
                     'Error en la asignación',
                     'El elemento seleccionado no es un cargo válido',
@@ -118,31 +174,22 @@ class UserCargoController extends Controller
 
             // Asignar el cargo
             $asignacion = $user->asignarCargo(
-                $request->cargo_id,
-                $request->fecha_inicio,
-                $request->observaciones
+                $validatedData['cargo_id'],
+                $validatedData['fecha_inicio'] ?? now()->format('Y-m-d'),
+                $validatedData['observaciones'] ?? null
             );
 
-            $data = [
-                'asignacion' => $asignacion->getDetalleCompleto(),
-                'usuario' => [
-                    'id' => $user->id,
-                    'nombres' => $user->nombres,
-                    'apellidos' => $user->apellidos,
-                    'email' => $user->email,
-                    'tiene_cargo_activo' => $user->tieneCargoActivo()
-                ],
-                'cargo' => [
-                    'id' => $cargo->id,
-                    'nombre' => $cargo->nom_organico,
-                    'codigo' => $cargo->cod_organico,
-                    'jerarquia' => $cargo->getJerarquiaCompleta(),
-                    'estadisticas' => $cargo->getEstadisticasAsignaciones()
-                ]
-            ];
+            DB::commit();
 
-            return $this->successResponse($data, 'Cargo asignado exitosamente');
+            // Recargar la asignación con las relaciones para obtener el detalle completo
+            $asignacion->load(['user', 'cargo']);
+
+            return $this->successResponse(
+                $asignacion->getDetalleCompleto(),
+                'Cargo asignado exitosamente'
+            );
         } catch (\Exception $e) {
+            DB::rollBack();
             return $this->errorResponse('Error al asignar el cargo', $e->getMessage(), 500);
         }
     }
@@ -150,16 +197,51 @@ class UserCargoController extends Controller
     /**
      * Finaliza la asignación de un cargo.
      *
-     * @param int $asignacionId
-     * @param FinalizarCargoRequest $request
-     * @return JsonResponse
+     * Este método finaliza una asignación de cargo activa, estableciendo la fecha
+     * de finalización y actualizando el estado. Solo permite finalizar cargos que
+     * sean diferentes al cargo activo actual del usuario. Si se intenta finalizar
+     * el cargo activo actual, se retorna un error. El proceso se ejecuta dentro de
+     * una transacción para garantizar la integridad de los datos.
+     *
+     * @param int $asignacionId ID de la asignación a finalizar
+     * @param FinalizarCargoRequest $request La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con la asignación finalizada
+     *
+     * @urlParam asignacionId integer required ID de la asignación. Example: 1
+     * @bodyParam fecha_fin date Fecha de finalización (por defecto hoy). Example: "2024-12-31"
+     * @bodyParam observaciones string Observaciones sobre la finalización. Example: "Finalización por cambio de cargo"
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Cargo finalizado exitosamente",
+     *   "data": {
+     *     "asignacion_finalizada": {...},
+     *     "usuario": {...}
+     *   }
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Error al finalizar",
+     *   "error": "La asignación del cargo ya está finalizada"
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Error al finalizar",
+     *   "error": "No se puede finalizar el cargo actual del usuario. Debe asignar un nuevo cargo primero o finalizar un cargo diferente."
+     * }
      */
     public function finalizarCargo(int $asignacionId, FinalizarCargoRequest $request): JsonResponse
     {
+        DB::beginTransaction();
+
         try {
             $asignacion = UserCargo::with(['user', 'cargo'])->findOrFail($asignacionId);
 
+            // Verificar si la asignación ya está finalizada
             if (!$asignacion->estaActivo()) {
+                DB::rollBack();
                 return $this->errorResponse(
                     'Error al finalizar',
                     'La asignación del cargo ya está finalizada',
@@ -167,7 +249,27 @@ class UserCargoController extends Controller
                 );
             }
 
+            // Obtener el cargo activo actual del usuario
+            $cargoActivoUsuario = $asignacion->user->obtenerCargoActivo();
+
+            // Verificar si el cargo que se intenta finalizar es el mismo que el cargo activo actual
+            if ($cargoActivoUsuario && $cargoActivoUsuario->id === $asignacion->id) {
+                DB::rollBack();
+                return $this->errorResponse(
+                    'Error al finalizar',
+                    'No se puede finalizar el cargo actual del usuario. Debe asignar un nuevo cargo primero o finalizar un cargo diferente.',
+                    422
+                );
+            }
+
+            // Si el cargo es diferente al cargo actual, proceder con la finalización
             $asignacion->finalizar($request->fecha_fin, $request->observaciones);
+
+            DB::commit();
+
+            // Recargar la asignación para obtener los datos actualizados
+            $asignacion->refresh();
+            $asignacion->load(['user', 'cargo']);
 
             $data = [
                 'asignacion_finalizada' => $asignacion->getDetalleCompleto(),
@@ -181,6 +283,7 @@ class UserCargoController extends Controller
 
             return $this->successResponse($data, 'Cargo finalizado exitosamente');
         } catch (\Exception $e) {
+            DB::rollBack();
             return $this->errorResponse('Error al finalizar el cargo', $e->getMessage(), 500);
         }
     }
@@ -188,8 +291,25 @@ class UserCargoController extends Controller
     /**
      * Obtiene el cargo activo de un usuario específico.
      *
-     * @param int $userId
-     * @return JsonResponse
+     * Este método retorna el cargo activo actual de un usuario, incluyendo información
+     * detallada del cargo, duración en días y datos del usuario. Si el usuario no
+     * tiene cargo activo, retorna null en el campo cargo_activo.
+     *
+     * @param int $userId ID del usuario
+     * @return JsonResponse Respuesta JSON con el cargo activo del usuario
+     *
+     * @urlParam userId integer required ID del usuario. Example: 1
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Cargo activo del usuario obtenido exitosamente",
+     *   "data": {
+     *     "usuario": {...},
+     *     "cargo_activo": {...},
+     *     "tiene_cargo_activo": true,
+     *     "duracion_actual_dias": 120
+     *   }
+     * }
      */
     public function cargoActivoUsuario(int $userId): JsonResponse
     {
@@ -232,10 +352,25 @@ class UserCargoController extends Controller
     }
 
     /**
-     * Obtiene el historial de cargos de un usuario.
+     * Obtiene el historial completo de cargos de un usuario.
      *
-     * @param int $userId
-     * @return JsonResponse
+     * Este método retorna todas las asignaciones de cargos que ha tenido un usuario,
+     * incluyendo asignaciones activas y finalizadas, con estadísticas del historial.
+     *
+     * @param int $userId ID del usuario
+     * @return JsonResponse Respuesta JSON con el historial de cargos
+     *
+     * @urlParam userId integer required ID del usuario. Example: 1
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Historial de cargos del usuario obtenido exitosamente",
+     *   "data": {
+     *     "usuario": {...},
+     *     "historial_cargos": [...],
+     *     "estadisticas": {...}
+     *   }
+     * }
      */
     public function historialUsuario(int $userId): JsonResponse
     {
@@ -270,9 +405,32 @@ class UserCargoController extends Controller
     /**
      * Obtiene los usuarios asignados a un cargo específico.
      *
-     * @param int $cargoId
-     * @param Request $request
-     * @return JsonResponse
+     * Este método retorna todos los usuarios que han sido asignados a un cargo,
+     * con opción de filtrar solo los activos. Incluye información del cargo y
+     * estadísticas de asignaciones.
+     *
+     * @param int $cargoId ID del cargo
+     * @param Request $request La solicitud HTTP con parámetros de filtrado
+     * @return JsonResponse Respuesta JSON con los usuarios del cargo
+     *
+     * @urlParam cargoId integer required ID del cargo. Example: 5
+     * @queryParam solo_activos boolean Filtrar solo usuarios activos (por defecto: true). Example: true
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Usuarios del cargo obtenidos exitosamente",
+     *   "data": {
+     *     "cargo": {...},
+     *     "usuarios_asignados": [...],
+     *     "resumen": {...}
+     *   }
+     * }
+     *
+     * @response 422 {
+     *   "status": false,
+     *   "message": "Error de consulta",
+     *   "error": "El elemento seleccionado no es un cargo válido"
+     * }
      */
     public function usuariosCargo(int $cargoId, Request $request): JsonResponse
     {
@@ -317,7 +475,21 @@ class UserCargoController extends Controller
     /**
      * Obtiene estadísticas generales de asignaciones de cargos.
      *
-     * @return JsonResponse
+     * Este método proporciona estadísticas detalladas sobre las asignaciones de cargos,
+     * incluyendo resumen general, distribución por tipo de organigrama y cargos con
+     * mayor rotación. Es útil para dashboards y reportes administrativos.
+     *
+     * @return JsonResponse Respuesta JSON con las estadísticas
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Estadísticas de asignaciones obtenidas exitosamente",
+     *   "data": {
+     *     "resumen_general": {...},
+     *     "por_tipo_organigrama": {...},
+     *     "top_cargos_mas_rotacion": [...]
+     *   }
+     * }
      */
     public function estadisticas(): JsonResponse
     {
@@ -386,8 +558,23 @@ class UserCargoController extends Controller
     /**
      * Lista todos los cargos disponibles para asignación.
      *
-     * @param Request $request
-     * @return JsonResponse
+     * Este método retorna todos los cargos que pueden ser asignados a usuarios,
+     * con opción de incluir o excluir cargos ya ocupados. Incluye información
+     * de jerarquía, disponibilidad y estadísticas de cada cargo.
+     *
+     * @param Request $request La solicitud HTTP con parámetros de filtrado
+     * @return JsonResponse Respuesta JSON con los cargos disponibles
+     *
+     * @queryParam incluir_ocupados boolean Incluir cargos ocupados (por defecto: false). Example: false
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Lista de cargos obtenida exitosamente",
+     *   "data": {
+     *     "cargos": [...],
+     *     "resumen": {...}
+     *   }
+     * }
      */
     public function cargosDisponibles(Request $request): JsonResponse
     {
@@ -428,6 +615,49 @@ class UserCargoController extends Controller
             return $this->successResponse($data, 'Lista de cargos obtenida exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener los cargos disponibles', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Obtiene una asignación de cargo específica por su ID.
+     *
+     * Este método permite obtener los detalles completos de una asignación de cargo
+     * específica, incluyendo información del usuario, cargo, fechas y estado.
+     *
+     * @param int $id ID de la asignación
+     * @return JsonResponse Respuesta JSON con la asignación
+     *
+     * @urlParam id integer required ID de la asignación. Example: 1
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Asignación encontrada exitosamente",
+     *   "data": {
+     *     "id": 1,
+     *     "usuario": {...},
+     *     "cargo": {...},
+     *     "periodo": {...},
+     *     "observaciones": "...",
+     *     "estado": true
+     *   }
+     * }
+     *
+     * @response 404 {
+     *   "status": false,
+     *   "message": "Asignación no encontrada"
+     * }
+     */
+    public function show($id): JsonResponse
+    {
+        try {
+            $asignacion = UserCargo::with(['user', 'cargo'])->findOrFail($id);
+
+            return $this->successResponse(
+                $asignacion->getDetalleCompleto(),
+                'Asignación encontrada exitosamente'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse('Asignación no encontrada', null, 404);
         }
     }
 }

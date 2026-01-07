@@ -9,27 +9,60 @@ alwaysApply: true
 - Cada módulo tiene su archivo en `routes/` (ej: `calidad.php`, `clasifica_documental.php`, `controlAcceso.php`)
 - Se registran en `RouteServiceProvider` con prefix `api/{modulo}`
 
-## Estructura estándar:
+## Estructura básica de archivo de rutas:
 
 ```php
+<?php
+
+use App\Http\Controllers\Modulo\RecursoController;
+use Illuminate\Support\Facades\Route;
+
+/**
+ * Rutas del módulo [Nombre del Módulo]
+ *
+ * Prefix aplicado desde RouteServiceProvider: /api/modulo
+ * Rutas finales: /api/modulo/recurso/*
+ */
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('recurso')->name('modulo.recurso.')->group(function () {
-        // 1. Rutas específicas ANTES del resource
-        Route::get('/ruta-especifica', [Controller::class, 'metodo'])->name('ruta-especifica');
-        
-        // 2. Resource route DESPUÉS de las rutas específicas
-        Route::apiResource('', Controller::class)
-            ->parameters(['' => 'recurso'])
-            ->names([
-                'index' => 'index',
-                'store' => 'store',
-                'show' => 'show',
-                'update' => 'update',
-                'destroy' => 'destroy'
-            ])->except('create', 'edit');
+        // Rutas específicas aquí
+        // Resource route al final
     });
 });
 ```
+
+## Orden de rutas (REGLA CRÍTICA):
+
+SIEMPRE seguir este orden:
+
+1. **Rutas específicas SIN parámetros** (más específicas primero)
+2. **Rutas específicas CON parámetros** (después de las sin parámetros)
+3. **Resource route AL FINAL**
+
+```php
+Route::prefix('recurso')->name('modulo.recurso.')->group(function () {
+    // ✅ 1. Rutas específicas SIN parámetros (más específicas primero)
+    Route::get('/estadisticas', [Controller::class, 'estadisticas'])->name('estadisticas');
+    Route::get('/estadisticas/totales', [Controller::class, 'estadisticasTotales'])->name('estadisticas.totales');
+    
+    // ✅ 2. Rutas específicas CON parámetros (después de las sin parámetros)
+    Route::get('/estadisticas/{id}', [Controller::class, 'estadistica'])->name('estadisticas.id');
+    Route::get('/por-dependencia/{dependenciaId}', [Controller::class, 'listarPorDependencia'])->name('por-dependencia');
+    
+    // ✅ 3. Resource route AL FINAL
+    Route::apiResource('', Controller::class)
+        ->parameters(['' => 'recurso'])
+        ->names([
+            'index' => 'index',
+            'store' => 'store',
+            'show' => 'show',
+            'update' => 'update',
+            'destroy' => 'destroy'
+        ])->except('create', 'edit');
+});
+```
+
+**Razón**: Laravel evalúa las rutas en orden. Si `apiResource` está primero, `/recurso/estadisticas` se interpreta como `/recurso/{id}`.
 
 ## Reglas críticas:
 
@@ -42,3 +75,40 @@ Route::middleware('auth:sanctum')->group(function () {
 3. **Parámetros**: Usar `->parameters(['' => 'nombreRecurso'])` para nombres descriptivos (ej: `{trd}` en lugar de `{}`)
 
 4. **Middleware**: Todas las rutas API usan `auth:sanctum`. Rutas públicas van fuera del grupo de autenticación.
+
+5. **Uso de prefix()**: Agrupar rutas relacionadas con `prefix()` y `name()` para mejor organización
+
+6. **Comentarios**: Usar comentarios para organizar secciones del archivo de rutas
+
+## Registro en RouteServiceProvider:
+
+TODOS los archivos de rutas deben registrarse en `RouteServiceProvider`:
+
+```php
+Route::middleware('api')
+    ->prefix('api/modulo')
+    ->group(base_path('routes/modulo.php'));
+```
+
+## Prefijos configurados:
+
+- `/api/control-acceso` - Control de acceso
+- `/api/config` - Configuración
+- `/api/calidad` - Calidad
+- `/api/clasifica-documental` - Clasificación documental
+- `/api/ventanilla` - Ventanilla única
+- `/api/gestion` - Gestión
+
+## Checklist para archivos de rutas:
+
+- [ ] Header con comentario descriptivo del módulo
+- [ ] Imports de todos los controladores necesarios
+- [ ] Middleware `auth:sanctum` aplicado
+- [ ] Rutas específicas definidas **ANTES** de `apiResource`
+- [ ] Rutas sin parámetros antes de rutas con parámetros
+- [ ] Uso de `prefix()` para agrupar rutas relacionadas
+- [ ] Uso de `name()` con formato `{modulo}.{recurso}.{accion}`
+- [ ] `apiResource` configurado con `parameters()`, `names()` y `except()`
+- [ ] Comentarios organizando secciones del archivo
+- [ ] Registrado en `RouteServiceProvider` con prefijo correcto
+- [ ] Nombres de rutas consistentes con el patrón del proyecto

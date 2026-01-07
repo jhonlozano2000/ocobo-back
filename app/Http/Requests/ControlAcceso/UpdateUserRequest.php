@@ -24,7 +24,11 @@ class UpdateUserRequest extends FormRequest
      */
     public function rules(): array
     {
-        $user = $this->route('user');
+        // Obtener el ID del usuario desde la ruta (puede ser 'user' o 'id' dependiendo de la configuración)
+        $userId = $this->route('user') ?? $this->route('id');
+        
+        // Si es un modelo, obtener el ID; si es un número, usarlo directamente
+        $userId = is_object($userId) ? $userId->id : $userId;
 
         return [
             'divi_poli_id' => [
@@ -37,7 +41,7 @@ class UpdateUserRequest extends FormRequest
                 'sometimes',
                 'string',
                 'max:20',
-                Rule::unique('users', 'num_docu')->ignore($user->id)
+                Rule::unique('users', 'num_docu')->ignore($userId)
             ],
 
             'nombres' => [
@@ -75,7 +79,7 @@ class UpdateUserRequest extends FormRequest
                 'string',
                 'email',
                 'max:70',
-                Rule::unique('users', 'email')->ignore($user->id)
+                Rule::unique('users', 'email')->ignore($userId)
             ],
 
             'password' => [

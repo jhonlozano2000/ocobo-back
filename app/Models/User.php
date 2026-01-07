@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\Configuracion\configVentanilla;
 use App\Models\Configuracion\ConfigSede;
+use App\Models\Configuracion\ConfigDiviPoli;
 use App\Models\ControlAcceso\UserNotificationSetting;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\ControlAcceso\UsersSession;
@@ -232,6 +233,16 @@ class User extends Authenticatable
     public function notificationSettings()
     {
         return $this->hasOne(UserNotificationSetting::class);
+    }
+
+    /**
+     * Obtiene la división política asociada al usuario.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function divisionPolitica()
+    {
+        return $this->belongsTo(ConfigDiviPoli::class, 'divi_poli_id');
     }
 
     /**

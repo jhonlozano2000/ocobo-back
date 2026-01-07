@@ -89,15 +89,39 @@ class AsignarCargoRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        // Si no hay datos en el input, intentar obtenerlos del contenido JSON
+        $input = $this->all();
+        
+        if (empty($input) && $this->getContent()) {
+            $jsonData = json_decode($this->getContent(), true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($jsonData)) {
+                $this->merge($jsonData);
+                $input = $jsonData;
+            }
+        }
+
+        // Convertir strings a enteros si es necesario
+        if (isset($input['user_id'])) {
+            $this->merge([
+                'user_id' => is_string($input['user_id']) ? (int) $input['user_id'] : $input['user_id']
+            ]);
+        }
+
+        if (isset($input['cargo_id'])) {
+            $this->merge([
+                'cargo_id' => is_string($input['cargo_id']) ? (int) $input['cargo_id'] : $input['cargo_id']
+            ]);
+        }
+
         // Establecer fecha de inicio por defecto si no se proporciona
-        if (!$this->has('fecha_inicio') || empty($this->fecha_inicio)) {
+        if (!isset($input['fecha_inicio']) || empty($input['fecha_inicio'])) {
             $this->merge([
                 'fecha_inicio' => now()->format('Y-m-d')
             ]);
         }
 
         // Establecer valor por defecto para finalizar cargo anterior
-        if (!$this->has('finalizar_cargo_anterior')) {
+        if (!isset($input['finalizar_cargo_anterior'])) {
             $this->merge([
                 'finalizar_cargo_anterior' => true
             ]);
@@ -136,5 +160,24 @@ class AsignarCargoRequest extends FormRequest
             // tengan el mismo cargo, ahora se permite que varios usuarios
             // compartan el mismo cargo simultáneamente.
         });
+    }
+
+    /**
+     * Handle a failed validation attempt.
+     *
+     * @param \Illuminate\Contracts\Validation\Validator $validator
+     * @return void
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
+    {
+        $response = response()->json([
+            'status'  => false,
+            'message' => 'Errores de validación.',
+            'errors'  => $validator->errors(),
+        ], 422);
+
+        throw new \Illuminate\Validation\ValidationException($validator, $response);
     }
 }

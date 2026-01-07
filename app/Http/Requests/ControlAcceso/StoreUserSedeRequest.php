@@ -80,4 +80,53 @@ class StoreUserSedeRequest extends FormRequest
             'observaciones' => 'observaciones'
         ];
     }
+
+    /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        // Si no hay datos en el input, intentar obtenerlos del contenido JSON
+        $input = $this->all();
+        
+        if (empty($input) && $this->getContent()) {
+            $jsonData = json_decode($this->getContent(), true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($jsonData)) {
+                $this->merge($jsonData);
+                $input = $jsonData;
+            }
+        }
+
+        // Convertir strings a enteros si es necesario
+        if (isset($input['user_id'])) {
+            $this->merge([
+                'user_id' => is_string($input['user_id']) ? (int) $input['user_id'] : $input['user_id']
+            ]);
+        }
+
+        if (isset($input['sede_id'])) {
+            $this->merge([
+                'sede_id' => is_string($input['sede_id']) ? (int) $input['sede_id'] : $input['sede_id']
+            ]);
+        }
+    }
+
+    /**
+     * Handle a failed validation attempt.
+     *
+     * @param \Illuminate\Contracts\Validation\Validator $validator
+     * @return void
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
+    {
+        $response = response()->json([
+            'status'  => false,
+            'message' => 'Errores de validación.',
+            'errors'  => $validator->errors(),
+        ], 422);
+
+        throw new \Illuminate\Validation\ValidationException($validator, $response);
+    }
 }

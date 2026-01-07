@@ -1,0 +1,250 @@
+---
+alwaysApply: true
+---
+
+# Características de Controladores
+
+## Estructura Básica
+
+TODOS los controladores deben:
+
+1. **Extender `Controller` base**
+2. **Usar `ApiResponseTrait`** para respuestas consistentes
+3. **Namespace correcto** según el módulo: `App\Http\Controllers\{Modulo}\`
+4. **Type hints** en parámetros y return types
+
+```php
+<?php
+
+namespace App\Http\Controllers\Modulo;
+
+use App\Http\Controllers\Controller;
+use App\Http\Traits\ApiResponseTrait;
+use App\Http\Requests\Modulo\StoreRecursoRequest;
+use App\Models\Modulo\Recurso;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+
+class RecursoController extends Controller
+{
+    use ApiResponseTrait;
+
+    // Métodos...
+}
+```
+
+## Métodos Estándar (CRUD + Estadísticas)
+
+Cada controlador de recursos debe implementar:
+
+- `index()` - Listar recursos (con paginación/filtros)
+- `store()` - Crear nuevo recurso
+- `show()` - Mostrar un recurso específico
+- `update()` - Actualizar un recurso
+- `destroy()` - Eliminar un recurso
+- `activos()` - Obtener registros activos
+- `estadisticas()` - Obtener estadísticas y métricas del recurso
+
+## Búsqueda de Modelos
+
+SIEMPRE usar `findOrFail($id)` para búsqueda con 404 automático:
+
+```php
+// ✅ CORRECTO
+public function update(UpdateRecursoRequest $request, $id)
+{
+    $recurso = Recurso::findOrFail($id);
+    // ...
+}
+
+// ❌ INCORRECTO (inyección de modelo puede causar problemas con validación)
+public function update(UpdateRecursoRequest $request, Recurso $recurso)
+{
+    // ...
+}
+```
+
+## Actualización de Datos
+
+SIEMPRE verificar datos vacíos y usar `fill()` + `save()`:
+
+```php
+// ✅ CORRECTO
+$validatedData = $request->validated();
+
+if (!empty($validatedData)) {
+    $model->fill($validatedData);
+    $model->save();
+}
+
+$model->refresh(); // Obtener datos actualizados
+
+// ❌ INCORRECTO
+$model->update($validatedData); // Sin verificación
+```
+
+## Manejo de Transacciones
+
+SIEMPRE usar transacciones para operaciones críticas:
+
+```php
+DB::beginTransaction();
+
+try {
+    // Operaciones
+    DB::commit();
+    return $this->successResponse($data, 'Operación exitosa');
+} catch (\Exception $e) {
+    DB::rollBack();
+    return $this->errorResponse('Error', $e->getMessage(), 500);
+}
+```
+
+## Procesamiento de Archivos
+
+SIEMPRE usar `ArchivoHelper` y manejar archivos de forma segura:
+
+```php
+// Guardar rutas antiguas antes de actualizar
+$oldAvatarPath = $user->avatar;
+
+// Procesar archivos
+$user->avatar = ArchivoHelper::guardarArchivo($request, 'avatar', 'avatars', $user->avatar);
+
+// Eliminar archivos antiguos SOLO después de commit exitoso
+DB::commit();
+
+if ($request->hasFile('avatar') && $oldAvatarPath) {
+    Storage::disk('avatars')->delete($oldAvatarPath);
+}
+```
+
+## Relaciones y Eager Loading
+
+SIEMPRE cargar relaciones necesarias para evitar N+1 queries:
+
+```php
+// ✅ CORRECTO
+$users = User::with('roles', 'cargo')->get();
+
+// ❌ INCORRECTO
+$users = User::all();
+foreach ($users as $user) {
+    $user->roles; // N+1 query
+}
+```
+
+## Documentación PHPDoc
+
+TODOS los métodos públicos deben tener PHPDoc completo:
+
+```php
+/**
+ * Obtiene un listado de usuarios del sistema.
+ *
+ * Este método retorna un listado paginado de usuarios con sus relaciones
+ * (roles, cargo, oficina, dependencia) según los filtros proporcionados.
+ *
+ * @param Request $request La solicitud HTTP con parámetros de filtrado
+ * @return JsonResponse Respuesta JSON con el listado de usuarios
+ *
+ * @queryParam search string Buscar por nombre, email o documento. Example: "Juan"
+ * @queryParam solo_activos boolean Filtrar solo usuarios activos. Example: true
+ * @queryParam per_page integer Número de elementos por página. Example: 15
+ *
+ * @response 200 {
+ *   "status": true,
+ *   "message": "Listado obtenido exitosamente",
+ *   "data": [...]
+ * }
+ */
+public function index(Request $request): JsonResponse
+```
+
+## Manejo de Errores
+
+SIEMPRE usar try-catch en operaciones que pueden fallar:
+
+```php
+try {
+    // Operación
+} catch (\Exception $e) {
+    DB::rollBack();
+
+    // Limpiar recursos en caso de error
+    if (isset($validatedData['avatar'])) {
+        Storage::disk('avatars')->delete($validatedData['avatar']);
+    }
+
+    return $this->errorResponse('Mensaje de error', $e->getMessage(), 500);
+}
+```
+
+## Respuestas API
+
+SIEMPRE usar `ApiResponseTrait` con códigos HTTP apropiados:
+
+- `200` - OK (operación exitosa)
+- `201` - Created (recurso creado)
+- `404` - Not Found (recurso no encontrado)
+- `422` - Validation Error (error de validación)
+- `500` - Server Error (error interno)
+
+```php
+// Éxito
+return $this->successResponse($data, 'Mensaje de éxito', 201);
+
+// Error
+return $this->errorResponse('Mensaje de error', $errorDetails, 500);
+```
+
+## Método estadisticas()
+
+TODOS los controladores principales deben implementar `estadisticas()`:
+
+```php
+/**
+ * Obtiene estadísticas del recurso.
+ *
+ * @return JsonResponse Respuesta JSON con las estadísticas
+ */
+public function estadisticas(): JsonResponse
+{
+    try {
+        $estadisticas = [
+            'total' => Recurso::count(),
+            'activos' => Recurso::where('estado', 1)->count(),
+            'inactivos' => Recurso::where('estado', 0)->count(),
+            // ... más métricas
+        ];
+
+        return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');
+    } catch (\Exception $e) {
+        return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
+    }
+}
+```
+
+## Checklist para Nuevos Controladores
+
+Al crear un nuevo controlador, verificar:
+
+- [ ] Extiende `Controller` base
+- [ ] Usa `ApiResponseTrait` para respuestas
+- [ ] Implementa métodos CRUD estándar (`index`, `store`, `show`, `update`, `destroy`)
+- [ ] Implementa método `estadisticas()`
+- [ ] Usa Form Requests para validación (`StoreRequest`, `UpdateRequest`)
+- [ ] Maneja transacciones DB correctamente (`beginTransaction`, `commit`, `rollBack`)
+- [ ] Tiene manejo de errores con try-catch
+- [ ] Retorna códigos HTTP apropiados (200, 201, 404, 422, 500)
+- [ ] Documenta métodos con PHPDoc completo
+- [ ] Usa `findOrFail($id)` para búsquedas
+- [ ] Verifica datos vacíos antes de actualizar
+- [ ] Usa `fill()` + `save()` para actualizaciones
+- [ ] Hace `refresh()` después de guardar
+- [ ] Carga relaciones con `with()` o `load()` para evitar N+1
+- [ ] Maneja archivos de forma segura con `ArchivoHelper`
+- [ ] Limpia recursos en caso de error
+- [ ] Sigue el patrón del proyecto
+- [ ] Implementa filtros y búsqueda cuando aplica
+- [ ] Aplica middleware de autenticación (`auth:sanctum`)

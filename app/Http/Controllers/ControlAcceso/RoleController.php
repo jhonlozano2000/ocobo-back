@@ -17,7 +17,203 @@ class RoleController extends Controller
 {
     use ApiResponseTrait;
 
+    /**
+     * Obtiene estadísticas detalladas del módulo de roles y permisos.
+     *
+     * Este método retorna estadísticas completas sobre roles, permisos y su distribución
+     * en el sistema, incluyendo totales, distribución de usuarios por roles, permisos
+     * más utilizados y análisis de asignaciones.
+     *
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las estadísticas
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Estadísticas de roles obtenidas exitosamente",
+     *   "data": {
+     *     "resumen_general": {
+     *       "total_roles": 5,
+     *       "total_permisos": 25,
+     *       "total_usuarios": 50,
+     *       "usuarios_con_roles": 45,
+     *       "usuarios_sin_roles": 5,
+     *       "roles_con_usuarios": 4,
+     *       "roles_sin_usuarios": 1
+     *     },
+     *     "distribucion_usuarios_por_rol": [
+     *       {
+     *         "rol_id": 1,
+     *         "rol_nombre": "Administrador",
+     *         "total_usuarios": 10,
+     *         "porcentaje": 22.22
+     *       }
+     *     ],
+     *     "top_roles_mas_utilizados": [
+     *       {
+     *         "rol_id": 1,
+     *         "rol_nombre": "Administrador",
+     *         "total_usuarios": 10
+     *       }
+     *     ],
+     *     "distribucion_permisos_por_rol": [
+     *       {
+     *         "rol_id": 1,
+     *         "rol_nombre": "Administrador",
+     *         "total_permisos": 25,
+     *         "porcentaje_permisos": 100.0
+     *       }
+     *     ],
+     *     "top_permisos_mas_asignados": [
+     *       {
+     *         "permiso_id": 1,
+     *         "permiso_nombre": "user.create",
+     *         "total_roles": 3,
+     *         "porcentaje": 60.0
+     *       }
+     *     ],
+     *     "roles_sin_permisos": 0,
+     *     "permisos_sin_roles": 2
+     *   }
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener las estadísticas",
+     *   "error": "Error message"
+     * }
+     */
+    public function estadisticas()
+    {
+        try {
+            // Resumen general
+            $totalRoles = Role::count();
+            $totalPermisos = Permission::count();
+            $totalUsuarios = User::count();
+            
+            $usuariosConRoles = DB::table('model_has_roles')
+                ->where('model_type', User::class)
+                ->distinct('model_id')
+                ->count('model_id');
+            
+            $usuariosSinRoles = $totalUsuarios - $usuariosConRoles;
+            
+            $rolesConUsuarios = DB::table('model_has_roles')
+                ->where('model_type', User::class)
+                ->distinct('role_id')
+                ->count('role_id');
+            
+            $rolesSinUsuarios = $totalRoles - $rolesConUsuarios;
 
+            // Distribución de usuarios por rol
+            $distribucionUsuarios = DB::table('model_has_roles')
+                ->where('model_type', User::class)
+                ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+                ->select('roles.id as rol_id', 'roles.name as rol_nombre', DB::raw('COUNT(*) as total_usuarios'))
+                ->groupBy('roles.id', 'roles.name')
+                ->orderByDesc('total_usuarios')
+                ->get()
+                ->map(function ($item) use ($usuariosConRoles) {
+                    return [
+                        'rol_id' => $item->rol_id,
+                        'rol_nombre' => $item->rol_nombre,
+                        'total_usuarios' => $item->total_usuarios,
+                        'porcentaje' => $usuariosConRoles > 0 
+                            ? round(($item->total_usuarios / $usuariosConRoles) * 100, 2) 
+                            : 0
+                    ];
+                });
+
+            // Top roles más utilizados
+            $topRoles = DB::table('model_has_roles')
+                ->where('model_type', User::class)
+                ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+                ->select('roles.id as rol_id', 'roles.name as rol_nombre', DB::raw('COUNT(*) as total_usuarios'))
+                ->groupBy('roles.id', 'roles.name')
+                ->orderByDesc('total_usuarios')
+                ->limit(10)
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'rol_id' => $item->rol_id,
+                        'rol_nombre' => $item->rol_nombre,
+                        'total_usuarios' => $item->total_usuarios
+                    ];
+                });
+
+            // Distribución de permisos por rol
+            $distribucionPermisos = DB::table('role_has_permissions')
+                ->join('roles', 'role_has_permissions.role_id', '=', 'roles.id')
+                ->select('roles.id as rol_id', 'roles.name as rol_nombre', DB::raw('COUNT(*) as total_permisos'))
+                ->groupBy('roles.id', 'roles.name')
+                ->orderByDesc('total_permisos')
+                ->get()
+                ->map(function ($item) use ($totalPermisos) {
+                    return [
+                        'rol_id' => $item->rol_id,
+                        'rol_nombre' => $item->rol_nombre,
+                        'total_permisos' => $item->total_permisos,
+                        'porcentaje_permisos' => $totalPermisos > 0 
+                            ? round(($item->total_permisos / $totalPermisos) * 100, 2) 
+                            : 0
+                    ];
+                });
+
+            // Top permisos más asignados a roles
+            $topPermisos = DB::table('role_has_permissions')
+                ->join('permissions', 'role_has_permissions.permission_id', '=', 'permissions.id')
+                ->select('permissions.id as permiso_id', 'permissions.name as permiso_nombre', DB::raw('COUNT(*) as total_roles'))
+                ->groupBy('permissions.id', 'permissions.name')
+                ->orderByDesc('total_roles')
+                ->limit(10)
+                ->get()
+                ->map(function ($item) use ($totalRoles) {
+                    return [
+                        'permiso_id' => $item->permiso_id,
+                        'permiso_nombre' => $item->permiso_nombre,
+                        'total_roles' => $item->total_roles,
+                        'porcentaje' => $totalRoles > 0 
+                            ? round(($item->total_roles / $totalRoles) * 100, 2) 
+                            : 0
+                    ];
+                });
+
+            // Roles sin permisos
+            $rolesSinPermisos = DB::table('roles')
+                ->leftJoin('role_has_permissions', 'roles.id', '=', 'role_has_permissions.role_id')
+                ->whereNull('role_has_permissions.role_id')
+                ->count();
+
+            // Permisos sin roles (no asignados a ningún rol)
+            $permisosSinRoles = DB::table('permissions')
+                ->leftJoin('role_has_permissions', 'permissions.id', '=', 'role_has_permissions.permission_id')
+                ->whereNull('role_has_permissions.permission_id')
+                ->count();
+
+            $estadisticas = [
+                'resumen_general' => [
+                    'total_roles' => $totalRoles,
+                    'total_permisos' => $totalPermisos,
+                    'total_usuarios' => $totalUsuarios,
+                    'usuarios_con_roles' => $usuariosConRoles,
+                    'usuarios_sin_roles' => $usuariosSinRoles,
+                    'roles_con_usuarios' => $rolesConUsuarios,
+                    'roles_sin_usuarios' => $rolesSinUsuarios,
+                    'porcentaje_usuarios_con_roles' => $totalUsuarios > 0 
+                        ? round(($usuariosConRoles / $totalUsuarios) * 100, 2) 
+                        : 0
+                ],
+                'distribucion_usuarios_por_rol' => $distribucionUsuarios,
+                'top_roles_mas_utilizados' => $topRoles,
+                'distribucion_permisos_por_rol' => $distribucionPermisos,
+                'top_permisos_mas_asignados' => $topPermisos,
+                'roles_sin_permisos' => $rolesSinPermisos,
+                'permisos_sin_roles' => $permisosSinRoles
+            ];
+
+            return $this->successResponse($estadisticas, 'Estadísticas de roles obtenidas exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
+        }
+    }
 
     /**
      * Obtiene un listado paginado de roles con opciones de filtrado y búsqueda.
