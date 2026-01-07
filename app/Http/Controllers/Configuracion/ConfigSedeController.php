@@ -333,6 +333,55 @@ class ConfigSedeController extends Controller
     }
 
     /**
+     * Obtiene un listado de todas las sedes activas del sistema.
+     *
+     * Este método retorna únicamente las sedes con estado activo (estado = 1).
+     * Es útil para formularios de selección y listados donde solo se necesitan
+     * las sedes disponibles para uso.
+     *
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de sedes activas
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Listado de sedes activas obtenido exitosamente",
+     *   "data": [
+     *     {
+     *       "id": 1,
+     *       "nombre": "Sede Principal",
+     *       "codigo": "SEDE001",
+     *       "direccion": "Calle 123 #45-67",
+     *       "telefono": "1234567",
+     *       "email": "sede@example.com",
+     *       "estado": 1,
+     *       "division_politica": {
+     *         "id": 1,
+     *         "nombre": "Bogotá D.C."
+     *       }
+     *     }
+     *   ]
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al obtener el listado de sedes activas",
+     *   "error": "Error message"
+     * }
+     */
+    public function sedesActivas()
+    {
+        try {
+            $sedes = ConfigSede::where('estado', 1)
+                ->with('divisionPolitica')
+                ->orderBy('nombre', 'asc')
+                ->get();
+
+            return $this->successResponse($sedes, 'Listado de sedes activas obtenido exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener el listado de sedes activas', $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Obtiene estadísticas de sedes del sistema.
      *
      * Este método proporciona estadísticas generales sobre las sedes del sistema,

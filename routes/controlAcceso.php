@@ -13,7 +13,7 @@ Route::middleware('auth:sanctum')->group(function () {
     /**
      * Usuarios - Rutas específicas PRIMERO para evitar conflictos con resource
      */
-    Route::get('/users/stats/estadisticas', [UserController::class, 'estadisticas']);
+    Route::get('/users/estadisticas', [UserController::class, 'estadisticas']);
     Route::get('/users/usuarios-con-cargos', [UserController::class, 'listarUsuariosConCargos']);
     Route::get('/users/usuarios-activos-con-oficina-dependencia', [UserController::class, 'usuariosActivosConOficinaYDependencia']);
     Route::get('/users/usuarios-con-cargos-activos', [UserController::class, 'usuariosConCargosActivos']);

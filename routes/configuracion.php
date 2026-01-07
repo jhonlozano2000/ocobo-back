@@ -75,6 +75,8 @@ Route::middleware('auth:sanctum')->group(function () {
      */
     // Ruta para estadísticas de sedes (debe ir antes del resource)
     Route::get('sedes-estadisticas', [ConfigSedeController::class, 'estadisticas'])->name('sedes.estadisticas');
+    // Ruta para obtener sedes activas (debe ir antes del resource)
+    Route::get('sedes-activas', [ConfigSedeController::class, 'sedesActivas'])->name('sedes.activas');
     Route::apiResource('sedes', ConfigSedeController::class)->except('create', 'edit');
 
     /**

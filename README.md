@@ -2,6 +2,12 @@
 
 Aplicación gestora del proceso de gestión documental desarrollada en Laravel.
 
+![Laravel](https://img.shields.io/badge/Laravel-10.x-FF2D20?style=flat-square&logo=laravel)
+![PHP](https://img.shields.io/badge/PHP-8.1+-777BB4?style=flat-square&logo=php)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+![Version](https://img.shields.io/badge/Version-2.0-blue?style=flat-square)
+![Status](https://img.shields.io/badge/Status-En%20Desarrollo-yellow?style=flat-square)
+
 **Versión**: 2.0  
 **Última actualización**: Diciembre 2024  
 **Estado**: En desarrollo activo
@@ -39,6 +45,8 @@ Aplicación gestora del proceso de gestión documental desarrollada en Laravel.
 - [Ejemplos de Integración](#-ejemplos-de-integración)
 - [FAQ](#-faq-preguntas-frecuentes)
 - [Changelog](#-changelog)
+- [Casos de Uso del Negocio](#-casos-de-uso-del-negocio)
+- [Guía de Desarrollo Local](#️-guía-de-desarrollo-local)
 - [Contribución](#-contribución)
 - [Roadmap](#️-roadmap)
 
@@ -509,6 +517,65 @@ php artisan serve
 - **`config/cors.php`**: Configuración CORS para API
 - **`config/logging.php`**: Configuración de logs
 
+### CORS (Cross-Origin Resource Sharing)
+
+El sistema está configurado para permitir solicitudes desde orígenes específicos:
+
+```php
+// config/cors.php
+'allowed_origins' => [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'https://tu-dominio.com'
+],
+
+'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+'allowed_headers' => ['Content-Type', 'Authorization', 'Accept'],
+```
+
+### Validaciones y Reglas de Negocio
+
+#### Validaciones Comunes
+
+**Usuarios:**
+- `nombres`, `apellidos`: Requeridos, máximo 70 caracteres
+- `email`: Requerido, formato válido, único, máximo 70 caracteres
+- `num_docu`: Requerido, único, máximo 20 caracteres
+- `password`: Requerido, mínimo 6 caracteres, debe coincidir con confirmación
+
+**Radicaciones:**
+- `asunto`: Máximo 300 caracteres
+- `clasifica_documen_id`: Requerido, debe existir
+- `tercero_id`: Requerido, debe existir
+- `num_folios`, `num_anexos`: Requeridos, enteros
+- `fecha_documento`: Formato fecha válido
+
+**Archivos:**
+- Tamaño máximo: Configurable (por defecto 10MB)
+- Tipos permitidos: PDF, DOC, DOCX, XLS, XLSX, imágenes
+- Validación de MIME type
+
+#### Reglas de Negocio Importantes
+
+1. **Usuarios:**
+   - Un usuario solo puede tener un cargo activo a la vez
+   - Los usuarios inactivos no pueden iniciar sesión
+   - El email debe ser único en el sistema
+
+2. **Cargos:**
+   - Un cargo no puede eliminarse si tiene usuarios asignados activos
+   - La fecha de fin debe ser posterior a la fecha de inicio
+
+3. **TRD:**
+   - La jerarquía debe ser válida (Serie > SubSerie > Tipo Documento)
+   - No se puede eliminar un elemento con hijos
+   - Solo puede haber una versión TEMP por dependencia
+
+4. **Radicaciones:**
+   - El número de radicado es único
+   - La fecha de vencimiento debe ser posterior a la fecha del documento
+   - Solo usuarios con permisos pueden asignar responsables
+
 ### Variables de Entorno Completas
 
 #### Aplicación
@@ -759,13 +826,83 @@ Authorization: Bearer {token}
 
 ### Respuestas Estándar
 
-Todas las respuestas siguen el formato:
+#### Respuesta Exitosa
+
+Todas las respuestas exitosas siguen el formato:
 
 ```json
 {
     "status": true,
     "message": "Mensaje descriptivo",
     "data": { ... }
+}
+```
+
+#### Respuesta de Error
+
+Las respuestas de error siguen el formato:
+
+```json
+{
+    "status": false,
+    "message": "Mensaje de error descriptivo",
+    "error": "Detalles adicionales del error (opcional)"
+}
+```
+
+#### Respuesta de Error de Validación (422)
+
+```json
+{
+    "status": false,
+    "message": "Errores de validación.",
+    "errors": {
+        "email": [
+            "El correo electrónico es obligatorio.",
+            "El formato del correo electrónico no es válido."
+        ],
+        "password": [
+            "La contraseña es obligatoria.",
+            "La contraseña debe tener al menos 6 caracteres."
+        ]
+    }
+}
+```
+
+#### Respuesta de Error de Autenticación (401)
+
+```json
+{
+    "status": false,
+    "message": "No autenticado. Por favor, inicia sesión."
+}
+```
+
+#### Respuesta de Error de Autorización (403)
+
+```json
+{
+    "status": false,
+    "message": "No tienes permisos para realizar esta acción."
+}
+```
+
+#### Respuesta de Recurso No Encontrado (404)
+
+```json
+{
+    "status": false,
+    "message": "El recurso solicitado no fue encontrado."
+}
+```
+
+#### Respuesta de Error del Servidor (500)
+
+```json
+{
+    "status": false,
+    "message": "Error interno del servidor. Por favor, contacta al administrador.",
+    "error": "Detalles técnicos del error (solo en desarrollo)"
 }
 ```
 
@@ -780,39 +917,243 @@ Todas las respuestas siguen el formato:
 - `422` - Validation Error (Error de validación)
 - `500` - Server Error (Error interno del servidor)
 
-### Parámetros de Query Comunes
+### Paginación
 
-Muchos endpoints soportan parámetros de query para filtrado y paginación:
+La mayoría de endpoints de listado soportan paginación automática:
+
+#### Parámetros de Paginación
 
 ```bash
-# Filtros comunes
-?search=texto                    # Búsqueda por texto
-?solo_activos=true               # Solo registros activos
-?incluir_cargos=true             # Incluir información de cargos
-?con_oficina=true                # Incluir información de oficina
-?page=1                          # Número de página
-?per_page=15                     # Registros por página
-?sort=nombre&order=asc           # Ordenamiento
+?page=1              # Número de página (por defecto: 1)
+?per_page=15          # Registros por página (por defecto: 15, máximo: 100)
 ```
+
+#### Respuesta Paginada
+
+```json
+{
+    "status": true,
+    "message": "Listado obtenido exitosamente",
+    "data": {
+        "current_page": 1,
+        "data": [...],
+        "first_page_url": "http://localhost:8000/api/endpoint?page=1",
+        "from": 1,
+        "last_page": 10,
+        "last_page_url": "http://localhost:8000/api/endpoint?page=10",
+        "links": [...],
+        "next_page_url": "http://localhost:8000/api/endpoint?page=2",
+        "path": "http://localhost:8000/api/endpoint",
+        "per_page": 15,
+        "prev_page_url": null,
+        "to": 15,
+        "total": 150
+    }
+}
+```
+
+### Búsqueda y Filtrado
+
+#### Parámetros de Búsqueda
+
+```bash
+# Búsqueda simple por texto
+?search=texto
+
+# Búsqueda en campos específicos
+?search_nombre=Juan
+?search_email=example@email.com
+
+# Filtros booleanos
+?solo_activos=true
+?incluir_cargos=true
+?con_oficina=true
+
+# Filtros por ID
+?dependencia_id=1
+?sede_id=2
+?usuario_id=3
+
+# Filtros por rango de fechas
+?fecha_desde=2024-01-01
+?fecha_hasta=2024-12-31
+
+# Filtros por estado
+?estado=1              # Activo
+?estado=0              # Inactivo
+```
+
+#### Ejemplos de Filtrado Combinado
+
+```bash
+# Usuarios activos con cargos, buscando "Juan"
+GET /api/control-acceso/users?solo_activos=true&incluir_cargos=true&search=Juan
+
+# Radicaciones de una fecha específica
+GET /api/ventanilla/radica-recibida?fecha_desde=2024-12-01&fecha_hasta=2024-12-31
+
+# Terceros activos con búsqueda
+GET /api/gestion/terceros?solo_activos=true&search=Empresa
+```
+
+### Ordenamiento
+
+#### Parámetros de Ordenamiento
+
+```bash
+# Ordenamiento simple
+?sort=nombre           # Ordenar por campo "nombre" (ascendente por defecto)
+?sort=nombre&order=asc    # Ordenar ascendente
+?sort=nombre&order=desc   # Ordenar descendente
+
+# Ordenamiento múltiple
+?sort=nombre,created_at&order=asc,desc
+```
+
+#### Campos Ordenables Comunes
+
+- `nombre`, `nombres`, `apellidos`
+- `email`
+- `created_at`, `updated_at`
+- `fecha_inicio`, `fecha_fin`
+- `estado`
+
+#### Ejemplos
+
+```bash
+# Ordenar usuarios por nombre ascendente
+GET /api/control-acceso/users?sort=nombres&order=asc
+
+# Ordenar radicaciones por fecha de creación descendente
+GET /api/ventanilla/radica-recibida?sort=created_at&order=desc
+```
+
+### Rate Limiting
+
+El sistema implementa rate limiting para proteger la API:
+
+- **Límite**: 60 requests por minuto por usuario/IP
+- **Headers de respuesta**:
+  ```
+  X-RateLimit-Limit: 60
+  X-RateLimit-Remaining: 59
+  X-RateLimit-Reset: 1701234567
+  ```
+
+#### Respuesta al Exceder el Límite (429)
+
+```json
+{
+    "status": false,
+    "message": "Demasiadas solicitudes. Por favor, intenta de nuevo más tarde."
+}
+```
+
+### Mejores Prácticas de Uso de API
+
+#### 1. Autenticación
+- Almacenar el token de forma segura
+- Renovar el token antes de que expire
+- Manejar errores 401 y reautenticar automáticamente
+
+#### 2. Manejo de Errores
+- Siempre verificar el campo `status` en la respuesta
+- Manejar códigos de estado HTTP apropiadamente
+- Mostrar mensajes de error amigables al usuario
+- Registrar errores para debugging
+
+#### 3. Paginación
+- Usar paginación para listados grandes
+- Implementar carga infinita o paginación en el frontend
+- No solicitar más de 100 registros por página
+
+#### 4. Caché
+- Cachear respuestas que no cambian frecuentemente
+- Invalidar caché cuando sea necesario
+- Usar ETags si están disponibles
+
+#### 5. Optimización de Requests
+- Usar filtros para reducir datos transferidos
+- Solicitar solo los campos necesarios
+- Usar `incluir_cargos`, `con_oficina` solo cuando sea necesario
+
+#### 6. Retry Logic
+- Implementar retry con backoff exponencial para errores 5xx
+- No hacer retry en errores 4xx (excepto 429 con delay apropiado)
+
+#### 7. Timeouts
+- Configurar timeouts apropiados (30-60 segundos)
+- Manejar timeouts gracefully
 
 ### Ejemplos de Uso
 
-#### Listar usuarios con filtros
+#### Listar usuarios con filtros y paginación
 ```bash
-GET /api/control-acceso/users?solo_activos=true&incluir_cargos=true&search=Juan
+GET /api/control-acceso/users?solo_activos=true&incluir_cargos=true&search=Juan&page=1&per_page=20&sort=nombres&order=asc
 ```
 
 #### Crear radicación con archivo
 ```bash
 POST /api/ventanilla/radica-recibida
 Content-Type: multipart/form-data
+Authorization: Bearer {token}
 
 {
     "asunto": "Solicitud de información",
     "fecha_documento": "2024-12-01",
     "ventanilla_id": 1,
+    "tercero_id": 5,
+    "clasifica_documen_id": 10,
     "archivo": [archivo]
 }
+```
+
+#### Ejemplo con cURL
+```bash
+curl -X GET "http://localhost:8000/api/control-acceso/users?solo_activos=true" \
+  -H "Authorization: Bearer {token}" \
+  -H "Accept: application/json"
+```
+
+#### Ejemplo con JavaScript (Fetch)
+```javascript
+const response = await fetch('http://localhost:8000/api/control-acceso/users', {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Accept': 'application/json',
+    'Content-Type': 'application/json'
+  }
+});
+
+const data = await response.json();
+if (data.status) {
+  console.log(data.data);
+} else {
+  console.error(data.message);
+}
+```
+
+#### Ejemplo con Python (Requests)
+```python
+import requests
+
+headers = {
+    'Authorization': f'Bearer {token}',
+    'Accept': 'application/json'
+}
+
+response = requests.get(
+    'http://localhost:8000/api/control-acceso/users',
+    headers=headers,
+    params={'solo_activos': True, 'page': 1}
+)
+
+data = response.json()
+if data['status']:
+    print(data['data'])
+else:
+    print(data['message'])
 ```
 
 ## 🛠️ Stack Tecnológico
@@ -950,6 +1291,9 @@ php artisan test --coverage
 
 # Ejecutar tests en modo verbose
 php artisan test -v
+
+# Ejecutar tests en paralelo
+php artisan test --parallel
 ```
 
 ### Tipos de Tests
@@ -968,12 +1312,59 @@ tests/
     └── ExampleTest.php
 ```
 
+### Testing de Endpoints
+
+```php
+// Ejemplo de test de endpoint
+public function test_can_list_users()
+{
+    $user = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+    
+    $response = $this->withHeader('Authorization', "Bearer $token")
+        ->getJson('/api/control-acceso/users');
+    
+    $response->assertStatus(200)
+        ->assertJson(['status' => true]);
+}
+```
+
+### Testing de Autenticación
+
+```php
+public function test_requires_authentication()
+{
+    $response = $this->getJson('/api/control-acceso/users');
+    
+    $response->assertStatus(401);
+}
+```
+
+### Testing de Validaciones
+
+```php
+public function test_validates_required_fields()
+{
+    $user = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+    
+    $response = $this->withHeader('Authorization', "Bearer $token")
+        ->postJson('/api/control-acceso/users', []);
+    
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['nombres', 'email', 'password']);
+}
+```
+
 ### Mejores Prácticas
 
 - Escribir tests antes de implementar nuevas funcionalidades (TDD)
 - Mantener cobertura de código alta (>80%)
 - Usar factories para datos de prueba
 - Limpiar base de datos después de cada test
+- Usar `RefreshDatabase` trait para tests de base de datos
+- Mockear servicios externos
+- Testear casos edge y errores
 
 ## 📁 Estructura del Proyecto
 
@@ -1280,6 +1671,198 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más det
 ## 📞 Soporte
 
 Para soporte técnico o preguntas sobre el proyecto, contactar al equipo de desarrollo.
+
+## 💼 Casos de Uso del Negocio
+
+### Escenario 1: Radicación de Documento
+
+**Flujo completo:**
+1. Usuario accede a la ventanilla única
+2. Crea una nueva radicación recibida
+3. Sube el archivo principal del documento
+4. Asigna responsables de la radicación
+5. El sistema envía notificaciones por correo
+6. Los responsables pueden ver y gestionar la radicación
+
+**Endpoints utilizados:**
+```
+POST /api/ventanilla/radica-recibida
+POST /api/ventanilla/radica-recibida/{id}/archivos/upload
+POST /api/ventanilla/radica-recibida/{id}/responsables
+POST /api/ventanilla/radica-recibida/{id}/notificar
+```
+
+### Escenario 2: Asignación de Cargo a Usuario
+
+**Flujo completo:**
+1. Administrador consulta cargos disponibles
+2. Selecciona un cargo y un usuario
+3. Asigna el cargo con fecha de inicio
+4. El sistema finaliza automáticamente el cargo anterior si existe
+5. El usuario queda con el nuevo cargo activo
+
+**Endpoints utilizados:**
+```
+GET /api/control-acceso/user-cargos/cargos-disponibles
+POST /api/control-acceso/user-cargos/asignar
+GET /api/control-acceso/user-cargos/usuario/{userId}/activo
+```
+
+### Escenario 3: Importación Masiva de TRD
+
+**Flujo completo:**
+1. Administrador descarga la plantilla Excel
+2. Llena la plantilla con los datos de TRD
+3. Sube el archivo para importación
+4. El sistema valida la estructura y datos
+5. Crea los elementos TRD en estado TEMP
+6. Administrador aprueba la versión
+7. La versión queda en estado ACTIVO
+
+**Endpoints utilizados:**
+```
+GET /api/clasifica-documental/trd/plantilla/descargar
+POST /api/clasifica-documental/trd/import-trd
+POST /api/clasifica-documental/trd-versiones/aprobar/{dependenciaId}
+```
+
+### Escenario 4: Gestión de Organigrama
+
+**Flujo completo:**
+1. Administrador crea la estructura organizacional
+2. Crea dependencias de nivel raíz
+3. Crea oficinas dentro de dependencias
+4. Crea cargos dentro de oficinas
+5. Asigna usuarios a los cargos
+6. Consulta estadísticas del organigrama
+
+**Endpoints utilizados:**
+```
+POST /api/calidad/organigrama
+GET /api/calidad/organigrama/dependencias
+GET /api/calidad/organigrama/oficinas
+GET /api/calidad/organigrama/estadisticas
+```
+
+### Escenario 5: Configuración del Sistema
+
+**Flujo completo:**
+1. Administrador configura información empresarial
+2. Configura numeración unificada
+3. Crea sedes y las asocia a división política
+4. Configura ventanillas por sede
+5. Asigna permisos de usuarios a ventanillas
+6. Configura tipos documentales permitidos
+
+**Endpoints utilizados:**
+```
+PUT /api/config/config-varias/{clave}
+PUT /api/config/config-varias/numeracion-unificada
+POST /api/config/sedes
+POST /api/config/sedes/{sedeId}/ventanillas
+POST /api/config/ventanillas/{ventanilla}/permisos
+```
+
+## 🛠️ Guía de Desarrollo Local
+
+### Configuración de IDE
+
+#### PHPStorm / IntelliJ IDEA
+
+**Extensiones recomendadas:**
+- Laravel Plugin
+- PHP Annotations
+- Database Navigator
+
+**Configuración:**
+- PHP Language Level: 8.1
+- Enable Laravel IDE Helper
+- Configure PHPUnit
+
+#### Visual Studio Code
+
+**Extensiones recomendadas:**
+- PHP Intelephense
+- Laravel Extension Pack
+- PHP Debug
+- Laravel Blade Snippets
+
+**Configuración (.vscode/settings.json):**
+```json
+{
+    "php.validate.executablePath": "C:/laragon/bin/php/php-8.1.10-Win32-vs16-x64/php.exe",
+    "php.suggest.basic": false,
+    "intelephense.files.maxSize": 5000000
+}
+```
+
+### Debugging
+
+#### Configuración de Xdebug
+
+**php.ini:**
+```ini
+[xdebug]
+zend_extension=xdebug
+xdebug.mode=debug
+xdebug.start_with_request=yes
+xdebug.client_host=127.0.0.1
+xdebug.client_port=9003
+```
+
+#### Debugging en PHPStorm
+
+1. Configurar PHP interpreter
+2. Crear servidor de debug
+3. Configurar breakpoints
+4. Iniciar listening para conexiones de debug
+
+#### Debugging en VSCode
+
+**launch.json:**
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Listen for Xdebug",
+            "type": "php",
+            "request": "launch",
+            "port": 9003
+        }
+    ]
+}
+```
+
+### Hot Reload
+
+Para desarrollo frontend con Vite:
+
+```bash
+npm run dev
+```
+
+Esto inicia el servidor de desarrollo con hot reload automático.
+
+### Comandos Útiles de Desarrollo
+
+```bash
+# Ver logs en tiempo real
+tail -f storage/logs/laravel.log
+
+# Limpiar todo y regenerar
+php artisan optimize:clear
+
+# Regenerar IDE helper
+php artisan ide-helper:generate
+php artisan ide-helper:models
+php artisan ide-helper:meta
+
+# Ver consultas SQL ejecutadas
+DB::enableQueryLog();
+// ... código ...
+dd(DB::getQueryLog());
+```
 
 ## 🗺️ Roadmap
 

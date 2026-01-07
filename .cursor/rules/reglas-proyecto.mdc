@@ -1,0 +1,212 @@
+# Reglas del Proyecto OCOBO-BACK
+
+## Estándares de Código
+
+- Seguir PSR-12 (PHP Coding Standards)
+- Usar Laravel Pint antes de commits
+- Indentación: 4 espacios (NO tabs)
+- Líneas: Máximo 120 caracteres
+- SIEMPRE usar type hints en parámetros y return types en métodos públicos
+
+## Estructura Modular
+
+El proyecto está organizado por módulos funcionales:
+- `app/Http/Controllers/{Modulo}/` - Controladores
+- `app/Http/Requests/{Modulo}/` - Form Requests
+- `app/Models/{Modulo}/` - Modelos
+- `database/seeders/{Modulo}/` - Seeders
+
+## Convenciones de Nomenclatura
+
+- Clases: PascalCase (UserController, StoreUserRequest)
+- Métodos: camelCase (getUser, createRadicacion)
+- Variables: camelCase ($userId, $configVarias)
+- Tablas BD: snake_case plural (users, config_varias)
+- Columnas BD: snake_case (num_radicado, fecha_documento)
+- Rutas: kebab-case (/api/control-acceso/users)
+
+## Arquitectura de Controladores
+
+TODOS los controladores deben:
+1. Extender Controller
+2. Usar ApiResponseTrait para respuestas estandarizadas
+3. Usar Form Requests para validaciones
+4. Usar transacciones de BD cuando sea necesario
+
+Ejemplo:
+```php
+use App\Http\Controllers\Controller;
+use App\Http\Traits\ApiResponseTrait;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+
+class UserController extends Controller
+{
+    use ApiResponseTrait;
+
+    public function store(StoreUserRequest $request): JsonResponse
+    {
+        try {
+            DB::beginTransaction();
+            // Lógica
+            DB::commit();
+            return $this->successResponse($user, 'Usuario creado exitosamente', 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse('Error al crear el usuario', $e->getMessage(), 500);
+        }
+    }
+}
+```
+
+## APIs y Respuestas
+
+TODAS las respuestas JSON deben usar ApiResponseTrait:
+- Éxito: `return $this->successResponse($data, 'Mensaje', 201);`
+- Error: `return $this->errorResponse('Mensaje', $error, 500);`
+
+Formato de respuesta:
+```json
+{
+    "status": true/false,
+    "message": "Mensaje descriptivo",
+    "data": { ... }
+}
+```
+
+Códigos HTTP: 200, 201, 400, 401, 403, 404, 422, 500
+
+## Base de Datos
+
+- SIEMPRE usar transacciones para operaciones críticas o múltiples tablas
+- SIEMPRE usar eager loading para evitar N+1 queries: `User::with('roles', 'cargo')->get()`
+- Usar select() para limitar columnas cuando sea necesario
+- Paginar listados grandes
+
+## Validaciones
+
+TODAS las validaciones deben estar en Form Request classes:
+- Ubicación: `app/Http/Requests/{Modulo}/`
+- Nombres: PascalCase con sufijo Request (StoreUserRequest.php)
+- Incluir métodos: authorize(), rules(), messages(), attributes()
+
+Reglas comunes:
+- Nombres: `required|string|max:70`
+- Email: `required|email|unique:table,column|max:70`
+- Contraseñas: `required|min:6|confirmed`
+- Fechas: `required|date|date_format:Y-m-d`
+- Archivos: `nullable|file|mimes:pdf,doc,docx|max:10240`
+
+## Rutas
+
+REGLA CRÍTICA: Rutas específicas ANTES de apiResource
+
+```php
+Route::middleware('auth:sanctum')->group(function () {
+    Route::prefix('recurso')->name('modulo.recurso.')->group(function () {
+        // Rutas específicas ANTES del resource
+        Route::get('/estadisticas', [Controller::class, 'estadisticas'])->name('estadisticas');
+        
+        // Resource route DESPUÉS
+        Route::apiResource('', Controller::class)
+            ->parameters(['' => 'recurso'])
+            ->names([...])
+            ->except('create', 'edit');
+    });
+});
+```
+
+Organización:
+- `routes/api.php` - Autenticación
+- `routes/controlAcceso.php` - Control de acceso
+- `routes/configuracion.php` - Configuración
+- `routes/calidad.php` - Calidad
+- `routes/clasifica_documental.php` - Clasificación documental
+- `routes/ventanilla.php` - Ventanilla única
+- `routes/gestion.php` - Gestión
+
+Prefijos configurados en RouteServiceProvider:
+- /api/control-acceso
+- /api/config
+- /api/calidad
+- /api/clasifica-documental
+- /api/ventanilla
+- /api/gestion
+
+## Documentación
+
+TODOS los métodos públicos deben tener PHPDoc completo con:
+- Descripción del método
+- @param para cada parámetro
+- @return con tipo de retorno
+- @queryParam para parámetros de consulta
+- @response con ejemplos de respuesta
+
+## Seguridad
+
+- TODAS las rutas protegidas deben usar `auth:sanctum`
+- SIEMPRE validar entrada con Form Requests
+- NUNCA confiar en datos del cliente
+- SIEMPRE usar Eloquent o Query Builder (parametrizado)
+- NUNCA concatenar strings para queries SQL
+- Validar tipo MIME y tamaño de archivos
+
+## Manejo de Errores
+
+SIEMPRE usar try-catch en métodos que:
+- Acceden a base de datos
+- Procesan archivos
+- Realizan operaciones que pueden fallar
+
+Siempre incluir DB::rollBack() en el catch si se inició una transacción.
+
+## Git y Commits
+
+Usar Conventional Commits:
+- `feat:` Nueva funcionalidad
+- `fix:` Corrección de bug
+- `docs:` Documentación
+- `style:` Formato de código
+- `refactor:` Refactorización
+- `test:` Tests
+- `chore:` Tareas de mantenimiento
+
+## Checklist para Nuevas Funcionalidades
+
+Al agregar nueva funcionalidad, verificar:
+- [ ] Controlador creado en el módulo correcto
+- [ ] Form Request creado para validaciones
+- [ ] Modelo creado con relaciones y scopes necesarios
+- [ ] Migración creada con timestamps apropiados
+- [ ] Rutas definidas en archivo de rutas del módulo
+- [ ] Rutas específicas ANTES de apiResource
+- [ ] Uso de ApiResponseTrait en controlador
+- [ ] Transacciones de BD cuando sea necesario
+- [ ] PHPDoc completo en métodos públicos
+- [ ] Eager loading en consultas
+- [ ] Manejo de errores con try-catch
+- [ ] Middleware de autenticación aplicado
+- [ ] Tests creados (si aplica)
+
+## Helpers Personalizados
+
+- ArchivoHelper: Para gestión de archivos (app/Helpers/ArchivoHelper.php)
+
+## Comandos Útiles
+
+```bash
+php artisan optimize:clear          # Limpiar cachés
+php artisan route:list              # Ver rutas
+php artisan pint                    # Aplicar PSR-12
+composer dump-autoload              # Regenerar autoloader
+php artisan migrate                 # Ejecutar migraciones
+php artisan db:seed                 # Ejecutar seeders
+php artisan test                    # Ejecutar tests
+```
+
+## Referencias
+
+- Laravel 10.x Documentation
+- PSR-12 Coding Standard
+- Spatie Laravel-Permission
+- Laravel Sanctum
