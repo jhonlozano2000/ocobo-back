@@ -55,7 +55,8 @@ class UserController extends Controller
      *       "avatar_url": "http://example.com/avatars/user.jpg",
      *       "firma_url": "http://example.com/firmas/user.jpg",
      *       "cargo": {
-     *         "id": 23,
+     *         "id": 5,
+     *         "cargo_id": 23,
      *         "nom_organico": "Gerente",
      *         "cod_organico": null,
      *         "tipo": "Cargo",
@@ -250,7 +251,8 @@ class UserController extends Controller
 
                         // Información del cargo
                         $userData['cargo'] = [
-                            'id' => $cargo->id,
+                            'id' => $user->cargoActivo->id, // ID de la tabla pivote users_cargos
+                            'cargo_id' => $cargo->id, // ID del organigrama
                             'nom_organico' => $cargo->nom_organico,
                             'cod_organico' => $cargo->cod_organico,
                             'tipo' => $cargo->tipo,
@@ -2050,7 +2052,8 @@ class UserController extends Controller
                 $cargo = $user->cargoActivo->cargo;
 
                 $userData['cargo'] = [
-                    'id' => $cargo->id,
+                    'id' => $user->cargoActivo->id, // ID de la tabla pivote users_cargos
+                    'cargo_id' => $cargo->id, // ID del organigrama
                     'nom_organico' => $cargo->nom_organico,
                     'cod_organico' => $cargo->cod_organico,
                     'tipo' => $cargo->tipo,
@@ -2991,7 +2994,8 @@ class UserController extends Controller
 
                 // Información del cargo
                 $data['cargo'] = [
-                    'id' => $cargo->id,
+                    'id' => $user->cargoActivo->id, // ID de la tabla pivote users_cargos
+                    'cargo_id' => $cargo->id, // ID del organigrama
                     'nom_organico' => $cargo->nom_organico,
                     'cod_organico' => $cargo->cod_organico,
                     'tipo' => $cargo->tipo,

@@ -148,7 +148,14 @@ class VentanillaRadicaReciResponsaController extends Controller
 
             // Crear cada responsable individualmente para obtener los IDs
             foreach ($responsables as $responsableData) {
-                $responsable = VentanillaRadicaReciResponsa::create($responsableData);
+                // Asegurar que los tipos de datos sean correctos
+                $data = [
+                    'radica_reci_id' => (int) $responsableData['radica_reci_id'],
+                    'users_cargos_id' => (int) $responsableData['users_cargos_id'],
+                    'custodio' => filter_var($responsableData['custodio'], FILTER_VALIDATE_BOOLEAN),
+                ];
+
+                $responsable = VentanillaRadicaReciResponsa::create($data);
                 $responsablesCreados[] = $responsable->load(['usuarioCargo', 'radicado']);
             }
 
