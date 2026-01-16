@@ -8,6 +8,30 @@ use App\Models\Configuracion\ConfigVarias;
 class UploadArchivoRequest extends FormRequest
 {
     /**
+     * Valores de configuración cacheados para evitar múltiples consultas.
+     *
+     * @var array|null
+     */
+    private static ?array $configCache = null;
+
+    /**
+     * Obtiene los valores de configuración (cacheados para evitar múltiples consultas).
+     *
+     * @return array
+     */
+    private function getConfigValues(): array
+    {
+        if (self::$configCache === null) {
+            self::$configCache = [
+                'maxSize' => ConfigVarias::getValor('max_tamano_archivo', 20480), // 20MB por defecto
+                'allowedExtensions' => ConfigVarias::getValor('tipos_archivos_permitidos', 'pdf,jpg,png,docx'),
+            ];
+        }
+
+        return self::$configCache;
+    }
+
+    /**
      * Determine if the user is authorized to make this request.
      *
      * @return bool
@@ -24,14 +48,14 @@ class UploadArchivoRequest extends FormRequest
      */
     public function rules(): array
     {
-        $maxSize = ConfigVarias::getValor('max_tamano_archivo', 20480); // 20MB por defecto
-        $allowedExtensions = explode(',', ConfigVarias::getValor('tipos_archivos_permitidos', 'pdf,jpg,png,docx'));
+        $config = $this->getConfigValues();
+        $allowedExtensions = explode(',', $config['allowedExtensions']);
 
         return [
             'archivo' => [
                 'required',
                 'file',
-                'max:' . $maxSize,
+                'max:' . $config['maxSize'],
                 'mimes:' . implode(',', $allowedExtensions)
             ]
         ];
@@ -44,14 +68,13 @@ class UploadArchivoRequest extends FormRequest
      */
     public function messages(): array
     {
-        $maxSize = ConfigVarias::getValor('max_tamano_archivo', 20480);
-        $allowedExtensions = ConfigVarias::getValor('tipos_archivos_permitidos', 'pdf,jpg,png,docx');
+        $config = $this->getConfigValues();
 
         return [
             'archivo.required' => 'El archivo es obligatorio.',
             'archivo.file' => 'El archivo debe ser un archivo válido.',
-            'archivo.max' => "El archivo no puede superar los {$maxSize} KB.",
-            'archivo.mimes' => "El archivo debe ser de tipo: {$allowedExtensions}."
+            'archivo.max' => "El archivo no puede superar los {$config['maxSize']} KB.",
+            'archivo.mimes' => "El archivo debe ser de tipo: {$config['allowedExtensions']}."
         ];
     }
 

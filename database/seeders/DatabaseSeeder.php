@@ -36,5 +36,7 @@ class DatabaseSeeder extends Seeder
         $this->call(TercerosSeed::class);
         $this->call(SedesSeeder::class);
         $this->call(TRDSeed::class);
+
+        $this->call(PermisosRadicarSeeder::class);
     }
 }

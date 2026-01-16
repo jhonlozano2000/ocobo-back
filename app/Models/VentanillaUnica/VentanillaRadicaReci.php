@@ -4,6 +4,7 @@ namespace App\Models\VentanillaUnica;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use App\Helpers\ArchivoHelper;
 
 class VentanillaRadicaReci extends Model
@@ -38,8 +39,8 @@ class VentanillaRadicaReci extends Model
         static::deleted(function ($radicado) {
             // Usar ArchivoHelper para eliminar el archivo si existe
             if ($radicado->archivo_digital) {
-            ArchivoHelper::eliminarArchivo($radicado->archivo_digital, 'radicaciones_recibidas');
-        }
+                ArchivoHelper::eliminarArchivo($radicado->archivo_digital, 'radicaciones_recibidas');
+            }
         });
     }
 
@@ -97,6 +98,116 @@ class VentanillaRadicaReci extends Model
     public function archivos()
     {
         return $this->hasMany(VentanillaRadicaReciArchivo::class, 'radicado_id');
+    }
+
+    /**
+     * Obtiene información completa de documentos relacionados (archivo principal y adicionales).
+     * Optimizado para usar relaciones ya cargadas con eager loading.
+     *
+     * @return array
+     */
+    public function getDocumentosRelacionados(): array
+    {
+        // Cachear usuario que subió archivo (se usa dos veces)
+        $usuarioSubio = $this->getInfoUsuarioSubio();
+
+        // Archivo principal
+        $archivoPrincipal = null;
+        if ($this->archivo_digital) {
+            $archivoPrincipal = $this->getInfoArchivo('archivo_digital', 'radicaciones_recibidas');
+            if ($archivoPrincipal && $usuarioSubio) {
+                $archivoPrincipal['subido_por'] = $usuarioSubio['nombre_completo'];
+            }
+        }
+
+        // Archivos adicionales (usar relación ya cargada si existe, sino cargar)
+        $archivosRelacion = $this->relationLoaded('archivos') ? $this->archivos : $this->archivos()->get();
+
+        // Pre-inicializar collection (optimización de memoria)
+        $archivosAdicionales = collect();
+
+        foreach ($archivosRelacion as $archivo) {
+            $info = $archivo->getInfoArchivo('archivo', 'radicaciones_recibidas');
+            if ($info) {
+                $info['fecha_subida'] = $archivo->created_at;
+                $archivosAdicionales->push($info);
+            }
+        }
+
+        // Calcular totales optimizado (evitar múltiples llamadas a count)
+        $countArchivosAdicionales = $archivosAdicionales->count();
+        $totalArchivos = ($archivoPrincipal ? 1 : 0) + $countArchivosAdicionales;
+        $tieneArchivosAdicionales = $countArchivosAdicionales > 0;
+
+        return [
+            'archivo_principal' => $archivoPrincipal,
+            'archivos_adicionales' => $archivosAdicionales,
+            'total_archivos' => $totalArchivos,
+            'tiene_archivo_principal' => $archivoPrincipal !== null,
+            'tiene_archivos_adicionales' => $tieneArchivosAdicionales,
+            'fecha_creacion' => $this->created_at,
+            'fecha_actualizacion' => $this->updated_at,
+            'usuario_subio_archivo' => $usuarioSubio,
+        ];
+    }
+
+    /**
+     * Obtiene información completa de responsables relacionados.
+     * Optimizado para usar relaciones ya cargadas con eager loading.
+     * Opcionalmente usa totales de la vista si están disponibles (para evitar recálculo).
+     *
+     * @param int|null $totalResponsablesDesdeVista Total desde la vista SQL (opcional, evita recálculo)
+     * @param int|null $totalCustodiosDesdeVista Total desde la vista SQL (opcional, evita recálculo)
+     * @return array
+     */
+    public function getResponsablesInfo(?int $totalResponsablesDesdeVista = null, ?int $totalCustodiosDesdeVista = null): array
+    {
+        // Usar relación ya cargada si existe, sino cargar
+        $responsablesRelacion = $this->relationLoaded('responsables') ? $this->responsables : $this->responsables()->with(['userCargo.user', 'userCargo.cargo'])->get();
+
+        // Pre-inicializar collection (optimización de memoria)
+        $responsablesInfo = collect();
+        $totalCustodios = 0;
+
+        foreach ($responsablesRelacion as $responsable) {
+            $info = $responsable->getInfoResponsable();
+            if ($info) {
+                $responsablesInfo->push($info);
+                // Solo contar si no tenemos el valor de la vista
+                if ($totalCustodiosDesdeVista === null && !empty($info['custodio']) && $info['custodio']) {
+                    $totalCustodios++;
+                }
+            }
+        }
+
+        // Usar totales de la vista si están disponibles (más eficiente)
+        // Evitar count() si ya tenemos el valor de la vista
+        $countResponsablesInfo = $responsablesInfo->count();
+        $totalResponsablesFinal = $totalResponsablesDesdeVista ?? $countResponsablesInfo;
+        $totalCustodiosFinal = $totalCustodiosDesdeVista ?? $totalCustodios;
+
+        return [
+            'responsables' => $responsablesInfo,
+            'total_responsables' => $totalResponsablesFinal,
+            'total_custodios' => $totalCustodiosFinal,
+        ];
+    }
+
+    /**
+     * Obtiene toda la información relacionada del radicado (documentos, responsables, usuarios).
+     * Opcionalmente acepta totales desde la vista para evitar recálculos.
+     *
+     * @param int|null $totalResponsablesDesdeVista Total desde la vista SQL (opcional)
+     * @param int|null $totalCustodiosDesdeVista Total desde la vista SQL (opcional)
+     * @return array
+     */
+    public function getInformacionCompleta(?int $totalResponsablesDesdeVista = null, ?int $totalCustodiosDesdeVista = null): array
+    {
+        return [
+            'documentos' => $this->getDocumentosRelacionados(),
+            'usuario_creo_radicado' => $this->getInfoUsuarioCrea(),
+            ...$this->getResponsablesInfo($totalResponsablesDesdeVista, $totalCustodiosDesdeVista),
+        ];
     }
 
     /**
@@ -160,7 +271,18 @@ class VentanillaRadicaReci extends Model
      */
     public function getUrlArchivoDigital()
     {
-        return ArchivoHelper::obtenerUrl($this->archivo_digital, 'radicaciones_recibidas');
+        return $this->getArchivoUrl('archivo_digital', 'radicaciones_recibidas');
+    }
+
+    /**
+     * Obtiene la URL de cualquier archivo usando ArchivoHelper.
+     * @param string $campo Nombre del atributo (ej: 'archivo_digital')
+     * @param string $disk Nombre del disco
+     * @return string|null
+     */
+    public function getArchivoUrl(string $campo, string $disk): ?string
+    {
+        return ArchivoHelper::obtenerUrl($this->{$campo} ?? null, $disk);
     }
 
     /**
@@ -177,9 +299,73 @@ class VentanillaRadicaReci extends Model
         return [
             'nombre' => basename($this->archivo_digital),
             'url' => $this->getUrlArchivoDigital(),
-            'tamaño' => \Storage::disk('radicaciones_recibidas')->size($this->archivo_digital),
-            'tipo' => \Storage::disk('radicaciones_recibidas')->mimeType($this->archivo_digital),
+            'tamaño' => Storage::disk('radicaciones_recibidas')->size($this->archivo_digital),
+            'tipo' => Storage::disk('radicaciones_recibidas')->mimeType($this->archivo_digital),
             'extension' => pathinfo($this->archivo_digital, PATHINFO_EXTENSION)
         ];
+    }
+
+    /**
+     * Obtiene información formateada del usuario que creó el radicado.
+     *
+     * @return array|null
+     */
+    public function getInfoUsuarioCrea(): ?array
+    {
+        if (!$this->usuarioCreaRadicado) {
+            return null;
+        }
+        return $this->usuarioCreaRadicado->getInfoUsuario();
+    }
+
+    /**
+     * Obtiene información formateada del usuario que subió el archivo.
+     *
+     * @return array|null
+     */
+    public function getInfoUsuarioSubio(): ?array
+    {
+        if (!$this->usuarioSubio) {
+            return null;
+        }
+        return $this->usuarioSubio->getInfoUsuario();
+    }
+
+    /**
+     * Obtiene información básica de un archivo (sin acceder al filesystem).
+     * Los metadatos del archivo (tamaño, tipo) se obtienen solo al descargar/ver detalles.
+     *
+     * @param string $campo Nombre del atributo del archivo
+     * @param string $disk Nombre del disco
+     * @param bool $incluirMetadatos Si es true, obtiene metadatos del filesystem (por defecto false)
+     * @return array|null
+     */
+    public function getInfoArchivo(string $campo, string $disk, bool $incluirMetadatos = false): ?array
+    {
+        $rutaArchivo = $this->{$campo} ?? null;
+        if (!$rutaArchivo) {
+            return null;
+        }
+
+        $info = [
+            'nombre' => basename($rutaArchivo),
+            'ruta' => $rutaArchivo,
+            'url' => $this->getArchivoUrl($campo, $disk),
+            'extension' => pathinfo($rutaArchivo, PATHINFO_EXTENSION),
+        ];
+
+        // Solo acceder al filesystem si se solicita explícitamente (para descarga/detalles)
+        if ($incluirMetadatos) {
+            try {
+                if (Storage::disk($disk)->exists($rutaArchivo)) {
+                    $info['tamaño'] = Storage::disk($disk)->size($rutaArchivo);
+                    $info['tipo'] = Storage::disk($disk)->mimeType($rutaArchivo);
+                }
+            } catch (\Exception $e) {
+                // Si hay error al obtener información del archivo, continuar sin esos datos
+            }
+        }
+
+        return $info;
     }
 }

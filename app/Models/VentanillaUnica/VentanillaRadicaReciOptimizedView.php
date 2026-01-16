@@ -10,7 +10,7 @@ class VentanillaRadicaReciOptimizedView extends Model
     /**
      * La tabla asociada con el modelo (vista).
      */
-    protected $table = 'ventanilla_radica_reci_optimized_view';
+    protected $table = 'ventanilla_radica_reci_view';
 
     /**
      * Indica si el modelo debe ser marcado con timestamps.
@@ -90,7 +90,7 @@ class VentanillaRadicaReciOptimizedView extends Model
 
         return $query->where(function ($q) use ($search) {
             $q->where('num_radicado', 'like', "%{$search}%")
-              ->orWhere('asunto', 'like', "%{$search}%");
+                ->orWhere('asunto', 'like', "%{$search}%");
         });
     }
 
@@ -172,7 +172,7 @@ class VentanillaRadicaReciOptimizedView extends Model
     public function scopeVencidos(Builder $query): Builder
     {
         return $query->whereNotNull('fec_venci')
-                    ->where('fec_venci', '<', now());
+            ->where('fec_venci', '<', now());
     }
 
     /**
@@ -181,7 +181,7 @@ class VentanillaRadicaReciOptimizedView extends Model
     public function scopeProximosAVencer(Builder $query, int $dias = 7): Builder
     {
         return $query->whereNotNull('fec_venci')
-                    ->whereBetween('fec_venci', [now(), now()->addDays($dias)]);
+            ->whereBetween('fec_venci', [now(), now()->addDays($dias)]);
     }
 
     /**
@@ -190,19 +190,19 @@ class VentanillaRadicaReciOptimizedView extends Model
     public function getClasificacionJerarquiaCompletaAttribute(): string
     {
         $jerarquia = [];
-        
+
         if ($this->clasificacion_grandparent_nom) {
             $jerarquia[] = $this->clasificacion_grandparent_cod . ' - ' . $this->clasificacion_grandparent_nom;
         }
-        
+
         if ($this->clasificacion_parent_nom) {
             $jerarquia[] = $this->clasificacion_parent_cod . ' - ' . $this->clasificacion_parent_nom;
         }
-        
+
         if ($this->clasificacion_nom) {
             $jerarquia[] = $this->clasificacion_cod . ' - ' . $this->clasificacion_nom;
         }
-        
+
         return implode(' > ', $jerarquia);
     }
 
@@ -258,7 +258,7 @@ class VentanillaRadicaReciOptimizedView extends Model
         if (empty($this->archivos_nombres)) {
             return [];
         }
-        
+
         return array_filter(explode(', ', $this->archivos_nombres));
     }
 

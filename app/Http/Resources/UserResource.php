@@ -85,7 +85,7 @@ class UserResource extends JsonResource
             'firma_url'     => $this->firma_url,
             'avatar_url'    => $this->avatar_url,
             'roles'         => $this->getRoleNames(),
-            'permissions'   => $this->getAllPermissions()->pluck('name')->toArray(),
+            'permissions'   => $this->getAllPermissions()->sortBy('name')->pluck('name')->values()->toArray(),
             'cargo'         => $cargo,
             'oficina'       => $oficina,
             'dependencia'   => $dependencia,

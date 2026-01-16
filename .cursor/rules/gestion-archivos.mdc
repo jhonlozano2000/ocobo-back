@@ -33,3 +33,31 @@ Siempre usar `ArchivoHelper` para gestionar archivos en el proyecto.
   $diskConfig = config("filesystems.disks.temp_files");
   $rutaCompleta = $diskConfig['root'] . '/' . $rutaArchivo;
   ```
+
+## Método getArchivoUrl en Modelos
+
+**TODOS los modelos que manejen archivos** deben implementar el método genérico `getArchivoUrl()`:
+
+```php
+use App\Helpers\ArchivoHelper;
+
+/**
+ * Obtiene la URL de cualquier archivo usando ArchivoHelper.
+ * @param string $campo Nombre del atributo (ej: 'archivo', 'archivo_digital', 'avatar')
+ * @param string $disk Nombre del disco
+ * @return string|null
+ */
+public function getArchivoUrl(string $campo, string $disk): ?string
+{
+    return ArchivoHelper::obtenerUrl($this->{$campo} ?? null, $disk);
+}
+```
+
+**Ejemplos de uso en controladores:**
+- En lugar de: `ArchivoHelper::obtenerUrl($archivo->archivo, 'radicaciones_recibidas')`
+- Usar: `$archivo->getArchivoUrl('archivo', 'radicaciones_recibidas')`
+
+**Beneficios:**
+- Consistencia en todos los modelos
+- Código más limpio y mantenible
+- Facilita la reutilización del patrón

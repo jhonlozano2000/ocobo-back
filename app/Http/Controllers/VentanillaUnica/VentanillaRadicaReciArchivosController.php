@@ -89,26 +89,33 @@ class VentanillaRadicaReciArchivosController extends Controller
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
 
+            // Obtener archivo una sola vez (optimización)
+            $archivo = $request->file('archivo');
+            
             // Usar ArchivoHelper para guardar el archivo
             $archivoActual = $radicado->archivo_digital;
             $nuevoArchivo = ArchivoHelper::guardarArchivo($request, 'archivo', 'radicaciones_recibidas', $archivoActual);
 
-            // Guardar quién subió el archivo (si hay usuario autenticado)
-            $usuario = Auth::check() ? Auth::user() : null;
+            // Guardar quién subió el archivo (Auth::user() retorna null si no está autenticado)
+            $usuario = Auth::user();
 
             $radicado->update([
                 'archivo_digital' => $nuevoArchivo,
-                'uploaded_by' => $usuario ? $usuario->id : null,
+                'uploaded_by' => $usuario?->id,
             ]);
 
             DB::commit();
 
-            $archivo = $request->file('archivo');
+            // Cachear nombre completo del usuario si existe (optimización)
+            $nombreUsuario = $usuario 
+                ? trim($usuario->nombres . ' ' . $usuario->apellidos) 
+                : 'No se registró usuario';
+
             $fileUrl = ArchivoHelper::obtenerUrl($nuevoArchivo, 'radicaciones_recibidas');
 
             return $this->successResponse([
                 'path' => $nuevoArchivo,
-                'uploaded_by' => $usuario ? $usuario->nombres . ' ' . $usuario->apellidos : 'No se registró usuario',
+                'uploaded_by' => $nombreUsuario,
                 'file_size' => $archivo->getSize(),
                 'file_type' => $archivo->getMimeType(),
                 'file_url' => $fileUrl

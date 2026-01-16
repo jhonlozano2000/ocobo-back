@@ -87,6 +87,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Obtiene información formateada del usuario para respuestas API.
+     *
+     * @return array
+     */
+    public function getInfoUsuario(): array
+    {
+        return [
+            'id' => $this->id,
+            'nombres' => $this->nombres,
+            'apellidos' => $this->apellidos,
+            'nombre_completo' => trim($this->nombres . ' ' . $this->apellidos),
+            'email' => $this->email ?? null,
+        ];
+    }
+
+    /**
      * Relación con los cargos históricos del usuario a través del modelo UserCargo.
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany

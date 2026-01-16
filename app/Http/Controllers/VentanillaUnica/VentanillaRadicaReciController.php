@@ -10,13 +10,14 @@ use App\Models\Configuracion\ConfigVarias;
 use App\Models\User;
 use App\Models\VentanillaUnica\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\VentanillaRadicaReciResponsa;
-use App\Models\VentanillaUnica\VentanillaRadicaReciArchivos;
+use App\Models\VentanillaUnica\VentanillaRadicaReciArchivo;
 use App\Models\VentanillaUnica\VentanillaRadicaReciArchivoEliminado;
 use App\Models\VentanillaUnica\VentanillaRadicaReciOptimizedView;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use App\Mail\RadicadoNotification;
 use Illuminate\Support\Facades\Mail;
 
@@ -83,15 +84,78 @@ class VentanillaRadicaReciController extends Controller
 
             // Aplicar filtros usando los scopes del modelo optimizado
             $query->search($request->search)
-                  ->fechaEntre($request->fecha_desde, $request->fecha_hasta)
-                  ->clasificacionDocumental($request->clasifica_documen_id)
-                  ->tercero($request->tercero_id)
-                  ->medioRecepcion($request->medio_recep_id)
-                  ->ordenadoPorFecha();
+                ->fechaEntre($request->fecha_desde, $request->fecha_hasta)
+                ->clasificacionDocumental($request->clasifica_documen_id)
+                ->tercero($request->tercero_id)
+                ->medioRecepcion($request->medio_recep_id)
+                ->ordenadoPorFecha();
 
             // Paginar
             $perPage = $request->get('per_page', 10);
             $radicados = $query->paginate($perPage);
+
+            // Obtener los IDs de los radicados para cargar documentos relacionados
+            // Laravel acepta colecciones en whereIn, evitar toArray() innecesario
+            $idsRadicados = $radicados->pluck('id');
+
+            if ($idsRadicados->isNotEmpty()) {
+                // Cargar radicados completos con todas sus relaciones necesarias (select específico para optimizar)
+                $radicadosCompletos = VentanillaRadicaReci::whereIn('id', $idsRadicados)
+                    ->select(['id', 'archivo_digital', 'uploaded_by', 'usuario_crea', 'updated_at', 'created_at'])
+                    ->with([
+                        'usuarioSubio:id,nombres,apellidos,email',
+                        'usuarioCreaRadicado:id,nombres,apellidos,email',
+                        'archivos:id,radicado_id,archivo,created_at',
+                        'responsables:id,radica_reci_id,users_cargos_id,custodio,fechor_visto,created_at',
+                        'responsables.userCargo:id,user_id,cargo_id',
+                        'responsables.userCargo.user:id,nombres,apellidos,email',
+                        'responsables.userCargo.cargo:id,nom_organico,cod_organico,tipo'
+                    ])
+                    ->get()
+                    ->keyBy('id');
+
+                // Agregar información relacionada usando métodos del modelo
+                // Usar totales de la vista cuando están disponibles para evitar recálculo
+                $radicados->getCollection()->transform(function ($radicado) use ($radicadosCompletos) {
+                    $radicadoCompleto = $radicadosCompletos->get($radicado->id);
+
+                    if ($radicadoCompleto) {
+                        // Usar totales de la vista si están disponibles (optimización)
+                        // La vista ya los retorna como enteros (cast en modelo), solo asegurar que no sean null
+                        $totalResponsablesVista = $radicado->total_responsables ?? null;
+                        $totalCustodiosVista = $radicado->total_custodios ?? null;
+
+                        // Obtener información completa usando métodos del modelo (con totales de la vista)
+                        $informacionCompleta = $radicadoCompleto->getInformacionCompleta($totalResponsablesVista, $totalCustodiosVista);
+
+                        // Asignar información al radicado directamente
+                        $radicado->documentos = $informacionCompleta['documentos'];
+                        $radicado->usuario_creo_radicado = $informacionCompleta['usuario_creo_radicado'];
+                        $radicado->responsables = $informacionCompleta['responsables'];
+                        $radicado->total_responsables = $informacionCompleta['total_responsables'];
+                        $radicado->total_custodios = $informacionCompleta['total_custodios'];
+                    } else {
+                        // Valores por defecto simplificados (solo si no existe el radicado completo)
+                        $radicado->documentos = [
+                            'archivo_principal' => null,
+                            'archivos_adicionales' => collect(),
+                            'total_archivos' => 0,
+                            'tiene_archivo_principal' => false,
+                            'tiene_archivos_adicionales' => false,
+                            'fecha_creacion' => $radicado->created_at,
+                            'fecha_actualizacion' => null,
+                            'usuario_subio_archivo' => null,
+                        ];
+                        $radicado->usuario_creo_radicado = null;
+                        $radicado->responsables = collect();
+                        // La vista ya los retorna como enteros, solo asegurar valores por defecto
+                        $radicado->total_responsables = $radicado->total_responsables ?? 0;
+                        $radicado->total_custodios = $radicado->total_custodios ?? 0;
+                    }
+
+                    return $radicado;
+                });
+            }
 
             return $this->successResponse($radicados, 'Listado de radicaciones obtenido exitosamente');
         } catch (\Exception $e) {
@@ -731,17 +795,16 @@ class VentanillaRadicaReciController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function updateFechas(Request $request, $id)
+    public function updateFechas($id, Request $request)
     {
         try {
+            DB::beginTransaction();
+
             // Buscar el radicado
             $radicado = VentanillaRadicaReci::find($id);
 
             if (!$radicado) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Radicado no encontrado'
-                ], 404);
+                return $this->errorResponse('Radicado no encontrado', null, 404);
             }
 
             // Verificar si algún responsable ya ha visto el documento
@@ -750,14 +813,16 @@ class VentanillaRadicaReciController extends Controller
                 ->exists();
 
             if ($responsableVisto) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'No se pueden actualizar las fechas porque al menos un responsable ya ha visto el documento'
-                ], 422);
+                DB::rollBack();
+                return $this->errorResponse(
+                    'No se pueden actualizar las fechas porque al menos un responsable ya ha visto el documento',
+                    null,
+                    422
+                );
             }
 
             // Validar los datos de entrada
-            $validator = \Validator::make($request->all(), [
+            $request->validate([
                 'fec_venci' => 'nullable|date',
                 'fec_docu' => 'nullable|date'
             ], [
@@ -765,48 +830,36 @@ class VentanillaRadicaReciController extends Controller
                 'fec_docu.date' => 'La fecha del documento debe ser una fecha válida'
             ]);
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Error de validación',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
             // Actualizar solo los campos proporcionados
             $updateData = [];
-            if ($request->has('fec_venci')) {
+            if ($request->filled('fec_venci')) {
                 $updateData['fec_venci'] = $request->fec_venci;
             }
-            if ($request->has('fec_docu')) {
+            if ($request->filled('fec_docu')) {
                 $updateData['fec_docu'] = $request->fec_docu;
             }
 
             if (empty($updateData)) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'No se proporcionaron fechas para actualizar'
-                ], 422);
+                DB::rollBack();
+                return $this->errorResponse('No se proporcionaron fechas para actualizar', null, 422);
             }
 
             $radicado->update($updateData);
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Fechas actualizadas exitosamente',
-                'data' => [
-                    'id' => $radicado->id,
-                    'fec_venci' => $radicado->fec_venci,
-                    'fec_docu' => $radicado->fec_docu,
-                    'updated_at' => $radicado->updated_at
-                ]
-            ]);
+            DB::commit();
+
+            return $this->successResponse([
+                'id' => $radicado->id,
+                'fec_venci' => $radicado->fec_venci,
+                'fec_docu' => $radicado->fec_docu,
+                'updated_at' => $radicado->updated_at
+            ], 'Fechas actualizadas exitosamente');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Error al actualizar las fechas',
-                'error' => $e->getMessage()
-            ], 500);
+            DB::rollBack();
+            return $this->errorResponse('Error al actualizar las fechas', $e->getMessage(), 500);
         }
     }
 

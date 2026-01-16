@@ -26,7 +26,15 @@ class VentanillaRadicaReciResponsa extends Model
     ];
 
     /**
-     * Obtiene el usuario responsable.
+     * Obtiene el UserCargo asociado al responsable.
+     */
+    public function userCargo()
+    {
+        return $this->belongsTo(\App\Models\ControlAcceso\UserCargo::class, 'users_cargos_id');
+    }
+
+    /**
+     * Obtiene el usuario responsable (relación legacy para compatibilidad).
      */
     public function usuarioCargo()
     {
@@ -87,5 +95,39 @@ class VentanillaRadicaReciResponsa extends Model
     public function desmarcarComoCustodio()
     {
         $this->update(['custodio' => false]);
+    }
+
+    /**
+     * Obtiene información formateada del responsable para respuestas API.
+     * Optimizado para usar relaciones ya cargadas con eager loading.
+     *
+     * @return array|null
+     */
+    public function getInfoResponsable(): ?array
+    {
+        // Usar relación ya cargada si existe (optimización)
+        $userCargo = $this->relationLoaded('userCargo') ? $this->userCargo : $this->userCargo()->with(['user', 'cargo'])->first();
+
+        if (!$userCargo) {
+            return null;
+        }
+
+        // Usar relaciones ya cargadas para evitar consultas N+1 (optimizado)
+        $user = $userCargo->relationLoaded('user') ? $userCargo->user : null;
+        $cargo = $userCargo->relationLoaded('cargo') ? $userCargo->cargo : null;
+
+        return [
+            'id' => $this->id,
+            'custodio' => $this->custodio,
+            'fechor_visto' => $this->fechor_visto,
+            'fecha_asignacion' => $this->created_at,
+            'usuario' => $user ? $user->getInfoUsuario() : null,
+            'cargo' => $cargo ? [
+                'id' => $cargo->id,
+                'nombre' => $cargo->nom_organico,
+                'codigo' => $cargo->cod_organico,
+                'tipo' => $cargo->tipo,
+            ] : null,
+        ];
     }
 }

@@ -83,6 +83,178 @@ Códigos HTTP: 200, 201, 400, 401, 403, 404, 422, 500
 - Usar select() para limitar columnas cuando sea necesario
 - Paginar listados grandes
 
+## Optimizaciones de Rendimiento y Consultas
+
+### Consultas Optimizadas
+
+**1. Select Específico en Consultas Principales**
+```php
+// ✅ CORRECTO: Solo campos necesarios
+VentanillaRadicaReci::whereIn('id', $idsRadicados)
+    ->select(['id', 'archivo_digital', 'uploaded_by', 'usuario_crea', 'updated_at', 'created_at'])
+    ->with([...])
+
+// ❌ INCORRECTO: Carga todos los campos
+VentanillaRadicaReci::whereIn('id', $idsRadicados)->with([...])
+```
+
+**2. Select Específico en Eager Loading**
+```php
+// ✅ CORRECTO: Especificar columnas en relaciones
+->with([
+    'usuario:id,nombres,apellidos,email',
+    'archivos:id,radicado_id,archivo,created_at',
+    'responsables:id,radica_reci_id,users_cargos_id,custodio,fechor_visto,created_at',
+])
+
+// ❌ INCORRECTO: Cargar todas las columnas
+->with(['usuario', 'archivos', 'responsables'])
+```
+
+**3. Evitar Conversiones Innecesarias**
+```php
+// ✅ CORRECTO: Laravel acepta colecciones en whereIn
+$idsRadicados = $radicados->pluck('id');
+Model::whereIn('id', $idsRadicados)
+
+// ❌ INCORRECTO: Conversión a array innecesaria
+$idsRadicados = $radicados->pluck('id')->toArray();
+Model::whereIn('id', $idsRadicados)
+```
+
+**4. Verificación de Colecciones**
+```php
+// ✅ CORRECTO: Usar método específico de colecciones
+if ($idsRadicados->isNotEmpty()) { ... }
+
+// ❌ INCORRECTO: Verificación genérica
+if (!empty($idsRadicados)) { ... }
+```
+
+### Optimización de Relaciones
+
+**1. Verificar Relaciones Cargadas**
+```php
+// ✅ CORRECTO: Verificar antes de acceder
+$archivosRelacion = $this->relationLoaded('archivos') 
+    ? $this->archivos 
+    : $this->archivos()->get();
+```
+
+**2. Cache de Relaciones**
+```php
+// ✅ CORRECTO: Cachear si se usa múltiples veces
+$usuarioSubio = $this->getInfoUsuarioSubio();
+// Usar $usuarioSubio en múltiples lugares
+
+// ❌ INCORRECTO: Llamar múltiples veces
+$info['subido_por'] = $this->getInfoUsuarioSubio()['nombre_completo'];
+$info['usuario_subio'] = $this->getInfoUsuarioSubio();
+```
+
+### Optimización de Collections
+
+**1. Evitar Múltiples Iteraciones**
+```php
+// ✅ CORRECTO: Una sola iteración con procesamiento directo
+$items = collect();
+foreach ($relacion as $item) {
+    $info = $item->getInfo();
+    if ($info) {
+        $items->push($info);
+    }
+}
+
+// ❌ INCORRECTO: Múltiples iteraciones
+$items = $relacion->map(...)->filter()->values();
+```
+
+**2. Cálculos Durante Iteración**
+```php
+// ✅ CORRECTO: Calcular totales durante la iteración
+$totalCustodios = 0;
+foreach ($responsables as $responsable) {
+    if ($responsable->custodio) {
+        $totalCustodios++;
+    }
+}
+
+// ❌ INCORRECTO: Iteración adicional para contar
+$totalCustodios = $responsables->where('custodio', true)->count();
+```
+
+### Optimización de Vistas SQL
+
+**1. Usar JOINs en lugar de Subconsultas Correlacionadas**
+```sql
+-- ✅ CORRECTO: LEFT JOIN con agregación
+LEFT JOIN (
+    SELECT radicado_id, COUNT(*) as total
+    FROM ventanilla_radica_reci_archivos 
+    GROUP BY radicado_id
+) archivos_count ON archivos_count.radicado_id = vrr.id
+
+-- ❌ INCORRECTO: Subconsulta correlacionada (O(n²))
+(SELECT COUNT(*) FROM ventanilla_radica_reci_archivos WHERE radicado_id = vrr.id) as total_archivos
+```
+
+**2. Usar Totales de Vistas SQL**
+```php
+// ✅ CORRECTO: Usar totales calculados en la vista
+$totalResponsables = $radicado->total_responsables ?? null;
+$informacion = $radicado->getInformacionCompleta($totalResponsables);
+
+// ❌ INCORRECTO: Recalcular totales innecesariamente
+$totalResponsables = $responsables->count();
+```
+
+### Optimización de Archivos
+
+**1. Cache de Instancias Storage**
+```php
+// ✅ CORRECTO: Usar ArchivoHelper con cache interno
+ArchivoHelper::obtenerUrl($path, $disk);
+
+// ❌ INCORRECTO: Crear instancia Storage en cada llamada
+Storage::disk($disk)->url($path);
+```
+
+**2. Evitar Accesos al Filesystem Innecesarios**
+```php
+// ✅ CORRECTO: Metadatos solo cuando se solicitan
+$info = $modelo->getInfoArchivo('campo', 'disk', $incluirMetadatos = false);
+
+// ❌ INCORRECTO: Acceder al filesystem siempre
+$info['tamaño'] = Storage::disk($disk)->size($path);
+```
+
+### Índices en Base de Datos
+
+**SIEMPRE agregar índices para:**
+- Claves foráneas: `idx_tabla_fk_id`
+- Campos usados en WHERE frecuentes
+- Campos usados en JOINs
+- Campos compuestos usados en búsquedas: `idx_tabla_campo1_campo2`
+
+```sql
+-- ✅ CORRECTO: Índices para optimizar consultas
+CREATE INDEX idx_vrr_archivos_radicado_id ON ventanilla_radica_reci_archivos(radicado_id);
+CREATE INDEX idx_vrr_responsa_radicado_custodio ON ventanilla_radica_reci_responsa(radica_reci_id, custodio);
+```
+
+### Checklist de Optimización
+
+Al escribir código que procesa múltiples registros, verificar:
+- [ ] ¿Se usa `select()` para limitar columnas?
+- [ ] ¿Se especifican columnas en `with()`?
+- [ ] ¿Se verifica si las relaciones están cargadas antes de acceder?
+- [ ] ¿Se cachean resultados que se usan múltiples veces?
+- [ ] ¿Se evitan múltiples iteraciones sobre las mismas colecciones?
+- [ ] ¿Se usan índices en campos de búsqueda/filtrado?
+- [ ] ¿Se evitan conversiones innecesarias (toArray, etc)?
+- [ ] ¿Se usan totales de vistas SQL en lugar de recalcular?
+- [ ] ¿Se evitan accesos al filesystem en loops?
+
 ## Validaciones
 
 TODAS las validaciones deben estar en Form Request classes:

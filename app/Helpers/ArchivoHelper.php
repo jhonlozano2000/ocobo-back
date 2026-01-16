@@ -9,6 +9,26 @@ use Illuminate\Support\Str;
 class ArchivoHelper
 {
     /**
+     * Cache estático de instancias de Storage para evitar recrearlas.
+     *
+     * @var array
+     */
+    private static $storageCache = [];
+
+    /**
+     * Obtiene una instancia de Storage del disco especificado (cacheada).
+     *
+     * @param string $disk
+     * @return \Illuminate\Contracts\Filesystem\Filesystem
+     */
+    private static function getStorage(string $disk)
+    {
+        if (!isset(self::$storageCache[$disk])) {
+            self::$storageCache[$disk] = Storage::disk($disk);
+        }
+        return self::$storageCache[$disk];
+    }
+    /**
      * Guarda un archivo en el disco especificado y elimina el archivo actual si existe.
      *
      * @param Request $request
@@ -24,11 +44,14 @@ class ArchivoHelper
         }
 
         $file = $request->file($campo);
-        if (!$file->isValid()) {
+        
+        // Validación defensiva: si el FormRequest ya validó, esto normalmente no debería fallar
+        // pero mantenemos la validación como medida de seguridad
+        if (!$file || !$file->isValid()) {
             return $archivoActual;
         }
 
-        $storage = Storage::disk($disk);
+        $storage = self::getStorage($disk);
 
         if ($archivoActual && $storage->exists($archivoActual)) {
             $storage->delete($archivoActual);
@@ -65,7 +88,7 @@ class ArchivoHelper
             return;
         }
 
-        $storage = Storage::disk($disk);
+        $storage = self::getStorage($disk);
         if ($storage->exists($path)) {
             $storage->delete($path);
         }
@@ -73,6 +96,7 @@ class ArchivoHelper
 
     /**
      * Obtiene la URL de un archivo almacenado en el disco especificado.
+     * Optimizado con cache de instancias de Storage.
      *
      * @param string|null $path
      * @param string $disk
@@ -80,7 +104,7 @@ class ArchivoHelper
      */
     public static function obtenerUrl(?string $path, string $disk): ?string
     {
-        return $path ? Storage::disk($disk)->url($path) : null;
+        return $path ? self::getStorage($disk)->url($path) : null;
     }
 
     /**
@@ -99,7 +123,7 @@ class ArchivoHelper
         }
 
         $files = $request->file($campo);
-        $storage = Storage::disk($disk);
+        $storage = self::getStorage($disk);
 
         foreach ((array)$files as $file) {
             if ($file && $file->isValid()) {
@@ -134,7 +158,7 @@ class ArchivoHelper
      */
     public static function eliminarMultiples(array $paths, string $disk): void
     {
-        $storage = Storage::disk($disk);
+        $storage = self::getStorage($disk);
         foreach ($paths as $path) {
             if ($path && $storage->exists($path)) {
                 $storage->delete($path);
