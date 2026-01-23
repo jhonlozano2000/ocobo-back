@@ -78,9 +78,11 @@ class VentanillaRadicaReciArchivosController extends Controller
      *   "error": "Error message"
      * }
      */
-    public function upload($id, UploadArchivoRequest $request)
+    public function upload($id, Request $request)
     {
         try {
+            return $request;
+            //return response()->json(['message' => 'BackEnd', 'request' => $request, 'file' => $request->file('archivo_digital')]);
             DB::beginTransaction();
 
             $radicado = VentanillaRadicaReci::find($id);
@@ -90,10 +92,11 @@ class VentanillaRadicaReciArchivosController extends Controller
             }
 
             // Obtener archivo una sola vez (optimización)
-            $archivo = $request->file('archivo');
-            
+            $archivo = $request->file('archivo_digital');
+
             // Usar ArchivoHelper para guardar el archivo
             $archivoActual = $radicado->archivo_digital;
+
             $nuevoArchivo = ArchivoHelper::guardarArchivo($request, 'archivo', 'radicaciones_recibidas', $archivoActual);
 
             // Guardar quién subió el archivo (Auth::user() retorna null si no está autenticado)
@@ -107,8 +110,8 @@ class VentanillaRadicaReciArchivosController extends Controller
             DB::commit();
 
             // Cachear nombre completo del usuario si existe (optimización)
-            $nombreUsuario = $usuario 
-                ? trim($usuario->nombres . ' ' . $usuario->apellidos) 
+            $nombreUsuario = $usuario
+                ? trim($usuario->nombres . ' ' . $usuario->apellidos)
                 : 'No se registró usuario';
 
             $fileUrl = ArchivoHelper::obtenerUrl($nuevoArchivo, 'radicaciones_recibidas');

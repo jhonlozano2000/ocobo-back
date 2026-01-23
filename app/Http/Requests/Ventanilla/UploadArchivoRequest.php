@@ -52,7 +52,7 @@ class UploadArchivoRequest extends FormRequest
         $allowedExtensions = explode(',', $config['allowedExtensions']);
 
         return [
-            'archivo' => [
+            'archivo_digital' => [
                 'required',
                 'file',
                 'max:' . $config['maxSize'],
@@ -71,9 +71,9 @@ class UploadArchivoRequest extends FormRequest
         $config = $this->getConfigValues();
 
         return [
-            'archivo.required' => 'El archivo es obligatorio.',
-            'archivo.file' => 'El archivo debe ser un archivo válido.',
-            'archivo.max' => "El archivo no puede superar los {$config['maxSize']} KB.",
+            'archivo_digital.required' => 'El archivo es obligatorio.',
+            'archivo_digital.file' => 'El archivo debe ser un archivo válido.',
+            'archivo_digital.max' => "El archivo no puede superar los {$config['maxSize']} KB.",
             'archivo.mimes' => "El archivo debe ser de tipo: {$config['allowedExtensions']}."
         ];
     }
@@ -86,7 +86,7 @@ class UploadArchivoRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'archivo' => 'archivo'
+            'archivo_digital' => 'archivo'
         ];
     }
 }
