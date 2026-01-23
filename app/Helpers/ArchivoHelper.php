@@ -28,13 +28,14 @@ class ArchivoHelper
         }
         return self::$storageCache[$disk];
     }
+
     /**
      * Guarda un archivo en el disco especificado y elimina el archivo actual si existe.
      *
      * @param Request $request
-     * @param string $campo
-     * @param string $disk
-     * @param string|null $archivoActual
+     * @param string $campo Nombre del campo del $request en donde se encuentra el archivo
+     * @param string $disk Nombre del disco de almacenamiento
+     * @param string|null $archivoActual Archivo actual a eliminar (si existe)
      * @return string|null
      */
     public static function guardarArchivo(Request $request, string $campo, string $disk, ?string $archivoActual = null): ?string
@@ -44,7 +45,7 @@ class ArchivoHelper
         }
 
         $file = $request->file($campo);
-        
+
         // Validación defensiva: si el FormRequest ya validó, esto normalmente no debería fallar
         // pero mantenemos la validación como medida de seguridad
         if (!$file || !$file->isValid()) {

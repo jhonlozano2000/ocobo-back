@@ -39,7 +39,7 @@ class VentanillaRadicaReci extends Model
         static::deleted(function ($radicado) {
             // Usar ArchivoHelper para eliminar el archivo si existe
             if ($radicado->archivo_digital) {
-                ArchivoHelper::eliminarArchivo($radicado->archivo_digital, 'radicaciones_recibidas');
+                ArchivoHelper::eliminarArchivo($radicado->archivo_digital, 'radicados_recibidos');
             }
         });
     }
@@ -114,7 +114,7 @@ class VentanillaRadicaReci extends Model
         // Archivo principal
         $archivoPrincipal = null;
         if ($this->archivo_digital) {
-            $archivoPrincipal = $this->getInfoArchivo('archivo_digital', 'radicaciones_recibidas');
+            $archivoPrincipal = $this->getInfoArchivo('archivo_digital', 'radicados_recibidos');
             if ($archivoPrincipal && $usuarioSubio) {
                 $archivoPrincipal['subido_por'] = $usuarioSubio['nombre_completo'];
             }
@@ -127,7 +127,7 @@ class VentanillaRadicaReci extends Model
         $archivosAdicionales = collect();
 
         foreach ($archivosRelacion as $archivo) {
-            $info = $archivo->getInfoArchivo('archivo', 'radicaciones_recibidas');
+            $info = $archivo->getInfoArchivo('archivo', 'radicados_recibidos');
             if ($info) {
                 $info['fecha_subida'] = $archivo->created_at;
                 $archivosAdicionales->push($info);
@@ -271,7 +271,7 @@ class VentanillaRadicaReci extends Model
      */
     public function getUrlArchivoDigital()
     {
-        return $this->getArchivoUrl('archivo_digital', 'radicaciones_recibidas');
+        return $this->getArchivoUrl('archivo_digital', 'radicados_recibidos');
     }
 
     /**
@@ -299,8 +299,8 @@ class VentanillaRadicaReci extends Model
         return [
             'nombre' => basename($this->archivo_digital),
             'url' => $this->getUrlArchivoDigital(),
-            'tamaño' => Storage::disk('radicaciones_recibidas')->size($this->archivo_digital),
-            'tipo' => Storage::disk('radicaciones_recibidas')->mimeType($this->archivo_digital),
+            'tamaño' => Storage::disk('radicados_recibidos')->size($this->archivo_digital),
+            'tipo' => Storage::disk('radicados_recibidos')->mimeType($this->archivo_digital),
             'extension' => pathinfo($this->archivo_digital, PATHINFO_EXTENSION)
         ];
     }
