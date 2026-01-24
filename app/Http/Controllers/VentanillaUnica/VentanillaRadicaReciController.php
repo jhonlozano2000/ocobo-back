@@ -740,6 +740,7 @@ class VentanillaRadicaReciController extends Controller
      */
     public function updateAsunto($id, Request $request)
     {
+        return $request;
         try {
             DB::beginTransaction();
 

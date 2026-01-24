@@ -15,6 +15,7 @@ class VentanillaRadicaReciArchivo extends Model
 
     protected $fillable = [
         'radicado_id',
+        'subido_por',
         'archivo',
     ];
 

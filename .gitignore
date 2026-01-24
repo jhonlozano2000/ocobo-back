@@ -21,3 +21,7 @@ Homestead.yaml
 Homestead.json
 /.vagrant
 .phpunit.result.cache
+
+
+storage/app/radicados_recibidos/*
+storage/app/temp_files/*

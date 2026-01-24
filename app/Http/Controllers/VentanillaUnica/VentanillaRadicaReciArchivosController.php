@@ -81,8 +81,6 @@ class VentanillaRadicaReciArchivosController extends Controller
     public function upload($id, Request $request)
     {
         try {
-
-            //return response()->json(['message' => 'BackEnd', 'request' => $request, 'file' => $request->file('archivo_digital')]);
             DB::beginTransaction();
 
             $radicado = VentanillaRadicaReci::find($id);
@@ -390,8 +388,8 @@ class VentanillaRadicaReciArchivosController extends Controller
      */
     public function subirArchivosAdjuntos($id, Request $request)
     {
-
         try {
+
             $radicado = VentanillaRadicaReci::find($id);
             if (!$radicado) {
                 return $this->errorResponse('Radicación no encontrada', null, 404);
@@ -400,8 +398,15 @@ class VentanillaRadicaReciArchivosController extends Controller
             // Depuración: Verificar qué llega en el request
             Log::info('Archivos recibidos:', ['archivos' => $request->file('archivos'), 'all' => $request->all()]);
 
+            // Reemplaza tu bloque de validación por este:
             $archivos = $request->file('archivos');
-            if (!$archivos || !is_array($archivos)) {
+
+            // Convertir a array si es un solo archivo para que el foreach no falle
+            if (!is_array($archivos)) {
+                $archivos = $request->hasFile('archivos') ? [$archivos] : [];
+            }
+
+            if (empty($archivos)) {
                 return $this->errorResponse('No se encontraron archivos válidos en la solicitud', null, 400);
             }
 
@@ -409,9 +414,15 @@ class VentanillaRadicaReciArchivosController extends Controller
 
             foreach ($request->file('archivos') as $archivo) {
 
+                // 1. Crear un request vacío
+                $tempRequest = new \Illuminate\Http\Request();
+
+                // 2. Inyectar el archivo correctamente en la bolsa de archivos (files)
+                $tempRequest->files->set('archivo', $archivo);
+
                 // Usar ArchivoHelper para guardar cada archivo
                 $rutaArchivo = ArchivoHelper::guardarArchivo(
-                    new \Illuminate\Http\Request(['archivo' => $archivo]),
+                    $tempRequest,
                     'archivo',
                     'radicados_recibidos'
                 );
@@ -422,7 +433,7 @@ class VentanillaRadicaReciArchivosController extends Controller
                 // Crear registro en la tabla de archivos adicionales
                 $archivoAdicional = VentanillaRadicaReciArchivo::create([
                     'radicado_id' => $radicado->id,
-                    'uploaded_by' => $usuario?->id,
+                    'subido_por' => $usuario->id,
                     'archivo' => $rutaArchivo
                 ]);
 
@@ -436,7 +447,7 @@ class VentanillaRadicaReciArchivosController extends Controller
                 $archivosSubidos[] = [
                     'id' => $archivoAdicional->id,
                     'path' => $rutaArchivo,
-                    'uploaded_by' => $nombreUsuario,
+                    'subido_por' => $nombreUsuario,
                     'file_size' => $archivo->getSize(),
                     'file_type' => $archivo->getMimeType(),
                     'file_url' => $fileUrl
