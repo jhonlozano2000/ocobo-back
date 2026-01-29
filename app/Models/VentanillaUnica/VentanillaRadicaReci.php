@@ -28,6 +28,7 @@ class VentanillaRadicaReci extends Model
         'asunto',
         'radicado_respuesta',
         'archivo_digital',
+        'cod_verifica',
         'uploaded_by',
         'impri_rotulo',
     ];

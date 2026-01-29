@@ -2,6 +2,7 @@
 
 namespace App\Models\Configuracion;
 
+use App\Helpers\ArchivoHelper;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -12,6 +13,34 @@ class ConfigVarias extends Model
     protected $table = 'config_varias';
 
     protected $fillable = ['clave', 'valor', 'descripcion', 'tipo', 'estado'];
+
+    protected $appends = ['logo_url'];
+
+    /**
+     * Obtiene la URL de cualquier archivo usando ArchivoHelper.
+     *
+     * @param string $campo Nombre del atributo (ej: 'valor')
+     * @param string $disk Nombre del disco
+     * @return string|null
+     */
+    public function getArchivoUrl(string $campo, string $disk): ?string
+    {
+        return ArchivoHelper::obtenerUrl($this->{$campo} ?? null, $disk);
+    }
+
+    /**
+     * Obtiene la URL del logo cuando la clave corresponde.
+     *
+     * @return string|null
+     */
+    public function getLogoUrlAttribute(): ?string
+    {
+        if ($this->clave !== 'logo_empresa') {
+            return null;
+        }
+
+        return $this->getArchivoUrl('valor', 'otros_archivos');
+    }
 
     public static function getValor($clave, $default = null)
     {

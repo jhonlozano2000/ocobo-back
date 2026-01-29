@@ -223,7 +223,7 @@
                 <!-- Radicado Card -->
                 <div class="radicado-card">
                     <div class="radicado-number">
-                        Radicado N° {{ $radicado->numero_radicacion }}
+                        Radicado N° {{ $radicado->num_radicado }}
                     </div>
                     
                     <div class="radicado-subject">
@@ -246,20 +246,20 @@
                             </div>
                         </div>
                         
-                        @if($radicado->fecha_documento)
+                        @if($radicado->fec_docu)
                         <div class="info-item">
                             <div class="info-label">Fecha Documento</div>
                             <div class="info-value">
-                                {{ \Carbon\Carbon::parse($radicado->fecha_documento)->format('d/m/Y') }}
+                                {{ \Carbon\Carbon::parse($radicado->fec_docu)->format('d/m/Y') }}
                             </div>
                         </div>
                         @endif
                         
-                        @if($radicado->fecha_vencimiento)
+                        @if($radicado->fec_venci)
                         <div class="info-item">
                             <div class="info-label">Fecha Límite</div>
-                            <div class="info-value" style="color: {{ \Carbon\Carbon::parse($radicado->fecha_vencimiento)->isPast() ? '#d32f2f' : '#2c3e50' }};">
-                                {{ \Carbon\Carbon::parse($radicado->fecha_vencimiento)->format('d/m/Y') }}
+                            <div class="info-value" style="color: {{ \Carbon\Carbon::parse($radicado->fec_venci)->isPast() ? '#d32f2f' : '#2c3e50' }};">
+                                {{ \Carbon\Carbon::parse($radicado->fec_venci)->format('d/m/Y') }}
                             </div>
                         </div>
                         @endif
@@ -270,13 +270,76 @@
                                 {{ \Carbon\Carbon::parse($radicado->created_at)->format('d/m/Y H:i') }}
                             </div>
                         </div>
-                        
+
                         <div class="info-item">
-                            <div class="info-label">Estado</div>
+                            <div class="info-label">Medio de Recepción</div>
                             <div class="info-value">
-                                {{ $radicado->fechor_visto ? 'Revisado' : 'Pendiente' }}
+                                {{ $radicado->medioRecepcion->nombre ?? $radicado->medioRecepcion->descripcion ?? 'No especificado' }}
                             </div>
                         </div>
+
+                        <div class="info-item">
+                            <div class="info-label">Usuario que Radicó</div>
+                            <div class="info-value">
+                                {{ $radicado->usuarioCreaRadicado ? trim($radicado->usuarioCreaRadicado->nombres . ' ' . $radicado->usuarioCreaRadicado->apellidos) : 'No especificado' }}
+                            </div>
+                        </div>
+
+                        <div class="info-item">
+                            <div class="info-label">Número de Folios</div>
+                            <div class="info-value">
+                                {{ $radicado->num_folios ?? 'No especificado' }}
+                            </div>
+                        </div>
+
+                        <div class="info-item">
+                            <div class="info-label">Número de Anexos</div>
+                            <div class="info-value">
+                                {{ $radicado->num_anexos ?? 'No especificado' }}
+                            </div>
+                        </div>
+
+                        <div class="info-item">
+                            <div class="info-label">Descripción de Anexos</div>
+                            <div class="info-value">
+                                {{ $radicado->descrip_anexos ?? 'No especificado' }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="radicado-card">
+                    <div class="radicado-subject">Responsables</div>
+                    <div style="margin-top: 12px;">
+                        @forelse($radicado->responsables as $responsable)
+                            <div style="margin-bottom: 8px; color: #2c3e50; font-size: 14px;">
+                                {{ $responsable->userCargo?->user?->nombres }} {{ $responsable->userCargo?->user?->apellidos }}
+                                ({{ $responsable->userCargo?->user?->email ?? 'Sin correo' }})
+                                - {{ $responsable->userCargo?->cargo?->nom_organico ?? 'Sin cargo' }}
+                                @if($responsable->custodio)
+                                    <strong style="color:#1976d2;">(Custodio)</strong>
+                                @endif
+                            </div>
+                        @empty
+                            <div style="color: #6c757d; font-size: 14px;">Sin responsables asignados.</div>
+                        @endforelse
+                    </div>
+                </div>
+
+                <div class="radicado-card">
+                    <div class="radicado-subject">Documentos</div>
+                    <div style="margin-top: 12px; color: #2c3e50; font-size: 14px;">
+                        <div><strong>Documento digital:</strong> {{ $radicado->archivo_digital ? basename($radicado->archivo_digital) : 'No registrado' }}</div>
+                        <div style="margin-top: 8px;"><strong>Documentos anexos:</strong></div>
+                        @if($radicado->archivos && $radicado->archivos->isNotEmpty())
+                            <ul style="margin: 6px 0 0 18px; padding: 0;">
+                                @foreach($radicado->archivos as $archivo)
+                                    <li>{{ basename($archivo->archivo) }}</li>
+                                @endforeach
+                            </ul>
+                        @else
+                            <div style="color: #6c757d;">Sin anexos.</div>
+                        @endif
                     </div>
                 </div>
                 

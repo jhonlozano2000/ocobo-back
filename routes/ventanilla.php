@@ -56,7 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/radica-recibida/{id}/update-clasificacion-documental', [VentanillaRadicaReciController::class, 'updateClasificacionDocumental'])->name('radica-recibida.update-clasificacion-documental');
 
     // Ruta para enviar notificaciones por correo electrónico
-    Route::post('/radica-recibida/{id}/notificar', [VentanillaRadicaReciController::class, 'enviarNotificacion'])->name('radica-recibida.notificar');
+    Route::post('/radica-recibida/{id}/notificacion', [VentanillaRadicaReciController::class, 'enviarNotificacion'])->name('radica-recibida.notificacion');
 
     // Ruta apiResource (debe ir después de las rutas específicas)
     Route::apiResource('radica-recibida', VentanillaRadicaReciController::class)->except('create', 'edit');

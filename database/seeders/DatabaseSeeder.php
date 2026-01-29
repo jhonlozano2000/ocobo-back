@@ -38,5 +38,6 @@ class DatabaseSeeder extends Seeder
         $this->call(TRDSeed::class);
 
         $this->call(PermisosRadicarSeeder::class);
+        $this->call(PermisoImprimirRotuloSeeder::class);
     }
 }

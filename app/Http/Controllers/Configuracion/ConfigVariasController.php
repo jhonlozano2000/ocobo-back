@@ -85,6 +85,23 @@ class ConfigVariasController extends Controller
                 $configs = $query->get();
             }
 
+            // Agregar URL del logo cuando la clave corresponde
+            if ($configs instanceof \Illuminate\Pagination\AbstractPaginator) {
+                $configs->getCollection()->transform(function (ConfigVarias $config) {
+                    if ($config->clave === 'logo_empresa') {
+                        $config->logo_url = $config->getArchivoUrl('valor', 'otros_archivos');
+                    }
+                    return $config;
+                });
+            } else {
+                $configs = $configs->map(function (ConfigVarias $config) {
+                    if ($config->clave === 'logo_empresa') {
+                        $config->logo_url = $config->getArchivoUrl('valor', 'otros_archivos');
+                    }
+                    return $config;
+                });
+            }
+
             return $this->successResponse($configs, 'Listado de configuraciones obtenido exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener el listado de configuraciones', $e->getMessage(), 500);

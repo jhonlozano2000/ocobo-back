@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\VentanillaUnica;
 
 use App\Http\Controllers\Controller;
+use App\Helpers\ArchivoHelper;
 use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\Ventanilla\VentanillaRadicaReciRequest;
 use App\Http\Requests\Ventanilla\ListRadicadosRequest;
@@ -14,12 +15,12 @@ use App\Models\VentanillaUnica\VentanillaRadicaReciArchivo;
 use App\Models\VentanillaUnica\VentanillaRadicaReciArchivoEliminado;
 use App\Models\VentanillaUnica\VentanillaRadicaReciOptimizedView;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use App\Mail\RadicadoNotification;
-use Illuminate\Support\Facades\Mail;
+use App\Services\Notificaciones\NotificacionCorrespondenciaService;
 
 class VentanillaRadicaReciController extends Controller
 {
@@ -225,6 +226,7 @@ class VentanillaRadicaReciController extends Controller
             // Crear el radicado con los datos enviados
             $radicado = new VentanillaRadicaReci($validatedData);
             $radicado->num_radicado = $num_radicado;
+            $radicado->cod_verifica = $this->generarCodigoVerificacion();
             $radicado->usuario_crea = auth()->id(); // Asignar usuario que crea el radicado
 
             // Guardar el radicado
@@ -416,6 +418,15 @@ class VentanillaRadicaReciController extends Controller
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
 
+            $archivosAdicionales = $radicado->archivos()->get();
+            foreach ($archivosAdicionales as $archivo) {
+                if (!empty($archivo->archivo)) {
+                    ArchivoHelper::eliminarArchivo($archivo->archivo, 'radicados_recibidos');
+                }
+            }
+
+            $radicado->archivos()->delete();
+            $radicado->responsables()->delete();
             $radicado->delete();
 
             DB::commit();
@@ -474,6 +485,20 @@ class VentanillaRadicaReciController extends Controller
         }
 
         return $formato;
+    }
+
+    /**
+     * Genera un código de verificación numérico de 10 dígitos.
+     */
+    private function generarCodigoVerificacion(): string
+    {
+        $codigo = '';
+
+        for ($i = 0; $i < 10; $i++) {
+            $codigo .= (string) random_int(0, 9);
+        }
+
+        return $codigo;
     }
 
     /**
@@ -740,7 +765,6 @@ class VentanillaRadicaReciController extends Controller
      */
     public function updateAsunto($id, Request $request)
     {
-        return $request;
         try {
             DB::beginTransaction();
 
@@ -920,18 +944,21 @@ class VentanillaRadicaReciController extends Controller
     }
 
     /**
-     * Envía notificación por correo electrónico sobre un radicado.
-     *
-     * Este método permite enviar notificaciones por correo electrónico a los responsables
-     * de un radicado, incluyendo información detallada del documento y archivos adjuntos.
+     * Alias de notificación para compatibilidad.
      *
      * @param int $id ID del radicado
      * @param Request $request La solicitud HTTP
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando el envío
+     * @return JsonResponse
      *
      * @urlParam id integer required El ID del radicado. Example: 1
-     * @bodyParam tipo string Tipo de notificación (asignacion, actualizacion, vencimiento). Example: "asignacion"
-     * @bodyParam emails array Lista de correos electrónicos adicionales. Example: ["usuario@example.com"]
+     */
+    /**
+     * Envía notificación de radicado a responsables con adjuntos.
+     *
+     * @param int $id ID del radicado
+     * @return JsonResponse
+     *
+     * @urlParam id integer required El ID del radicado. Example: 1
      *
      * @response 200 {
      *   "status": true,
@@ -949,71 +976,35 @@ class VentanillaRadicaReciController extends Controller
      *   "message": "Radicado no encontrado"
      * }
      *
-     * @response 422 {
-     *   "status": false,
-     *   "message": "Error de validación",
-     *   "errors": {
-     *     "tipo": ["El tipo de notificación debe ser válido."]
-     *   }
-     * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al enviar las notificaciones",
      *   "error": "Error message"
      * }
      */
-    public function enviarNotificacion($id, Request $request)
+    public function enviarNotificacion($id, Request $request): JsonResponse
     {
         try {
-            // Validar la entrada
-            $request->validate([
-                'tipo' => 'sometimes|string|in:asignacion,actualizacion,vencimiento',
-                'emails' => 'sometimes|array',
-                'emails.*' => 'email'
-            ]);
-
             $radicado = VentanillaRadicaReci::with([
                 'responsables.userCargo.user',
+                'responsables.userCargo.cargo',
                 'clasificacionDocumental',
-                'tercero'
-            ])->find($id);
+                'tercero',
+                'medioRecepcion',
+                'usuarioCreaRadicado',
+                'usuarioSubio',
+                'archivos',
+            ])->findOrFail($id);
 
-            if (!$radicado) {
-                return $this->errorResponse('Radicado no encontrado', null, 404);
-            }
-
-            $tipo = $request->get('tipo', 'asignacion');
-            $emailsAdicionales = $request->get('emails', []);
-            $emailsEnviados = [];
-
-            // Obtener emails de los responsables
-            foreach ($radicado->responsables as $responsable) {
-                if ($responsable->userCargo && $responsable->userCargo->user && $responsable->userCargo->user->email) {
-                    $email = $responsable->userCargo->user->email;
-                    if (!in_array($email, $emailsEnviados)) {
-                        Mail::to($email)->send(new RadicadoNotification($radicado, $tipo));
-                        $emailsEnviados[] = $email;
-                    }
-                }
-            }
-
-            // Enviar a emails adicionales
-            foreach ($emailsAdicionales as $email) {
-                if (!in_array($email, $emailsEnviados)) {
-                    Mail::to($email)->send(new RadicadoNotification($radicado, $tipo));
-                    $emailsEnviados[] = $email;
-                }
-            }
+            $resultado = app(NotificacionCorrespondenciaService::class)
+                ->enviarRadicadoRecibido($radicado);
 
             return $this->successResponse([
                 'radicado_id' => $radicado->id,
-                'emails_enviados' => $emailsEnviados,
-                'total_enviados' => count($emailsEnviados),
-                'tipo_notificacion' => $tipo
+                ...$resultado,
             ], 'Notificaciones enviadas exitosamente');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return $this->errorResponse('Error de validación', $e->errors(), 422);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->errorResponse('Radicado no encontrado', null, 404);
         } catch (\Exception $e) {
             return $this->errorResponse('Error al enviar las notificaciones', $e->getMessage(), 500);
         }

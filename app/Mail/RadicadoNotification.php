@@ -9,6 +9,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Storage;
 
 class RadicadoNotification extends Mailable
 {
@@ -67,9 +68,9 @@ class RadicadoNotification extends Mailable
         $attachments = [];
 
         // Verificar si el radicado tiene archivo digital asociado
-        if ($this->radicado->archivo_digital && \Storage::disk('radicaciones_recibidas')->exists($this->radicado->archivo_digital)) {
+        if ($this->radicado->archivo_digital && Storage::disk('radicados_recibidos')->exists($this->radicado->archivo_digital)) {
             $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromStorageDisk(
-                'radicaciones_recibidas',
+                'radicados_recibidos',
                 $this->radicado->archivo_digital
             )->as(basename($this->radicado->archivo_digital));
         }
@@ -77,9 +78,9 @@ class RadicadoNotification extends Mailable
         // Agregar archivos adicionales de la tabla ventanilla_radica_reci_archivos
         if ($this->radicado->archivos) {
             foreach ($this->radicado->archivos as $archivo) {
-                if (\Storage::disk('radicaciones_recibidas')->exists($archivo->archivo)) {
+                if (Storage::disk('radicados_recibidos')->exists($archivo->archivo)) {
                     $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromStorageDisk(
-                        'radicaciones_recibidas',
+                        'radicados_recibidos',
                         $archivo->archivo
                     )->as(basename($archivo->archivo));
                 }
