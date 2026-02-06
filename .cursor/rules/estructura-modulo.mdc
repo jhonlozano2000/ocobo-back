@@ -1,0 +1,48 @@
+---
+description: Estructura estándar de un módulo (rutas, controllers, requests, models, migrations)
+alwaysApply: false
+---
+
+# Estructura de un módulo (OCOBO-BACK)
+
+## Qué es un “módulo”
+
+En este repo, un módulo es una unidad funcional con:
+
+- **Rutas** en `routes/<modulo>.php` (con prefijo aplicado desde `RouteServiceProvider`)
+- **Controladores** en `app/Http/Controllers/<Modulo>/`
+- **Requests** en `app/Http/Requests/<Modulo>/`
+- **Modelos** en `app/Models/<Modulo>/` (si aplica)
+- **Migraciones** en `database/migrations/` (si aplica)
+
+## Checklist al crear un módulo nuevo
+
+1. **Crear archivo de rutas** `routes/<modulo>.php`.
+2. **Registrar el módulo** en `app/Providers/RouteServiceProvider.php`:
+
+```php
+Route::middleware('api')
+    ->prefix('api/<modulo>')
+    ->group(base_path('routes/<modulo>.php'));
+```
+
+3. **Crear carpeta de controladores** `app/Http/Controllers/<Modulo>/`.
+4. **Crear carpeta de requests** `app/Http/Requests/<Modulo>/`.
+5. (Opcional) **Crear carpeta de modelos** `app/Models/<Modulo>/`.
+
+## Checklist al crear un recurso dentro del módulo
+
+- **Routes**:
+  - privadas bajo `auth:sanctum`
+  - rutas específicas **antes** de `apiResource`
+- **Controller**:
+  - usar `ApiResponseTrait`
+  - `try/catch` + transacción cuando sea multi-tabla
+  - `findOrFail($id)` (según estándar del repo)
+- **Requests**:
+  - `rules/messages/attributes` (en español)
+  - `failedValidation()` con respuesta 422 uniforme si el módulo lo usa
+- **Model/Migration** (si aplica):
+  - `$fillable`, relaciones, scopes por `estado`
+  - FKs + índices + unique constraints en pivots
+

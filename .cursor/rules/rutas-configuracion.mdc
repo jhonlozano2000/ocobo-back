@@ -1,0 +1,14 @@
+---
+description: Rutas del módulo Configuración (prefijo y convenciones)
+globs: routes/configuracion.php
+alwaysApply: false
+---
+
+# Rutas: Configuración
+
+- **Prefijo** (RouteServiceProvider): `/api/config`
+- **Archivo**: `routes/configuracion.php`
+- **Requisitos**:
+  - `auth:sanctum` para privadas
+  - rutas específicas antes de `apiResource`
+

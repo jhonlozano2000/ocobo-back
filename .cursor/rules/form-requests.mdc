@@ -1,0 +1,26 @@
+---
+description: Convenciones para Form Requests (validación) por módulo
+globs: app/Http/Requests/**/*.php
+alwaysApply: false
+---
+
+# Form Requests (OCOBO-BACK)
+
+- **Ubicación**: `app/Http/Requests/{Modulo}/`
+- **Nombre**: PascalCase + sufijo `Request` (ej. `StoreUserRequest`)
+- **Métodos mínimos**: `authorize()`, `rules()`, `messages()`, `attributes()`
+- **Reglas**:
+  - Preferir `rules(): array` y reglas en **array** cuando se use `Rule::unique(...)`, closures o lógica condicional.
+  - Mensajes/atributos en **español** (estándar del repo).
+- **Respuesta 422 uniforme**: implementar `failedValidation()` devolviendo:
+
+```php
+response()->json([
+    'status'  => false,
+    'message' => 'Errores de validación.',
+    'errors'  => $validator->errors(),
+], 422);
+```
+
+- **JSON “crudo”**: cuando el módulo ya lo necesite, usar `prepareForValidation()` para `merge()` de `json_decode($this->getContent(), true)` si `empty($this->all())`.
+

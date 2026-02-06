@@ -1,5 +1,7 @@
 ---
-alwaysApply: true
+description: Convenciones de estructura y orden de rutas (módulos API)
+globs: routes/*.php
+alwaysApply: false
 ---
 
 # Estructura de Rutas

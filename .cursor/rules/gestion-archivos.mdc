@@ -1,5 +1,7 @@
 ---
-alwaysApply: true
+description: Manejo de archivos con ArchivoHelper (discos y patrón)
+globs: app/**/*.php
+alwaysApply: false
 ---
 
 # Gestión de Archivos

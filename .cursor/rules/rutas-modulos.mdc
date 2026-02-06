@@ -1,0 +1,20 @@
+---
+description: Mapa de módulos API y sus prefijos/archivos de rutas
+globs: app/Providers/RouteServiceProvider.php
+alwaysApply: false
+---
+
+# Módulos API (prefijos)
+
+En `RouteServiceProvider` se cargan archivos por módulo, con estos prefijos:
+
+- `routes/api.php` → `/api`
+- `routes/controlAcceso.php` → `/api/control-acceso`
+- `routes/calidad.php` → `/api/calidad`
+- `routes/configuracion.php` → `/api/config`
+- `routes/clasifica_documental.php` → `/api/clasifica-documental`
+- `routes/gestion.php` → `/api/gestion`
+- `routes/ventanilla.php` → `/api/ventanilla`
+
+Regla: si creas `routes/<nuevo>.php`, regístralo aquí con `Route::middleware('api')->prefix('api/<nuevo>')->group(...)`.
+

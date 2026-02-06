@@ -1,0 +1,35 @@
+---
+description: Estándar de respuestas API (ApiResponseTrait) y uso de JsonResource
+globs: app/Http/{Controllers,Resources,Traits}/**/*.php
+alwaysApply: false
+---
+
+# Respuestas API y Resources
+
+## ApiResponseTrait
+
+- En controladores API, **usar** `App\Http\Traits\ApiResponseTrait`.
+- Success:
+  - `return $this->successResponse($data, 'Mensaje', 200|201);`
+- Error:
+  - `return $this->errorResponse('Mensaje', $error, 4xx|5xx);`
+
+Shape esperado:
+
+```json
+{ "status": true|false, "message": "...", "data": ... }
+```
+
+## JsonResource
+
+- Si el endpoint retorna un modelo con relaciones/datos derivados, preferir `JsonResource` (ej. `UserResource`).
+- El controller debe retornar el Resource dentro de `successResponse()`.
+
+Ejemplo:
+
+```php
+return $this->successResponse([
+    'user' => new \App\Http\Resources\UserResource($user),
+], 'OK');
+```
+

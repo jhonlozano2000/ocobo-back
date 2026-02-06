@@ -1,0 +1,13 @@
+---
+description: Rutas del módulo Ventanilla (prefijo y orden crítico)
+globs: routes/ventanilla.php
+alwaysApply: false
+---
+
+# Rutas: Ventanilla
+
+- **Prefijo** (RouteServiceProvider): `/api/ventanilla`
+- **Archivo**: `routes/ventanilla.php`
+- **Orden crítico**: rutas específicas (ej. `estadisticas`, `update-asunto`, `update-fechas`) **antes** de `Route::apiResource('radica-recibida', ...)`.
+- **Auth**: todo lo privado bajo `auth:sanctum`.
+

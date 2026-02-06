@@ -1,0 +1,42 @@
+---
+description: Convenciones para tests (PHPUnit) en OCOBO-BACK
+globs: tests/**/*.php
+alwaysApply: false
+---
+
+# Tests (PHPUnit)
+
+## Ubicación
+
+- `tests/Feature`: tests de endpoints/HTTP (recomendado para la API).
+- `tests/Unit`: tests puros de clases/métodos (sin framework) cuando aplique.
+
+## Estándares
+
+- Nombrar métodos `test_...` (estilo actual del repo).
+- En Feature tests, preferir:
+  - `actingAs()` / `Laravel\Sanctum\Sanctum::actingAs($user)` cuando el endpoint requiera `auth:sanctum`.
+  - `RefreshDatabase` si el test toca BD (habilitar DB de testing antes).
+
+## Aserciones API (proyecto)
+
+Cuando el endpoint usa `ApiResponseTrait`, validar el shape:
+
+- `status` (bool)
+- `message` (string)
+- `data` (en success) o `error` (en error)
+
+Ejemplos:
+
+```php
+$response->assertStatus(200)
+    ->assertJson([
+        'status' => true,
+    ])
+    ->assertJsonStructure([
+        'status',
+        'message',
+        'data',
+    ]);
+```
+

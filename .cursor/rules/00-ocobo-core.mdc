@@ -1,0 +1,15 @@
+---
+description: Núcleo del proyecto OCOBO-BACK (convenciones mínimas)
+alwaysApply: true
+---
+
+# OCOBO-BACK (núcleo)
+
+- **Stack**: Laravel 10 + Sanctum + Spatie Permission.
+- **API responses**: usar `ApiResponseTrait` (`status`, `message`, `data|error`).
+- **Rutas**: por módulo en `routes/*.php`, registradas en `RouteServiceProvider` con prefijo `api/<modulo>`.
+- **Regla crítica de rutas**: rutas específicas **antes** de `Route::apiResource(...)`.
+- **Validación**: siempre con Form Requests en `app/Http/Requests/{Modulo}/`.
+- **Archivos**: usar `ArchivoHelper` (no manejar `Storage`/paths “a mano” salvo casos muy justificados).
+- **DB**: transacciones en operaciones multi-tabla y eager loading para evitar N+1.
+

@@ -1,0 +1,24 @@
+---
+description: Convenciones de naming y portabilidad (PSR-4 / case sensitivity)
+globs: app/**/*.php
+alwaysApply: false
+---
+
+# Naming y portabilidad (PSR-4)
+
+## Regla principal
+
+- **El nombre del archivo debe coincidir con la clase** (incluyendo mayúsculas/minúsculas).
+
+Motivo: en Windows puede “funcionar”, pero en Linux/CI (case-sensitive) rompe autoload PSR-4.
+
+## En este repo (estado actual)
+
+Existen archivos en `app/Models/Configuracion/` con *case* no uniforme (ej. `configVentanilla.php`).
+
+Regla para cambios nuevos:
+
+- **No crear** nuevas clases/archivos con `camelCase` en el nombre del archivo o clase.
+- Para código nuevo: **PascalCase** para clases y el archivo igual (`ConfigVentanilla.php`, `ConfigSede.php`, etc.).
+- Si es necesario corregir un caso existente, hacerlo en un PR/refactor dedicado (puede requerir ajustes de imports/usos).
+

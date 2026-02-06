@@ -1,0 +1,28 @@
+---
+description: Convenciones para modelos Eloquent por módulo
+globs: app/Models/**/*.php
+alwaysApply: false
+---
+
+# Modelos (OCOBO-BACK)
+
+- **Ubicación**: `app/Models/{Modulo}/` (o `app/Models/` si es transversal).
+- **Tabla**: definir `protected $table` si no coincide con la convención de Laravel.
+- **Asignación masiva**: declarar `protected $fillable = [...]` (y no exponer campos sensibles).
+- **Relaciones**:
+  - Declarar relaciones con las FKs reales (`belongsTo`, `hasMany`, `belongsToMany`).
+  - Usar `->withPivot(...)` y `->withTimestamps()` cuando aplique (según tablas pivot del proyecto).
+- **Scopes**: si hay `estado`/flags, exponer scopes simples (ej. `scopeActivo()`/`scopeInactivo()`).
+- **Archivos**:
+  - Usar `ArchivoHelper` (no `Storage` directo en controladores/modelos para URLs).
+  - Si el modelo expone archivos, implementar método genérico:
+
+```php
+public function getArchivoUrl(string $campo, string $disk): ?string
+{
+    return \App\Helpers\ArchivoHelper::obtenerUrl($this->{$campo} ?? null, $disk);
+}
+```
+
+- **Eventos**: si al eliminar se debe limpiar filesystem, usar `static::deleted(...)` y `ArchivoHelper::eliminarArchivo(...)`.
+

@@ -1,3 +1,8 @@
+---
+description: Estándares globales y convenciones del proyecto OCOBO-BACK (Laravel)
+alwaysApply: false
+---
+
 # Reglas del Proyecto OCOBO-BACK
 
 ## Estándares de Código

@@ -1,0 +1,19 @@
+---
+description: Convenciones para migraciones y esquema (FKs, índices, comments)
+globs: database/migrations/*.php
+alwaysApply: false
+---
+
+# Migraciones (OCOBO-BACK)
+
+- **Formato**: clase anónima (`return new class extends Migration { ... };`).
+- **Métodos**: `up(): void` y `down(): void`.
+- **Convención**:
+  - Tablas/columnas en `snake_case` (tablas usualmente plural).
+  - Usar `unsignedBigInteger()` para FKs y declarar `foreign(...)`.
+- **Performance**:
+  - Indexar FKs y combinaciones usadas en filtros (ej. `['user_id', 'estado']`).
+  - Usar `unique([...])` cuando prevenga duplicados (ej. pivots).
+- **Documentación del esquema**: usar `->comment(...)` cuando ya exista ese patrón en la tabla.
+- **Integridad**: definir `onDelete('cascade')` en pivots/relaciones que lo requieran (según lógica del módulo).
+

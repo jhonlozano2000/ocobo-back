@@ -1,0 +1,14 @@
+---
+description: Rutas del módulo Clasificación Documental (prefijo y convenciones)
+globs: routes/clasifica_documental.php
+alwaysApply: false
+---
+
+# Rutas: Clasificación documental
+
+- **Prefijo** (RouteServiceProvider): `/api/clasifica-documental`
+- **Archivo**: `routes/clasifica_documental.php`
+- **Requisitos**:
+  - `auth:sanctum` para privadas
+  - rutas específicas (importar/aprobar/versiones) antes de `apiResource`
+

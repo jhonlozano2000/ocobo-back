@@ -1,0 +1,15 @@
+---
+description: Rutas del módulo Control Acceso (prefijo y convenciones)
+globs: routes/controlAcceso.php
+alwaysApply: false
+---
+
+# Rutas: Control Acceso
+
+- **Prefijo** (RouteServiceProvider): `/api/control-acceso`
+- **Archivo**: `routes/controlAcceso.php`
+- **Requisitos**:
+  - Rutas privadas bajo `auth:sanctum`
+  - Rutas específicas antes de `apiResource`
+  - Nombres: `control-acceso.<recurso>.<accion>` cuando se use `->name()`
+

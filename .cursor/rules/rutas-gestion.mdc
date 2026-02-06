@@ -1,0 +1,14 @@
+---
+description: Rutas del módulo Gestión (prefijo y convenciones)
+globs: routes/gestion.php
+alwaysApply: false
+---
+
+# Rutas: Gestión
+
+- **Prefijo** (RouteServiceProvider): `/api/gestion`
+- **Archivo**: `routes/gestion.php`
+- **Requisitos**:
+  - `auth:sanctum` para privadas
+  - rutas específicas antes de `apiResource`
+

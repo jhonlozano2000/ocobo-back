@@ -1,5 +1,7 @@
 ---
-alwaysApply: true
+description: Estándares de controladores (API) del proyecto
+globs: app/Http/Controllers/**/*.php
+alwaysApply: false
 ---
 
 # Características de Controladores
