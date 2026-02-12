@@ -45,9 +45,41 @@ class VentanillaRadicaReci extends Model
         });
     }
 
+    /**
+     * Clasificación documental (recursiva: Serie > SubSerie > TipoDocumento).
+     * Para cargar con jerarquía completa usar: load(['clasificacionDocumental' => fn($q) => $q->with(['parent' => fn($q) => $q->with('parent')])])
+     */
     public function clasificacionDocumental()
     {
         return $this->belongsTo(\App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::class, 'clasifica_documen_id');
+    }
+
+    /**
+     * Carga clasificación documental con jerarquía completa (evita N+1 en getJerarquia).
+     */
+    public function loadClasificacionConJerarquia()
+    {
+        return $this->load(['clasificacionDocumental' => fn ($q) => $q->with(['parent' => fn ($q) => $q->with('parent')])]);
+    }
+
+    /**
+     * Obtiene la clasificación documental con su jerarquía recursiva.
+     */
+    public function getClasificacionDocumentalInfo(): ?array
+    {
+        $clasif = $this->clasificacionDocumental;
+        if (!$clasif) {
+            return null;
+        }
+        return [
+            'id' => $clasif->id,
+            'cod' => $clasif->cod,
+            'nom' => $clasif->nom,
+            'tipo' => $clasif->tipo,
+            'jerarquia' => $clasif->getJerarquia(),
+            'codigo_completo' => $clasif->getCodigoCompleto(),
+            'nombre_completo' => $clasif->getNombreCompleto(),
+        ];
     }
 
     public function usuarioCreaRadicado()
@@ -102,12 +134,21 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
+     * Obtiene el historial de archivos eliminados del radicado.
+     */
+    public function archivosEliminados()
+    {
+        return $this->hasMany(VentanillaRadicaReciArchivoEliminado::class, 'radicado_id');
+    }
+
+    /**
      * Obtiene información completa de documentos relacionados (archivo principal y adicionales).
      * Optimizado para usar relaciones ya cargadas con eager loading.
      *
+     * @param bool $incluirMetadatos Si es true, incluye tamaño y tipo MIME de cada archivo
      * @return array
      */
-    public function getDocumentosRelacionados(): array
+    public function getDocumentosRelacionados(bool $incluirMetadatos = false): array
     {
         // Cachear usuario que subió archivo (se usa dos veces)
         $usuarioSubio = $this->getInfoUsuarioSubio();
@@ -115,7 +156,7 @@ class VentanillaRadicaReci extends Model
         // Archivo principal
         $archivoPrincipal = null;
         if ($this->archivo_digital) {
-            $archivoPrincipal = $this->getInfoArchivo('archivo_digital', 'radicados_recibidos');
+            $archivoPrincipal = $this->getInfoArchivo('archivo_digital', 'radicados_recibidos', $incluirMetadatos);
             if ($archivoPrincipal && $usuarioSubio) {
                 $archivoPrincipal['subido_por'] = $usuarioSubio['nombre_completo'];
             }
@@ -128,7 +169,7 @@ class VentanillaRadicaReci extends Model
         $archivosAdicionales = collect();
 
         foreach ($archivosRelacion as $archivo) {
-            $info = $archivo->getInfoArchivo('archivo', 'radicados_recibidos');
+            $info = $archivo->getInfoArchivo('archivo', 'radicados_recibidos', $incluirMetadatos);
             if ($info) {
                 $info['fecha_subida'] = $archivo->created_at;
                 $archivosAdicionales->push($info);
@@ -198,14 +239,15 @@ class VentanillaRadicaReci extends Model
      * Obtiene toda la información relacionada del radicado (documentos, responsables, usuarios).
      * Opcionalmente acepta totales desde la vista para evitar recálculos.
      *
+     * @param bool $incluirMetadatosArchivos Si es true, incluye tamaño y tipo en documentos
      * @param int|null $totalResponsablesDesdeVista Total desde la vista SQL (opcional)
      * @param int|null $totalCustodiosDesdeVista Total desde la vista SQL (opcional)
      * @return array
      */
-    public function getInformacionCompleta(?int $totalResponsablesDesdeVista = null, ?int $totalCustodiosDesdeVista = null): array
+    public function getInformacionCompleta(bool $incluirMetadatosArchivos = false, ?int $totalResponsablesDesdeVista = null, ?int $totalCustodiosDesdeVista = null): array
     {
         return [
-            'documentos' => $this->getDocumentosRelacionados(),
+            'documentos' => $this->getDocumentosRelacionados($incluirMetadatosArchivos),
             'usuario_creo_radicado' => $this->getInfoUsuarioCrea(),
             ...$this->getResponsablesInfo($totalResponsablesDesdeVista, $totalCustodiosDesdeVista),
         ];

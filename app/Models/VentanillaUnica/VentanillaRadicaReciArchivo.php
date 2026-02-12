@@ -20,6 +20,14 @@ class VentanillaRadicaReciArchivo extends Model
     ];
 
     /**
+     * Usuario que subió el archivo adjunto.
+     */
+    public function usuarioSubido()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'subido_por');
+    }
+
+    /**
      * Obtiene la URL de cualquier archivo usando ArchivoHelper.
      * @param string $campo Nombre del atributo (ej: 'archivo')
      * @param string $disk Nombre del disco

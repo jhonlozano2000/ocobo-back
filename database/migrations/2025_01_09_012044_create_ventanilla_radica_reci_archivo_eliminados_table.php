@@ -29,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('ventanilla_radica_reci_archivo_eliminados');
+        Schema::dropIfExists('ventanilla_radica_reci_archivos_eliminados');
     }
 };

@@ -26,6 +26,21 @@ class VentanillaRadicaReciController extends Controller
 {
     use ApiResponseTrait;
 
+    private const PERM = 'Radicar -> Cores. Recibida -> ';
+
+    public function __construct()
+    {
+        $this->middleware('can:' . self::PERM . 'Listar')->only(['index', 'listarRadicados', 'estadisticas']);
+        $this->middleware('can:' . self::PERM . 'Crear')->only(['store']);
+        $this->middleware('can:' . self::PERM . 'Mostrar')->only(['show', 'lineaTiempo']);
+        $this->middleware('can:' . self::PERM . 'Editar')->only(['update']);
+        $this->middleware('can:' . self::PERM . 'Actualizar asunto')->only(['updateAsunto']);
+        $this->middleware('can:' . self::PERM . 'Atualizar fechas de radicados')->only(['updateFechas']);
+        $this->middleware('can:' . self::PERM . 'Actualizar clasificacion de radicados')->only(['updateClasificacionDocumental']);
+        $this->middleware('can:' . self::PERM . 'Eliminar')->only(['destroy']);
+        $this->middleware('can:' . self::PERM . 'Notificar Email')->only(['enviarNotificacion']);
+    }
+
     /**
      * Obtiene un listado de radicaciones recibidas con información detallada.
      *
@@ -246,44 +261,16 @@ class VentanillaRadicaReciController extends Controller
     }
 
     /**
-     * Obtiene una radicación específica por su ID.
+     * Obtiene una radicación específica por su ID con toda la información relacionada.
      *
-     * Este método permite obtener los detalles completos de una radicación
-     * incluyendo todas sus relaciones.
+     * Incluye: datos del radicado, clasificación documental, tercero, medio de recepción,
+     * servidor de archivos, usuario que creó, documentos (principal y adjuntos con metadatos y URL),
+     * responsables completos e historial de archivos eliminados.
      *
      * @param int $id ID de la radicación
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la radicación
+     * @return JsonResponse Respuesta JSON con la radicación completa
      *
      * @urlParam id integer required El ID de la radicación. Example: 1
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Radicación encontrada exitosamente",
-     *   "data": {
-     *     "id": 1,
-     *     "num_radicado": "20240101-00001",
-     *     "clasificacion_documental": {
-     *       "id": 1,
-     *       "codigo": "01",
-     *       "nombre": "Correspondencia"
-     *     },
-     *     "tercero": {
-     *       "id": 1,
-     *       "nombre": "Empresa ABC"
-     *     }
-     *   }
-     * }
-     *
-     * @response 404 {
-     *   "status": false,
-     *   "message": "Radicación no encontrada"
-     * }
-     *
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al obtener la radicación",
-     *   "error": "Error message"
-     * }
      */
     public function show($id)
     {
@@ -292,16 +279,262 @@ class VentanillaRadicaReciController extends Controller
                 'clasificacionDocumental',
                 'tercero',
                 'medioRecepcion',
-                'servidorArchivos'
+                'servidorArchivos',
+                'usuarioCreaRadicado',
+                'usuarioSubio',
+                'responsables.userCargo.user',
+                'responsables.userCargo.cargo',
+                'archivos',
+                'archivosEliminados.usuario',
             ])->find($id);
 
             if (!$radicado) {
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
 
-            return $this->successResponse($radicado, 'Radicación encontrada exitosamente');
+            // Documentos con metadatos y URL (archivo principal + adjuntos)
+            $documentos = $radicado->getDocumentosRelacionados(true);
+
+            // Responsables formateados
+            $responsablesInfo = $radicado->getResponsablesInfo();
+
+            // Historial de archivos eliminados (todo el historial)
+            $historialEliminados = $radicado->archivosEliminados->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'nombre_archivo' => basename($item->archivo),
+                    'ruta' => $item->archivo,
+                    'eliminado_at' => $item->deleted_at,
+                    'eliminado_por' => $item->usuario ? $item->usuario->getInfoUsuario() : null,
+                ];
+            });
+
+            $data = $radicado->toArray();
+            $data['documentos'] = $documentos;
+            $data['usuario_creo_radicado'] = $radicado->getInfoUsuarioCrea();
+            $data['responsables'] = $responsablesInfo['responsables'];
+            $data['total_responsables'] = $responsablesInfo['total_responsables'];
+            $data['total_custodios'] = $responsablesInfo['total_custodios'];
+            $data['historial_archivos_eliminados'] = $historialEliminados;
+
+            return $this->successResponse($data, 'Radicación encontrada exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener la radicación', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Obtiene la línea de tiempo del radicado (eventos ordenados por fecha).
+     *
+     * Incluye: creación del radicado, asignación de responsables, visualización por responsables,
+     * subida de archivos adjuntos y eliminación de archivos.
+     *
+     * @param int $id ID de la radicación
+     * @return JsonResponse Respuesta JSON con la línea de tiempo
+     *
+     * @urlParam id integer required El ID de la radicación. Example: 1
+     */
+    public function lineaTiempo($id)
+    {
+        try {
+            $radicado = VentanillaRadicaReci::with([
+                'usuarioCreaRadicado',
+                'usuarioSubio',
+                'responsables.userCargo.user',
+                'responsables.userCargo.cargo',
+                'archivos.usuarioSubido',
+                'archivosEliminados.usuario',
+            ])->find($id);
+
+            if (!$radicado) {
+                return $this->errorResponse('Radicación no encontrada', null, 404);
+            }
+
+            $eventos = [];
+
+            // 1. Radicado creado
+            $eventos[] = [
+                'fecha' => $radicado->created_at,
+                'tipo' => 'radicado_creado',
+                'titulo' => 'Radicado creado',
+                'descripcion' => 'Se creó el radicado ' . $radicado->num_radicado,
+                'usuario' => $radicado->usuarioCreaRadicado ? $radicado->usuarioCreaRadicado->getInfoUsuario() : null,
+                'datos' => [
+                    'num_radicado' => $radicado->num_radicado,
+                    'radicado_id' => $radicado->id,
+                ],
+            ];
+
+            // 2. Radicado actualizado (cuando hubo alguna modificación después de la creación)
+            if ($radicado->updated_at->gt($radicado->created_at)) {
+                $eventos[] = [
+                    'fecha' => $radicado->updated_at,
+                    'tipo' => 'radicado_actualizado',
+                    'titulo' => 'Radicado actualizado',
+                    'descripcion' => 'Se actualizaron datos del radicado',
+                    'usuario' => null,
+                    'datos' => [
+                        'asunto' => $radicado->asunto,
+                        'fec_venci' => $radicado->fec_venci?->toDateString(),
+                        'fec_docu' => $radicado->fec_docu?->toDateString(),
+                        'clasifica_documen_id' => $radicado->clasifica_documen_id,
+                    ],
+                ];
+            }
+
+            // 3. Archivo digital subido (cuando existe archivo digital principal)
+            if (!empty($radicado->archivo_digital)) {
+                $eventos[] = [
+                    'fecha' => $radicado->updated_at,
+                    'tipo' => 'archivo_digital_subido',
+                    'titulo' => 'Archivo digital subido',
+                    'descripcion' => 'Se cargó el archivo digital principal: ' . basename($radicado->archivo_digital),
+                    'usuario' => $radicado->usuarioSubio ? $radicado->usuarioSubio->getInfoUsuario() : null,
+                    'datos' => [
+                        'archivo_nombre' => basename($radicado->archivo_digital),
+                        'extension' => pathinfo($radicado->archivo_digital, PATHINFO_EXTENSION),
+                        'ruta' => $radicado->archivo_digital,
+                    ],
+                ];
+            }
+
+            // 4. Responsables asignados
+            foreach ($radicado->responsables as $responsable) {
+                $user = $responsable->userCargo && $responsable->userCargo->user
+                    ? $responsable->userCargo->user->getInfoUsuario()
+                    : null;
+                $cargoRel = $responsable->userCargo?->cargo;
+                $cargo = (isset($cargoRel) && is_object($cargoRel)) ? $cargoRel : null;
+                $eventos[] = [
+                    'fecha' => $responsable->created_at,
+                    'tipo' => 'responsable_asignado',
+                    'titulo' => 'Responsable asignado',
+                    'descripcion' => $cargo
+                        ? 'Se asignó como responsable' . ($responsable->custodio ? ' (custodio)' : '') . ': ' . $cargo->nom_organico
+                        : 'Se asignó un responsable',
+                    'usuario' => $user,
+                    'custodio' => $responsable->custodio,
+                    'datos' => [
+                        'responsable_id' => $responsable->id,
+                        'cargo' => $cargo ? [
+                            'id' => $cargo->id,
+                            'nombre' => $cargo->nom_organico,
+                            'codigo' => $cargo->cod_organico,
+                        ] : null,
+                    ],
+                ];
+            }
+
+            // 5. Documento visto por responsable
+            foreach ($radicado->responsables as $responsable) {
+                if ($responsable->fechor_visto) {
+                    $user = $responsable->userCargo && $responsable->userCargo->user
+                        ? $responsable->userCargo->user->getInfoUsuario()
+                        : null;
+                    $cargoRel = $responsable->userCargo?->cargo;
+                    $cargo = (isset($cargoRel) && is_object($cargoRel)) ? $cargoRel : null;
+                    $eventos[] = [
+                        'fecha' => $responsable->fechor_visto,
+                        'tipo' => 'documento_visto',
+                        'titulo' => 'Documento visualizado',
+                        'descripcion' => $cargo
+                            ? 'Visualizado por responsable: ' . $cargo->nom_organico
+                            : 'Un responsable visualizó el documento',
+                        'usuario' => $user,
+                        'datos' => [
+                            'responsable_id' => $responsable->id,
+                            'cargo_nombre' => $cargo?->nom_organico,
+                        ],
+                    ];
+                }
+            }
+
+            // 6. Archivos adjuntos subidos
+            foreach ($radicado->archivos as $archivo) {
+                $eventos[] = [
+                    'fecha' => $archivo->created_at,
+                    'tipo' => 'archivo_adjunto_subido',
+                    'titulo' => 'Archivo adjunto subido',
+                    'descripcion' => 'Se subió el archivo adjunto: ' . basename($archivo->archivo),
+                    'usuario' => $archivo->usuarioSubido ? $archivo->usuarioSubido->getInfoUsuario() : null,
+                    'datos' => [
+                        'archivo_id' => $archivo->id,
+                        'archivo_nombre' => basename($archivo->archivo),
+                        'extension' => pathinfo($archivo->archivo, PATHINFO_EXTENSION),
+                        'ruta' => $archivo->archivo,
+                        'fecha_subida' => $archivo->created_at,
+                    ],
+                ];
+            }
+
+            // 7. Archivos eliminados
+            foreach ($radicado->archivosEliminados as $eliminado) {
+                $eventos[] = [
+                    'fecha' => $eliminado->deleted_at,
+                    'tipo' => 'archivo_eliminado',
+                    'titulo' => 'Archivo eliminado',
+                    'descripcion' => 'Se eliminó el archivo: ' . basename($eliminado->archivo),
+                    'usuario' => $eliminado->usuario ? $eliminado->usuario->getInfoUsuario() : null,
+                    'datos' => [
+                        'archivo_nombre' => basename($eliminado->archivo),
+                        'ruta' => $eliminado->archivo,
+                        'eliminado_at' => $eliminado->deleted_at,
+                    ],
+                ];
+            }
+
+            // Ordenar por fecha descendente (más reciente primero)
+            usort($eventos, function ($a, $b) {
+                return $b['fecha']->getTimestamp() - $a['fecha']->getTimestamp();
+            });
+
+            // Formatear fechas para la respuesta
+            $lineaTiempo = array_map(function ($e) {
+                $e['fecha'] = $e['fecha']->toIso8601String();
+                if (!empty($e['datos']['fecha_subida']) && $e['datos']['fecha_subida'] instanceof \Carbon\Carbon) {
+                    $e['datos']['fecha_subida'] = $e['datos']['fecha_subida']->toIso8601String();
+                }
+                if (!empty($e['datos']['eliminado_at']) && $e['datos']['eliminado_at'] instanceof \Carbon\Carbon) {
+                    $e['datos']['eliminado_at'] = $e['datos']['eliminado_at']->toIso8601String();
+                }
+                if (!empty($e['datos']['fec_venci']) && $e['datos']['fec_venci'] instanceof \Carbon\Carbon) {
+                    $e['datos']['fec_venci'] = $e['datos']['fec_venci']->toDateString();
+                }
+                if (!empty($e['datos']['fec_docu']) && $e['datos']['fec_docu'] instanceof \Carbon\Carbon) {
+                    $e['datos']['fec_docu'] = $e['datos']['fec_docu']->toDateString();
+                }
+                return $e;
+            }, $eventos);
+
+            // Resumen por tipo de evento
+            $resumenPorTipo = [];
+            foreach ($eventos as $e) {
+                $t = $e['tipo'];
+                $resumenPorTipo[$t] = ($resumenPorTipo[$t] ?? 0) + 1;
+            }
+
+            return $this->successResponse([
+                'radicado' => [
+                    'id' => $radicado->id,
+                    'num_radicado' => $radicado->num_radicado,
+                    'asunto' => $radicado->asunto,
+                    'created_at' => $radicado->created_at->toIso8601String(),
+                    'updated_at' => $radicado->updated_at->toIso8601String(),
+                    'fec_venci' => $radicado->fec_venci ? (\Carbon\Carbon::parse($radicado->fec_venci)->toDateString()) : null,
+                    'fec_docu' => $radicado->fec_docu ? (\Carbon\Carbon::parse($radicado->fec_docu)->toDateString()) : null,
+                    'tiene_archivo_digital' => !empty($radicado->archivo_digital),
+                    'total_adjuntos' => $radicado->archivos->count(),
+                    'total_responsables' => $radicado->responsables->count(),
+                    'total_archivos_eliminados' => $radicado->archivosEliminados->count(),
+                ],
+                'resumen' => [
+                    'total_eventos' => count($lineaTiempo),
+                    'por_tipo' => $resumenPorTipo,
+                ],
+                'eventos' => $lineaTiempo,
+            ], 'Línea de tiempo obtenida exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener la línea de tiempo', $e->getMessage(), 500);
         }
     }
 
@@ -524,38 +757,12 @@ class VentanillaRadicaReciController extends Controller
     /**
      * Lista radicaciones con filtros avanzados para administración.
      *
-     * Este método permite a los administradores listar radicaciones
-     * con filtros avanzados y requiere autorización específica.
-     *
      * @param ListRadicadosRequest $request La solicitud HTTP validada
      * @return \Illuminate\Http\JsonResponse Respuesta JSON con las radicaciones
-     *
-     * @queryParam estado integer Filtrar por estado. Example: 1
-     * @queryParam fecha_desde string Filtrar desde fecha (YYYY-MM-DD). Example: "2024-01-01"
-     * @queryParam fecha_hasta string Filtrar hasta fecha (YYYY-MM-DD). Example: "2024-12-31"
-     * @queryParam usuario_responsable integer Filtrar por usuario responsable. Example: 1
-     * @queryParam per_page integer Número de elementos por página (por defecto: 10). Example: 20
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Radicaciones obtenidas exitosamente",
-     *   "data": {
-     *     "current_page": 1,
-     *     "data": [...],
-     *     "total": 100
-     *   }
-     * }
-     *
-     * @response 403 {
-     *   "status": false,
-     *   "message": "No tiene permisos para ver radicaciones"
-     * }
      */
     public function listarRadicados(ListRadicadosRequest $request)
     {
         try {
-            $this->authorize('ver-radicados');
-
             $query = VentanillaRadicaReci::with([
                 'clasificacionDocumental',
                 'tercero',

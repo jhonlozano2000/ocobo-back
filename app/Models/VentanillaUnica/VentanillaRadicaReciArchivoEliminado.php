@@ -9,7 +9,7 @@ class VentanillaRadicaReciArchivoEliminado extends Model
 {
     use HasFactory;
 
-    protected $table = 'ventanilla_radica_reci_archivo_eliminados';
+    protected $table = 'ventanilla_radica_reci_archivos_eliminados';
 
     protected $fillable = [
         'radicado_id',

@@ -17,6 +17,17 @@ class VentanillaUnicaController extends Controller
 {
     use ApiResponseTrait;
 
+    private const PERM = 'Config - Ventanillas -> ';
+
+    public function __construct()
+    {
+        $this->middleware('can:' . self::PERM . 'Listar')->only(['index']);
+        $this->middleware('can:' . self::PERM . 'Crear')->only(['store']);
+        $this->middleware('can:' . self::PERM . 'Mostrar')->only(['show', 'listarTiposDocumentales']);
+        $this->middleware('can:' . self::PERM . 'Editar')->only(['update', 'configurarTiposDocumentales']);
+        $this->middleware('can:' . self::PERM . 'Eliminar')->only(['destroy']);
+    }
+
     /**
      * Obtiene un listado de todas las ventanillas de una sede específica.
      *

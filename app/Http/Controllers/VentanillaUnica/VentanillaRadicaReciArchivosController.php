@@ -33,6 +33,17 @@ class VentanillaRadicaReciArchivosController extends Controller
 {
     use ApiResponseTrait;
 
+    private const PERM = 'Radicar -> Cores. Recibida -> ';
+
+    public function __construct()
+    {
+        $this->middleware('can:' . self::PERM . 'Subir digital')->only(['upload']);
+        $this->middleware('can:' . self::PERM . 'Subir adjuntos')->only(['subirArchivosAdjuntos']);
+        $this->middleware('can:' . self::PERM . 'Eliminar digital')->only(['deleteFile']);
+        $this->middleware('can:' . self::PERM . 'Eliminar adjuntos')->only(['eliminarArchivoAdjunto']);
+        $this->middleware('can:' . self::PERM . 'Mostrar')->only(['listarArchivosAdjuntos', 'descargarArchivoAdjunto', 'getFileInfo', 'download', 'historialEliminaciones']);
+    }
+
     /**
      * Sube un archivo asociado a una radicación específica.
      *
@@ -291,7 +302,6 @@ class VentanillaRadicaReciArchivosController extends Controller
     public function historialEliminaciones($id)
     {
         try {
-            // Verificar que la radicación existe
             $radicado = VentanillaRadicaReci::find($id);
             if (!$radicado) {
                 return $this->errorResponse('Radicación no encontrada', null, 404);
@@ -389,7 +399,6 @@ class VentanillaRadicaReciArchivosController extends Controller
     public function subirArchivosAdjuntos($id, Request $request)
     {
         try {
-
             $radicado = VentanillaRadicaReci::find($id);
             if (!$radicado) {
                 return $this->errorResponse('Radicación no encontrada', null, 404);

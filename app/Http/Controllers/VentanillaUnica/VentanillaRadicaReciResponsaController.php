@@ -15,6 +15,13 @@ class VentanillaRadicaReciResponsaController extends Controller
 {
     use ApiResponseTrait;
 
+    private const PERM = 'Radicar -> Cores. Recibida -> ';
+
+    public function __construct()
+    {
+        $this->middleware('can:' . self::PERM . 'Editar')->only(['index', 'store', 'show', 'update', 'destroy', 'getByRadicado', 'assignToRadicado']);
+    }
+
     /**
      * Obtiene un listado de todos los responsables de radicaciones.
      *

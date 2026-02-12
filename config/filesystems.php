@@ -86,6 +86,14 @@ return [
             'throw' => false,
         ],
 
+        'radicados_enviados' => [
+            'driver' => 'local',
+            'root' => storage_path('app/radicados_enviados'),
+            'url' => env('APP_URL') . '/radicados_enviados',
+            'visibility' => 'public',
+            'throw' => false,
+        ],
+
         'otros_archivos' => [
             'driver' => 'local',
             'root' => storage_path('app/otros_archivos'),
@@ -113,6 +121,7 @@ return [
         public_path('firmas') => storage_path('app/firmas'),
         public_path('avatars') => storage_path('app/avatars'),
         public_path('radicados_recibidos') => storage_path('app/radicados_recibidos'),
+        public_path('radicados_enviados') => storage_path('app/radicados_enviados'),
         public_path('otros_archivos') => storage_path('app/otros_archivos'),
     ],
 

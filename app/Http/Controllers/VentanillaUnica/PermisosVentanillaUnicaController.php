@@ -16,6 +16,12 @@ class PermisosVentanillaUnicaController extends Controller
 {
     use ApiResponseTrait;
 
+    public function __construct()
+    {
+        $this->middleware('can:Config - Ventanillas -> Listar')->only(['listarUsuariosPermitidos', 'listarVentanillasPermitidas']);
+        $this->middleware('can:Config - Ventanillas -> Editar')->only(['asignarPermisos', 'revocarPermisos']);
+    }
+
     /**
      * Asigna permisos de radicación a usuarios en una ventanilla específica.
      *
