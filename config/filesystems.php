@@ -6,11 +6,6 @@ return [
     |--------------------------------------------------------------------------
     | Default Filesystem Disk
     |--------------------------------------------------------------------------
-    |
-    | Here you may specify the default filesystem disk that should be used
-    | by the framework. The "local" disk, as well as a variety of cloud
-    | based disks are available to your application. Just store away!
-    |
     */
 
     'default' => env('FILESYSTEM_DISK', 'local'),
@@ -19,13 +14,6 @@ return [
     |--------------------------------------------------------------------------
     | Filesystem Disks
     |--------------------------------------------------------------------------
-    |
-    | Here you may configure as many filesystem "disks" as you wish, and you
-    | may even configure multiple disks of the same driver. Defaults have
-    | been set up for each driver as an example of the required values.
-    |
-    | Supported Drivers: "local", "ftp", "sftp", "s3"
-    |
     */
 
     'disks' => [
@@ -56,49 +44,56 @@ return [
             'throw' => false,
         ],
 
+        // ── Discos privados ─────────────────────────────────────────────────
+        // Ninguno de estos tiene 'url' ni symlink público.
+        // El acceso se hace SIEMPRE a través de endpoints autenticados.
+
         'temp_files' => [
             'driver' => 'local',
             'root' => storage_path('app/temp_files'),
-            'url' => env('APP_URL') . '/temp_files',
-            'visibility' => 'public',
+            'visibility' => 'private',
             'throw' => false,
         ],
 
         'avatars' => [
             'driver' => 'local',
             'root' => storage_path('app/avatars'),
-            'url' => env('APP_URL') . '/storage/avatars',
-            'visibility' => 'public',
+            'visibility' => 'private',
+            'throw' => false,
         ],
 
         'firmas' => [
             'driver' => 'local',
             'root' => storage_path('app/firmas'),
-            'url' => env('APP_URL') . '/storage/firmas',
-            'visibility' => 'public',
+            'visibility' => 'private',
+            'throw' => false,
         ],
 
         'radicados_recibidos' => [
             'driver' => 'local',
             'root' => storage_path('app/radicados_recibidos'),
-            'url' => env('APP_URL') . '/radicados_recibidos',
-            'visibility' => 'public',
+            'visibility' => 'private',
             'throw' => false,
         ],
 
         'radicados_enviados' => [
             'driver' => 'local',
             'root' => storage_path('app/radicados_enviados'),
-            'url' => env('APP_URL') . '/radicados_enviados',
-            'visibility' => 'public',
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+
+        'radicados_internos' => [
+            'driver' => 'local',
+            'root' => storage_path('app/radicados_internos'),
+            'visibility' => 'private',
             'throw' => false,
         ],
 
         'otros_archivos' => [
             'driver' => 'local',
             'root' => storage_path('app/otros_archivos'),
-            'url' => env('APP_URL') . '/otros_archivos',
-            'visibility' => 'public',
+            'visibility' => 'private',
             'throw' => false,
         ],
 
@@ -108,21 +103,12 @@ return [
     |--------------------------------------------------------------------------
     | Symbolic Links
     |--------------------------------------------------------------------------
-    |
-    | Here you may configure the symbolic links that will be created when the
-    | `storage:link` Artisan command is executed. The array keys should be
-    | the locations of the links and the values should be their targets.
-    |
+    | SOLO el disco 'public' tiene symlink.
+    | Los discos privados NO deben tener symlink en public/ — eso los expone.
     */
 
     'links' => [
         public_path('storage') => storage_path('app/public'),
-        public_path('temp_files') => storage_path('app/temp_files'),
-        public_path('firmas') => storage_path('app/firmas'),
-        public_path('avatars') => storage_path('app/avatars'),
-        public_path('radicados_recibidos') => storage_path('app/radicados_recibidos'),
-        public_path('radicados_enviados') => storage_path('app/radicados_enviados'),
-        public_path('otros_archivos') => storage_path('app/otros_archivos'),
     ],
 
 ];

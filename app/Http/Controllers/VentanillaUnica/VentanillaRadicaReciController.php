@@ -11,15 +11,11 @@ use App\Models\Configuracion\ConfigVarias;
 use App\Models\User;
 use App\Models\VentanillaUnica\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\VentanillaRadicaReciResponsa;
-use App\Models\VentanillaUnica\VentanillaRadicaReciArchivo;
-use App\Models\VentanillaUnica\VentanillaRadicaReciArchivoEliminado;
 use App\Models\VentanillaUnica\VentanillaRadicaReciOptimizedView;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
 
 class VentanillaRadicaReciController extends Controller
@@ -248,6 +244,10 @@ class VentanillaRadicaReciController extends Controller
             $radicado->save();
 
             DB::commit();
+
+            // Acuse de recibo automático — fuera de la transacción
+            // para que un fallo en el email no revierta el radicado
+            \App\Helpers\AcuseReciboHelper::enviar($radicado, 'recibida');
 
             return $this->successResponse(
                 $radicado->load(['clasificacionDocumental', 'tercero', 'medioRecepcion']),

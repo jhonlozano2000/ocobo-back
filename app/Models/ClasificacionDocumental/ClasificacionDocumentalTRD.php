@@ -25,6 +25,9 @@ class ClasificacionDocumentalTRD extends Model
         'e',
         'm_d',
         's',
+        'papel',
+        'electronico',
+        'mixto',
         'procedimiento',
         'parent',
         'dependencia_id',
@@ -288,7 +291,7 @@ class ClasificacionDocumentalTRD extends Model
 
     /**
      * Obtiene la información de la Serie asociada a este elemento.
-     * 
+     *
      * @return array|null Array con información de la Serie o null si no se encuentra
      */
     public function getSerie(): ?array
@@ -306,12 +309,12 @@ class ClasificacionDocumentalTRD extends Model
         // Si es una SubSerie, buscar su Serie padre
         if ($this->isSubSerie()) {
             $parent = $this->parent;
-            
+
             // Si parent es un entero (ID), cargar el modelo
             if (is_int($parent)) {
                 $parent = self::find($parent);
             }
-            
+
             if ($parent && is_object($parent) && $parent->isSerie()) {
                 return [
                     'id' => $parent->id,
@@ -325,20 +328,20 @@ class ClasificacionDocumentalTRD extends Model
         // Si es un TipoDocumento, buscar la Serie (abuelo)
         if ($this->isTipoDocumento()) {
             $parent = $this->parent; // SubSerie
-            
+
             // Si parent es un entero (ID), cargar el modelo
             if (is_int($parent)) {
                 $parent = self::find($parent);
             }
-            
+
             if ($parent && is_object($parent) && $parent->isSubSerie()) {
                 $grandParent = $parent->parent; // Serie
-                
+
                 // Si grandParent es un entero (ID), cargar el modelo
                 if (is_int($grandParent)) {
                     $grandParent = self::find($grandParent);
                 }
-                
+
                 if ($grandParent && is_object($grandParent) && $grandParent->isSerie()) {
                     return [
                         'id' => $grandParent->id,
@@ -355,7 +358,7 @@ class ClasificacionDocumentalTRD extends Model
 
     /**
      * Obtiene la información de la SubSerie asociada a este elemento.
-     * 
+     *
      * @return array|null Array con información de la SubSerie o null si no se encuentra
      */
     public function getSubSerie(): ?array
@@ -373,12 +376,12 @@ class ClasificacionDocumentalTRD extends Model
         // Si es un TipoDocumento, buscar su SubSerie padre
         if ($this->isTipoDocumento()) {
             $parent = $this->parent;
-            
+
             // Si parent es un entero (ID), cargar el modelo
             if (is_int($parent)) {
                 $parent = self::find($parent);
             }
-            
+
             if ($parent && is_object($parent) && $parent->isSubSerie()) {
                 return [
                     'id' => $parent->id,

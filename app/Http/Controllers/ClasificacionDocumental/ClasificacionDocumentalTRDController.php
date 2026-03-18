@@ -1127,7 +1127,10 @@ class ClasificacionDocumentalTRDController extends Controller
                 $columnaH = trim($row[7] ?? ''); // E
                 $columnaI = trim($row[8] ?? ''); // M/D
                 $columnaJ = trim($row[9] ?? ''); // S
-                $columnaK = trim($row[10] ?? ''); // Procedimiento
+                $columnaK = trim($row[10] ?? ''); // Papel
+                $columnaL = trim($row[11] ?? ''); // Electrónico
+                $columnaM = trim($row[12] ?? ''); // Mixto
+                $columnaN = trim($row[13] ?? ''); // Procedimiento
 
                 // Determinar tipo según las reglas:
                 // 1. Serie: A y B tienen información, C está vacía
@@ -1214,7 +1217,10 @@ class ClasificacionDocumentalTRDController extends Controller
                         $e = strtolower(trim($columnaH)) === 'si' || strtolower(trim($columnaH)) === 'x';
                         $md = strtolower(trim($columnaI)) === 'si' || strtolower(trim($columnaI)) === 'x';
                         $s = strtolower(trim($columnaJ)) === 'si' || strtolower(trim($columnaJ)) === 'x';
-                        $procedimiento = !empty($columnaK) ? $columnaK : null;
+                        $papel =  strtolower(trim($columnaK)) === 'si' || strtolower(trim($columnaK)) === 'x';
+                        $electronico = strtolower(trim($columnaL)) === 'si' || strtolower(trim($columnaL)) === 'x';
+                        $mixto = strtolower(trim($columnaM)) === 'si' || strtolower(trim($columnaM)) === 'x';
+                        $procedimiento = !empty($columnaN) ? $columnaN : null;
                     }
 
                     // Crear elemento TRD
@@ -1230,6 +1236,9 @@ class ClasificacionDocumentalTRDController extends Controller
                         'e' => $e,
                         'm_d' => $md,
                         's' => $s,
+                        'papel' => $papel,  // soporte por defecto, editable después
+                        'electronico' => $electronico,  // soporte por defecto, editable después
+                        'mixto' => $mixto,   // soporte por defecto mixto
                         'procedimiento' => $procedimiento,
                         'estado' => true,
                         'user_register' => auth()->id(),

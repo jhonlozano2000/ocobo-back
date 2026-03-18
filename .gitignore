@@ -3,25 +3,52 @@ node_modules/
 npm-debug.log
 yarn-error.log
 
-# Laravel 4 specific
+# Laravel specific
 bootstrap/compiled.php
 app/storage/
-
-# Laravel 5 & Lumen specific
 public/storage
 public/hot
-
-# Laravel 5 & Lumen specific with changed public path
 public_html/storage
 public_html/hot
-
 storage/*.key
-.env
+.phpunit.result.cache
 Homestead.yaml
 Homestead.json
 /.vagrant
-.phpunit.result.cache
 
+# Variables de entorno — NUNCA al repositorio
+.env
+.env.local
+.env.*.local
 
+# ── Archivos de producción — NUNCA al repositorio ───────────────────
+# Documentos de radicados
 storage/app/radicados_recibidos/*
+storage/app/radicados_enviados/*
+storage/app/radicados_internos/*
+storage/app/otros_archivos/*
+
+# Imágenes sensibles de usuarios
+storage/app/avatars/*
+storage/app/firmas/*
+
+# Temporales
 storage/app/temp_files/*
+
+# Symlinks públicos que se regeneran con php artisan storage:link
+public/radicados_recibidos
+public/radicados_enviados
+public/radicados_internos
+public/avatars
+public/firmas
+public/temp_files
+public/otros_archivos
+
+# Mantener las carpetas en git pero vacías
+!storage/app/radicados_recibidos/.gitkeep
+!storage/app/radicados_enviados/.gitkeep
+!storage/app/radicados_internos/.gitkeep
+!storage/app/otros_archivos/.gitkeep
+!storage/app/avatars/.gitkeep
+!storage/app/firmas/.gitkeep
+!storage/app/temp_files/.gitkeep
