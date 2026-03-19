@@ -102,6 +102,63 @@ class GestionTerceroController extends Controller
     }
 
     /**
+     * Obtiene la vista 360 de un tercero por su número de identificación.
+     * Incluye historial de radicados y expedientes vinculados.
+     *
+     * @param string $identificacion
+     * @return JsonResponse
+     */
+    public function showHistory(string $identificacion): JsonResponse
+    {
+        try {
+            // 1. Buscar el tercero con sus datos básicos
+            $tercero = GestionTercero::where('num_docu_nit', $identificacion)
+                ->with('divisionPolitica')
+                ->first();
+
+            if (!$tercero) {
+                return $this->errorResponse('Tercero no encontrado', null, 404);
+            }
+
+            // 2. Obtener Radicados Recibidos (Entradas)
+            $radicadosRecibidos = \App\Models\VentanillaUnica\VentanillaRadicaReci::where('tercero_id', $tercero->id)
+                ->select('id', 'num_radicado', 'asunto', 'fec_radicado', 'estado')
+                ->with(['expedientes' => function($q) {
+                    $q->select('ofi_archivo_expedientes.id', 'numero_expediente', 'nombre_expediente');
+                }])
+                ->latest()
+                ->get();
+
+            // 3. Obtener Radicados Enviados (Salidas)
+            $radicadosEnviados = \App\Models\VentanillaUnica\VentanillaRadicaEnviados::where('tercero_id', $tercero->id)
+                ->select('id', 'num_radicado', 'asunto', 'fec_radicado', 'estado')
+                ->with(['expedientes' => function($q) {
+                    $q->select('ofi_archivo_expedientes.id', 'numero_expediente', 'nombre_expediente');
+                }])
+                ->latest()
+                ->get();
+
+            // 4. Consolidar Expedientes únicos en los que participa este tercero
+            $expedientes = collect();
+            $radicadosRecibidos->each(fn($r) => $expedientes->push(...$r->expedientes));
+            $radicadosEnviados->each(fn($r) => $expedientes->push(...$r->expedientes));
+            
+            $expedientesUnicos = $expedientes->unique('id')->values();
+
+            return $this->successResponse([
+                'tercero' => $tercero,
+                'radicados_recibidos' => $radicadosRecibidos,
+                'radicados_enviados' => $radicadosEnviados,
+                'expedientes' => $expedientesUnicos,
+                'total_tramites' => $radicadosRecibidos->count() + $radicadosEnviados->count()
+            ], 'Historial documental obtenido exitosamente');
+
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener historial del tercero', $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Crea un nuevo tercero en el sistema.
      *
      * @param GestionTerceroRequest $request Datos validados del tercero

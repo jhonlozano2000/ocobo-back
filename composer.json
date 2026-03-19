@@ -16,6 +16,9 @@
         "laravel/sanctum": "3.2",
         "laravel/tinker": "^2.8",
         "phpoffice/phpspreadsheet": "^3.4",
+        "setasign/fpdf": "*",
+        "setasign/fpdi": "*",
+        "spatie/laravel-activitylog": "*",
         "spatie/laravel-ignition": "^2.8",
         "spatie/laravel-permission": "^6.9"
     },

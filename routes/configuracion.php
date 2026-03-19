@@ -96,4 +96,20 @@ Route::middleware('auth:sanctum')->group(function () {
     // Configuración de tipos documentales permitidos en una ventanilla
     Route::post('ventanillas/{ventanilla}/tipos-documentales', [VentanillaUnicaController::class, 'configurarTiposDocumentales']);
     Route::get('ventanillas/{ventanilla}/tipos-documentales', [VentanillaUnicaController::class, 'listarTiposDocumentales']);
+
+    /**
+     * Calendario de Festivos (ISO 27001 - Tiempos Legales)
+     */
+    Route::prefix('calendario-festivos')->group(function () {
+        Route::get('/', function() {
+            return \App\Models\Configuracion\ConfigCalendarioFestivo::orderBy('fecha', 'asc')->get();
+        });
+        Route::post('/', function(\Illuminate\Http\Request $request) {
+            $request->validate(['fecha' => 'required|date|unique:config_calendario_festivos,fecha', 'nombre' => 'required|string']);
+            return \App\Models\Configuracion\ConfigCalendarioFestivo::create($request->all());
+        });
+        Route::delete('/{id}', function($id) {
+            return \App\Models\Configuracion\ConfigCalendarioFestivo::destroy($id);
+        });
+    });
 });

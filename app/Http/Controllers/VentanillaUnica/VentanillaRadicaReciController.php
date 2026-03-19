@@ -17,10 +17,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
+use App\Traits\AuditViewTrait;
 
 class VentanillaRadicaReciController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, AuditViewTrait;
 
     private const PERM = 'Radicar -> Cores. Recibida -> ';
 
@@ -237,6 +238,7 @@ class VentanillaRadicaReciController extends Controller
             // Crear el radicado con los datos enviados
             $radicado = new VentanillaRadicaReci($validatedData);
             $radicado->num_radicado = $num_radicado;
+            $radicado->fec_radicado = now(); // Sello de tiempo oficial (Acuerdo 060 AGN)
             $radicado->cod_verifica = $this->generarCodigoVerificacion();
             $radicado->usuario_crea = auth()->id(); // Asignar usuario que crea el radicado
 
@@ -291,6 +293,9 @@ class VentanillaRadicaReciController extends Controller
             if (!$radicado) {
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
+
+            // Registrar acceso al radicado (ISO 27001 - Trazabilidad)
+            $this->auditView($radicado, "Consulta detallada del radicado: {$radicado->num_radicado}");
 
             // Documentos con metadatos y URL (archivo principal + adjuntos)
             $documentos = $radicado->getDocumentosRelacionados(true);

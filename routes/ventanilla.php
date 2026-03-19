@@ -112,4 +112,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('proyectores-enviados', VentanillaRadicaEnviadosProyectoresController::class)->except('create', 'edit')->middleware('can:' . $permEnvi . 'Editar');
     Route::get('/radica-enviada/{radica_enviado_id}/proyectores', [VentanillaRadicaEnviadosProyectoresController::class, 'getByRadicado'])->name('radica-enviada.proyectores.listar')->middleware('can:' . $permEnvi . 'Editar');
     Route::post('/radica-enviada/{radica_enviado_id}/proyectores', [VentanillaRadicaEnviadosProyectoresController::class, 'assignToRadicado'])->name('radica-enviada.proyectores.asignar')->middleware('can:' . $permEnvi . 'Editar');
+
+    /**
+     * Gestión de PQRS (Ley 1755)
+     */
+    Route::prefix('pqrs')->group(function () {
+        Route::get('/', [\App\Http\Controllers\VentanillaUnica\VentanillaPqrsController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\VentanillaUnica\VentanillaPqrsController::class, 'store']);
+        Route::post('/{id}/prorroga', [\App\Http\Controllers\VentanillaUnica\VentanillaPqrsController::class, 'aplicarProrroga']);
+    });
 });

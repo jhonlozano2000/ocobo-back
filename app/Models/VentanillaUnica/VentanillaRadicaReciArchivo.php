@@ -17,6 +17,7 @@ class VentanillaRadicaReciArchivo extends Model
         'radicado_id',
         'subido_por',
         'archivo',
+        'hash_sha256',
     ];
 
     /**

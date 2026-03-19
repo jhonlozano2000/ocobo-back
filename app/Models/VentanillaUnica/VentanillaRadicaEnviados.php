@@ -27,6 +27,9 @@ class VentanillaRadicaEnviados extends Model
         'asunto',
         'radicado_respuesta',
         'archivo_digital',
+        'hash_sha256',
+        'archivo_tipo',
+        'archivo_peso',
         'impri_rotulo',
     ];
 
@@ -95,6 +98,20 @@ class VentanillaRadicaEnviados extends Model
     public function usuarioSubio()
     {
         return $this->belongsTo(\App\Models\User::class, 'subido_por');
+    }
+
+    /**
+     * Expedientes a los que este radicado ha sido incorporado.
+     */
+    public function expedientes()
+    {
+        return $this->morphToMany(
+            \App\Models\OfiArchivo\OfiArchivoExpediente::class,
+            'documentable',
+            'ofi_archivo_expedientes_documentos',
+            'documentable_id',
+            'expediente_id'
+        )->withPivot('numero_folio', 'fecha_incorporacion');
     }
 
     public function responsables()
