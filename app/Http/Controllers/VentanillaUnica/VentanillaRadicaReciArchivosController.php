@@ -103,17 +103,40 @@ class VentanillaRadicaReciArchivosController extends Controller
             // Obtener archivo una sola vez (optimización)
             $archivo = $request->file('archivo_digital');
 
-            // Usar ArchivoHelper para guardar el archivo
+            // Usar ArchivoHelper para guardar el archivo con Metadatos e Integridad (ISO 27001)
             $archivoActual = $radicado->archivo_digital;
+            
+            $metadatosInternos = [
+                'titulo' => $radicado->num_radicado,
+                'autor' => $radicado->tercero ? $radicado->tercero->nom_razo_soci : 'Remitente Externo',
+                'asunto' => $radicado->asunto
+            ];
 
-            $nuevoArchivo = ArchivoHelper::guardarArchivo($request, 'archivo_digital', 'radicados_recibidos', $archivoActual);
+            $uploadData = ArchivoHelper::guardarArchivoConMetadatos(
+                $request, 
+                'archivo_digital', 
+                'radicados_recibidos', 
+                $metadatosInternos, 
+                $archivoActual
+            );
 
+            if (!$uploadData) {
+                return $this->errorResponse('No se pudo procesar el archivo', null, 400);
+            }
 
-            // Guardar quién subió el archivo (Auth::user() retorna null si no está autenticado)
+            $nuevoArchivo = $uploadData['path'];
+            $hashSha256 = $uploadData['hash'];
+            $mimeType = $uploadData['mime'];
+            $fileSize = $uploadData['size'];
+
+            // Guardar quién subió el archivo
             $usuario = Auth::user();
 
             $radicado->update([
                 'archivo_digital' => $nuevoArchivo,
+                'hash_sha256' => $hashSha256,
+                'archivo_tipo' => $mimeType,
+                'archivo_peso' => $fileSize,
                 'uploaded_by' => $usuario?->id,
             ]);
 
@@ -128,9 +151,10 @@ class VentanillaRadicaReciArchivosController extends Controller
 
             return $this->successResponse([
                 'path' => $nuevoArchivo,
+                'hash_sha256' => $hashSha256,
+                'archivo_tipo' => $mimeType,
+                'archivo_peso' => $fileSize,
                 'uploaded_by' => $nombreUsuario,
-                'file_size' => $archivo->getSize(),
-                'file_type' => $archivo->getMimeType(),
                 'file_url' => $fileUrl
             ], 'Archivo subido exitosamente');
         } catch (\Exception $e) {
@@ -429,21 +453,23 @@ class VentanillaRadicaReciArchivosController extends Controller
                 // 2. Inyectar el archivo correctamente en la bolsa de archivos (files)
                 $tempRequest->files->set('archivo', $archivo);
 
-                // Usar ArchivoHelper para guardar cada archivo
-                $rutaArchivo = ArchivoHelper::guardarArchivo(
-                    $tempRequest,
-                    'archivo',
-                    'radicados_recibidos'
-                );
+                // Usar ArchivoHelper con Hash (Integridad ISO 27001)
+                $uploadData = ArchivoHelper::guardarArchivoConHash($tempRequest, 'archivo', 'radicados_recibidos');
 
-                // Guardar quién subió el archivo (Auth::user() retorna null si no está autenticado)
+                if (!$uploadData) continue;
+
+                $rutaArchivo = $uploadData['path'];
+                $hashSha256 = $uploadData['hash'];
+
+                // Guardar quién subió el archivo
                 $usuario = Auth::user();
 
                 // Crear registro en la tabla de archivos adicionales
                 $archivoAdicional = VentanillaRadicaReciArchivo::create([
                     'radicado_id' => $radicado->id,
-                    'subido_por' => $usuario->id,
-                    'archivo' => $rutaArchivo
+                    'subido_por' => $usuario?->id,
+                    'archivo' => $rutaArchivo,
+                    'hash_sha256' => $hashSha256
                 ]);
 
                 // Cachear nombre completo del usuario si existe (optimización)
@@ -456,6 +482,7 @@ class VentanillaRadicaReciArchivosController extends Controller
                 $archivosSubidos[] = [
                     'id' => $archivoAdicional->id,
                     'path' => $rutaArchivo,
+                    'hash_sha256' => $hashSha256,
                     'subido_por' => $nombreUsuario,
                     'file_size' => $archivo->getSize(),
                     'file_type' => $archivo->getMimeType(),

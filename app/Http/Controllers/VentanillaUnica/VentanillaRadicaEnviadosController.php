@@ -14,10 +14,11 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Traits\AuditViewTrait;
 
 class VentanillaRadicaEnviadosController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, AuditViewTrait;
 
     private const PERM = 'Radicar -> Cores. Enviada -> ';
 
@@ -148,6 +149,9 @@ class VentanillaRadicaEnviadosController extends Controller
             if (!$radicado) {
                 return $this->errorResponse('Radicado enviado no encontrado', null, 404);
             }
+
+            // Registrar acceso al radicado (ISO 27001 - Trazabilidad)
+            $this->auditView($radicado, "Consulta detallada del radicado enviado: {$radicado->num_radicado}");
 
             $radicado->loadClasificacionConJerarquia();
 

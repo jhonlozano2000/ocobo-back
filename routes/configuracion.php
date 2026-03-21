@@ -96,4 +96,49 @@ Route::middleware('auth:sanctum')->group(function () {
     // Configuración de tipos documentales permitidos en una ventanilla
     Route::post('ventanillas/{ventanilla}/tipos-documentales', [VentanillaUnicaController::class, 'configurarTiposDocumentales']);
     Route::get('ventanillas/{ventanilla}/tipos-documentales', [VentanillaUnicaController::class, 'listarTiposDocumentales']);
+
+    /**
+     * Calendario de Festivos (ISO 27001 - Tiempos Legales)
+     */
+    Route::prefix('calendario-festivos')->group(function () {
+        Route::get('/', function() {
+            return \App\Models\Configuracion\ConfigCalendarioFestivo::orderBy('fecha', 'asc')->get();
+        });
+        Route::post('/', function(\Illuminate\Http\Request $request) {
+            $request->validate(['fecha' => 'required|date|unique:config_calendario_festivos,fecha', 'nombre' => 'required|string']);
+            return \App\Models\Configuracion\ConfigCalendarioFestivo::create($request->all());
+        });
+        Route::delete('/{id}', function($id) {
+            return \App\Models\Configuracion\ConfigCalendarioFestivo::destroy($id);
+        });
+    });
 });
+
+
+    /**
+     * Ventanillas Únicas (Config - Ventanillas)
+     */
+    $permConfig = "Config - Ventanillas -> ";
+    Route::prefix("sedes/{sedeId}/ventanillas")->group(function () use ($permConfig) {
+        Route::get("/", [VentanillaUnicaController::class, "index"])->middleware("can:" . $permConfig . "Listar");
+        Route::post("/", [VentanillaUnicaController::class, "store"])->middleware("can:" . $permConfig . "Crear");
+        Route::get("/{id}", [VentanillaUnicaController::class, "show"])->middleware("can:" . $permConfig . "Mostrar");
+        Route::put("/{id}", [VentanillaUnicaController::class, "update"])->middleware("can:" . $permConfig . "Editar");
+        Route::delete("/{id}", [VentanillaUnicaController::class, "destroy"])->middleware("can:" . $permConfig . "Eliminar");
+    });
+
+    Route::prefix("ventanillas/{id}")->group(function () use ($permConfig) {
+        Route::post("/tipos-documentales", [VentanillaUnicaController::class, "configurarTiposDocumentales"])->middleware("can:" . $permConfig . "Editar");
+        Route::get("/tipos-documentales", [VentanillaUnicaController::class, "listarTiposDocumentales"])->middleware("can:" . $permConfig . "Mostrar");
+    });
+
+    Route::prefix("ventanillas/{ventanillaId}")->group(function () use ($permConfig) {
+        Route::post("/permisos", [PermisosVentanillaUnicaController::class, "asignarPermisos"])->middleware("can:" . $permConfig . "Editar");
+        Route::get("/usuarios-permitidos", [PermisosVentanillaUnicaController::class, "listarUsuariosPermitidos"])->middleware("can:" . $permConfig . "Listar");
+        Route::delete("/permisos/{usuarioId}", [PermisosVentanillaUnicaController::class, "revocarPermisos"])->middleware("can:" . $permConfig . "Editar");
+    });
+
+    Route::prefix("usuarios/{usuarioId}")->group(function () use ($permConfig) {
+        Route::get("/ventanillas-permitidas", [PermisosVentanillaUnicaController::class, "listarVentanillasPermitidas"])->middleware("can:" . $permConfig . "Listar");
+    });
+

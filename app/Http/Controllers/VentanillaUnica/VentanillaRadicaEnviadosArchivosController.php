@@ -45,11 +45,37 @@ class VentanillaRadicaEnviadosArchivosController extends Controller
             $archivo = $request->file('archivo_digital');
             $archivoActual = $radicado->archivo_digital;
 
-            $nuevoArchivo = ArchivoHelper::guardarArchivo($request, 'archivo_digital', self::DISK, $archivoActual);
+            // Metadatos de contexto para inyectar en el PDF (ISO 27001 - Integridad)
+            $metadatosInternos = [
+                'titulo' => $radicado->num_radicado,
+                'autor' => $radicado->terceroEnviado ? ($radicado->terceroEnviado->nom_razo_soci ?? $radicado->terceroEnviado->nombre_completo) : 'Destinatario Externo',
+                'asunto' => $radicado->asunto
+            ];
+
+            // Usar ArchivoHelper con Metadatos (Sello de integridad OCOBO)
+            $uploadData = ArchivoHelper::guardarArchivoConMetadatos(
+                $request, 
+                'archivo_digital', 
+                self::DISK, 
+                $metadatosInternos, 
+                $archivoActual
+            );
+
+            if (!$uploadData) {
+                return $this->errorResponse('No se pudo procesar el archivo', null, 400);
+            }
+
+            $nuevoArchivo = $uploadData['path'];
+            $hashSha256 = $uploadData['hash'];
+            $mimeType = $uploadData['mime'];
+            $fileSize = $uploadData['size'];
 
             $usuario = Auth::user();
             $radicado->update([
                 'archivo_digital' => $nuevoArchivo,
+                'hash_sha256' => $hashSha256,
+                'archivo_tipo' => $mimeType,
+                'archivo_peso' => $fileSize,
                 'subido_por' => $usuario?->id,
             ]);
 
@@ -60,9 +86,12 @@ class VentanillaRadicaEnviadosArchivosController extends Controller
 
             return $this->successResponse([
                 'path' => $nuevoArchivo,
+                'hash_sha256' => $hashSha256,
+                'archivo_tipo' => $mimeType,
+                'archivo_peso' => $fileSize,
                 'uploaded_by' => $nombreUsuario,
-                'file_size' => $archivo->getSize(),
-                'file_type' => $archivo->getMimeType(),
+                'file_size' => $fileSize,
+                'file_type' => $mimeType,
                 'file_url' => $fileUrl,
             ], 'Archivo subido exitosamente');
         } catch (\Exception $e) {

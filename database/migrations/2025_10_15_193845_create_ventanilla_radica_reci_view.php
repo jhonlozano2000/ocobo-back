@@ -11,7 +11,7 @@ return new class extends Migration
     public function up(): void
     {
         DB::statement("
-            CREATE VIEW ventanilla_radica_reci_optimized_view AS
+            CREATE VIEW ventanilla_radica_reci_view AS
             SELECT
                 -- Campos principales del radicado
                 vrr.id,
@@ -108,25 +108,25 @@ return new class extends Migration
         } catch (\Exception $e) {
             // Índice ya existe
         }
-        
+
         try {
             DB::statement("CREATE INDEX idx_vrr_optimized_created_at ON ventanilla_radica_reci (created_at)");
         } catch (\Exception $e) {
             // Índice ya existe
         }
-        
+
         try {
             DB::statement("CREATE INDEX idx_vrr_optimized_asunto ON ventanilla_radica_reci (asunto)");
         } catch (\Exception $e) {
             // Índice ya existe
         }
-        
+
         try {
             DB::statement("CREATE INDEX idx_vrr_optimized_clasifica_tercero ON ventanilla_radica_reci (clasifica_documen_id, tercero_id)");
         } catch (\Exception $e) {
             // Índice ya existe
         }
-        
+
         try {
             DB::statement("CREATE INDEX idx_vrr_optimized_fec_venci ON ventanilla_radica_reci (fec_venci)");
         } catch (\Exception $e) {
@@ -148,19 +148,19 @@ return new class extends Migration
         } catch (\Exception $e) {
             // Ignorar si no existe
         }
-        
+
         try {
             DB::statement("DROP INDEX idx_vrr_optimized_created_at ON ventanilla_radica_reci");
         } catch (\Exception $e) {
             // Ignorar si no existe
         }
-        
+
         try {
             DB::statement("DROP INDEX idx_vrr_optimized_asunto ON ventanilla_radica_reci");
         } catch (\Exception $e) {
             // Ignorar si no existe
         }
-        
+
         try {
             DB::statement("DROP INDEX idx_vrr_optimized_fec_venci ON ventanilla_radica_reci");
         } catch (\Exception $e) {
