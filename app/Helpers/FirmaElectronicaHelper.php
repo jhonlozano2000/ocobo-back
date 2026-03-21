@@ -19,6 +19,7 @@ class FirmaElectronicaHelper
     {
         $storage = Storage::disk($disk);
 
+
         if (!$storage->exists($path)) {
             throw new \Exception("El documento original no existe.");
         }
@@ -37,6 +38,7 @@ class FirmaElectronicaHelper
                 $size = $pdf->getTemplateSize($templateId);
                 $pdf->AddPage($size['orientation'], [$size['width'], $size['height']]);
                 $pdf->useTemplate($templateId);
+
 
                 // Si es la última página, agregar el sello
                 if ($n === $pageCount) {
@@ -67,6 +69,7 @@ class FirmaElectronicaHelper
         $pdf->SetFont('Arial', '', 8);
         $pdf->SetTextColor(50, 50, 50);
 
+
         // Coordenadas para el sello (esquina inferior izquierda)
         $x = 15;
         $y = $size['height'] - 35; // 35mm desde abajo
@@ -80,6 +83,11 @@ class FirmaElectronicaHelper
         $pdf->SetXY($x + 5, $y + 5);
         $pdf->SetFont('Arial', 'B', 8);
         $pdf->Cell(0, 4, utf8_decode('FIRMADO ELECTRÓNICAMENTE (Ley 527 de 1999)'), 0, 1);
+
+        $pdf->SetFont('Arial', '', 8);
+        $pdf->SetX($x + 5);
+        $pdf->Cell(0, 4, utf8_decode("Firmante: {$datosFirma['nombre']} - {$datosFirma['cargo']}"), 0, 1);
+
 
         $pdf->SetFont('Arial', '', 8);
         $pdf->SetX($x + 5);

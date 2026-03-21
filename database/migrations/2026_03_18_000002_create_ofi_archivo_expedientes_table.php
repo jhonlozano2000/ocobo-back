@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('ofi_archivo_expedientes', function (Blueprint $table) {
             $table->id();
 
+
             // Identificación única según AGN
             $table->string('numero_expediente', 100)->unique()->comment('Código YYYY-DEP-SER-CONSECUTIVO');
             $table->string('nombre_expediente', 300)->comment('Nombre descriptivo del expediente');
@@ -44,6 +45,7 @@ return new class extends Migration
             // Auditoría e Integridad (ISO 27001)
             $table->unsignedBigInteger('usuario_apertura_id');
             $table->foreign('usuario_apertura_id')->references('id')->on('users');
+
 
             $table->integer('total_folios_elec')->default(0)->comment('Conteo automático de documentos digitales');
             $table->string('hash_indice', 64)->nullable()->comment('Hash SHA-256 del índice electrónico al cerrar');

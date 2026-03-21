@@ -21,6 +21,7 @@ return new class extends Migration
             // Clasificación del Trámite
             $table->unsignedBigInteger('tipo_pqrs_id')->comment('Referencia a config_listas (Petición, Queja, etc)');
             $table->foreign('tipo_pqrs_id')->references('id')->on('config_listas_detalles');
+            $table->foreign('tipo_pqrs_id')->references('id')->on('config_lista_detalles');
 
             // Responsabilidad Administrativa
             $table->unsignedBigInteger('dependencia_responsable_id')->comment('Oficina encargada de dar respuesta');
@@ -31,6 +32,7 @@ return new class extends Migration
             $table->date('fecha_vencimiento')->comment('Fecha límite de respuesta (Calculada en días hábiles)');
             $table->date('fecha_vencimiento_original')->nullable()->comment('Fecha de vencimiento inicial antes de prórroga');
             $table->boolean('tiene_prorroga')->default(false);
+
 
             // Metadatos de Ley 1755 / 1437
             $table->boolean('es_anonimo')->default(false)->comment('Si es true, ofuscar datos del remitente en vistas operativas');
