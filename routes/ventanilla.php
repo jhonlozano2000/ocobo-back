@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 
 Route::middleware("auth:sanctum")->group(function () {
+
+    $permConfig = "Configurar -> Ventanilla Única -> ";
     /**
      * Gestión de PQRS (Ley 1755)
      */

@@ -37,46 +37,52 @@ class AuthController extends Controller
             $user->assignRole($request->role);
         }
 
-        $token = $this->createToken($user);
+        // En un entorno SPA con estado, podemos autenticar automáticamente al registrarse
+        Auth::login($user);
+        $request->session()->regenerate();
 
         return $this->successResponse([
-            'user'         => new UserResource($user),
-            'access_token' => $token,
-            'token_type'   => 'Bearer',
+            'user' => new UserResource($user),
         ], 'Usuario registrado correctamente', 201);
     }
 
     /**
-     * Autentica un usuario y retorna token con roles, permisos, cargo, oficina y dependencia.
+     * Autentica un usuario e inicializa la sesión segura (cookie httpOnly).
      */
     public function login(AuthLoginRequest $request)
     {
         $credentials = $request->only('email', 'password');
-        if (!Auth::attempt($credentials)) {
+        $remember = $request->boolean('remember', false); // Manejo de "Recordarme"
+
+        if (!Auth::attempt($credentials, $remember)) {
             return $this->errorResponse('Las credenciales proporcionadas son incorrectas.', null, 401);
         }
 
         $user = Auth::user();
         if ($user->estado == 0) {
-            $user->tokens()->delete();
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
             return $this->errorResponse('Tu cuenta se encuentra desactivada.', null, 401);
         }
 
-        $token = $this->createToken($user);
+        // Rotar el ID de sesión para prevenir ataques de Session Fixation
+        $request->session()->regenerate();
 
         return $this->successResponse([
-            'user'         => new UserResource($user),
-            'access_token' => $token,
-            'token_type'   => 'Bearer',
+            'user' => new UserResource($user),
         ], 'Login exitoso');
     }
 
     /**
-     * Cierra la sesión del usuario.
+     * Cierra la sesión del usuario de forma segura.
      */
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
         return $this->successResponse(null, 'Sesión cerrada correctamente');
     }
 
@@ -91,29 +97,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Refresca el token del usuario.
+     * En una SPA basada en cookies, no hay necesidad de un endpoint "refresh" de token,
+     * ya que la sesión persiste mediante la cookie, renovada implícitamente por el servidor.
      */
-    public function refresh(Request $request)
-    {
-        $user = $request->user();
-        $user->currentAccessToken()->delete();
-        $newToken = $this->createToken($user);
-
-        return $this->successResponse([
-            'user'         => new UserResource($user),
-            'access_token' => $newToken,
-            'token_type'   => 'Bearer',
-        ], 'Token refrescado correctamente');
-    }
-
-    /**
-     * Crea un nuevo token personal.
-     *
-     * @param User $user
-     * @return string
-     */
-    private function createToken(User $user): string
-    {
-        return $user->createToken('auth_token')->plainTextToken;
-    }
 }

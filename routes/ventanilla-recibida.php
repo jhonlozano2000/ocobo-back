@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware("auth:sanctum")->group(function () {
     $permReci = "Radicar -> Cores. Recibida -> ";
-    
+
     Route::get("/radica-recibida/estadisticas", [VentanillaRadicaReciController::class, "estadisticas"])->name("radica-recibida.estadisticas")->middleware("can:" . $permReci . "Listar");
     Route::put("/radica-recibida/{id}/update-asunto", [VentanillaRadicaReciController::class, "updateAsunto"])->name("radica-recibida.update-asunto")->middleware("can:" . $permReci . "Actualizar asunto");
     Route::put("/radica-recibida/{id}/update-fechas", [VentanillaRadicaReciController::class, "updateFechas"])->name("radica-recibida.update-fechas")->middleware("can:" . $permReci . "Atualizar fechas de radicados");
@@ -24,7 +24,7 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::get("/archivos/adjuntos/listar", [VentanillaRadicaReciArchivosController::class, "listarArchivosAdjuntos"])->name("archivos.adjuntos.listar")->middleware("can:" . $permReci . "Mostrar");
         Route::get("/archivos/adjuntos/{archivoId}/descargar", [VentanillaRadicaReciArchivosController::class, "descargarArchivoAdjunto"])->name("archivos.adjuntos.descargar")->middleware("can:" . $permReci . "Mostrar");
         Route::delete("/archivos/adjuntos/{archivoId}/eliminar", [VentanillaRadicaReciArchivosController::class, "eliminarArchivoAdjunto"])->name("archivos.adjuntos.eliminar")->middleware("can:" . $permReci . "Eliminar adjuntos");
-        Route::get("/archivos/historial/archivos-eliminados", [VentanillaRadicaReciArchivosController::class, "historialEliminaciones"])->name("archivos.historial.eliminaciones")->middleware("can:" . $permReci . "Mostrar");      
+        Route::get("/archivos/historial/archivos-eliminados", [VentanillaRadicaReciArchivosController::class, "historialEliminaciones"])->name("archivos.historial.eliminaciones")->middleware("can:" . $permReci . "Mostrar");
         Route::get("/archivos/info/", [VentanillaRadicaReciArchivosController::class, "getFileInfo"])->name("archivos.info")->middleware("can:" . $permReci . "Mostrar");
         Route::post("/archivos/upload-digital", [VentanillaRadicaReciArchivosController::class, "upload"])->name("archivos.upload.digital")->middleware("can:" . $permReci . "Subir digital");
         Route::post("/archivos/upload-adjuntos", [VentanillaRadicaReciArchivosController::class, "subirArchivosAdjuntos"])->name("archivos.upload-adjuntos")->middleware("can:" . $permReci . "Subir adjuntos");
@@ -36,4 +36,3 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/radica-recibida/{radica_reci_id}/responsables", [VentanillaRadicaReciResponsaController::class, "getByRadicado"])->name("radica-recibida.responsables.listar")->middleware("can:" . $permReci . "Editar");
     Route::post("/radica-recibida/{radica_reci_id}/responsables", [VentanillaRadicaReciResponsaController::class, "assignToRadicado"])->name("radica-recibida.responsables.asignar")->middleware("can:" . $permReci . "Editar");
 });
-
