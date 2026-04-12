@@ -201,6 +201,45 @@ class ConfigDiviPoliService
         ];
     }
 
+    /**
+     * Obtiene una división política con todos sus ancestros.
+     */
+    public function getWithAncestors(int $id): ?array
+    {
+        $item = ConfigDiviPoli::find($id);
+        
+        if (!$item) {
+            return null;
+        }
+
+        // Obtener ancestros recursivamente
+        $ancestors = [];
+        $current = $item;
+        
+        while ($current->parent) {
+            $parent = ConfigDiviPoli::find($current->parent);
+            if ($parent) {
+                $ancestors[] = [
+                    'id' => $parent->id,
+                    'codigo' => $parent->codigo,
+                    'nombre' => $parent->nombre,
+                    'tipo' => $parent->tipo
+                ];
+                $current = $parent;
+            } else {
+                break;
+            }
+        }
+
+        return [
+            'id' => $item->id,
+            'codigo' => $item->codigo,
+            'nombre' => $item->nombre,
+            'tipo' => $item->tipo,
+            'ancestors' => $ancestors
+        ];
+    }
+
     private function paginateIfRequested($query, ?int $perPage): LengthAwarePaginator|Collection
     {
         return $perPage ? $query->paginate($perPage) : $query->get();

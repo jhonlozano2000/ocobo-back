@@ -204,4 +204,28 @@ class ConfigDiviPoliController extends Controller
             return $this->errorResponse('Error al obtener estructura', $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Carga una división política con sus ancestros (recursivo).
+     */
+    public function cargarRecursivo(int $id)
+    {
+        try {
+            \Log::info('cargarRecursivo called', ['id' => $id]);
+            $result = $this->service->getWithAncestors($id);
+            \Log::info('cargarRecursivo result', ['result' => $result]);
+            
+            if (!$result) {
+                return $this->errorResponse('División política no encontrada', null, 404);
+            }
+            
+            return $this->successResponse(
+                $result,
+                'División política con ancestros obtenida exitosamente'
+            );
+        } catch (\Exception $e) {
+            \Log::error('cargarRecursivo error: ' . $e->getMessage());
+            return $this->errorResponse('Error al obtener división política', $e->getMessage(), 500);
+        }
+    }
 }

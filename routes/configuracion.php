@@ -13,13 +13,11 @@ use App\Http\Controllers\VentanillaUnica\PermisosVentanillaUnicaController;
 use App\Http\Controllers\VentanillaUnica\VentanillaUnicaController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('web')->group(function () {
-
-    /**
-     * Rate limiting específico para operaciones sensibles de configuración
-     * Protege contra ataques de fuerza bruta en operaciones de escritura
-     */
-    Route::middleware('throttle:config-operations')->group(function () {
+/**
+ * Rate limiting específico para operaciones sensibles de configuración
+ * Protege contra ataques de fuerza bruta en operaciones de escritura
+ */
+Route::middleware('throttle:config-operations')->group(function () {
 
     /**
      * División política
@@ -143,6 +141,4 @@ Route::middleware('web')->group(function () {
     Route::prefix("usuarios/{usuarioId}")->group(function () use ($permConfig) {
         Route::get("/ventanillas-permitidas", [PermisosVentanillaUnicaController::class, "listarVentanillasPermitidas"])->middleware("can:" . $permConfig . "Listar");
     });
-
-}); // Fin auth:sanctum
 

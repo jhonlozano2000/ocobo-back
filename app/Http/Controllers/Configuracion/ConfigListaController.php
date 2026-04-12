@@ -26,7 +26,7 @@ class ConfigListaController extends Controller
     public function index(Request $request)
     {
         try {
-            $filters = $request->validated();
+            $filters = $request->all();
             $listas = $this->service->getAll($filters);
 
             return $this->successResponse($listas, 'Listado de listas obtenido exitosamente');
@@ -239,11 +239,14 @@ class ConfigListaController extends Controller
     public function listaCabeza(Request $request)
     {
         try {
-            $filters = $request->validated();
+            \Log::info('listaCabeza called', ['filters' => $request->all()]);
+            $filters = $request->all();
             $listas = $this->service->getOnlyHeads($filters);
+            \Log::info('listaCabeza result', ['count' => $listas->count() ?? 'collection']);
 
             return $this->successResponse($listas, 'Listas obtenidas exitosamente');
         } catch (\Exception $e) {
+            \Log::error('listaCabeza error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return $this->errorResponse('Error al obtener las listas', $e->getMessage(), 500);
         }
     }
