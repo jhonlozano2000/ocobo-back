@@ -14,18 +14,24 @@ Route::middleware("auth:sanctum")->get("user", function (Request $request) {
     return $request->user();
 });
 
-Route::post("/register", [AuthController::class, "register"])
-    ->withoutMiddleware(\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class);
-Route::post("/login", [AuthController::class, "login"])
-    ->withoutMiddleware(\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class);
+Route::post("/register", [AuthController::class, "register"]);
+Route::post("/login", [AuthController::class, "login"]);
 
-Route::middleware("auth:sanctum")->group(function () {
+Route::middleware("auth:web")->group(function () {
     Route::get("/getme", [AuthController::class, "getMe"]);
     Route::post("/refresh", [AuthController::class, "refresh"]);
 });
 
-Route::middleware("auth:sanctum")->post("/logout", [AuthController::class, "logout"]);
-Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
+Route::post("/logout", [AuthController::class, "logout"]);
+
+// Ruta de prueba de sesión
+Route::get('/test-session', function () {
+    return response()->json([
+        'session_id' => session()->getId(),
+        'user_id' => auth()->id(),
+        'logged_in' => auth()->check(),
+    ]);
+});
 
 // ==========================================
 // RUTAS DE GESTIÓN DE ARCHIVO (ISO 27001)

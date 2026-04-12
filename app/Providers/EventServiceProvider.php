@@ -22,6 +22,10 @@ class EventServiceProvider extends ServiceProvider
         \Illuminate\Auth\Events\Login::class => [
             \App\Listeners\StoreUserSession::class,
         ],
+
+        \Illuminate\Auth\Events\Logout::class => [
+            \App\Listeners\StoreUserLogout::class,
+        ],
     ];
 
     /**

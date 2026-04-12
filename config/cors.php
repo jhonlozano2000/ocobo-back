@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'firma-electronica/*', 'sanctum/csrf-cookie', 'login', 'logout'],
+    'paths' => ['api/*', 'firma-electronica/*', 'sanctum/csrf-cookie', 'login', 'logout', 'test-session'],
 
     'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
@@ -24,7 +24,11 @@ return [
         'http://localhost:5173',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:5173',
-        'http://ocobo-back.test',
+        'http://ocobo.test',
+        'https://ocobo.test',
+        'http://ocobo.test:3000',
+        'http://127.0.0.1',
+        'http://192.168.1.7:3000',
     ],
 
     'allowed_origins_patterns' => [],
@@ -36,6 +40,7 @@ return [
         'X-Requested-With',
         'X-CSRF-TOKEN',
         'X-XSRF-TOKEN',
+        'Cookie',
     ],
 
     'exposed_headers' => [],

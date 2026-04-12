@@ -9,7 +9,12 @@ use App\Http\Controllers\ControlAcceso\UserSedeController;
 use App\Http\Controllers\ControlAcceso\UserVentanillaController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['api', 'web', 'auth:web'])->group(function () {
+
+    /**
+     * Rate limiting específico para Control de Acceso
+     */
+    Route::middleware('throttle:config-operations')->group(function () {
     /**
      * Usuarios - Rutas específicas PRIMERO para evitar conflictos con resource
      */
@@ -113,4 +118,7 @@ Route::middleware('auth:sanctum')->group(function () {
                 'show' => 'show',
             ])->only('index', 'show');
     });
-});
+
+    }); // Fin throttle:config-operations
+
+}); // Fin auth:sanctum

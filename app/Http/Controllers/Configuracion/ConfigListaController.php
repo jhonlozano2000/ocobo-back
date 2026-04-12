@@ -9,73 +9,25 @@ use App\Http\Requests\Configuracion\UpdateConfigListaRequest;
 use App\Models\Configuracion\ConfigLista;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\Configuracion\ConfigListaService;
+use Symfony\Component\HttpFoundation\Request as HttpFoundationRequest;
 
 class ConfigListaController extends Controller
 {
     use ApiResponseTrait;
 
+    public function __construct(
+        private readonly ConfigListaService $service
+    ) {}
+
     /**
      * Obtiene un listado de todas las listas maestras del sistema.
-     *
-     * Este método retorna todas las listas maestras con sus detalles asociados.
-     * Es útil para interfaces de administración donde se necesita mostrar
-     * la estructura completa de las listas.
-     *
-     * @param Request $request La solicitud HTTP que puede contener parámetros de filtrado
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de listas
-     *
-     * @queryParam search string Buscar por código o nombre. Example: "TIPOS"
-     * @queryParam per_page integer Número de elementos por página (por defecto: 15). Example: 20
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Listado de listas obtenido exitosamente",
-     *   "data": [
-     *     {
-     *       "id": 1,
-     *       "cod": "TIPOS",
-     *       "nombre": "Tipos de Documento",
-     *       "detalles": [
-     *         {
-     *           "id": 1,
-     *           "codigo": "CC",
-     *           "nombre": "Cédula de Ciudadanía"
-     *         }
-     *       ]
-     *     }
-     *   ]
-     * }
-     *
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al obtener el listado de listas",
-     *   "error": "Error message"
-     * }
      */
     public function index(Request $request)
     {
         try {
-            $query = ConfigLista::with('detalles');
-
-            // Aplicar filtros si se proporcionan
-            if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('cod', 'like', "%{$search}%")
-                        ->orWhere('nombre', 'like', "%{$search}%");
-                });
-            }
-
-            // Ordenar por código
-            $query->orderBy('cod', 'asc');
-
-            // Paginar si se solicita
-            if ($request->filled('per_page')) {
-                $perPage = $request->per_page;
-                $listas = $query->paginate($perPage);
-            } else {
-                $listas = $query->get();
-            }
+            $filters = $request->validated();
+            $listas = $this->service->getAll($filters);
 
             return $this->successResponse($listas, 'Listado de listas obtenido exitosamente');
         } catch (\Exception $e) {
@@ -84,50 +36,12 @@ class ConfigListaController extends Controller
     }
 
     /**
-     * Crea una nueva lista maestra en el sistema.
-     *
-     * Este método permite crear una nueva lista maestra con validación
-     * de datos y verificación de códigos únicos.
-     *
-     * @param StoreConfigListaRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la lista creada
-     *
-     * @bodyParam cod string required Código único de la lista. Example: "TIPOS"
-     * @bodyParam nombre string required Nombre de la lista. Example: "Tipos de Documento"
-     *
-     * @response 201 {
-     *   "status": true,
-     *   "message": "Lista creada exitosamente",
-     *   "data": {
-     *     "id": 1,
-     *     "cod": "TIPOS",
-     *     "nombre": "Tipos de Documento",
-     *     "detalles": []
-     *   }
-     * }
-     *
-     * @response 422 {
-     *   "status": false,
-     *   "message": "Datos de validación incorrectos",
-     *   "error": {
-     *     "cod": ["El código ya está en uso, por favor elija otro."]
-     *   }
-     * }
-     *
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al crear la lista",
-     *   "error": "Error message"
-     * }
+     * Crea una nueva lista maestra.
      */
     public function store(StoreConfigListaRequest $request)
     {
         try {
-            DB::beginTransaction();
-
-            $lista = ConfigLista::create($request->validated());
-
-            DB::commit();
+            $lista = $this->service->create($request->validated());
 
             return $this->successResponse(
                 $lista->load('detalles'),
@@ -135,7 +49,6 @@ class ConfigListaController extends Controller
                 201
             );
         } catch (\Exception $e) {
-            DB::rollBack();
             return $this->errorResponse('Error al crear la lista', $e->getMessage(), 500);
         }
     }
@@ -192,70 +105,30 @@ class ConfigListaController extends Controller
     }
 
     /**
-     * Actualiza una lista maestra existente en el sistema.
-     *
-     * Este método permite modificar los datos de una lista maestra existente,
-     * manteniendo la integridad de los códigos únicos.
-     *
-     * @param UpdateConfigListaRequest $request La solicitud HTTP validada
-     * @param ConfigLista $lista La lista a actualizar (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la lista actualizada
-     *
-     * @bodyParam cod string Código único de la lista. Example: "TIPOS"
-     * @bodyParam nombre string Nombre de la lista. Example: "Tipos de Documento"
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Lista actualizada exitosamente",
-     *   "data": {
-     *     "id": 1,
-     *     "cod": "TIPOS",
-     *     "nombre": "Tipos de Documento",
-     *     "detalles": []
-     *   }
-     * }
-     *
-     * @response 422 {
-     *   "status": false,
-     *   "message": "Datos de validación incorrectos",
-     *   "error": {
-     *     "cod": ["El código ya está en uso, por favor elija otro."]
-     *   }
-     * }
-     *
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al actualizar la lista",
-     *   "error": "Error message"
-     * }
+     * Actualiza una lista maestra.
      */
-    public function update(UpdateConfigListaRequest $request, ConfigLista $lista)
+    public function update(UpdateConfigListaRequest $request, int $id)
     {
         try {
-            DB::beginTransaction();
+            $lista = $this->service->update($id, $request->validated());
 
-            $lista->update($request->validated());
-
-            DB::commit();
+            if (!$lista) {
+                return $this->errorResponse('Lista no encontrada', null, 404);
+            }
 
             return $this->successResponse(
                 $lista->load('detalles'),
                 'Lista actualizada exitosamente'
             );
         } catch (\Exception $e) {
-            DB::rollBack();
             return $this->errorResponse('Error al actualizar la lista', $e->getMessage(), 500);
         }
     }
 
     /**
      * Obtiene todas las listas maestras con el detalle activas.
-     *
-     * Este método retorna todas las listas maestras activas.
-     *
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las listas activas
      */
-    public function listasActivasDetalle($id)
+    public function listasActivasDetalle(int $id)
     {
         return $this->successResponse(
             ConfigLista::with(['detalles' => function ($query) {
@@ -312,7 +185,7 @@ class ConfigListaController extends Controller
      *   "error": "Error message"
      * }
      */
-    public function listaDetalle(Request $request)
+    public function listaDetalle(HttpFoundationRequest $request)
     {
         try {
             // Construir la consulta con join para obtener cabeza y detalle en una estructura plana
@@ -361,62 +234,13 @@ class ConfigListaController extends Controller
     }
 
     /**
-     * Obtiene todas las listas maestras (cabezas) sin detalles.
-     *
-     * Este método retorna únicamente las listas maestras (cabezas) sin incluir
-     * sus detalles asociados. Útil para obtener un listado simple de las listas.
-     *
-     * @param Request $request La solicitud HTTP que puede contener parámetros de filtrado
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las listas (cabezas)
-     *
-     * @queryParam search string Buscar por código o nombre de lista. Example: "TIPOS"
-     * @queryParam per_page integer Número de elementos por página (por defecto: 15). Example: 20
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Listas obtenidas exitosamente",
-     *   "data": [
-     *     {
-     *       "id": 1,
-     *       "cod": "TIPOS",
-     *       "nombre": "Tipos de Documento",
-     *       "estado": true,
-     *       "created_at": "2024-01-15T10:30:00.000000Z",
-     *       "updated_at": "2024-01-15T10:30:00.000000Z"
-     *     }
-     *   ]
-     * }
-     *
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al obtener las listas",
-     *   "error": "Error message"
-     * }
+     * Obtiene solo listas maestras (cabezas).
      */
     public function listaCabeza(Request $request)
     {
         try {
-            $query = ConfigLista::query();
-
-            // Aplicar filtros si se proporcionan
-            if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('cod', 'like', "%{$search}%")
-                        ->orWhere('nombre', 'like', "%{$search}%");
-                });
-            }
-
-            // Ordenar por código
-            $query->orderBy('cod', 'asc');
-
-            // Paginar si se solicita
-            if ($request->filled('per_page')) {
-                $perPage = $request->per_page;
-                $listas = $query->paginate($perPage);
-            } else {
-                $listas = $query->get();
-            }
+            $filters = $request->validated();
+            $listas = $this->service->getOnlyHeads($filters);
 
             return $this->successResponse($listas, 'Listas obtenidas exitosamente');
         } catch (\Exception $e) {
@@ -425,39 +249,12 @@ class ConfigListaController extends Controller
     }
 
     /**
-     * Elimina una lista maestra del sistema.
-     *
-     * Este método permite eliminar una lista maestra específica, verificando
-     * que no tenga detalles asociados antes de proceder.
-     *
-     * @param ConfigLista $lista La lista a eliminar (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la eliminación
-     *
-     * @urlParam lista integer required El ID de la lista a eliminar. Example: 1
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Lista eliminada exitosamente"
-     * }
-     *
-     * @response 409 {
-     *   "status": false,
-     *   "message": "No se puede eliminar porque tiene detalles asociados"
-     * }
-     *
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al eliminar la lista",
-     *   "error": "Error message"
-     * }
+     * Elimina una lista maestra.
      */
-    public function destroy(ConfigLista $lista)
+    public function destroy(int $id)
     {
         try {
-            DB::beginTransaction();
-
-            // Verificar si tiene detalles asociados
-            if ($lista->detalles()->exists()) {
+            if (!$this->service->delete($id)) {
                 return $this->errorResponse(
                     'No se puede eliminar porque tiene detalles asociados',
                     null,
@@ -465,13 +262,8 @@ class ConfigListaController extends Controller
                 );
             }
 
-            $lista->delete();
-
-            DB::commit();
-
             return $this->successResponse(null, 'Lista eliminada exitosamente');
         } catch (\Exception $e) {
-            DB::rollBack();
             return $this->errorResponse('Error al eliminar la lista', $e->getMessage(), 500);
         }
     }

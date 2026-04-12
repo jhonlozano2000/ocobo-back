@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('nombres', 70);
             $table->string('apellidos', 70);
             $table->string('tel', 15)->nullable();
-            $table->string('movil', 15)->nullable();
+            $table->string('movil', 17)->nullable();
             $table->string('dir', 100)->nullable();
             $table->string('email')->unique();
             $table->string('firma', 100)->nullable();

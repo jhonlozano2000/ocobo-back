@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Configuracion\ConfigCalendarioFestivoController;
 use App\Http\Controllers\Configuracion\ConfigDiviPoliController;
 use App\Http\Controllers\Configuracion\ConfigListaController;
 use App\Http\Controllers\Configuracion\ConfigListaDetalleController;
@@ -12,7 +13,13 @@ use App\Http\Controllers\VentanillaUnica\PermisosVentanillaUnicaController;
 use App\Http\Controllers\VentanillaUnica\VentanillaUnicaController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('web')->group(function () {
+
+    /**
+     * Rate limiting específico para operaciones sensibles de configuración
+     * Protege contra ataques de fuerza bruta en operaciones de escritura
+     */
+    Route::middleware('throttle:config-operations')->group(function () {
 
     /**
      * División política
@@ -101,22 +108,17 @@ Route::middleware('auth:sanctum')->group(function () {
      * Calendario de Festivos (ISO 27001 - Tiempos Legales)
      */
     Route::prefix('calendario-festivos')->group(function () {
-        Route::get('/', function() {
-            return \App\Models\Configuracion\ConfigCalendarioFestivo::orderBy('fecha', 'asc')->get();
-        });
-        Route::post('/', function(\Illuminate\Http\Request $request) {
-            $request->validate(['fecha' => 'required|date|unique:config_calendario_festivos,fecha', 'nombre' => 'required|string']);
-            return \App\Models\Configuracion\ConfigCalendarioFestivo::create($request->all());
-        });
-        Route::delete('/{id}', function($id) {
-            return \App\Models\Configuracion\ConfigCalendarioFestivo::destroy($id);
-        });
+        Route::get('/', [ConfigCalendarioFestivoController::class, 'index']);
+        Route::post('/', [ConfigCalendarioFestivoController::class, 'store']);
+        Route::delete('/{id}', [ConfigCalendarioFestivoController::class, 'destroy']);
+        Route::get('/verificar/{fecha}', [ConfigCalendarioFestivoController::class, 'verificarFecha']);
+        Route::get('/anio/{anio}', [ConfigCalendarioFestivoController::class, 'festivosPorAnio']);
     });
-});
 
+    }); // Fin throttle:config-operations
 
     /**
-     * Ventanillas Únicas (Config - Ventanillas)
+     * Ventanillas Únicas (requieren autenticación + permisos específicos)
      */
     $permConfig = "Config - Ventanillas -> ";
     Route::prefix("sedes/{sedeId}/ventanillas")->group(function () use ($permConfig) {
@@ -141,4 +143,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix("usuarios/{usuarioId}")->group(function () use ($permConfig) {
         Route::get("/ventanillas-permitidas", [PermisosVentanillaUnicaController::class, "listarVentanillasPermitidas"])->middleware("can:" . $permConfig . "Listar");
     });
+
+}); // Fin auth:sanctum
 

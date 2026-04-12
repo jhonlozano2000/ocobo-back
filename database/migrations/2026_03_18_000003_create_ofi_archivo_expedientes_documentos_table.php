@@ -36,7 +36,6 @@ return new class extends Migration
 
             // Índice para búsquedas rápidas en expedientes voluminosos
             $table->index(['expediente_id', 'numero_folio'], 'ofi_exp_doc_exp_folio_idx');
-            $table->index(['expediente_id', 'numero_folio']);
         });
     }
 

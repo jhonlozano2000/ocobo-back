@@ -21,7 +21,6 @@ return new class extends Migration
             // Clasificación del Trámite
             $table->unsignedBigInteger('tipo_pqrs_id')->comment('Referencia a config_listas (Petición, Queja, etc)');
             $table->foreign('tipo_pqrs_id')->references('id')->on('config_listas_detalles');
-            $table->foreign('tipo_pqrs_id')->references('id')->on('config_lista_detalles');
 
             // Responsabilidad Administrativa
             $table->unsignedBigInteger('dependencia_responsable_id')->comment('Oficina encargada de dar respuesta');

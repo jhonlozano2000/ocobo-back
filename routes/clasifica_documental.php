@@ -10,7 +10,12 @@ use Illuminate\Support\Facades\Route;
  * Prefix aplicado desde RouteServiceProvider: /api/clasifica-documental
  * Rutas finales: /api/clasifica-documental/trd/* y /api/clasifica-documental/trd-versiones/*
  */
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:web')->group(function () {
+
+    /**
+     * Rate limiting específico para Clasificación Documental
+     */
+    Route::middleware('throttle:config-operations')->group(function () {
 
     /**
      * TRD (Tabla de Retención Documental)
@@ -68,4 +73,7 @@ Route::middleware('auth:sanctum')->group(function () {
                 'destroy' => 'destroy'
             ])->except('create', 'edit');
     });
-});
+
+    }); // Fin throttle:config-operations
+
+}); // Fin auth:sanctum

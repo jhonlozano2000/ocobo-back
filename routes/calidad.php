@@ -9,7 +9,12 @@ use Illuminate\Support\Facades\Route;
  * Prefix aplicado desde RouteServiceProvider: /api/calidad
  * Rutas finales: /api/calidad/organigrama/*
  */
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:web')->group(function () {
+
+    /**
+     * Rate limiting específico para Calidad
+     */
+    Route::middleware('throttle:config-operations')->group(function () {
 
     /**
      * Organigrama - Gestión completa
@@ -37,4 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
                 'destroy' => 'destroy'
             ])->except('create', 'edit');
     });
-});
+
+    }); // Fin throttle:config-operations
+
+}); // Fin auth:sanctum

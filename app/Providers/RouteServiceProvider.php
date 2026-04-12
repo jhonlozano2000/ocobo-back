@@ -12,11 +12,20 @@ class RouteServiceProvider extends ServiceProvider
 {
     public const HOME = "/home";
 
-    public function boot(): void
+    protected function configureRateLimiting(): void
     {
-        RateLimiter::for("api", function (Request $request) {
+        RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
+
+        RateLimiter::for('config-operations', function (Request $request) {
+            return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
+        });
+    }
+
+    public function boot(): void
+    {
+        $this->configureRateLimiting();
 
         $this->routes(function () {
             Route::middleware("api")
@@ -49,14 +58,10 @@ class RouteServiceProvider extends ServiceProvider
             // MODULOS DE VENTANILLA ÚNICA
             Route::middleware("api")
                 ->prefix("api/ventanilla")
-                ->group(base_path("routes/ventanilla.php"));
-
-            Route::middleware("api")
-                ->prefix("api/ventanilla")
                 ->group(base_path("routes/ventanilla-recibida.php"));
 
             Route::middleware("api")
-                ->prefix("api/ventanill")
+                ->prefix("api/ventanilla")
                 ->group(base_path("routes/ventanilla-enviada.php"));
 
             Route::middleware("api")

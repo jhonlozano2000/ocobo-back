@@ -52,7 +52,7 @@ return new class extends Migration
         // 2. Consulta optimizada con vista
         $startTime = microtime(true);
 
-        $optimizedQuery = DB::table('ventanilla_radica_reci_optimized_view')
+        $optimizedQuery = DB::table('ventanilla_radica_reci_view')
             ->orderBy('created_at', 'desc')
             ->limit(100)
             ->get();
