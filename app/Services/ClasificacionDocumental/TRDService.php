@@ -138,18 +138,41 @@ class TRDService
      */
     public function importFromExcel(array $requestData, $archivoFile): array
     {
-        // Este método debería ser llamado desde el controlador con la lógica de importación completa
-        // Por ahora retornamos los datos procesables
-        return [
-            'status' => 'ready_to_import',
-            'message' => 'Archivo recibido, listo para procesar'
-        ];
+        \Log::info('TRD Import started', ['requestData' => $requestData, 'hasFile' => !empty($archivoFile)]);
+        
+        // La dependencia se obtiene de la celda B4 del archivo Excel, no del request
+        $dependenciaId = null; // Se obtendrás de B4 en importFromExcelInternal
+        $versionId = $requestData['version_id'] ?? null;
+
+        // Guardar archivo temporal
+        $fileName = $archivoFile->getClientOriginalName();
+        $tempPath = storage_path('app/temp/' . $fileName);
+        
+        if (!is_dir(storage_path('app/temp'))) {
+            mkdir(storage_path('app/temp'), 0755, true);
+        }
+        
+        $archivoFile->move(storage_path('app/temp'), $fileName);
+
+        \Log::info('TRD Import file saved', ['tempPath' => $tempPath, 'exists' => file_exists($tempPath)]);
+
+        // Procesar importacion (dependencia se obtiene de B4, version es opcional)
+        $result = $this->importFromExcelInternal($tempPath, $dependenciaId, $versionId);
+
+        \Log::info('TRD Import result', $result);
+
+        // Limpiar archivo temporal
+        if (file_exists($tempPath)) {
+            unlink($tempPath);
+        }
+
+        return $result;
     }
 
     /**
      * Importa datos TRD desde Excel (versión interna).
      */
-    private function importFromExcelInternal(string $filePath, int $dependenciaId, int $versionId): array
+    private function importFromExcelInternal(string $filePath, ?int $dependenciaId, ?int $versionId = null): array
     {
         $idSerie = null;
         $idSubSerie = null;
@@ -160,13 +183,46 @@ class TRDService
         $sheet = $spreadsheet->getActiveSheet();
         $data = $sheet->toArray();
 
+        // Leer celda B4 para obtener el código de la dependencia
+        $codigoDependencia = trim($sheet->getCell('B4')->getValue() ?? '');
+        \Log::info('TRD Import - Codigo dependencia from B4', ['codigo' => $codigoDependencia]);
+
+        // Buscar la dependencia por código
+        $dependencia = \App\Models\Calidad\CalidadOrganigrama::where('cod_organico', $codigoDependencia)->first();
+        
+        if (!$dependencia) {
+            return [
+                'inserted' => 0,
+                'errors' => ['No se encontró la dependencia con código: ' . $codigoDependencia]
+            ];
+        }
+
+        $dependenciaId = $dependencia->id;
+        \Log::info('TRD Import - Dependencia encontrada', ['id' => $dependenciaId, 'nombre' => $dependencia->nom_organico]);
+
+        // Obtener o crear versión para esta dependencia
+        $ultimaVersion = \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRDVersion::where('dependencia_id', $dependenciaId)->max('version') ?? 0;
+        $nuevaVersion = $ultimaVersion + 1;
+
+        $version = \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRDVersion::create([
+            'dependencia_id' => $dependenciaId,
+            'version' => $nuevaVersion,
+            'estado_version' => 'TEMP',
+            'user_register' => auth()->id(),
+            'observaciones' => 'Importación masiva desde Excel'
+        ]);
+
+        $versionId = $version->id;
+        \Log::info('TRD Import - Nueva versión creada', ['version_id' => $versionId, 'version' => $nuevaVersion]);
+
         foreach ($data as $index => $row) {
             if ($index < 6) continue;
 
             $colA = trim($row[0] ?? '');
             $colB = trim($row[1] ?? '');
             $colC = trim($row[2] ?? '');
-            $nombre = trim($row[3] ?? '');
+            $diasVencimiento = trim($row[3] ?? '');
+            $nombre = trim($row[4] ?? '');
 
             if (empty($nombre)) continue;
 
@@ -206,23 +262,30 @@ class TRDService
             }
 
             try {
-                $elemento = ClasificacionDocumentalTRD::create([
+                $data = [
                     'tipo' => $tipo,
                     'cod' => $codigo,
                     'nom' => $nombre,
+                    'dias_vencimiento' => !empty($diasVencimiento) && is_numeric($diasVencimiento) ? (int) $diasVencimiento : null,
                     'parent' => $parent,
                     'dependencia_id' => $dependenciaId,
-                    'a_g' => $tipo === 'SubSerie' ? trim(mb_substr($row[4] ?? '', 0, 5)) : null,
-                    'a_c' => $tipo === 'SubSerie' ? trim(mb_substr($row[5] ?? '', 0, 5)) : null,
-                    'ct' => in_array(strtolower(trim($row[6] ?? '')), ['si', 'x']),
-                    'e' => in_array(strtolower(trim($row[7] ?? '')), ['si', 'x']),
-                    'm_d' => in_array(strtolower(trim($row[8] ?? '')), ['si', 'x']),
-                    's' => in_array(strtolower(trim($row[9] ?? '')), ['si', 'x']),
-                    'procedimiento' => $row[13] ?? null,
+                    'a_g' => $tipo === 'SubSerie' ? trim(mb_substr($row[5] ?? '', 0, 5)) : null,
+                    'a_c' => $tipo === 'SubSerie' ? trim(mb_substr($row[6] ?? '', 0, 5)) : null,
+                    'ct' => in_array(strtolower(trim($row[7] ?? '')), ['si', 'x']),
+                    'e' => in_array(strtolower(trim($row[8] ?? '')), ['si', 'x']),
+                    'm_d' => in_array(strtolower(trim($row[9] ?? '')), ['si', 'x']),
+                    's' => in_array(strtolower(trim($row[10] ?? '')), ['si', 'x']),
+                    'procedimiento' => $row[14] ?? null,
                     'estado' => true,
                     'user_register' => auth()->id(),
-                    'version_id' => $versionId
-                ]);
+                ];
+
+                // Solo agregar version_id si es válido
+                if ($versionId && $versionId > 0) {
+                    $data['version_id'] = $versionId;
+                }
+
+                $elemento = ClasificacionDocumentalTRD::create($data);
 
                 $inserted++;
 

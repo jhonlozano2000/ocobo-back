@@ -357,6 +357,102 @@ class ConfigVarias extends Model
         return self::actualizarConfiguracion('web_empresa', $web);
     }
 
+    // ==================== MÉTODOS PARA DÍAS HÁBILES ====================
+
+    public static function getConsiderarDiasHabiles($default = true)
+    {
+        $valor = self::getValor('considerar_dias_habiles', $default ? 'true' : 'false');
+        return filter_var($valor, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    public static function setConsiderarDiasHabiles($valor)
+    {
+        return self::actualizarConfiguracion('considerar_dias_habiles', $valor ? 'true' : 'false');
+    }
+
+    public static function getDiasVencimientoPredeterminado($default = 5)
+    {
+        $valor = self::getValor('dias_vencimiento_predeterminado', (string)$default);
+        return (int)$valor;
+    }
+
+    public static function setDiasVencimientoPredeterminado($valor)
+    {
+        return self::actualizarConfiguracion('dias_vencimiento_predeterminado', (int)$valor);
+    }
+
+    // ==================== MÉTODOS PARA SEMÁFORO ====================
+
+    public static function getSemaforoActivo($default = true)
+    {
+        $valor = self::getValor('semaforo_activo', $default ? 'true' : 'false');
+        return filter_var($valor, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    public static function setSemaforoActivo($valor)
+    {
+        return self::actualizarConfiguracion('semaforo_activo', $valor ? 'true' : 'false');
+    }
+
+    public static function getSemaforoVerdeDias($default = 2)
+    {
+        $valor = self::getValor('semaforo_verde_dias', (string)$default);
+        return (int)$valor;
+    }
+
+    public static function setSemaforoVerdeDias($valor)
+    {
+        return self::actualizarConfiguracion('semaforo_verde_dias', (int)$valor);
+    }
+
+    public static function getSemaforoAmarilloDias($default = 4)
+    {
+        $valor = self::getValor('semaforo_amarillo_dias', (string)$default);
+        return (int)$valor;
+    }
+
+    public static function setSemaforoAmarilloDias($valor)
+    {
+        return self::actualizarConfiguracion('semaforo_amarillo_dias', (int)$valor);
+    }
+
+    public static function getSemaforoRojoDias($default = 5)
+    {
+        $valor = self::getValor('semaforo_rojo_dias', (string)$default);
+        return (int)$valor;
+    }
+
+    public static function setSemaforoRojoDias($valor)
+    {
+        return self::actualizarConfiguracion('semaforo_rojo_dias', (int)$valor);
+    }
+
+    // ==================== HELPERS DEL SEMÁFORO ====================
+
+    public static function getEstadoSemaforo($diasRestantes)
+    {
+        if (!self::getSemaforoActivo()) {
+            return null;
+        }
+
+        if ($diasRestantes <= 0) {
+            return 'rojo';
+        }
+
+        $verde = self::getSemaforoVerdeDias();
+        $amarillo = self::getSemaforoAmarilloDias();
+
+        if ($diasRestantes <= $amarillo) {
+            return 'rojo';
+        }
+
+        if ($diasRestantes <= $verde + $amarillo) {
+            return 'amarillo';
+        }
+
+        return 'verde';
+    }
+
     /**
      * Método auxiliar para actualizar configuraciones.
      *

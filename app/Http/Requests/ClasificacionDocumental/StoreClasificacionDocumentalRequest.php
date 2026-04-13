@@ -47,6 +47,12 @@ class StoreClasificacionDocumentalRequest extends FormRequest
                 'integer',
                 'exists:calidad_organigrama,id'
             ],
+            'dias_vencimiento' => [
+                'nullable',
+                'integer',
+                'min:0',
+                'max:365'
+            ],
             'a_g' => [
                 'nullable',
                 'string',

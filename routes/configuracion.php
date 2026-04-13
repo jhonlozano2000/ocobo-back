@@ -67,6 +67,7 @@ Route::middleware('throttle:config-operations')->group(function () {
     Route::get('config-varias', [ConfigVariasController::class, 'index'])->name('config.varias.list');
     Route::post('config-varias', [ConfigVariasController::class, 'store'])->name('config.varias.store');
     Route::put('config-varias/{clave}', [ConfigVariasController::class, 'update'])->name('config.varias.update');
+    Route::post('config-varias/batch', [ConfigVariasController::class, 'updateBatch'])->name('config.varias.update.batch');
 
     // Rutas específicas para numeración unificada
     Route::get('config-varias/numeracion-unificada', [ConfigVariasController::class, 'getNumeracionUnificada'])->name('config.varias.numeracion.unificada.get');
@@ -108,9 +109,14 @@ Route::middleware('throttle:config-operations')->group(function () {
     Route::prefix('calendario-festivos')->group(function () {
         Route::get('/', [ConfigCalendarioFestivoController::class, 'index']);
         Route::post('/', [ConfigCalendarioFestivoController::class, 'store']);
+        Route::put('/{id}', [ConfigCalendarioFestivoController::class, 'update']);
         Route::delete('/{id}', [ConfigCalendarioFestivoController::class, 'destroy']);
         Route::get('/verificar/{fecha}', [ConfigCalendarioFestivoController::class, 'verificarFecha']);
         Route::get('/anio/{anio}', [ConfigCalendarioFestivoController::class, 'festivosPorAnio']);
+        Route::post('/anio/{anio}/generar-colombia', [ConfigCalendarioFestivoController::class, 'generarFestivosColombia']);
+        Route::post('/calcular-vencimiento', [ConfigCalendarioFestivoController::class, 'calcularVencimiento']);
+        Route::post('/importar', [ConfigCalendarioFestivoController::class, 'importar']);
+        Route::post('/clear-cache', [ConfigCalendarioFestivoController::class, 'clearCache']);
     });
 
     }); // Fin throttle:config-operations

@@ -33,6 +33,9 @@ Route::middleware('throttle:config-operations')->group(function () {
         // Ruta para clasificaciones por dependencia
         Route::get('/por-dependencia/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'clasificacionesPorDependencia'])->name('clasificaciones.por-dependencia');
 
+        // Ruta para días de vencimiento (debe ir ANTES del resource para no chocar con /{trd})
+        Route::get('/{id}/dias-vencimiento', [ClasificacionDocumentalTRDController::class, 'getDiasVencimiento'])->name('dias-vencimiento');
+
         // Rutas con parámetros
         Route::get('/estadisticas/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'estadistica'])->name('estadisticas');
         Route::get('/dependencia/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'listarPorDependencia'])->name('por-dependencia');

@@ -71,6 +71,37 @@ class ConfigVariasService
     }
 
     /**
+     * Actualiza múltiples configuraciones en una sola operación.
+     */
+    public function updateBatch(array $configs): array
+    {
+        $results = [];
+
+        foreach ($configs as $configData) {
+            $clave = $configData['clave'];
+            $valor = $configData['valor'];
+
+            $config = ConfigVarias::where('clave', $clave)->first();
+
+            if ($config) {
+                $config->update(['valor' => $valor]);
+                $results[] = $config->fresh();
+            } else {
+                $config = ConfigVarias::create([
+                    'clave' => $clave,
+                    'valor' => $valor,
+                    'descripcion' => $configData['descripcion'] ?? 'Configuración batch',
+                    'tipo' => $configData['tipo'] ?? 'text',
+                    'estado' => $configData['estado'] ?? true,
+                ]);
+                $results[] = $config;
+            }
+        }
+
+        return $results;
+    }
+
+    /**
      * Obtiene la numeración unificada.
      */
     public function getNumeracionUnificada(): bool

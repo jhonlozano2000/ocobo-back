@@ -3,6 +3,7 @@
 namespace App\Models\Calidad;
 
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRDVersion;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -273,6 +274,16 @@ class CalidadOrganigrama extends Model
     public function trds()
     {
         return $this->hasMany(ClasificacionDocumentalTRD::class, 'dependencia_id');
+    }
+
+    /**
+     * Relación con las versiones TRD de esta dependencia.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function trdVersiones()
+    {
+        return $this->hasMany(ClasificacionDocumentalTRDVersion::class, 'dependencia_id');
     }
 
     /**

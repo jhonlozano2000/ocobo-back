@@ -29,6 +29,7 @@ class ClasificacionDocumentalTRD extends Model
         'electronico',
         'mixto',
         'procedimiento',
+        'dias_vencimiento',
         'parent',
         'dependencia_id',
         'version_id',
@@ -393,5 +394,109 @@ class ClasificacionDocumentalTRD extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Obtiene los días de vencimiento con herencia jerárquica.
+     * 
+     * Orden de búsqueda:
+     * 1. Este elemento (TipoDocumento, SubSerie o Serie)
+     * 2. SubSerie padre (si existe)
+     * 3. Serie abuelo (si existe)
+     * 4. Valor por defecto de config_varias
+     *
+     * @param int|null $default Valor por defecto si no se encuentra ninguno
+     * @return int Días de vencimiento
+     */
+    public function getDiasVencimiento(?int $default = null): int
+    {
+        // Si este elemento tiene días configurados, usarlo
+        if ($this->dias_vencimiento !== null) {
+            return (int) $this->dias_vencimiento;
+        }
+
+        // Si es un TipoDocumento, buscar en SubSerie padre
+        if ($this->isTipoDocumento()) {
+            $parent = $this->getParentModel();
+            if ($parent && $parent->dias_vencimiento !== null) {
+                return (int) $parent->dias_vencimiento;
+            }
+
+            // Buscar en Serie abuelo
+            if ($parent) {
+                $grandParent = $parent->getParentModel();
+                if ($grandParent && $grandParent->dias_vencimiento !== null) {
+                    return (int) $grandParent->dias_vencimiento;
+                }
+            }
+        }
+
+        // Si es una SubSerie, buscar en Serie padre
+        if ($this->isSubSerie()) {
+            $parent = $this->getParentModel();
+            if ($parent && $parent->dias_vencimiento !== null) {
+                return (int) $parent->dias_vencimiento;
+            }
+        }
+
+        // Usar valor por defecto de config o global
+        if ($default !== null) {
+            return $default;
+        }
+
+        // Último recurso: 5 días
+        return (int) \App\Models\Configuracion\ConfigVarias::getValor('dias_vencimiento_predeterminado', '5');
+    }
+
+    /**
+     * Obtiene el modelo padre cargado.
+     *
+     * @return self|null
+     */
+    protected function getParentModel(): ?self
+    {
+        if (!$this->parent) {
+            return null;
+        }
+
+        if ($this->parent instanceof self) {
+            return $this->parent;
+        }
+
+        return self::find($this->parent);
+    }
+
+    /**
+     * Obtiene la información completa de días de vencimiento.
+     *
+     * @return array
+     */
+    public function getInfoDiasVencimiento(): array
+    {
+        $jerarquia = $this->getJerarquia();
+        $dias = $this->getDiasVencimiento();
+        $fuente = 'config_varias';
+
+        // Determinar de dónde vienen los días
+        if ($this->dias_vencimiento !== null) {
+            $fuente = "{$this->tipo} (ID: {$this->id})";
+        } else {
+            // Buscar en padres
+            foreach ($jerarquia as $item) {
+                if ($item['id'] !== $this->id) {
+                    $elemento = self::find($item['id']);
+                    if ($elemento && $elemento->dias_vencimiento !== null) {
+                        $fuente = "{$item['tipo']} (ID: {$item['id']}) - {$item['nom']}";
+                        break;
+                    }
+                }
+            }
+        }
+
+        return [
+            'dias' => $dias,
+            'fuente' => $fuente,
+            'jerarquia' => $jerarquia
+        ];
     }
 }

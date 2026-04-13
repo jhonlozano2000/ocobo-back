@@ -47,7 +47,12 @@ class ClasificacionDocumentalTRDController extends Controller
     public function show($id)
     {
         try {
-            $trd = ClasificacionDocumentalTRD::with(['children', 'dependencia', 'parent'])->find($id);
+            $trd = ClasificacionDocumentalTRD::with([
+                'children',
+                'dependencia',
+                'parent',
+                'parent.parent'
+            ])->find($id);
 
             if (!$trd) {
                 return $this->errorResponse('Elemento TRD no encontrado', null, 404);
@@ -131,7 +136,12 @@ class ClasificacionDocumentalTRDController extends Controller
 
             $elementos = ClasificacionDocumentalTRD::where('dependencia_id', $id)
                 ->whereNull('parent')
-                ->with(['children', 'dependencia'])
+                ->with([
+                    'children',
+                    'dependencia',
+                    'children.parent',
+                    'children.parent.parent'
+                ])
                 ->orderBy('cod', 'asc')
                 ->get();
 
@@ -205,6 +215,34 @@ class ClasificacionDocumentalTRDController extends Controller
             return $this->successResponse($estadisticas, 'Estadísticas por dependencias obtenidas exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener estadísticas por dependencias', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Obtiene los días de vencimiento para una clasificación TRD específica.
+     * Útil para el formulario de radicación.
+     */
+    public function getDiasVencimiento(int $id)
+    {
+        try {
+            $clasificacion = ClasificacionDocumentalTRD::find($id);
+
+            if (!$clasificacion) {
+                return $this->errorResponse('Elemento TRD no encontrado', null, 404);
+            }
+
+            $info = $clasificacion->getInfoDiasVencimiento();
+
+            return $this->successResponse([
+                'clasificacion_id' => $id,
+                'clasificacion_nombre' => $clasificacion->nom,
+                'clasificacion_tipo' => $clasificacion->tipo,
+                'dias_vencimiento' => $info['dias'],
+                'fuente' => $info['fuente'],
+                'jerarquia' => $info['jerarquia']
+            ], 'Días de vencimiento obtenidos exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener días de vencimiento', $e->getMessage(), 500);
         }
     }
 }

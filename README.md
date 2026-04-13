@@ -8,7 +8,7 @@ Aplicación gestora del proceso de gestión documental desarrollada en Laravel.
 ![Version](https://img.shields.io/badge/Version-2.1-blue?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-En%20Desarrollo-yellow?style=flat-square)
 
-**Versión**: 2.1  
+**Versión**: 2.2  
 **Última actualización**: Abril 2026  
 **Estado**: En desarrollo activo
 
@@ -28,6 +28,8 @@ OCOBO-BACK es una aplicación web desarrollada en Laravel que gestiona procesos 
 - **Clasificación Documental**: Sistema completo de TRD (Tabla de Retención Documental) con versiones y datos de prueba
 - **Control de Calidad**: Gestión de organigramas y estructuras organizacionales
 - **Ventanilla Única**: Sistema completo de gestión de ventanillas y radicaciones
+- **Calendario Días No Hábiles**: Gestión de festivos con cálculo de vencimientos (ISO 27001)
+- **Semáforo de Vencimientos**: Sistema configurable de alertas visuales para términos legales
 - **API RESTful**: Endpoints bien documentados y estructurados
 - **Validaciones Robustas**: Form Request classes para validaciones centralizadas
 - **Manejo de Errores**: Sistema consistente de respuestas de error
@@ -131,6 +133,10 @@ app/
 │   └── Resources/            # API Resources
 ├── Models/
 ├── Services/                 # Lógica de negocio
+│   └── Configuracion/
+│       └── BusinessDaysService.php  # Servicio de días hábiles con caché
+├── Helpers/
+│   └── CalendarioHelper.php  # Helper para cálculo de vencimientos
 ├── Traits/
 │   └── Loggable.php          # Trait para logging de actividad
 ├── Listeners/
@@ -261,6 +267,8 @@ php artisan cache:clear
 - TRD (Tabla de Retención Documental)
 - Series, Subseries, Tipos documentales
 - Versiones TRD
+- **Días de vencimiento configurables por elemento TRD** (herencia jerárquica)
+- Integración con CalendarioHelper para cálculo de vencimientos
 
 ### Ventanilla Única
 - Radicación recibida
@@ -268,6 +276,19 @@ php artisan cache:clear
 - Radicación interna
 - Gestión de archivos
 - Asignación de responsables
+
+### Calendario Días No Hábiles (ISO 27001)
+- Gestión de días festivos y no hábiles
+- Cálculo automático de vencimientos
+- Service `BusinessDaysService` con caché
+- Festivos de Colombia pre-configurados
+- Integración con `ConfigVarias` para configuración de días hábiles
+- Trait `Loggable` para auditoría ISO 27001
+
+### Semáforo de Vencimientos
+- Configuración de umbrales (verde, amarillo, rojo)
+- Cálculo de días hábiles restantes
+- Integración con `CalendarioHelper`
 
 ---
 
@@ -286,6 +307,16 @@ php artisan cache:clear
 ---
 
 ## 📋 Changelog
+
+### v2.2 (Abril 2026)
+- ✅ Calendario de Días No Hábiles con FullCalendar
+- ✅ BusinessDaysService con caché para cálculo de días hábiles
+- ✅ Generación automática de festivos de Colombia (Ley Emiliani)
+- ✅ Trait Loggable en ConfigCalendarioFestivo para auditoría ISO 27001
+- ✅ Configuraciones de semáforo (verde, amarillo, rojo)
+- ✅ Helper CalendarioHelper integrado con ConfigVarias
+- ✅ Endpoint batch para actualizar múltiples configuraciones
+- ✅ Refactorización ConfigVariasController
 
 ### v2.1 (Abril 2026)
 - ✅ Sistema de autenticación con cookies HttpOnly (BFF Pattern)
