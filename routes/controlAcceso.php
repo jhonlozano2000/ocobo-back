@@ -9,12 +9,17 @@ use App\Http\Controllers\ControlAcceso\UserSedeController;
 use App\Http\Controllers\ControlAcceso\UserVentanillaController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['api', 'web', 'auth:web'])->group(function () {
-
+/**
+ * Rate limiting específico para Control de Acceso
+ */
+Route::middleware('throttle:config-operations')->group(function () {
     /**
-     * Rate limiting específico para Control de Acceso
+     * Perfil y autenticación de usuario
      */
-    Route::middleware('throttle:config-operations')->group(function () {
+    Route::put('/user/changePassword', [UserController::class, 'updatePassword']);
+    Route::put('/user/profile-information', [UserController::class, 'updateUserProfile']);
+    Route::post('/user/activar-inactivar', [UserController::class, 'activarInactivar']);
+
     /**
      * Usuarios - Rutas específicas PRIMERO para evitar conflictos con resource
      */
@@ -56,13 +61,6 @@ Route::middleware(['api', 'web', 'auth:web'])->group(function () {
      * Permisos
      */
     Route::get('/permisos', [RoleController::class, 'listPermisos'])->name('permisos.show');
-
-    /**
-     * Perfil y autenticación de usuario
-     */
-    Route::put('/user/profile-information', [UserController::class, 'updateUserProfile']);
-    Route::put('/user/changePassword', [UserController::class, 'updatePassword']);
-    Route::post('/user/activar-inactivar', [UserController::class, 'activarInactivar']);
 
     /**
      * Sesiones de usuario
@@ -119,6 +117,4 @@ Route::middleware(['api', 'web', 'auth:web'])->group(function () {
             ])->only('index', 'show');
     });
 
-    }); // Fin throttle:config-operations
-
-}); // Fin auth:sanctum
+    }); // Fin throttle

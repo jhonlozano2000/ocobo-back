@@ -15,11 +15,12 @@ class CalidadOrganigramaService
     ];
 
     /**
-     * Obtiene organigrama con filtros.
+     * Obtiene el organigrama completo.
      */
-    public function getAll(array $filters = []): LengthAwarePaginator|Collection
+    public function getAll(array $filters = []): array|LengthAwarePaginator|Collection
     {
-        $query = CalidadOrganigrama::dependenciasRaiz()->with('children');
+        // Obtener solo nodos raíz (sin padre) para construir el árbol desde la raíz
+        $query = CalidadOrganigrama::whereNull('parent')->with('children');
 
         if (!empty($filters['tipo'])) {
             $query->where('tipo', $filters['tipo']);
@@ -44,7 +45,7 @@ class CalidadOrganigramaService
     /**
      * Obtiene solo dependencias.
      */
-    public function getDependencias(array $filters = []): LengthAwarePaginator|Collection
+    public function getDependencias(array $filters = []): array|LengthAwarePaginator|Collection
     {
         $query = CalidadOrganigrama::dependenciasRaiz()->with('children');
 

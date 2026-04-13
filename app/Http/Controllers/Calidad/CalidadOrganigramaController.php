@@ -24,11 +24,16 @@ class CalidadOrganigramaController extends Controller
     public function index(ListCalidadOrganigramaRequest $request)
     {
         try {
-            $filters = $request->validated();
+            $filters = $request->all();
+            \Log::info('Organigrama index called', ['filters' => $filters]);
+            
             $organigrama = $this->service->getAll($filters);
+            \Log::info('Organigrama data count', ['count' => is_array($organigrama) ? count($organigrama) : 'collection']);
+            \Log::info('Organigrama tipos:', ['tipos' => is_array($organigrama) ? array_count_values(array_column($organigrama, 'tipo')) : 'N/A']);
 
             return $this->successResponse($organigrama, 'Organigrama obtenido correctamente');
         } catch (\Exception $e) {
+            \Log::error('Organigrama index error: ' . $e->getMessage());
             return $this->errorResponse('Error al obtener el organigrama', $e->getMessage(), 500);
         }
     }
@@ -91,13 +96,13 @@ class CalidadOrganigramaController extends Controller
         }
     }
 
-    /**
+     /**
      * Lista de dependencias.
      */
     public function listDependencias(Request $request)
     {
         try {
-            $filters = $request->validated();
+            $filters = $request->all();
             $dependencias = $this->service->getDependencias($filters);
 
             return $this->successResponse($dependencias, 'Lista de dependencias obtenida');
@@ -112,7 +117,7 @@ class CalidadOrganigramaController extends Controller
     public function listOficinas(Request $request)
     {
         try {
-            $filters = $request->validated();
+            $filters = $request->all();
             $oficinas = $this->service->getOficinas($filters);
 
             return $this->successResponse($oficinas, 'Lista de oficinas con sus respectivos cargos obtenida correctamente');

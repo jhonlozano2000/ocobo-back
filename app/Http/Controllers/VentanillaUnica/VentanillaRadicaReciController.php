@@ -238,7 +238,6 @@ class VentanillaRadicaReciController extends Controller
             // Crear el radicado con los datos enviados
             $radicado = new VentanillaRadicaReci($validatedData);
             $radicado->num_radicado = $num_radicado;
-            $radicado->fec_radicado = now(); // Sello de tiempo oficial (Acuerdo 060 AGN)
             $radicado->cod_verifica = $this->generarCodigoVerificacion();
             $radicado->usuario_crea = auth()->id(); // Asignar usuario que crea el radicado
 

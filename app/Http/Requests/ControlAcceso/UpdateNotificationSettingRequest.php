@@ -3,6 +3,8 @@
 namespace App\Http\Requests\ControlAcceso;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 class UpdateNotificationSettingRequest extends FormRequest
 {
@@ -13,7 +15,7 @@ class UpdateNotificationSettingRequest extends FormRequest
      */
     public function authorize()
     {
-        return true; // La autorización se maneja a través de middleware
+        return true;
     }
 
     /**
@@ -24,18 +26,37 @@ class UpdateNotificationSettingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'new_for_you' => [
-                'required',
-                'boolean'
-            ],
-            'account_activity' => [
-                'required',
-                'boolean'
-            ],
-            'new_browser_login' => [
-                'required',
-                'boolean'
-            ]
+            'new_for_you' => 'nullable|array',
+            'new_for_you.app' => 'nullable|boolean',
+            'new_for_you.email' => 'nullable|boolean',
+            'new_for_you.browser' => 'nullable|boolean',
+            
+            'account_activity' => 'nullable|array',
+            'account_activity.app' => 'nullable|boolean',
+            'account_activity.email' => 'nullable|boolean',
+            'account_activity.browser' => 'nullable|boolean',
+            
+            'new_browser_login' => 'nullable|array',
+            'new_browser_login.app' => 'nullable|boolean',
+            'new_browser_login.email' => 'nullable|boolean',
+            'new_browser_login.browser' => 'nullable|boolean',
+            
+            'new_device_linked' => 'nullable|array',
+            'new_device_linked.app' => 'nullable|boolean',
+            'new_device_linked.email' => 'nullable|boolean',
+            'new_device_linked.browser' => 'nullable|boolean',
+            
+            'email_notifications' => 'nullable|array',
+            'email_notifications.app' => 'nullable|boolean',
+            'email_notifications.email' => 'nullable|boolean',
+            'email_notifications.browser' => 'nullable|boolean',
+            
+            // Legacy format support
+            'new_for_you_boolean' => 'nullable|boolean',
+            'account_activity_boolean' => 'nullable|boolean',
+            'new_browser_login_boolean' => 'nullable|boolean',
+            'new_device_linked_boolean' => 'nullable|boolean',
+            'email_notifications_boolean' => 'nullable|boolean',
         ];
     }
 
@@ -47,26 +68,26 @@ class UpdateNotificationSettingRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'new_for_you.required' => 'La configuración de notificaciones nuevas es obligatoria.',
-            'new_for_you.boolean' => 'La configuración de notificaciones nuevas debe ser verdadera o falsa.',
-            'account_activity.required' => 'La configuración de actividad de cuenta es obligatoria.',
-            'account_activity.boolean' => 'La configuración de actividad de cuenta debe ser verdadera o falsa.',
-            'new_browser_login.required' => 'La configuración de nuevos inicios de sesión es obligatoria.',
-            'new_browser_login.boolean' => 'La configuración de nuevos inicios de sesión debe ser verdadera o falsa.',
+            'new_for_you.array' => 'El formato de notificaciones nuevas es inválido.',
+            'new_for_you.*.boolean' => 'Los valores deben ser verdadero o falso.',
+            'account_activity.array' => 'El formato de actividad de cuenta es inválido.',
+            'new_browser_login.array' => 'El formato de nuevos inicios de sesión es inválido.',
+            'new_device_linked.array' => 'El formato de nuevos dispositivos es inválido.',
         ];
     }
 
     /**
-     * Get custom attributes for validator errors.
+     * Handle a failed validation attempt.
      *
-     * @return array
+     * @param Validator $validator
+     * @throws HttpResponseException
      */
-    public function attributes(): array
+    protected function failedValidation(Validator $validator)
     {
-        return [
-            'new_for_you' => 'notificaciones nuevas',
-            'account_activity' => 'actividad de cuenta',
-            'new_browser_login' => 'nuevos inicios de sesión'
-        ];
+        throw new HttpResponseException(response()->json([
+            'status' => false,
+            'message' => 'Datos de validación incorrectos',
+            'errors' => $validator->errors()
+        ], 422));
     }
 }

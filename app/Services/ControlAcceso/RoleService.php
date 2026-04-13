@@ -82,6 +82,14 @@ class RoleService
     }
 
     /**
+     * Obtiene todos los roles con sus permisos.
+     */
+    public function getAllWithPermissions(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Role::with('permissions')->orderBy('name', 'asc')->get();
+    }
+
+    /**
      * Crea un nuevo rol.
      */
     public function create(array $data): Role

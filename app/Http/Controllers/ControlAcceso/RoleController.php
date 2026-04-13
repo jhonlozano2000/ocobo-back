@@ -146,4 +146,19 @@ class RoleController extends Controller
             return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Listado de roles con sus permisos.
+     */
+    public function listRolesPermisos()
+    {
+        try {
+            return $this->successResponse(
+                $this->service->getAllWithPermissions(),
+                'Listado de roles con permisos obtenido exitosamente'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener roles y permisos', $e->getMessage(), 500);
+        }
+    }
 }

@@ -9,12 +9,11 @@ use Illuminate\Support\Facades\Route;
  * Prefix aplicado desde RouteServiceProvider: /api/calidad
  * Rutas finales: /api/calidad/organigrama/*
  */
-Route::middleware('auth:web')->group(function () {
 
-    /**
-     * Rate limiting específico para Calidad
-     */
-    Route::middleware('throttle:config-operations')->group(function () {
+/**
+ * Rate limiting específico para Calidad
+ */
+Route::middleware('throttle:config-operations')->group(function () {
 
     /**
      * Organigrama - Gestión completa
@@ -43,6 +42,4 @@ Route::middleware('auth:web')->group(function () {
             ])->except('create', 'edit');
     });
 
-    }); // Fin throttle:config-operations
-
-}); // Fin auth:sanctum
+}); // Fin throttle

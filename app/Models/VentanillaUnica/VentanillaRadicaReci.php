@@ -32,7 +32,6 @@ class VentanillaRadicaReci extends Model
         'archivo_tipo',
         'archivo_peso',
         'soporte',
-        'fec_radicado',
         'cod_verifica',
         'uploaded_by',
         'impri_rotulo',
@@ -64,7 +63,7 @@ class VentanillaRadicaReci extends Model
      */
     public function loadClasificacionConJerarquia()
     {
-        return $this->load(['clasificacionDocumental' => fn ($q) => $q->with(['parent' => fn ($q) => $q->with('parent')])]);
+        return $this->load(['clasificacionDocumental' => fn($q) => $q->with(['parent' => fn($q) => $q->with('parent')])]);
     }
 
     /**
