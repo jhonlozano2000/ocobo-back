@@ -28,6 +28,7 @@ class VentanillaRadicaReci extends Model
         'asunto',
         'radicado_respuesta',
         'archivo_digital',
+        'nom_origi',
         'hash_sha256',
         'archivo_tipo',
         'archivo_peso',
@@ -35,6 +36,7 @@ class VentanillaRadicaReci extends Model
         'cod_verifica',
         'uploaded_by',
         'impri_rotulo',
+        'dias_vencimiento',
     ];
 
     protected static function boot()
@@ -358,10 +360,11 @@ class VentanillaRadicaReci extends Model
         }
 
         return [
-            'nombre' => basename($this->archivo_digital),
+            'nombre' => $this->nom_origi ?: basename($this->archivo_digital),
+            'ruta' => $this->archivo_digital,
             'url' => $this->getUrlArchivoDigital(),
-            'tamaño' => Storage::disk('radicados_recibidos')->size($this->archivo_digital),
-            'tipo' => Storage::disk('radicados_recibidos')->mimeType($this->archivo_digital),
+            'tamaño' => $this->archivo_peso ?: Storage::disk('radicados_recibidos')->size($this->archivo_digital),
+            'tipo' => $this->archivo_tipo ?: Storage::disk('radicados_recibidos')->mimeType($this->archivo_digital),
             'extension' => pathinfo($this->archivo_digital, PATHINFO_EXTENSION)
         ];
     }

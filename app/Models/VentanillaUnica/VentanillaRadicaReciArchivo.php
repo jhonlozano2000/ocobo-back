@@ -17,6 +17,8 @@ class VentanillaRadicaReciArchivo extends Model
         'radicado_id',
         'subido_por',
         'archivo',
+        'nom_origi',
+        'archivo_peso',
         'hash_sha256',
     ];
 
@@ -26,6 +28,22 @@ class VentanillaRadicaReciArchivo extends Model
     public function usuarioSubido()
     {
         return $this->belongsTo(\App\Models\User::class, 'subido_por');
+    }
+
+    /**
+     * Metadatos ISO 27001 del archivo.
+     */
+    public function metadata()
+    {
+        return $this->hasOne(VentanillaRadicaReciMetadata::class, 'archivo_id');
+    }
+
+    /**
+     * Radicado al que pertenece el archivo.
+     */
+    public function radicado()
+    {
+        return $this->belongsTo(VentanillaRadicaReci::class, 'radicado_id');
     }
 
     /**
@@ -57,18 +75,29 @@ class VentanillaRadicaReciArchivo extends Model
 
         $info = [
             'id' => $this->id,
-            'nombre' => basename($rutaArchivo),
+            'nombre' => $this->nom_origi ?: basename($rutaArchivo),
             'ruta' => $rutaArchivo,
             'url' => $this->getArchivoUrl($campo, $disk),
             'fecha_subida' => $this->created_at,
             'extension' => pathinfo($rutaArchivo, PATHINFO_EXTENSION),
         ];
 
-        // Solo acceder al filesystem si se solicita explícitamente (para descarga/detalles)
-        if ($incluirMetadatos) {
+        // Usar peso guardado si existe, o acceder al filesystem si se solicita explícitamente
+        if ($this->archivo_peso) {
+            $info['tamaño'] = $this->archivo_peso;
+        } elseif ($incluirMetadatos) {
             try {
                 if (Storage::disk($disk)->exists($rutaArchivo)) {
                     $info['tamaño'] = Storage::disk($disk)->size($rutaArchivo);
+                }
+            } catch (\Exception $e) {
+                // Si hay error al obtener información del archivo, continuar sin esos datos
+            }
+        }
+
+        if ($incluirMetadatos && !$this->archivo_peso) {
+            try {
+                if (Storage::disk($disk)->exists($rutaArchivo)) {
                     $info['tipo'] = Storage::disk($disk)->mimeType($rutaArchivo);
                 }
             } catch (\Exception $e) {

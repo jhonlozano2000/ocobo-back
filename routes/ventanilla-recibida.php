@@ -13,6 +13,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::put("/radica-recibida/{id}/update-fechas", [VentanillaRadicaReciController::class, "updateFechas"])->name("radica-recibida.update-fechas")->middleware("can:" . $permReci . "Atualizar fechas de radicados");
     Route::put("/radica-recibida/{id}/update-clasificacion-documental", [VentanillaRadicaReciController::class, "updateClasificacionDocumental"])->name("radica-recibida.update-clasificacion-documental")->middleware("can:" . $permReci . "Actualizar clasificacion de radicados");
     Route::post("/radica-recibida/{id}/notificacion", [VentanillaRadicaReciController::class, "enviarNotificacion"])->name("radica-recibida.notificacion")->middleware("can:" . $permReci . "Notificar Email");
+    Route::post("/radica-recibida/{id}/notificacion-tercero", [VentanillaRadicaReciController::class, "enviarNotificacionTercero"])->name("radica-recibida.notificacion-tercero")->middleware("can:" . $permReci . "Notificar Email");
     Route::get("/radica-recibida/{id}/linea-tiempo", [VentanillaRadicaReciController::class, "lineaTiempo"])->name("radica-recibida.linea-tiempo")->middleware("can:" . $permReci . "Mostrar");
     Route::get("/radica-recibida", [VentanillaRadicaReciController::class, "index"])->name("radica-recibida.index")->middleware("can:" . $permReci . "Listar");
     Route::post("/radica-recibida", [VentanillaRadicaReciController::class, "store"])->name("radica-recibida.store")->middleware("can:" . $permReci . "Crear");

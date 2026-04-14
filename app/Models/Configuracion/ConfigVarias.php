@@ -462,8 +462,12 @@ class ConfigVarias extends Model
      */
     private static function actualizarConfiguracion($clave, $valor)
     {
-        // Asegurar que el valor sea siempre string
-        $valorString = (string)$valor;
+        // Encriptar contraseña de correo
+        if ($clave === 'correo_password' && !empty($valor)) {
+            $valorString = encrypt((string)$valor);
+        } else {
+            $valorString = (string)$valor;
+        }
 
         $config = self::where('clave', $clave)->first();
 

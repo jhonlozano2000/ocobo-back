@@ -2,7 +2,7 @@
 
 namespace App\Traits;
 
-use Spatie\Activitylog\Models\Activity;
+use App\Models\UsersActivityLog;
 use Illuminate\Support\Facades\Auth;
 
 trait AuditViewTrait
@@ -17,14 +17,16 @@ trait AuditViewTrait
      */
     public function auditView($model, string $descripcion = 'Consulta de información')
     {
-        activity()
-            ->performedOn($model)
-            ->causedBy(Auth::user())
-            ->withProperties([
+        UsersActivityLog::log([
+            'module' => class_basename($model),
+            'action' => 'view',
+            'description' => $descripcion,
+            'entity_id' => $model->getKey(),
+            'entity_type' => get_class($model),
+            'new_values' => [
                 'ip' => request()->ip(),
                 'user_agent' => request()->userAgent(),
-                'action' => 'view'
-            ])
-            ->log($descripcion);
+            ],
+        ]);
     }
 }

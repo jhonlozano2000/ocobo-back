@@ -7,6 +7,7 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\Ventanilla\UploadArchivoRequest;
 use App\Http\Requests\Ventanilla\UploadArchivosAdjuntosRequest;
 use App\Helpers\ArchivoHelper;
+use App\Helpers\FileMetadataHelper;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\VentanillaUnica\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\VentanillaRadicaReciArchivo;
@@ -128,17 +129,21 @@ class VentanillaRadicaReciArchivosController extends Controller
             $hashSha256 = $uploadData['hash'];
             $mimeType = $uploadData['mime'];
             $fileSize = $uploadData['size'];
+            $nombreOriginal = $archivo->getClientOriginalName();
 
             // Guardar quién subió el archivo
             $usuario = Auth::user();
 
             $radicado->update([
                 'archivo_digital' => $nuevoArchivo,
+                'nom_origi' => $nombreOriginal,
                 'hash_sha256' => $hashSha256,
                 'archivo_tipo' => $mimeType,
                 'archivo_peso' => $fileSize,
                 'uploaded_by' => $usuario?->id,
             ]);
+
+            FileMetadataHelper::crearMetadataArchivoDigital($radicado, $nuevoArchivo, $hashSha256, $fileSize);
 
             DB::commit();
 
@@ -151,6 +156,7 @@ class VentanillaRadicaReciArchivosController extends Controller
 
             return $this->successResponse([
                 'path' => $nuevoArchivo,
+                'nom_origi' => $nombreOriginal,
                 'hash_sha256' => $hashSha256,
                 'archivo_tipo' => $mimeType,
                 'archivo_peso' => $fileSize,
@@ -469,8 +475,12 @@ class VentanillaRadicaReciArchivosController extends Controller
                     'radicado_id' => $radicado->id,
                     'subido_por' => $usuario?->id,
                     'archivo' => $rutaArchivo,
+                    'nom_origi' => $archivo->getClientOriginalName(),
+                    'archivo_peso' => $archivo->getSize(),
                     'hash_sha256' => $hashSha256
                 ]);
+
+                FileMetadataHelper::crearMetadataArchivoAdjunto($archivoAdicional);
 
                 // Cachear nombre completo del usuario si existe (optimización)
                 $nombreUsuario = $usuario
@@ -481,11 +491,12 @@ class VentanillaRadicaReciArchivosController extends Controller
 
                 $archivosSubidos[] = [
                     'id' => $archivoAdicional->id,
-                    'path' => $rutaArchivo,
+                    'nombre' => $archivoAdicional->nom_origi,
+                    'ruta' => $rutaArchivo,
                     'hash_sha256' => $hashSha256,
                     'subido_por' => $nombreUsuario,
-                    'file_size' => $archivo->getSize(),
-                    'file_type' => $archivo->getMimeType(),
+                    'tamaño' => $archivoAdicional->archivo_peso,
+                    'tipo' => $archivo->getMimeType(),
                     'file_url' => $fileUrl
                 ];
             }
@@ -559,7 +570,8 @@ class VentanillaRadicaReciArchivosController extends Controller
                 return $this->errorResponse('El archivo no existe en el servidor', null, 404);
             }
 
-            return \Storage::disk('radicados_recibidos')->download($archivo->archivo);
+            $nombreOriginal = $archivo->nom_origi ?: basename($archivo->archivo);
+            return \Storage::disk('radicados_recibidos')->download($archivo->archivo, $nombreOriginal);
         } catch (\Exception $e) {
             return $this->errorResponse('Error al descargar el archivo', $e->getMessage(), 500);
         }

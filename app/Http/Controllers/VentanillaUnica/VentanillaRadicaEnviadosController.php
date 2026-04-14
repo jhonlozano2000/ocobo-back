@@ -622,6 +622,7 @@ class VentanillaRadicaEnviadosController extends Controller
                 'medioEnvio',
                 'usuarioCreaRadicado',
                 'usuarioSubio',
+                'archivos',
             ])->findOrFail($id);
 
             $resultado = app(\App\Services\Notificaciones\NotificacionCorrespondenciaService::class)

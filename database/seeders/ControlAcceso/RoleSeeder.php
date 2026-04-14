@@ -90,6 +90,14 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'Config - Otras configuraciones -> Editar'])->syncRoles([$Rol1]);
 
         /**
+         * Configuración de calendario
+         */
+        Permission::create(['name' => 'Config - Calendario -> Listar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Calendario -> Crear'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Calendario -> Editar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'Config - Calendario -> Eliminar'])->syncRoles([$Rol1]);
+
+        /**
          * Configuración de sedes
          */
         Permission::create(['name' => 'Config - Sedes -> Listar'])->syncRoles([$Rol1]);
@@ -168,6 +176,7 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'TRD -> Mostrar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'TRD -> Eliminar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'TRD -> Exportar'])->syncRoles([$Rol1]);
+        Permission::create(['name' => 'TRD -> Versiones'])->syncRoles([$Rol1]);
 
         Permission::create(['name' => 'TVD -> Importar'])->syncRoles([$Rol1]);
         Permission::create(['name' => 'TVD -> Listar'])->syncRoles([$Rol1]);

@@ -21,11 +21,17 @@ class VentanillaRadicaInternoArchivos extends Model
         'tipo_archivo',
         'tamano_archivo',
         'extension_archivo',
+        'hash_sha256',
     ];
 
     public function radicaInterno()
     {
         return $this->belongsTo(VentanillaRadicaInterno::class, 'radica_interno_id');
+    }
+
+    public function metadata()
+    {
+        return $this->hasOne(VentanillaRadicaInternoMetadata::class, 'archivo_id');
     }
 
     public function usuarioSubido()

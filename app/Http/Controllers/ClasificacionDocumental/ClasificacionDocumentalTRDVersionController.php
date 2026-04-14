@@ -224,24 +224,28 @@ class ClasificacionDocumentalTRDVersionController extends Controller
     public function aprobarVersion(AprobarTRDVersionRequest $request, $dependenciaId)
     {
         try {
+            // Verificar que el usuario tiene el rol de Jefe de Archivo
+            $user = auth()->user();
+            if (!$user->hasRole('Jefe de Archivo')) {
+                return $this->errorResponse('No tiene permisos para aprobar versiones TRD. Solo el Jefe de Archivo puede realizar esta acción.', null, 403);
+            }
+
             DB::beginTransaction();
 
-            // Verificar que la dependencia existe
-            $dependencia = CalidadOrganigrama::find($dependenciaId);
-            if (!$dependencia) {
-                return $this->errorResponse('La dependencia no existe', null, 404);
-            }
-
-            // Buscar versión pendiente
-            $versionPendiente = ClasificacionDocumentalTRDVersion::where('dependencia_id', $dependenciaId)
-                ->where('estado_version', 'TEMP')
-                ->first();
+            // Buscar la versión por ID directamente
+            $versionPendiente = ClasificacionDocumentalTRDVersion::find($request->versionId);
 
             if (!$versionPendiente) {
-                return $this->errorResponse('No hay versiones pendientes por aprobar', null, 400);
+                return $this->errorResponse('La versión no existe', null, 404);
             }
 
-            // Marcar versiones anteriores como HISTORICO
+            if ($versionPendiente->estado_version !== 'TEMP') {
+                return $this->errorResponse('Solo se pueden aprobar versiones en estado TEMP', null, 400);
+            }
+
+            $dependenciaId = $versionPendiente->dependencia_id;
+
+            // Marcar versiones ACTIVO como HISTORICO (de la misma dependencia)
             ClasificacionDocumentalTRDVersion::where('dependencia_id', $dependenciaId)
                 ->where('estado_version', 'ACTIVO')
                 ->update(['estado_version' => 'HISTORICO']);
@@ -297,6 +301,12 @@ class ClasificacionDocumentalTRDVersionController extends Controller
     public function listarPendientesPorAprobar()
     {
         try {
+            // Verificar que el usuario tiene el rol de Jefe de Archivo
+            $user = auth()->user();
+            if (!$user->hasRole('Jefe de Archivo')) {
+                return $this->successResponse([], 'No tiene permisos para ver versiones pendientes');
+            }
+
             // Obtener las dependencias con TRD en estado TEMP
             $dependencias = CalidadOrganigrama::whereHas('trdVersiones', function ($query) {
                 $query->where('estado_version', 'TEMP');
@@ -310,7 +320,7 @@ class ClasificacionDocumentalTRDVersionController extends Controller
                 ->get();
 
             if ($dependencias->isEmpty()) {
-                return $this->errorResponse('No hay TRD pendientes por aprobar', null, 404);
+                return $this->successResponse([], 'No hay TRD pendientes por aprobar');
             }
 
             return $this->successResponse($dependencias, 'Dependencias pendientes obtenidas exitosamente');

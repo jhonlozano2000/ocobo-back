@@ -77,6 +77,53 @@ class ArchivoHelper
     }
 
     /**
+     * Guarda un archivo con hash SHA-256 sin eliminar archivo actual.
+     * Retorna path y hash para integridad.
+     *
+     * @param Request $request
+     * @param string $campo
+     * @param string $disk
+     * @return array|null [path => string, hash => string]
+     */
+    public static function guardarArchivoConHash(Request $request, string $campo, string $disk): ?array
+    {
+        if (!$request->hasFile($campo)) {
+            return null;
+        }
+
+        $file = $request->file($campo);
+        if (!$file || !$file->isValid()) {
+            return null;
+        }
+
+        $storage = self::getStorage($disk);
+
+        $nombreArchivo = Str::random(50) . '.' . $file->getClientOriginalExtension();
+
+        // Obtener contenido del archivo
+        $contenido = $file->getContent();
+        if (empty($contenido)) {
+            // Fallback: usar pathname para archivos en memoria
+            $pathname = $file->getPathname();
+            if ($pathname && file_exists($pathname)) {
+                $contenido = file_get_contents($pathname);
+            } else {
+                return null;
+            }
+        }
+
+        // Calcular hash del contenido (no del archivo temporal)
+        $hash = hash('sha256', $contenido);
+
+        $storage->put($nombreArchivo, $contenido);
+
+        return [
+            'path' => $nombreArchivo,
+            'hash' => $hash
+        ];
+    }
+
+    /**
      * Guarda un archivo en el disco especificado y retorna el path junto con su hash SHA-256 y metadatos tecnicos.
      * Inyecta metadatos internos (Título, Autor, Asunto) en el binario si es un PDF.
      *

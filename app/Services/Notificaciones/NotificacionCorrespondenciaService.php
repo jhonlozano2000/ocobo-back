@@ -2,6 +2,7 @@
 
 namespace App\Services\Notificaciones;
 
+use App\Helpers\MailConfigHelper;
 use App\Mail\RadicadoEnviadoNotification;
 use App\Mail\RadicadoNotification;
 use App\Models\VentanillaUnica\VentanillaRadicaEnviados;
@@ -21,6 +22,9 @@ class NotificacionCorrespondenciaService
      */
     public function enviarRadicadoRecibido(VentanillaRadicaReci $radicado): array
     {
+        // Configurar mailer desde config_varias
+        MailConfigHelper::configureFromConfigVarias();
+
         $emails = $this->obtenerCorreosResponsables($radicado);
         $tipo = self::TIPO_NOTIFICACION;
 
@@ -43,6 +47,9 @@ class NotificacionCorrespondenciaService
      */
     public function enviarRadicadoEnviado(VentanillaRadicaEnviados $radicado): array
     {
+        // Configurar mailer desde config_varias
+        MailConfigHelper::configureFromConfigVarias();
+
         $emails = $this->obtenerCorreosResponsablesEnviado($radicado);
         $tipo = self::TIPO_NOTIFICACION;
 

@@ -4,65 +4,49 @@ namespace App\Mail;
 
 use App\Models\VentanillaUnica\VentanillaRadicaReci;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Storage;
 
-class RadicadoNotification extends Mailable
+class RadicadoRecibidoNotificacionTercero extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $radicado;
-    public $tipo;
+    public VentanillaRadicaReci $radicado;
+    public string $nombreEntidad;
 
-    /**
-     * Create a new message instance.
-     */
-    public function __construct(VentanillaRadicaReci $radicado, string $tipo = 'asignacion')
+    public function __construct(VentanillaRadicaReci $radicado)
     {
         $this->radicado = $radicado;
-        $this->tipo = $tipo;
+        $this->nombreEntidad = config('app.nombre_entidad', config('app.name', 'Entidad'));
     }
 
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
-        $subject = match($this->tipo) {
-            'asignacion' => 'Nuevo radicado asignado - ' . $this->radicado->num_radicado,
-            'actualizacion' => 'Radicado actualizado - ' . $this->radicado->num_radicado,
-            'vencimiento' => 'Radicado próximo a vencer - ' . $this->radicado->num_radicado,
-            default => 'Notificación de radicado - ' . $this->radicado->num_radicado,
-        };
-
         return new Envelope(
-            subject: $subject,
+            subject: "Acuse de recibo - Radicado {$this->radicado->num_radicado}",
         );
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
         return new Content(
-            view: 'emails.radicado-notification',
+            view: 'emails.radicado-recibido-tercero',
             with: [
                 'radicado' => $this->radicado,
-                'tipo' => $this->tipo,
+                'nombreEntidad' => $this->nombreEntidad,
+                'numRadicado' => $this->radicado->num_radicado,
+                'asunto' => $this->radicado->asunto,
+                'fechaRadicado' => $this->radicado->created_at->format('d/m/Y H:i'),
+                'codVerifica' => $this->radicado->cod_verifica,
+                'nombreTercero' => $this->radicado->tercero?->nom_razo_soci ?? 'Ciudadano',
             ],
         );
     }
 
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
     public function attachments(): array
     {
         $attachments = [];
@@ -76,7 +60,7 @@ class RadicadoNotification extends Mailable
             )->as($nombreArchivo);
         }
 
-        // Archivos adicionales de la tabla ventanilla_radica_reci_archivos
+        // Archivos adicionales
         if ($this->radicado->relationLoaded('archivos') && $this->radicado->archivos) {
             foreach ($this->radicado->archivos as $archivo) {
                 if (Storage::disk('radicados_recibidos')->exists($archivo->archivo)) {

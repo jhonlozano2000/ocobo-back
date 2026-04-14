@@ -7,6 +7,7 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\Ventanilla\UploadArchivoRequest;
 use App\Http\Requests\Ventanilla\UploadArchivosAdjuntosRequest;
 use App\Helpers\ArchivoHelper;
+use App\Helpers\FileMetadataHelper;
 use App\Models\VentanillaUnica\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\VentanillaRadicaEnviadosArchivos;
 use App\Models\VentanillaUnica\VentanillaRadicaEnviadosArchivoEliminado;
@@ -78,6 +79,8 @@ class VentanillaRadicaEnviadosArchivosController extends Controller
                 'archivo_peso' => $fileSize,
                 'subido_por' => $usuario?->id,
             ]);
+
+            FileMetadataHelper::crearMetadataArchivoDigitalEnviados($radicado, $nuevoArchivo, $hashSha256, $fileSize);
 
             DB::commit();
 
@@ -207,13 +210,23 @@ class VentanillaRadicaEnviadosArchivosController extends Controller
                 $tempRequest = new \Illuminate\Http\Request();
                 $tempRequest->files->set('archivo', $archivo);
 
-                $rutaArchivo = ArchivoHelper::guardarArchivo($tempRequest, 'archivo', self::DISK);
+                $uploadData = ArchivoHelper::guardarArchivoConHash($tempRequest, 'archivo', self::DISK);
+
+                if (!$uploadData) continue;
+
+                $rutaArchivo = $uploadData['path'];
+                $hashSha256 = $uploadData['hash'];
 
                 $archivoAdicional = VentanillaRadicaEnviadosArchivos::create([
                     'radica_enviado_id' => $radicado->id,
                     'subido_por' => $usuario?->id,
                     'archivo' => $rutaArchivo,
+                    'nom_origi' => $archivo->getClientOriginalName(),
+                    'archivo_peso' => $archivo->getSize(),
+                    'hash_sha256' => $hashSha256,
                 ]);
+
+                FileMetadataHelper::crearMetadataArchivoAdjuntoEnviados($archivoAdicional);
 
                 $nombreUsuario = $usuario ? trim($usuario->nombres . ' ' . $usuario->apellidos) : 'No se registró usuario';
                 $fileUrl = ArchivoHelper::obtenerUrl($rutaArchivo, self::DISK);

@@ -241,14 +241,30 @@ class VentanillaRadicaReciController extends Controller
             $radicado->cod_verifica = $this->generarCodigoVerificacion();
             $radicado->usuario_crea = auth()->id(); // Asignar usuario que crea el radicado
 
+            // Obtener días de vencimiento - usar el enviado o calcular desde TRD
+            if (isset($validatedData['dias_vencimiento']) && $validatedData['dias_vencimiento'] !== null) {
+                $radicado->dias_vencimiento = $validatedData['dias_vencimiento'];
+            } elseif (!empty($validatedData['clasifica_documen_id'])) {
+                $clasificacion = \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::find($validatedData['clasifica_documen_id']);
+                if ($clasificacion) {
+                    $radicado->dias_vencimiento = $clasificacion->getDiasVencimiento();
+                }
+            }
+
             // Guardar el radicado
             $radicado->save();
 
             DB::commit();
 
+            // Recargar con relaciones necesarias para enviar notificación con adjuntos
+            $radicado->load(['archivos', 'tercero']);
+
             // Acuse de recibo automático — fuera de la transacción
             // para que un fallo en el email no revierta el radicado
             \App\Helpers\AcuseReciboHelper::enviar($radicado, 'recibida');
+
+            // Notificación al tercero con archivos adjuntos (según configuración)
+            \App\Helpers\AcuseReciboHelper::enviarNotificacionConAdjuntos($radicado);
 
             return $this->successResponse(
                 $radicado->load(['clasificacionDocumental', 'tercero', 'medioRecepcion']),
@@ -293,9 +309,6 @@ class VentanillaRadicaReciController extends Controller
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
 
-            // Registrar acceso al radicado (ISO 27001 - Trazabilidad)
-            $this->auditView($radicado, "Consulta detallada del radicado: {$radicado->num_radicado}");
-
             // Documentos con metadatos y URL (archivo principal + adjuntos)
             $documentos = $radicado->getDocumentosRelacionados(true);
 
@@ -313,6 +326,59 @@ class VentanillaRadicaReciController extends Controller
                 ];
             });
 
+            // Información de clasificación con jerarquía
+            $clasificacion = $radicado->clasificacionDocumental;
+            $clasificacionData = null;
+            $serie = null;
+            $subserie = null;
+            
+            if ($clasificacion) {
+                // Obtener la subserie (parent) - puede ser un objeto cargado o un entero
+                $subserieModel = $clasificacion->getAttribute('parent');
+                if (is_object($subserieModel)) {
+                    // La relación fue cargada con eager loading
+                    $serieModel = $subserieModel->getAttribute('parent');
+                } else if (is_int($subserieModel) || is_numeric($subserieModel)) {
+                    // Es un ID, cargar manualmente
+                    $subserieModel = \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::find($subserieModel);
+                    if ($subserieModel) {
+                        $padreId = $subserieModel->getAttribute('parent');
+                        if (is_int($padreId) || is_numeric($padreId)) {
+                            $serieModel = \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::find($padreId);
+                        } else if (is_object($padreId)) {
+                            $serieModel = $padreId;
+                        }
+                    }
+                }
+                
+                if ($subserieModel && is_object($subserieModel)) {
+                    $subserie = [
+                        'id' => $subserieModel->id,
+                        'nom' => $subserieModel->nom,
+                        'cod' => $subserieModel->cod,
+                        'tipo' => $subserieModel->tipo
+                    ];
+                }
+                
+                if ($serieModel && is_object($serieModel)) {
+                    $serie = [
+                        'id' => $serieModel->id,
+                        'nom' => $serieModel->nom,
+                        'cod' => $serieModel->cod,
+                        'tipo' => $serieModel->tipo
+                    ];
+                }
+                
+                $clasificacionData = [
+                    'id' => $clasificacion->id,
+                    'nom' => $clasificacion->nom,
+                    'cod' => $clasificacion->cod,
+                    'tipo' => $clasificacion->tipo,
+                    'serie' => $serie,
+                    'subserie' => $subserie
+                ];
+            }
+
             $data = $radicado->toArray();
             $data['documentos'] = $documentos;
             $data['usuario_creo_radicado'] = $radicado->getInfoUsuarioCrea();
@@ -320,6 +386,15 @@ class VentanillaRadicaReciController extends Controller
             $data['total_responsables'] = $responsablesInfo['total_responsables'];
             $data['total_custodios'] = $responsablesInfo['total_custodios'];
             $data['historial_archivos_eliminados'] = $historialEliminados;
+            $data['clasificacion'] = $clasificacionData;
+            $data['clasificacion_serie'] = $serie;
+            $data['clasificacion_subserie'] = $subserie;
+            $data['clasificacion_tipo_documental'] = $clasificacion ? [
+                'id' => $clasificacion->id,
+                'nom' => $clasificacion->nom,
+                'cod' => $clasificacion->cod,
+                'tipo' => $clasificacion->tipo
+            ] : null;
 
             return $this->successResponse($data, 'Radicación encontrada exitosamente');
         } catch (\Exception $e) {
@@ -379,8 +454,8 @@ class VentanillaRadicaReciController extends Controller
                     'usuario' => null,
                     'datos' => [
                         'asunto' => $radicado->asunto,
-                        'fec_venci' => $radicado->fec_venci?->toDateString(),
-                        'fec_docu' => $radicado->fec_docu?->toDateString(),
+                        'fec_venci' => $radicado->fec_venci ? (\Carbon\Carbon::parse($radicado->fec_venci)->toDateString()) : null,
+                        'fec_docu' => $radicado->fec_docu ? (\Carbon\Carbon::parse($radicado->fec_docu)->toDateString()) : null,
                         'clasifica_documen_id' => $radicado->clasifica_documen_id,
                     ],
                 ];
@@ -1218,6 +1293,63 @@ class VentanillaRadicaReciController extends Controller
             return $this->errorResponse('Radicado no encontrado', null, 404);
         } catch (\Exception $e) {
             return $this->errorResponse('Error al enviar las notificaciones', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Envía notificación al tercero con archivos adjuntos.
+     *
+     * @param int $id ID del radicado
+     * @return JsonResponse
+     *
+     * @urlParam id integer required El ID del radicado. Example: 1
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "Notificación enviada al tercero",
+     *   "data": {
+     *     "radicado_id": 1,
+     *     "email_enviado": "correo@ejemplo.com"
+     *   }
+     * }
+     *
+     * @response 404 {
+     *   "status": false,
+     *   "message": "Radicado no encontrado"
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al enviar la notificación",
+     *   "error": "Error message"
+     * }
+     */
+    public function enviarNotificacionTercero($id): JsonResponse
+    {
+        try {
+            $radicado = VentanillaRadicaReci::with([
+                'tercero',
+                'archivos',
+            ])->findOrFail($id);
+
+            $enviado = \App\Helpers\AcuseReciboHelper::enviarNotificacionConAdjuntos($radicado, true);
+
+            if ($enviado) {
+                return $this->successResponse([
+                    'radicado_id' => $radicado->id,
+                    'email_enviado' => $radicado->tercero?->email,
+                ], 'Notificación enviada al tercero');
+            }
+
+            return $this->errorResponse(
+                'No se pudo enviar la notificación. Verifique que el tercero tenga email y acepte notificaciones.',
+                null,
+                422
+            );
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->errorResponse('Radicado no encontrado', null, 404);
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al enviar la notificación', $e->getMessage(), 500);
         }
     }
 }

@@ -52,11 +52,23 @@ class RadicadoEnviadoNotification extends Mailable
         $attachments = [];
         $disk = 'radicados_enviados';
 
+        // Archivo digital principal
         if ($this->radicado->archivo_digital && Storage::disk($disk)->exists($this->radicado->archivo_digital)) {
+            $nombreArchivo = $this->radicado->nom_origi ?: basename($this->radicado->archivo_digital);
             $attachments[] = Attachment::fromStorageDisk(
                 $disk,
                 $this->radicado->archivo_digital
-            )->as(basename($this->radicado->archivo_digital));
+            )->as($nombreArchivo);
+        }
+
+        // Archivos adicionales
+        if ($this->radicado->relationLoaded('archivos') && $this->radicado->archivos) {
+            foreach ($this->radicado->archivos as $archivo) {
+                if (Storage::disk($disk)->exists($archivo->archivo)) {
+                    $nombreArchivo = $archivo->nom_origi ?: basename($archivo->archivo);
+                    $attachments[] = Attachment::fromStorageDisk($disk, $archivo->archivo)->as($nombreArchivo);
+                }
+            }
         }
 
         return $attachments;

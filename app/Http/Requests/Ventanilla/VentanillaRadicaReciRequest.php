@@ -30,6 +30,7 @@ class VentanillaRadicaReciRequest extends FormRequest
             'usuario_crea' => 'nullable|exists:users,id',
             'uploaded_by' => 'nullable|exists:users,id',
             'fec_venci' => 'nullable|date',
+            'dias_vencimiento' => 'nullable|integer|min:0',
             'num_folios' => 'required|integer|min:0',
             'num_anexos' => 'required|integer|min:0',
             'descrip_anexos' => 'nullable|string|max:300',

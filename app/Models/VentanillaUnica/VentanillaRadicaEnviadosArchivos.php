@@ -17,11 +17,19 @@ class VentanillaRadicaEnviadosArchivos extends Model
         'radica_enviado_id',
         'subido_por',
         'archivo',
+        'nom_origi',
+        'archivo_peso',
+        'hash_sha256',
     ];
 
     public function radicado()
     {
         return $this->belongsTo(VentanillaRadicaEnviados::class, 'radica_enviado_id');
+    }
+
+    public function metadata()
+    {
+        return $this->hasOne(VentanillaRadicaEnviadosMetadata::class, 'archivo_id');
     }
 
     public function usuarioSubio()

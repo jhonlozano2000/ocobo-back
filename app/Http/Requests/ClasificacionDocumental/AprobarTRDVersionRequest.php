@@ -22,6 +22,7 @@ class AprobarTRDVersionRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'versionId' => 'required|exists:clasificacion_documental_trd_versiones,id',
             'observaciones' => 'required|string|max:500',
         ];
     }
@@ -29,6 +30,8 @@ class AprobarTRDVersionRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'versionId.required' => 'El ID de la versión es requerido.',
+            'versionId.exists' => 'La versión no existe.',
             'observaciones.required' => 'Debe proporcionar una observación.',
             'observaciones.string' => 'Las observaciones deben ser un texto válido.',
             'observaciones.max' => 'Las observaciones no pueden superar los 500 caracteres.',

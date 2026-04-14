@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\VentanillaUnica;
 
 use App\Helpers\ArchivoHelper;
+use App\Helpers\FileMetadataHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\VentanillaRadicaInterno;
@@ -152,12 +153,17 @@ class VentanillaRadicaInternoArchivosController extends Controller
                 // 2. Inyectar el archivo correctamente en la bolsa de archivos (files)
                 $tempRequest->files->set('archivo', $archivo);
 
-                // Usar ArchivoHelper para guardar cada archivo
-                $rutaArchivo = ArchivoHelper::guardarArchivo(
+                // Usar ArchivoHelper con Hash (Integridad ISO 27001)
+                $uploadData = ArchivoHelper::guardarArchivoConHash(
                     $tempRequest,
                     'archivo',
-                    'radicados_recibidos'
+                    'ventanilla_radica_interno_archivos'
                 );
+
+                if (!$uploadData) continue;
+
+                $rutaArchivo = $uploadData['path'];
+                $hashSha256 = $uploadData['hash'];
 
                 // Guardar quién subió el archivo (Auth::user() retorna null si no está autenticado)
                 $usuario = Auth::user();
@@ -171,7 +177,10 @@ class VentanillaRadicaInternoArchivosController extends Controller
                     'tipo_archivo' => $archivo->getMimeType(),
                     'tamano_archivo' => $archivo->getSize(),
                     'extension_archivo' => $archivo->getClientOriginalExtension(),
+                    'hash_sha256' => $hashSha256,
                 ]);
+
+                FileMetadataHelper::crearMetadataArchivoAdjuntoInterno($archivoAdicional);
 
                 // Cachear nombre completo del usuario si existe (optimización)
                 $nombreUsuario = $usuario
