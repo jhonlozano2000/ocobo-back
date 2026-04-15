@@ -37,6 +37,7 @@ class VentanillaRadicaReci extends Model
         'uploaded_by',
         'impri_rotulo',
         'dias_vencimiento',
+        'estado_trabajo',
     ];
 
     protected static function boot()
@@ -44,9 +45,18 @@ class VentanillaRadicaReci extends Model
         parent::boot();
 
         static::deleted(function ($radicado) {
-            // Usar ArchivoHelper para eliminar el archivo si existe
             if ($radicado->archivo_digital) {
                 ArchivoHelper::eliminarArchivo($radicado->archivo_digital, 'radicados_recibidos');
+            }
+        });
+
+        static::created(function ($radicado) {
+            $radicado->actualizarEstadoTrabajo();
+        });
+
+        static::updated(function ($radicado) {
+            if ($radicado->wasChanged(['fec_venci']) || $radicado->wasChanged(['responsables'])) {
+                $radicado->actualizarEstadoTrabajo();
             }
         });
     }
@@ -287,6 +297,78 @@ class VentanillaRadicaReci extends Model
     public function scopeInactivo($query)
     {
         return $query->where('estado', false);
+    }
+
+    /**
+     * Scope para filtrar por estado de trabajo.
+     */
+    public function scopeEstadoTrabajo($query, string $estado)
+    {
+        return $query->where('estado_trabajo', $estado);
+    }
+
+    /**
+     * Scope para radicados vencidos.
+     */
+    public function scopeVencidos($query)
+    {
+        return $query->where('fec_venci', '<', now()->toDateString());
+    }
+
+    /**
+     * Scope para radicados próximos a vencer (en los próximos N días).
+     */
+    public function scopeProximosAVencer($query, int $dias = 5)
+    {
+        return $query->whereBetween('fec_venci', [now()->toDateString(), now()->addDays($dias)->toDateString()]);
+    }
+
+    /**
+     * Actualiza el estado de trabajo del radicado según las reglas:
+     * - VENCIDO: si fec_venci < hoy
+     * - POR_VENCER: si fec_venci está próximo a vencer (5 días)
+     * - EN_PROCESO: si tiene responsables asignados
+     * - RECIBIDO: en caso contrario
+     */
+    public function actualizarEstadoTrabajo(): bool
+    {
+        $nuevoEstado = $this->calcularEstadoTrabajo();
+
+        if ($this->estado_trabajo !== $nuevoEstado) {
+            $this->update(['estado_trabajo' => $nuevoEstado]);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Calcula el estado de trabajo correspondiente según las reglas del negocio.
+     */
+    public function calcularEstadoTrabajo(): string
+    {
+        if ($this->fec_venci && now()->parse($this->fec_venci)->isBefore(now()->startOfDay())) {
+            return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_VENCIDO;
+        }
+
+        if ($this->fec_venci && now()->parse($this->fec_venci)->lte(now()->addDays(5)->endOfDay())) {
+            return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_POR_VENCER;
+        }
+
+        if ($this->responsables()->exists()) {
+            return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_EN_PROCESO;
+        }
+
+        return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_RECIBIDO;
+    }
+
+    /**
+     * Obtiene el color y información del estado de trabajo actual.
+     */
+    public function getEstadoTrabajoInfo(): array
+    {
+        $service = new \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService();
+        return $service->getEstadoInfo($this->estado_trabajo ?? \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_RECIBIDO);
     }
 
     /**

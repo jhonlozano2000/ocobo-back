@@ -221,7 +221,16 @@ class ClasificacionDocumentalTRD extends Model
                 'cod' => $elemento->cod,
                 'nom' => $elemento->nom
             ]);
-            $elemento = $elemento->parent;
+            
+            $parentId = $elemento->parent;
+            
+            if ($parentId === null) {
+                $elemento = null;
+            } elseif ($parentId instanceof self) {
+                $elemento = $parentId;
+            } else {
+                $elemento = self::find($parentId);
+            }
         }
 
         return $jerarquia;
@@ -449,6 +458,47 @@ class ClasificacionDocumentalTRD extends Model
     }
 
     /**
+     * Obtiene los días de vencimiento SOLO si están configurados explícitamente.
+     * No retorna默认值. Retorna null si no hay configuración.
+     *
+     * @return int|null Días de vencimiento o null si no hay configuración
+     */
+    public function getDiasVencimientoConfigurado(): ?int
+    {
+        // Si este elemento tiene días configurados, usarlo
+        if ($this->dias_vencimiento !== null) {
+            return (int) $this->dias_vencimiento;
+        }
+
+        // Si es un TipoDocumento, buscar en SubSerie padre
+        if ($this->isTipoDocumento()) {
+            $parent = $this->getParentModel();
+            if ($parent && $parent->dias_vencimiento !== null) {
+                return (int) $parent->dias_vencimiento;
+            }
+
+            // Buscar en Serie abuelo
+            if ($parent) {
+                $grandParent = $parent->getParentModel();
+                if ($grandParent && $grandParent->dias_vencimiento !== null) {
+                    return (int) $grandParent->dias_vencimiento;
+                }
+            }
+        }
+
+        // Si es una SubSerie, buscar en Serie padre
+        if ($this->isSubSerie()) {
+            $parent = $this->getParentModel();
+            if ($parent && $parent->dias_vencimiento !== null) {
+                return (int) $parent->dias_vencimiento;
+            }
+        }
+
+        // No hay configuración - retornar null (no usar default)
+        return null;
+    }
+
+    /**
      * Obtiene el modelo padre cargado.
      *
      * @return self|null
@@ -481,6 +531,41 @@ class ClasificacionDocumentalTRD extends Model
         if ($this->dias_vencimiento !== null) {
             $fuente = "{$this->tipo} (ID: {$this->id})";
         } else {
+            // Buscar en padres
+            foreach ($jerarquia as $item) {
+                if ($item['id'] !== $this->id) {
+                    $elemento = self::find($item['id']);
+                    if ($elemento && $elemento->dias_vencimiento !== null) {
+                        $fuente = "{$item['tipo']} (ID: {$item['id']}) - {$item['nom']}";
+                        break;
+                    }
+                }
+            }
+        }
+
+        return [
+            'dias' => $dias,
+            'fuente' => $fuente,
+            'jerarquia' => $jerarquia
+        ];
+    }
+
+    /**
+     * Obtiene la información de días de vencimiento configurados (sin default).
+     * Para uso en APIs y formularios UI.
+     *
+     * @return array
+     */
+    public function getInfoDiasVencimientoConfigurado(): array
+    {
+        $jerarquia = $this->getJerarquia();
+        $dias = $this->getDiasVencimientoConfigurado();
+        $fuente = 'sin_configuracion';
+
+        // Determinar de dónde vienen los días
+        if ($this->dias_vencimiento !== null) {
+            $fuente = "{$this->tipo} (ID: {$this->id})";
+        } elseif ($dias !== null) {
             // Buscar en padres
             foreach ($jerarquia as $item) {
                 if ($item['id'] !== $this->id) {

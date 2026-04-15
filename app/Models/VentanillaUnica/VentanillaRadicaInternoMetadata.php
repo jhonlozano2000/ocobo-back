@@ -91,4 +91,19 @@ class VentanillaRadicaInternoMetadata extends Model
     {
         return $this->belongsTo(VentanillaRadicaInterno::class, 'radicado_id');
     }
+
+    public function nivelClasificacion(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Configuracion\FileClassificationLevel::class, 'nivel_clasificacion_id');
+    }
+
+    public function duenoDocumento(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'dueno_documento_id');
+    }
+
+    public function custodioActual(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'custodio_actual_id');
+    }
 }

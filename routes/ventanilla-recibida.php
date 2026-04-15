@@ -3,6 +3,7 @@
 use App\Http\Controllers\VentanillaUnica\VentanillaRadicaReciController;
 use App\Http\Controllers\VentanillaUnica\VentanillaRadicaReciArchivosController;
 use App\Http\Controllers\VentanillaUnica\VentanillaRadicaReciResponsaController;
+use App\Http\Controllers\VentanillaUnica\MetadataController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware("auth:sanctum")->group(function () {
@@ -20,6 +21,7 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get("/radica-recibida/{id}", [VentanillaRadicaReciController::class, "show"])->name("radica-recibida.show")->middleware("can:" . $permReci . "Mostrar");
     Route::put("/radica-recibida/{id}", [VentanillaRadicaReciController::class, "update"])->name("radica-recibida.update")->middleware("can:" . $permReci . "Editar");
     Route::delete("/radica-recibida/{id}", [VentanillaRadicaReciController::class, "destroy"])->name("radica-recibida.destroy")->middleware("can:" . $permReci . "Eliminar");
+    Route::delete("/radica-recibida", [VentanillaRadicaReciController::class, "bulkDestroy"])->name("radica-recibida.bulk-destroy")->middleware("can:" . $permReci . "Eliminar");
 
     Route::prefix("radica-recibida/{id}")->name("radica-recibida.")->group(function () use ($permReci) {
         Route::get("/archivos/adjuntos/listar", [VentanillaRadicaReciArchivosController::class, "listarArchivosAdjuntos"])->name("archivos.adjuntos.listar")->middleware("can:" . $permReci . "Mostrar");
@@ -36,4 +38,9 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::apiResource("responsables", VentanillaRadicaReciResponsaController::class)->except("create", "edit")->middleware("can:" . $permReci . "Editar");
     Route::get("/radica-recibida/{radica_reci_id}/responsables", [VentanillaRadicaReciResponsaController::class, "getByRadicado"])->name("radica-recibida.responsables.listar")->middleware("can:" . $permReci . "Editar");
     Route::post("/radica-recibida/{radica_reci_id}/responsables", [VentanillaRadicaReciResponsaController::class, "assignToRadicado"])->name("radica-recibida.responsables.asignar")->middleware("can:" . $permReci . "Editar");
+
+    Route::get("/metadata/clasificacion-niveles", [MetadataController::class, "nivelClasificacionIndex"])->name("metadata.niveles")->middleware("can:" . $permReci . "Listar");
+    Route::get("/metadata/archivos/{archivoId}/{tipo?}", [MetadataController::class, "show"])->name("metadata.show")->middleware("can:" . $permReci . "Mostrar");
+    Route::get("/metadata/historial/{metadataId}/{tipo?}", [MetadataController::class, "historial"])->name("metadata.historial")->middleware("can:" . $permReci . "Mostrar");
+    Route::get("/metadata/exportar/{tipo?}", [MetadataController::class, "exportar"])->name("metadata.exportar")->middleware("can:" . $permReci . "Exportar");
 });

@@ -143,7 +143,10 @@ class VentanillaRadicaReciArchivosController extends Controller
                 'uploaded_by' => $usuario?->id,
             ]);
 
-            FileMetadataHelper::crearMetadataArchivoDigital($radicado, $nuevoArchivo, $hashSha256, $fileSize);
+            $metadata = FileMetadataHelper::crearMetadataArchivoDigital($radicado, $nuevoArchivo, $hashSha256, $fileSize);
+            if (!$metadata) {
+                \Log::warning('No se pudo crear metadata para archivo digital', ['radicado_id' => $radicado->id]);
+            }
 
             DB::commit();
 

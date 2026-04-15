@@ -4,6 +4,7 @@ namespace App\Helpers;
 
 use App\Mail\AcuseReciboRadicado;
 use App\Mail\RadicadoRecibidoNotificacionTercero;
+use App\Models\Configuracion\ConfigVarias;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 

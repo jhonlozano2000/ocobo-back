@@ -101,6 +101,7 @@ class VentanillaRadicaReciController extends Controller
                 ->clasificacionDocumental($request->clasifica_documen_id)
                 ->tercero($request->tercero_id)
                 ->medioRecepcion($request->medio_recep_id)
+                ->estadoTrabajo($request->estado_trabajo)
                 ->ordenadoPorFecha();
 
             // Paginar
@@ -751,6 +752,99 @@ class VentanillaRadicaReciController extends Controller
     }
 
     /**
+     * Elimina múltiples radicaciones en una sola operación.
+     *
+     * @param Request $request La solicitud HTTP con el array de IDs
+     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el resultado
+     *
+     * @bodyParam ids array required Array de IDs de radicaciones a eliminar. Example: [1, 2, 3]
+     *
+     * @response 200 {
+     *   "status": true,
+     *   "message": "3 radicaciones eliminadas exitosamente",
+     *   "data": {
+     *     "eliminados": 3,
+     *     "fallidos": 0
+     *   }
+     * }
+     *
+     * @response 400 {
+     *   "status": false,
+     *   "message": "Se debe enviar un array de IDs no vacío"
+     * }
+     *
+     * @response 500 {
+     *   "status": false,
+     *   "message": "Error al eliminar las radicaciones",
+     *   "error": "Error message"
+     * }
+     */
+    public function bulkDestroy(Request $request)
+    {
+        try {
+            $request->validate([
+                'ids' => 'required|array|min:1',
+                'ids.*' => 'required|integer|exists:ventanilla_radica_reci,id'
+            ], [
+                'ids.required' => 'Se debe enviar un array de IDs no vacío',
+                'ids.array' => 'Los IDs deben ser un array',
+                'ids.*.exists' => 'Uno o más IDs no existen'
+            ]);
+
+            $ids = $request->ids;
+            $eliminados = 0;
+            $fallidos = 0;
+            $errores = [];
+
+            DB::beginTransaction();
+
+            foreach ($ids as $id) {
+                try {
+                    $radicado = VentanillaRadicaReci::find($id);
+
+                    if (!$radicado) {
+                        $fallidos++;
+                        continue;
+                    }
+
+                    $archivosAdicionales = $radicado->archivos()->get();
+                    foreach ($archivosAdicionales as $archivo) {
+                        if (!empty($archivo->archivo)) {
+                            ArchivoHelper::eliminarArchivo($archivo->archivo, 'radicados_recibidos');
+                        }
+                    }
+
+                    $radicado->archivos()->delete();
+                    $radicado->responsables()->delete();
+                    $radicado->delete();
+                    $eliminados++;
+                } catch (\Exception $e) {
+                    $fallidos++;
+                    $errores[] = ['id' => $id, 'error' => $e->getMessage()];
+                }
+            }
+
+            DB::commit();
+
+            $mensaje = "{$eliminados} radicacion(es) eliminada(s) exitosamente";
+            if ($fallidos > 0) {
+                $mensaje .= ", {$fallidos} fallida(s)";
+            }
+
+            return $this->successResponse([
+                'eliminados' => $eliminados,
+                'fallidos' => $fallidos,
+                'errores' => $errores
+            ], $mensaje);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->errorResponse('Error de validación', $e->errors(), 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->errorResponse('Error al eliminar las radicaciones', $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Genera un número de radicado único basado en la configuración del sistema.
      *
      * @param string|null $cod_dependencia Código de la dependencia (opcional)
@@ -914,86 +1008,56 @@ class VentanillaRadicaReciController extends Controller
     public function estadisticas()
     {
         try {
+            $estadoService = new \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService();
             $fechaActual = Carbon::now()->format('Y-m-d');
-            $fecha8Dias = Carbon::now()->addDays(8)->format('Y-m-d');
-            $fecha5Dias = Carbon::now()->addDays(5)->format('Y-m-d');
-            $fecha3Dias = Carbon::now()->addDays(3)->format('Y-m-d');
 
-            // Total de radicados
             $totalRadicados = VentanillaRadicaReci::count();
 
-            // Radicados que faltan archivo digital (archivo_digital es null o vacío)
             $faltanArchivoDigital = VentanillaRadicaReci::where(function ($query) {
                 $query->whereNull('archivo_digital')
                     ->orWhere('archivo_digital', '');
             })->count();
 
-            // Radicados que faltan imprimir rótulo (asumimos que hay un campo para esto)
-            // Si no existe el campo, podemos usar otro criterio o crear uno
             $faltanImprimirRotulo = VentanillaRadicaReci::where('impri_rotulo', '!=', 1)->count();
 
-            // Radicados próximos a vencer
-            $proximosAVencer = [
-                '8_dias' => VentanillaRadicaReci::where('fec_venci', $fecha8Dias)->count(),
-                '5_dias' => VentanillaRadicaReci::where('fec_venci', $fecha5Dias)->count(),
-                '3_dias' => VentanillaRadicaReci::where('fec_venci', $fecha3Dias)->count(),
-            ];
-
-            // Radicados ya vencidos
             $radicadosVencidos = VentanillaRadicaReci::where('fec_venci', '<', $fechaActual)->count();
 
-            // Radicados creados hoy
             $radicadosHoy = VentanillaRadicaReci::whereDate('created_at', $fechaActual)->count();
 
-            // Radicados de la semana actual
             $radicadosEstaSemana = VentanillaRadicaReci::whereBetween('created_at', [
                 Carbon::now()->startOfWeek()->format('Y-m-d'),
                 Carbon::now()->endOfWeek()->format('Y-m-d')
             ])->count();
 
-            // Radicados del mes actual
             $radicadosEsteMes = VentanillaRadicaReci::whereMonth('created_at', Carbon::now()->month)
                 ->whereYear('created_at', Carbon::now()->year)
                 ->count();
 
-            // Nuevas estadísticas solicitadas
             $totalConArchivos = $totalRadicados - $faltanArchivoDigital;
 
-            // Calcular estados basados en la lógica del negocio:
-            // - Pendientes: Radicados sin archivos y sin responsables
-            // - En proceso: Radicados con archivos pero sin finalizar
-            // - Finalizados: Radicados completos (con archivos y responsables)
-
-            $totalPendientes = VentanillaRadicaReci::where(function ($query) {
-                $query->whereNull('archivo_digital')
-                    ->orWhere('archivo_digital', '');
-            })->whereDoesntHave('responsables')->count();
-
-            $totalEnProceso = VentanillaRadicaReci::whereNotNull('archivo_digital')
-                ->where('archivo_digital', '!=', '')
-                ->whereHas('responsables')
-                ->count();
-
-            $totalFinalizados = VentanillaRadicaReci::whereNotNull('archivo_digital')
-                ->where('archivo_digital', '!=', '')
-                ->whereHas('responsables')
-                ->count(); // Por ahora igual que en proceso, se puede ajustar según criterios específicos
+            $totalRecibido = VentanillaRadicaReci::where('estado_trabajo', $estadoService::ESTADO_RECIBIDO)->count();
+            $totalEnProceso = VentanillaRadicaReci::where('estado_trabajo', $estadoService::ESTADO_EN_PROCESO)->count();
+            $totalPorVencer = VentanillaRadicaReci::where('estado_trabajo', $estadoService::ESTADO_POR_VENCER)->count();
+            $totalVencido = VentanillaRadicaReci::where('estado_trabajo', $estadoService::ESTADO_VENCIDO)->count();
+            $totalFinalizado = VentanillaRadicaReci::where('estado_trabajo', $estadoService::ESTADO_FINALIZADO)->count();
 
             $estadisticas = [
                 'total_radicados' => $totalRadicados,
-                'total_pendientes' => $totalPendientes,
-                'total_proceso' => $totalEnProceso,
-                'total_finalizados' => $totalFinalizados,
+                'total_recibido' => $totalRecibido,
+                'total_en_proceso' => $totalEnProceso,
+                'total_por_vencer' => $totalPorVencer,
+                'total_vencido' => $totalVencido,
+                'total_finalizado' => $totalFinalizado,
                 'total_con_archivos' => $totalConArchivos,
                 'faltan_archivo_digital' => $faltanArchivoDigital,
                 'faltan_imprimir_rotulo' => $faltanImprimirRotulo,
-                'proximos_a_vencer' => $proximosAVencer,
                 'radicados_vencidos' => $radicadosVencidos,
                 'radicados_hoy' => $radicadosHoy,
                 'radicados_esta_semana' => $radicadosEstaSemana,
                 'radicados_este_mes' => $radicadosEsteMes,
                 'porcentaje_con_archivo' => $totalRadicados > 0 ? round((($totalRadicados - $faltanArchivoDigital) / $totalRadicados) * 100, 2) : 0,
                 'porcentaje_rotulos_impresos' => $totalRadicados > 0 ? round((($totalRadicados - $faltanImprimirRotulo) / $totalRadicados) * 100, 2) : 0,
+                'colores_estados' => $estadoService::getColoresPorEstado(),
             ];
 
             return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');

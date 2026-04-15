@@ -53,6 +53,11 @@ class ListRadicadosRequest extends FormRequest
                 'nullable',
                 'in:0,1'
             ],
+            'estado_trabajo' => [
+                'nullable',
+                'string',
+                'in:RECIBIDO,EN_PROCESO,POR_VENCER,VENCIDO,FINALIZADO'
+            ],
             'usuario_responsable' => [
                 'nullable',
                 'integer',

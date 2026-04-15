@@ -7,6 +7,7 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\Ventanilla\VentanillaRadicaReciResponsaRequest;
 use App\Http\Requests\Ventanilla\ListResponsablesRequest;
 use App\Models\VentanillaUnica\VentanillaRadicaReciResponsa;
+use App\Models\VentanillaUnica\VentanillaRadicaReci;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -152,10 +153,9 @@ class VentanillaRadicaReciResponsaController extends Controller
 
             $responsables = $validatedData['responsables'];
             $responsablesCreados = [];
+            $radicaReciId = null;
 
-            // Crear cada responsable individualmente para obtener los IDs
             foreach ($responsables as $responsableData) {
-                // Asegurar que los tipos de datos sean correctos
                 $data = [
                     'radica_reci_id' => (int) $responsableData['radica_reci_id'],
                     'users_cargos_id' => (int) $responsableData['users_cargos_id'],
@@ -164,9 +164,17 @@ class VentanillaRadicaReciResponsaController extends Controller
 
                 $responsable = VentanillaRadicaReciResponsa::create($data);
                 $responsablesCreados[] = $responsable->load(['usuarioCargo', 'radicado']);
+                $radicaReciId = $data['radica_reci_id'];
             }
 
             DB::commit();
+
+            if ($radicaReciId) {
+                $radicado = VentanillaRadicaReci::find($radicaReciId);
+                if ($radicado) {
+                    $radicado->actualizarEstadoTrabajo();
+                }
+            }
 
             return $this->successResponse($responsablesCreados, 'Responsables asignados exitosamente', 201);
         } catch (\Exception $e) {
@@ -348,9 +356,15 @@ class VentanillaRadicaReciResponsaController extends Controller
                 return $this->errorResponse('Responsable no encontrado', null, 404);
             }
 
+            $radicaReciId = $responsable->radica_reci_id;
             $responsable->delete();
 
             DB::commit();
+
+            $radicado = VentanillaRadicaReci::find($radicaReciId);
+            if ($radicado) {
+                $radicado->actualizarEstadoTrabajo();
+            }
 
             return $this->successResponse(null, 'Responsable eliminado exitosamente');
         } catch (\Exception $e) {

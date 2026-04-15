@@ -42,6 +42,7 @@ class VentanillaRadicaReciOptimizedView extends Model
         'tercero_id',
         'medio_recep_id',
         'config_server_id',
+        'estado_trabajo',
         'clasificacion_cod',
         'clasificacion_nom',
         'clasificacion_tipo',
@@ -140,6 +141,18 @@ class VentanillaRadicaReciOptimizedView extends Model
         }
 
         return $query->where('medio_recep_id', $medioRecepId);
+    }
+
+    /**
+     * Scope para filtrar por estado de trabajo.
+     */
+    public function scopeEstadoTrabajo(Builder $query, ?string $estadoTrabajo): Builder
+    {
+        if (empty($estadoTrabajo)) {
+            return $query;
+        }
+
+        return $query->where('estado_trabajo', $estadoTrabajo);
     }
 
     /**

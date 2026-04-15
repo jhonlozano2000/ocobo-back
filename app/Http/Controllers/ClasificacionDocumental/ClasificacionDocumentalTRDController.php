@@ -221,6 +221,7 @@ class ClasificacionDocumentalTRDController extends Controller
     /**
      * Obtiene los días de vencimiento para una clasificación TRD específica.
      * Útil para el formulario de radicación.
+     * Solo retorna días configurados explícitamente - no usa default.
      */
     public function getDiasVencimiento(int $id)
     {
@@ -231,7 +232,7 @@ class ClasificacionDocumentalTRDController extends Controller
                 return $this->errorResponse('Elemento TRD no encontrado', null, 404);
             }
 
-            $info = $clasificacion->getInfoDiasVencimiento();
+            $info = $clasificacion->getInfoDiasVencimientoConfigurado();
 
             return $this->successResponse([
                 'clasificacion_id' => $id,
