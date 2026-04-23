@@ -98,7 +98,7 @@
                 <div class="radicado-card">
                     <div class="radicado-subject">Documento</div>
                     <div style="margin-top: 12px; color: #2c3e50; font-size: 14px;">
-                        <strong>Archivo digital:</strong> {{ $radicado->archivo_digital ? basename($radicado->archivo_digital) : 'No registrado' }}
+                        <strong>Archivo digital:</strong> {{ $radicado->nom_origi ?: ($radicado->archivo_digital ? basename($radicado->archivo_digital) : 'No registrado') }}
                     </div>
                 </div>
                 <div style="background-color: #e3f2fd; padding: 20px; border-radius: 8px; margin-top: 24px; border-left: 4px solid #1976d2;">

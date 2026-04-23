@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-use App\Models\VentanillaUnica\VentanillaRadicaReci;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Mail\RadicadoNotification;
 use Illuminate\Support\Facades\Mail;
 

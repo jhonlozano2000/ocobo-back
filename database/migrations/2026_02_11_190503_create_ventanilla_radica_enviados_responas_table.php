@@ -21,7 +21,6 @@ return new class extends Migration
             $table->foreign('users_cargos_id')->references('id')->on('users_cargos');
 
             $table->boolean('custodio')->default(0)->comment('Usuario que va a tener la custodia del documento');
-            $table->datetime('fechor_visto')->nullable()->comment('Fecha y hora en el cual el responsable ve el radicado');
 
             $table->timestamps();
         });

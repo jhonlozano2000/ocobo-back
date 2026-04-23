@@ -86,6 +86,11 @@ return new class extends Migration
             $table->enum('estado_registro', ['ACTIVO', 'ARCHIVADO', 'ELIMINADO', 'DISPOSICION_FINAL'])->default('ACTIVO');
             $table->text('motivo_estado')->nullable();
 
+            // PDF/A
+            $table->boolean('es_pdf_a')->default(false)->comment('Indica si el documento está en formato PDF/A');
+            $table->string('pdf_a_nivel', 10)->nullable()->comment('Nivel PDF/A');
+            $table->text('pdf_a_metadata')->nullable()->comment('Metadata XMP del PDF/A');
+
             $table->timestamps();
 
             // Índices

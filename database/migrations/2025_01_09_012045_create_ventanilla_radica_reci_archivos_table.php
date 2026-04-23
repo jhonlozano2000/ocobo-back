@@ -21,6 +21,11 @@ return new class extends Migration
             $table->foreign('subido_por')->references('id')->on('users');
 
             $table->string('archivo');
+            $table->string('nom_origi', 255)->nullable()->comment('Nombre original del archivo');
+            $table->string('archivo_tipo', 100)->nullable()->comment('MIME type del anexo');
+            $table->unsignedBigInteger('archivo_peso')->nullable()->comment('Peso en bytes del anexo');
+            $table->string('hash_sha256', 64)->nullable()->comment('Hash SHA-256 del archivo para integridad ISO 27001');
+
             $table->timestamps();
         });
     }

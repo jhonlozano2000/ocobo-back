@@ -2,7 +2,7 @@
 
 namespace App\Services\VentanillaUnica;
 
-use App\Models\VentanillaUnica\VentanillaRadicaEnviados;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class RadicacionEnviadosService
@@ -30,7 +30,7 @@ class RadicacionEnviadosService
         }
 
         if (!empty($filters['tercero_enviado_id'])) {
-            $query->where('tercero_enviado_id', $filters['tercero_enviado_id']);
+            $query->where('tercero_id', $filters['tercero_enviado_id']);
         }
 
         if (!empty($filters['medio_enviado_id'])) {

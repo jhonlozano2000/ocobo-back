@@ -2,8 +2,8 @@
 
 namespace App\Services\VentanillaUnica;
 
-use App\Models\VentanillaUnica\VentanillaRadicaReci;
-use App\Models\VentanillaUnica\VentanillaRadicaReciOptimizedView;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciOptimizedView;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 

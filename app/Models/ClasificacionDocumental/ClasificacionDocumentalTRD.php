@@ -36,7 +36,10 @@ class ClasificacionDocumentalTRD extends Model
         'user_register',
         'estado',
         'version',
-        'estado_version'
+        'estado_version',
+        'requiere_pdf_a',
+        'pdf_a_nivel',
+        'convierte_a_pdf_a'
     ];
 
     protected $casts = [
@@ -582,6 +585,42 @@ class ClasificacionDocumentalTRD extends Model
             'dias' => $dias,
             'fuente' => $fuente,
             'jerarquia' => $jerarquia
+        ];
+    }
+
+    /**
+     * Verifica si este tipo documental requiere formato PDF/A.
+     */
+    public function requierePdfA(): bool
+    {
+        return $this->requiere_pdf_a ?? false;
+    }
+
+    /**
+     * Obtiene el nivel de PDF/A requerido.
+     */
+    public function getPdfANivel(): ?string
+    {
+        return $this->pdf_a_nivel;
+    }
+
+    /**
+     * Verifica si los documentos deben convertirse automáticamente a PDF/A.
+     */
+    public function debeConvertirAPdfA(): bool
+    {
+        return $this->convierte_a_pdf_a ?? false;
+    }
+
+    /**
+     * Obtiene la configuración PDF/A del tipo documental.
+     */
+    public function getConfiguracionPdfA(): array
+    {
+        return [
+            'requiere_pdf_a' => $this->requierePdfA(),
+            'pdf_a_nivel' => $this->getPdfANivel(),
+            'convierte_a_pdf_a' => $this->debeConvertirAPdfA(),
         ];
     }
 }

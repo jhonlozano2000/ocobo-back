@@ -7,7 +7,7 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\Ventanilla\AsignarPermisosVentanillaRequest;
 use App\Http\Requests\Ventanilla\ListVentanillasPermitidasRequest;
 use App\Models\User;
-use App\Models\VentanillaUnica\VentanillaUnica;
+use App\Models\VentanillaUnica\Comunes\VentanillaUnica;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;

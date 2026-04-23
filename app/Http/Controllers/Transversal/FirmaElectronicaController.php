@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Transversal;
 
 use App\Http\Controllers\Controller;
 use App\Models\Transversal\FirmaEvento;
-use App\Models\VentanillaUnica\VentanillaRadicaEnviados;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Helpers\FirmaElectronicaHelper;
 use App\Http\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;

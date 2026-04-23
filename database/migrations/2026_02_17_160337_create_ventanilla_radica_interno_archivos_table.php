@@ -25,6 +25,12 @@ return new class extends Migration
             $table->string('tipo_archivo', 50);
             $table->string('tamano_archivo', 50);
             $table->string('extension_archivo', 10);
+            $table->string('nom_origi', 255)->nullable()->comment('Nombre original del archivo');
+            $table->unsignedBigInteger('archivo_peso')->nullable()->comment('Peso en bytes del archivo');
+            $table->string('hash_sha256', 64)->nullable()->comment('Hash SHA-256 del archivo para integridad ISO 27001');
+            $table->longText('ocr')->nullable()->comment('Texto extraído por OCR');
+            $table->boolean('ocr_aplicado')->default(false)->comment('Indica si se aplicó OCR');
+
             $table->timestamps();
         });
     }

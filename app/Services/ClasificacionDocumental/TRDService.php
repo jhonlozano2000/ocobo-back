@@ -269,16 +269,34 @@ class TRDService
                     'dias_vencimiento' => !empty($diasVencimiento) && is_numeric($diasVencimiento) ? (int) $diasVencimiento : null,
                     'parent' => $parent,
                     'dependencia_id' => $dependenciaId,
-                    'a_g' => $tipo === 'SubSerie' ? trim(mb_substr($row[5] ?? '', 0, 5)) : null,
-                    'a_c' => $tipo === 'SubSerie' ? trim(mb_substr($row[6] ?? '', 0, 5)) : null,
-                    'ct' => in_array(strtolower(trim($row[7] ?? '')), ['si', 'x']),
-                    'e' => in_array(strtolower(trim($row[8] ?? '')), ['si', 'x']),
-                    'm_d' => in_array(strtolower(trim($row[9] ?? '')), ['si', 'x']),
-                    's' => in_array(strtolower(trim($row[10] ?? '')), ['si', 'x']),
-                    'procedimiento' => $row[14] ?? null,
+                    'a_g' => $tipo === 'SubSerie' ? trim(mb_substr($row[7] ?? '', 0, 5)) : null, // Columna H: Archivo Gestión
+                    'a_c' => $tipo === 'SubSerie' ? trim(mb_substr($row[8] ?? '', 0, 5)) : null, // Columna I: Archivo Central
+                    'ct' => in_array(strtolower(trim($row[9] ?? '')), ['si', 'x']), // Columna J: CT
+                    'e' => in_array(strtolower(trim($row[10] ?? '')), ['si', 'x']), // Columna K: E
+                    'm_d' => in_array(strtolower(trim($row[11] ?? '')), ['si', 'x']), // Columna L: M/D
+                    's' => in_array(strtolower(trim($row[12] ?? '')), ['si', 'x']), // Columna M: S
+                    'papel' => in_array(strtolower(trim($row[13] ?? '')), ['si', 'x']), // Columna N: Papel
+                    'electronico' => in_array(strtolower(trim($row[14] ?? '')), ['si', 'x']), // Columna O: Electronico
+                    'mixto' => in_array(strtolower(trim($row[15] ?? '')), ['si', 'x']), // Columna P: Mixto
+                    'procedimiento' => $row[16] ?? null, // Columna Q: PROCEDIMIENTO
                     'estado' => true,
                     'user_register' => auth()->id(),
                 ];
+
+                // Parse PDF/A columns (F=PDF/A, G=Nivel)
+                $pdfAValue = strtolower(trim($row[5] ?? '')); // Columna F
+                $pdfANivel = strtolower(trim($row[6] ?? '')); // Columna G: Nivel PDF/A
+                $requierePdfA = in_array($pdfAValue, ['sí', 'si', 'x']);
+                if ($requierePdfA || !empty($pdfANivel) && $pdfANivel !== 'null') {
+                    $data['requiere_pdf_a'] = true;
+                    // Usar nivel de columna G si existe, si no default "1b"
+                    if (in_array($pdfANivel, ['1a', '1b', '2a', '2b', '3'])) {
+                        $data['pdf_a_nivel'] = $pdfANivel;
+                    } else {
+                        $data['pdf_a_nivel'] = '1b'; // Default
+                    }
+                    $data['convierte_a_pdf_a'] = true;
+                }
 
                 // Solo agregar version_id si es válido
                 if ($versionId && $versionId > 0) {

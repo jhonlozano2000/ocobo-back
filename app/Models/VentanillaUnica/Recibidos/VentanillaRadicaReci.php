@@ -1,0 +1,532 @@
+<?php
+
+namespace App\Models\VentanillaUnica\Recibidos;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
+use App\Models\User;
+use App\Models\Gestion\GestionTercero;
+use App\Models\Configuracion\ConfigListaDetalle;
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Models\OfiArchivo\OfiArchivoExpediente;
+use App\Helpers\ArchivoHelper;
+
+class VentanillaRadicaReci extends Model
+{
+    use HasFactory;
+
+    protected $table = 'ventanilla_radica_reci';
+
+    protected $fillable = [
+        'num_radicado',
+        'clasifica_documen_id',
+        'usuario_crea',
+        'tercero_id',
+        'medio_recep_id',
+        'config_server_id',
+        'fec_venci',
+        'fec_docu',
+        'num_folios',
+        'num_anexos',
+        'descrip_anexos',
+        'asunto',
+        'radicado_respuesta',
+        'archivo_digital',
+        'nom_origi',
+        'hash_sha256',
+        'archivo_tipo',
+        'archivo_peso',
+        'soporte',
+        'cod_verifica',
+        'uploaded_by',
+        'impri_rotulo',
+        'dias_vencimiento',
+        'estado_trabajo',
+        'ocr',
+        'ocr_aplicado',
+    ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleted(function ($radicado) {
+            if ($radicado->archivo_digital) {
+                ArchivoHelper::eliminarArchivo($radicado->archivo_digital, 'radicados_recibidos');
+            }
+        });
+
+        static::created(function ($radicado) {
+            $radicado->actualizarEstadoTrabajo();
+        });
+
+        static::updated(function ($radicado) {
+            if ($radicado->wasChanged(['fec_venci']) || $radicado->wasChanged(['responsables'])) {
+                $radicado->actualizarEstadoTrabajo();
+            }
+        });
+    }
+
+    /**
+     * Clasificación documental (recursiva: Serie > SubSerie > TipoDocumento).
+     * Para cargar con jerarquía completa usar: load(['clasificacionDocumental' => fn($q) => $q->with(['parent' => fn($q) => $q->with('parent')])])
+     */
+    public function clasificacionDocumental()
+    {
+        return $this->belongsTo(\App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::class, 'clasifica_documen_id');
+    }
+
+    /**
+     * Carga clasificación documental con jerarquía completa (evita N+1 en getJerarquia).
+     */
+    public function loadClasificacionConJerarquia()
+    {
+        return $this->load(['clasificacionDocumental' => fn($q) => $q->with(['parent' => fn($q) => $q->with('parent')])]);
+    }
+
+    /**
+     * Obtiene la clasificación documental con su jerarquía recursiva.
+     */
+    public function getClasificacionDocumentalInfo(): ?array
+    {
+        $clasif = $this->clasificacionDocumental;
+        if (!$clasif) {
+            return null;
+        }
+        return [
+            'id' => $clasif->id,
+            'cod' => $clasif->cod,
+            'nom' => $clasif->nom,
+            'tipo' => $clasif->tipo,
+            'jerarquia' => $clasif->getJerarquia(),
+            'codigo_completo' => $clasif->getCodigoCompleto(),
+            'nombre_completo' => $clasif->getNombreCompleto(),
+        ];
+    }
+
+    public function usuarioCreaRadicado()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'usuario_crea');
+    }
+
+    public function tercero()
+    {
+        return $this->belongsTo(\App\Models\Gestion\GestionTercero::class, 'tercero_id');
+    }
+
+    public function medioRecepcion()
+    {
+        return $this->belongsTo(\App\Models\Configuracion\ConfigListaDetalle::class, 'medio_recep_id');
+    }
+
+    public function servidorArchivos()
+    {
+        return $this->belongsTo(\App\Models\Configuracion\ConfigServerArchivo::class, 'config_server_id');
+    }
+
+    public function usuarioSubio()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'uploaded_by');
+    }
+
+    /**
+     * Expedientes a los que este radicado ha sido incorporado.
+     */
+    public function expedientes()
+    {
+        return $this->morphToMany(
+            \App\Models\OfiArchivo\OfiArchivoExpediente::class,
+            'documentable',
+            'ofi_archivo_expedientes_documentos',
+            'documentable_id',
+            'expediente_id'
+        )->withPivot('numero_folio', 'fecha_incorporacion');
+    }
+
+    /**
+     * Obtiene los responsables asignados a esta radicación.
+     */
+    public function responsables()
+    {
+        return $this->hasMany(VentanillaRadicaReciResponsa::class, 'radica_reci_id');
+    }
+
+    /**
+     * Obtiene los usuarios responsables a través de la tabla pivot con users_cargos.
+     */
+    public function usuariosResponsables()
+    {
+        return $this->belongsToMany(\App\Models\ControlAcceso\UserCargo::class, 'ventanilla_radica_reci_responsa', 'radica_reci_id', 'users_cargos_id')
+            ->withPivot('custodio', 'fechor_visto')
+            ->withTimestamps();
+    }
+
+    /**
+     * Obtiene los archivos adicionales asociados al radicado.
+     */
+    public function archivos()
+    {
+        return $this->hasMany(VentanillaRadicaReciArchivo::class, 'radicado_id');
+    }
+
+    /**
+     * Obtiene el historial de archivos eliminados del radicado.
+     */
+    public function archivosEliminados()
+    {
+        return $this->hasMany(VentanillaRadicaReciArchivoEliminado::class, 'radicado_id');
+    }
+
+    /**
+     * Obtiene información completa de documentos relacionados (archivo principal y adicionales).
+     * Optimizado para usar relaciones ya cargadas con eager loading.
+     *
+     * @param bool $incluirMetadatos Si es true, incluye tamaño y tipo MIME de cada archivo
+     * @return array
+     */
+    public function getDocumentosRelacionados(bool $incluirMetadatos = false): array
+    {
+        // Cachear usuario que subió archivo (se usa dos veces)
+        $usuarioSubio = $this->getInfoUsuarioSubio();
+
+        // Archivo principal
+        $archivoPrincipal = null;
+        if ($this->archivo_digital) {
+            $archivoPrincipal = $this->getInfoArchivo('archivo_digital', 'radicados_recibidos', $incluirMetadatos);
+            if ($archivoPrincipal && $usuarioSubio) {
+                $archivoPrincipal['subido_por'] = $usuarioSubio['nombre_completo'];
+            }
+        }
+
+        // Archivos adicionales (usar relación ya cargada si existe, sino cargar)
+        $archivosRelacion = $this->relationLoaded('archivos') ? $this->archivos : $this->archivos()->get();
+
+        // Pre-inicializar collection (optimización de memoria)
+        $archivosAdicionales = collect();
+
+        foreach ($archivosRelacion as $archivo) {
+            $info = $archivo->getInfoArchivo('archivo', 'radicados_recibidos', $incluirMetadatos);
+            if ($info) {
+                $info['fecha_subida'] = $archivo->created_at;
+                $archivosAdicionales->push($info);
+            }
+        }
+
+        // Calcular totales optimizado (evitar múltiples llamadas a count)
+        $countArchivosAdicionales = $archivosAdicionales->count();
+        $totalArchivos = ($archivoPrincipal ? 1 : 0) + $countArchivosAdicionales;
+        $tieneArchivosAdicionales = $countArchivosAdicionales > 0;
+
+        return [
+            'archivo_principal' => $archivoPrincipal,
+            'archivos_adicionales' => $archivosAdicionales,
+            'total_archivos' => $totalArchivos,
+            'tiene_archivo_principal' => $archivoPrincipal !== null,
+            'tiene_archivos_adicionales' => $tieneArchivosAdicionales,
+            'fecha_creacion' => $this->created_at,
+            'fecha_actualizacion' => $this->updated_at,
+            'usuario_subio_archivo' => $usuarioSubio,
+        ];
+    }
+
+    /**
+     * Obtiene información completa de responsables relacionados.
+     * Optimizado para usar relaciones ya cargadas con eager loading.
+     * Opcionalmente usa totales de la vista si están disponibles (para evitar recálculo).
+     *
+     * @param int|null $totalResponsablesDesdeVista Total desde la vista SQL (opcional, evita recálculo)
+     * @param int|null $totalCustodiosDesdeVista Total desde la vista SQL (opcional, evita recálculo)
+     * @return array
+     */
+    public function getResponsablesInfo(?int $totalResponsablesDesdeVista = null, ?int $totalCustodiosDesdeVista = null): array
+    {
+        // Usar relación ya cargada si existe, sino cargar
+        $responsablesRelacion = $this->relationLoaded('responsables') ? $this->responsables : $this->responsables()->with(['userCargo.user', 'userCargo.cargo'])->get();
+
+        // Pre-inicializar collection (optimización de memoria)
+        $responsablesInfo = collect();
+        $totalCustodios = 0;
+
+        foreach ($responsablesRelacion as $responsable) {
+            $info = $responsable->getInfoResponsable();
+            if ($info) {
+                $responsablesInfo->push($info);
+                // Solo contar si no tenemos el valor de la vista
+                if ($totalCustodiosDesdeVista === null && !empty($info['custodio']) && $info['custodio']) {
+                    $totalCustodios++;
+                }
+            }
+        }
+
+        // Usar totales de la vista si están disponibles (más eficiente)
+        // Evitar count() si ya tenemos el valor de la vista
+        $countResponsablesInfo = $responsablesInfo->count();
+        $totalResponsablesFinal = $totalResponsablesDesdeVista ?? $countResponsablesInfo;
+        $totalCustodiosFinal = $totalCustodiosDesdeVista ?? $totalCustodios;
+
+        return [
+            'responsables' => $responsablesInfo,
+            'total_responsables' => $totalResponsablesFinal,
+            'total_custodios' => $totalCustodiosFinal,
+        ];
+    }
+
+    /**
+     * Obtiene toda la información relacionada del radicado (documentos, responsables, usuarios).
+     * Opcionalmente acepta totales desde la vista para evitar recálculos.
+     *
+     * @param bool $incluirMetadatosArchivos Si es true, incluye tamaño y tipo en documentos
+     * @param int|null $totalResponsablesDesdeVista Total desde la vista SQL (opcional)
+     * @param int|null $totalCustodiosDesdeVista Total desde la vista SQL (opcional)
+     * @return array
+     */
+    public function getInformacionCompleta(bool $incluirMetadatosArchivos = false, ?int $totalResponsablesDesdeVista = null, ?int $totalCustodiosDesdeVista = null): array
+    {
+        return [
+            'documentos' => $this->getDocumentosRelacionados($incluirMetadatosArchivos),
+            'usuario_creo_radicado' => $this->getInfoUsuarioCrea(),
+            ...$this->getResponsablesInfo($totalResponsablesDesdeVista, $totalCustodiosDesdeVista),
+        ];
+    }
+
+    /**
+     * Scope para filtrar por estado activo.
+     */
+    public function scopeActivo($query)
+    {
+        return $query->where('estado', true);
+    }
+
+    /**
+     * Scope para filtrar por estado inactivo.
+     */
+    public function scopeInactivo($query)
+    {
+        return $query->where('estado', false);
+    }
+
+    /**
+     * Scope para filtrar por estado de trabajo.
+     */
+    public function scopeEstadoTrabajo($query, string $estado)
+    {
+        return $query->where('estado_trabajo', $estado);
+    }
+
+    /**
+     * Scope para radicados vencidos.
+     */
+    public function scopeVencidos($query)
+    {
+        return $query->where('fec_venci', '<', now()->toDateString());
+    }
+
+    /**
+     * Scope para radicados próximos a vencer (en los próximos N días).
+     */
+    public function scopeProximosAVencer($query, int $dias = 5)
+    {
+        return $query->whereBetween('fec_venci', [now()->toDateString(), now()->addDays($dias)->toDateString()]);
+    }
+
+    /**
+     * Actualiza el estado de trabajo del radicado según las reglas:
+     * - VENCIDO: si fec_venci < hoy
+     * - POR_VENCER: si fec_venci está próximo a vencer (5 días)
+     * - EN_PROCESO: si tiene responsables asignados
+     * - RECIBIDO: en caso contrario
+     */
+    public function actualizarEstadoTrabajo(): bool
+    {
+        $nuevoEstado = $this->calcularEstadoTrabajo();
+
+        if ($this->estado_trabajo !== $nuevoEstado) {
+            $this->update(['estado_trabajo' => $nuevoEstado]);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Calcula el estado de trabajo correspondiente según las reglas del negocio.
+     */
+    public function calcularEstadoTrabajo(): string
+    {
+        if ($this->fec_venci && now()->parse($this->fec_venci)->isBefore(now()->startOfDay())) {
+            return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_VENCIDO;
+        }
+
+        if ($this->fec_venci && now()->parse($this->fec_venci)->lte(now()->addDays(5)->endOfDay())) {
+            return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_POR_VENCER;
+        }
+
+        if ($this->responsables()->exists()) {
+            return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_EN_PROCESO;
+        }
+
+        return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_RECIBIDO;
+    }
+
+    /**
+     * Obtiene el color y información del estado de trabajo actual.
+     */
+    public function getEstadoTrabajoInfo(): array
+    {
+        $service = new \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService();
+        return $service->getEstadoInfo($this->estado_trabajo ?? \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_RECIBIDO);
+    }
+
+    /**
+     * Verifica si la radicación tiene archivos.
+     */
+    public function tieneArchivoDigital()
+    {
+        return !empty($this->archivo_digital);
+    }
+
+    /**
+     * Verifica si la radicación tiene archivos (digital o adicionales).
+     */
+    public function tieneArchivos()
+    {
+        return $this->tieneArchivoDigital() || $this->archivos()->exists();
+    }
+
+    /**
+     * Obtiene los días restantes para el vencimiento.
+     */
+    public function getDiasParaVencerAttribute()
+    {
+        if (!$this->fec_venci) {
+            return null;
+        }
+        return now()->diffInDays($this->fec_venci, false);
+    }
+
+    /**
+     * Verifica si la radicación está vencida.
+     */
+    public function isVencida()
+    {
+        if (!$this->fec_venci) {
+            return false;
+        }
+        return now()->isAfter($this->fec_venci);
+    }
+
+    /**
+     * Obtiene la URL del archivo asociado a la radicación.
+     *
+     * @return string|null
+     */
+    public function getUrlArchivoDigital()
+    {
+        return $this->getArchivoUrl('archivo_digital', 'radicados_recibidos');
+    }
+
+    /**
+     * Obtiene la URL de cualquier archivo usando ArchivoHelper.
+     * @param string $campo Nombre del atributo (ej: 'archivo_digital')
+     * @param string $disk Nombre del disco
+     * @return string|null
+     */
+    public function getArchivoUrl(string $campo, string $disk): ?string
+    {
+        return ArchivoHelper::obtenerUrl($this->{$campo} ?? null, $disk);
+    }
+
+    /**
+     * Obtiene información del archivo asociado a la radicación.
+     *
+     * @return array|null
+     */
+    public function getInfoArchivoDigital()
+    {
+        if (!$this->archivo_digital) {
+            return null;
+        }
+
+        return [
+            'nombre' => $this->nom_origi ?: basename($this->archivo_digital),
+            'ruta' => $this->archivo_digital,
+            'url' => $this->getUrlArchivoDigital(),
+            'tamaño' => $this->archivo_peso ?: Storage::disk('radicados_recibidos')->size($this->archivo_digital),
+            'tipo' => $this->archivo_tipo ?: Storage::disk('radicados_recibidos')->mimeType($this->archivo_digital),
+            'extension' => pathinfo($this->archivo_digital, PATHINFO_EXTENSION)
+        ];
+    }
+
+    /**
+     * Obtiene información formateada del usuario que creó el radicado.
+     *
+     * @return array|null
+     */
+    public function getInfoUsuarioCrea(): ?array
+    {
+        if (!$this->usuarioCreaRadicado) {
+            return null;
+        }
+        return $this->usuarioCreaRadicado->getInfoUsuario();
+    }
+
+    /**
+     * Obtiene información formateada del usuario que subió el archivo.
+     *
+     * @return array|null
+     */
+    public function getInfoUsuarioSubio(): ?array
+    {
+        if (!$this->usuarioSubio) {
+            return null;
+        }
+        return $this->usuarioSubio->getInfoUsuario();
+    }
+
+    /**
+     * Obtiene información básica de un archivo (sin acceder al filesystem).
+     * Los metadatos del archivo (tamaño, tipo) se obtienen solo al descargar/ver detalles.
+     *
+     * @param string $campo Nombre del atributo del archivo
+     * @param string $disk Nombre del disco
+     * @param bool $incluirMetadatos Si es true, obtiene metadatos del filesystem (por defecto false)
+     * @return array|null
+     */
+    public function getInfoArchivo(string $campo, string $disk, bool $incluirMetadatos = false): ?array
+    {
+        $rutaArchivo = $this->{$campo} ?? null;
+        if (!$rutaArchivo) {
+            return null;
+        }
+
+        $info = [
+            'nombre' => $this->nom_origi ?: basename($rutaArchivo),
+            'ruta' => $rutaArchivo,
+            'url' => $this->getArchivoUrl($campo, $disk),
+            'extension' => pathinfo($this->nom_origi ?: $rutaArchivo, PATHINFO_EXTENSION),
+        ];
+
+        // Agregar OCR si existe y es el archivo digital principal
+        if ($campo === 'archivo_digital' && !empty($this->ocr)) {
+            $info['ocr'] = $this->ocr;
+            $info['ocr_aplicado'] = (bool) $this->ocr_aplicado;
+        }
+
+        // Solo acceder al filesystem si se solicita explícitamente (para descarga/detalles)
+        if ($incluirMetadatos) {
+            try {
+                if (Storage::disk($disk)->exists($rutaArchivo)) {
+                    $info['tamaño'] = Storage::disk($disk)->size($rutaArchivo);
+                    $info['tipo'] = Storage::disk($disk)->mimeType($rutaArchivo);
+                }
+            } catch (\Exception $e) {
+                // Si hay error al obtener información del archivo, continuar sin esos datos
+            }
+        }
+
+        return $info;
+    }
+}

@@ -23,7 +23,7 @@ return new class extends Migration
         // Insertar configuraciones iniciales
         DB::table('config_varias')->insert([
             ['clave' => 'max_tamano_archivo', 'valor' => '20480', 'descripcion' => 'Tamaño máximo de archivos en KB (20MB)'],
-            ['clave' => 'tipos_archivos_permitidos', 'valor' => 'pdf,jpg,png,docx', 'descripcion' => 'Extensiones permitidas para carga de archivos'],
+            ['clave' => 'tipos_archivos_permitidos', 'valor' => 'pdf, docx, xlsx, xls, txt, csv, jpg, jpeg, png, gif, webp, bmp, svg, mp4, webm, ogg, mov, avi, mkv, mp3, wav, ogg, flac, aac', 'descripcion' => 'Extensiones permitidas para carga de archivos'],
         ]);
 
         DB::table('config_varias')->insert([
@@ -48,6 +48,56 @@ return new class extends Migration
             ['clave' => 'telefono_empresa', 'valor' => '', 'descripcion' => 'Teléfono de contacto de la empresa'],
             ['clave' => 'correo_electronico_empresa', 'valor' => '', 'descripcion' => 'Correo electrónico de la empresa'],
             ['clave' => 'web_empresa', 'valor' => '', 'descripcion' => 'Sitio web de la empresa'],
+        ]);
+
+        // Insertar configuraciones de días hábiles y vencimiento
+        DB::table('config_varias')->insert([
+            [
+                'clave' => 'considerar_dias_habiles',
+                'valor' => 'true',
+                'descripcion' => 'Usar días hábiles para cálculo de vencimientos (excluye fines de semana y festivos)'
+            ],
+            [
+                'clave' => 'dias_vencimiento_predeterminado',
+                'valor' => '5',
+                'descripcion' => 'Días por defecto para vencimiento de radicados'
+            ],
+        ]);
+
+// Insertar configuraciones de semáforo
+        DB::table('config_varias')->insert([
+            [
+                'clave' => 'semaforo_activo',
+                'valor' => 'true',
+                'descripcion' => 'Habilitar semáforo de vencimientos (verde/amarillo/rojo)'
+            ],
+            [
+                'clave' => 'semaforo_verde_dias',
+                'valor' => '2',
+                'descripcion' => 'Días en zona verde (vencimiento lejano)'
+            ],
+            [
+                'clave' => 'semaforo_amarillo_dias',
+                'valor' => '4',
+                'descripcion' => 'Días en zona amarillo (por vencer)'
+            ],
+            [
+                'clave' => 'semaforo_rojo_dias',
+                'valor' => '5',
+                'descripcion' => 'Días en zona roja (vencido o por vencer hoy)'
+            ],
+        ]);
+
+        // Insertar configuraciones de correo SMTP
+        DB::table('config_varias')->insert([
+            ['clave' => 'correo_host', 'valor' => 'smtp.gmail.com', 'descripcion' => 'Servidor SMTP para notificaciones de ventanilla'],
+            ['clave' => 'correo_port', 'valor' => '587', 'descripcion' => 'Puerto SMTP para notificaciones de ventanilla'],
+            ['clave' => 'correo_username', 'valor' => '', 'descripcion' => 'Usuario SMTP para notificaciones de ventanilla'],
+            ['clave' => 'correo_password', 'valor' => '', 'descripcion' => 'Contraseña SMTP para notificaciones de ventanilla'],
+            ['clave' => 'correo_from_address', 'valor' => '', 'descripcion' => 'Dirección de correo remitente para notificaciones'],
+            ['clave' => 'correo_from_name', 'valor' => 'Radicaciones', 'descripcion' => 'Nombre del remitente para notificaciones'],
+            ['clave' => 'correo_encryption', 'valor' => 'tls', 'descripcion' => 'Tipo de encriptación SMTP (tls, ssl)'],
+            ['clave' => 'notificar_radicado_al_tercero', 'valor' => '1', 'descripcion' => 'Enviar notificación al tercero cuando se radique un documento recibido'],
         ]);
     }
 

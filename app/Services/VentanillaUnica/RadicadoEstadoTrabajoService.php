@@ -2,7 +2,7 @@
 
 namespace App\Services\VentanillaUnica;
 
-use App\Models\VentanillaUnica\VentanillaRadicaReci;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Carbon\Carbon;
 
 class RadicadoEstadoTrabajoService

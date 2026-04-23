@@ -11,7 +11,7 @@ use App\Models\Configuracion\ConfigDiviPoli;
 use App\Models\ControlAcceso\UserNotificationSetting;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\ControlAcceso\UsersSession;
-use App\Models\VentanillaUnica\VentanillaUnica;
+use App\Models\VentanillaUnica\Comunes\VentanillaUnica;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use App\Helpers\ArchivoHelper;
-use App\Models\VentanillaUnica\VentanillaRadicaReci;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 
 class User extends Authenticatable
 {

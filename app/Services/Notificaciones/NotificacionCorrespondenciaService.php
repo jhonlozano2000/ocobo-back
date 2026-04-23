@@ -4,9 +4,11 @@ namespace App\Services\Notificaciones;
 
 use App\Helpers\MailConfigHelper;
 use App\Mail\RadicadoEnviadoNotification;
+use App\Mail\RadicadoInternoNotification;
 use App\Mail\RadicadoNotification;
-use App\Models\VentanillaUnica\VentanillaRadicaEnviados;
-use App\Models\VentanillaUnica\VentanillaRadicaReci;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
 
@@ -64,6 +66,24 @@ class NotificacionCorrespondenciaService
         ];
     }
 
+    public function enviarRadicadoInterno(VentanillaRadicaInterno $radicado): array
+    {
+        MailConfigHelper::configureFromConfigVarias();
+
+        $emails = $this->obtenerCorreosResponsablesInterno($radicado);
+        $tipo = self::TIPO_NOTIFICACION;
+
+        foreach ($emails as $email) {
+            Mail::to($email)->send(new RadicadoInternoNotification($radicado, $tipo));
+        }
+
+        return [
+            'emails_enviados' => $emails->values()->all(),
+            'total_enviados' => $emails->count(),
+            'tipo_notificacion' => $tipo,
+        ];
+    }
+
     /**
      * Obtiene correos únicos de responsables del radicado recibido.
      *
@@ -89,6 +109,20 @@ class NotificacionCorrespondenciaService
     {
         return $radicado->responsables
             ->map(fn ($responsable) => $responsable->userCargo?->user?->email)
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
+    private function obtenerCorreosResponsablesInterno(VentanillaRadicaInterno $radicado): Collection
+    {
+        $responsables = $radicado->responsables
+            ->map(fn ($responsable) => $responsable->userCargo?->user?->email);
+
+        $destinatarios = $radicado->destinatarios
+            ->map(fn ($destinatario) => $destinatario->userCargo?->user?->email);
+
+        return $responsables->merge($destinatarios)
             ->filter()
             ->unique()
             ->values();

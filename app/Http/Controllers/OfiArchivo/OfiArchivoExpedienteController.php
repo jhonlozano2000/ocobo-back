@@ -142,8 +142,8 @@ class OfiArchivoExpedienteController extends Controller
 
             // Mapear el tipo de documento al modelo correspondiente
             $modelMap = [
-                'radicado_recibido' => \App\Models\VentanillaUnica\VentanillaRadicaReci::class,
-                'radicado_enviado' => \App\Models\VentanillaUnica\VentanillaRadicaEnviados::class
+                'radicado_recibido' => \App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci::class,
+                'radicado_enviado' => \App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados::class
             ];
 
             $modelClass = $modelMap[$request->documentable_type];

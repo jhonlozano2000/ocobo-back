@@ -192,21 +192,22 @@ class UserController extends Controller
 
     /**
      * Obtiene el perfil completo del usuario con toda la información.
+     * Optimizado: eager loading para evitar N+1.
      */
     public function getPerfilCompleto(string $id)
     {
         try {
-            $user = User::find($id);
+            $user = User::with(['roles', 'sedes', 'cargoActivo.cargo'])->find($id);
             if (!$user) {
                 return $this->errorResponse('Usuario no encontrado', null, 404);
             }
 
             return $this->successResponse([
-                'user' => $user->load(['roles', 'sedes']),
+                'user' => $user,
                 'cargo' => $user->cargoActivo?->cargo,
                 'stats' => [
-                    'total_sedes' => $user->sedes()->count(),
-                    'total_roles' => $user->roles()->count(),
+                    'total_sedes' => $user->sedes->count(),
+                    'total_roles' => $user->roles->count(),
                 ]
             ], 'Perfil completo obtenido exitosamente');
         } catch (\Exception $e) {

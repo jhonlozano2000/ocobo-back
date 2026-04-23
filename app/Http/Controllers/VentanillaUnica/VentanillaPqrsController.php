@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\VentanillaUnica;
 
 use App\Http\Controllers\Controller;
-use App\Models\VentanillaUnica\VentanillaPqrs;
-use App\Models\VentanillaUnica\VentanillaRadicaReci;
+use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Helpers\CalendarioHelper;
 use App\Http\Traits\ApiResponseTrait;
 use App\Traits\AuditViewTrait;

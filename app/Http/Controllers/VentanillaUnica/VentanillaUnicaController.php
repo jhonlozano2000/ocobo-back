@@ -8,7 +8,7 @@ use App\Http\Requests\Ventanilla\StoreVentanillaUnicaRequest;
 use App\Http\Requests\Ventanilla\UpdateVentanillaUnicaRequest;
 use App\Http\Requests\Ventanilla\ListVentanillaUnicaRequest;
 use App\Http\Requests\Ventanilla\ConfigurarTiposDocumentalesRequest;
-use App\Models\VentanillaUnica\VentanillaUnica;
+use App\Models\VentanillaUnica\Comunes\VentanillaUnica;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;

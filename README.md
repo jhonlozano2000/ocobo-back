@@ -290,6 +290,23 @@ php artisan cache:clear
 - Cálculo de días hábiles restantes
 - Integración con `CalendarioHelper`
 
+### OCR - Extracción de Texto (PaddleOCR)
+- Extracción automática de texto desde documentos escaneados
+- Motor **PaddleOCR** (más preciso para español) con fallback a Tesseract
+- Microservicio Python en `storage/app/ocr-service/`
+- Gestionado con comando Artisan: `php artisan ocr {start|stop|status}`
+- Soporte para PDF, PNG, JPG, TIFF, BMP
+- Extracción de datos estructurados:
+  - Números de identificación (CC, NIT, RC, CE, Pasaporte, TI)
+  - Fechas (DD/MM/YYYY, YYYY-MM-DD, Mes DD, YYYY)
+  - Correos electrónicos
+  - Teléfonos (fijos y celulares Colombia)
+  - Direcciones físicas
+  - Códigos (facturas, contratos, guías, órdenes, radicados)
+- Integración automática al subir archivo digital
+- Endpoint para re-aplicar OCR manualmente
+- `OcrHttpService` para PaddleOCR, `OcrService` para Tesseract (fallback)
+
 ---
 
 ## 🛡️ Seguridad
@@ -317,6 +334,9 @@ php artisan cache:clear
 - ✅ Helper CalendarioHelper integrado con ConfigVarias
 - ✅ Endpoint batch para actualizar múltiples configuraciones
 - ✅ Refactorización ConfigVariasController
+- ✅ OCR con PaddleOCR (microservicio Python) + fallback Tesseract
+- ✅ Campos `ocr` y `ocr_aplicado` en radicados
+- ✅ `OcrHttpService` + `OcrService` con extracción de datos estructurados
 
 ### v2.1 (Abril 2026)
 - ✅ Sistema de autenticación con cookies HttpOnly (BFF Pattern)

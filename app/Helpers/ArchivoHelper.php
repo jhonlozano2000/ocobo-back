@@ -142,6 +142,7 @@ class ArchivoHelper
 
         $file = $request->file($campo);
         if (!$file || !$file->isValid()) {
+            Log::warning('guardarArchivoConMetadatos: Archivo inválido', ['campo' => $campo]);
             return null;
         }
 
@@ -150,7 +151,10 @@ class ArchivoHelper
 
         // Si es un PDF, inyectamos los metadatos de contexto (ISO 27001 - Integridad)
         if ($mime === 'application/pdf' && !empty($metadatos)) {
-            $contenido = self::inyectarMetadatosPDF($file->getRealPath(), $metadatos);
+            $realPath = $file->getRealPath();
+            if (!empty($realPath) && file_exists($realPath)) {
+                $contenido = self::inyectarMetadatosPDF($realPath, $metadatos);
+            }
         }
 
         // Generar Hash SHA-256 DESPUÉS de la inyección de metadatos (integridad del binario final)
@@ -185,6 +189,12 @@ class ArchivoHelper
     private static function inyectarMetadatosPDF(string $realPath, array $metadatos): string
     {
         try {
+            // Verificar que el archivo existe y no está vacío
+            if (empty($realPath) || !file_exists($realPath)) {
+                Log::warning('inyectarMetadatosPDF: Path vacío o archivo no existe', ['path' => $realPath]);
+                return file_get_contents($realPath);
+            }
+
             $pdf = new \setasign\Fpdi\Fpdi();
             
             // Configurar metadatos
@@ -206,6 +216,10 @@ class ArchivoHelper
             return $pdf->Output('S'); // Retorna el binario como string
         } catch (\Exception $e) {
             // Si falla la inyección (ej: PDF encriptado), retornamos el contenido original
+            Log::warning('inyectarMetadatosPDF falló, usando original', [
+                'path' => $realPath,
+                'error' => $e->getMessage()
+            ]);
             return file_get_contents($realPath);
         }
     }

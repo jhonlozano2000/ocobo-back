@@ -28,8 +28,22 @@ return new class extends Migration
             $table->string('descrip_anexos', 300)->nullable()->comment('Descripcion de los anexos');
             $table->string('asunto', 300)->nullable();
             $table->string('archivo_digital', 100)->nullable()->comment('Nombre del archivo digitalizado');
+            $table->string('archivo_tipo', 100)->nullable()->comment('MIME type del archivo');
+            $table->unsignedBigInteger('archivo_peso')->nullable()->comment('Peso en bytes del archivo');
+            $table->string('hash_sha256', 64)->nullable()->comment('Hash SHA-256 del archivo para integridad ISO 27001');
+            $table->string('nom_origi', 255)->nullable()->comment('Nombre original del archivo');
+
+            $table->unsignedBigInteger('subido_por')->nullable()->comment('Usuario que subió el archivo');
+            $table->foreign('subido_por')->references('id')->on('users')->onDelete('set null');
 
             $table->boolean('impri_rotulo')->default(1)->comment('Estado de la impresion del rotulo');
+
+            $table->string('estado_trabajo', 50)->nullable()->comment('Estado de trabajo: recibido, en_proceso, por_vencer, vencido, finalizado');
+
+            $table->boolean('es_pdf_a')->default(false)->comment('Indica si el documento está en formato PDF/A');
+            $table->string('pdf_a_nivel', 10)->nullable()->comment('Nivel PDF/A');
+            $table->longText('ocr')->nullable()->comment('Texto extraído por OCR');
+            $table->boolean('ocr_aplicado')->default(false)->comment('Indica si se aplicó OCR');
 
             $table->timestamps();
         });

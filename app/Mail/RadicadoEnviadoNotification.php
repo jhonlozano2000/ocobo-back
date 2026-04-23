@@ -2,7 +2,7 @@
 
 namespace App\Mail;
 
-use App\Models\VentanillaUnica\VentanillaRadicaEnviados;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;

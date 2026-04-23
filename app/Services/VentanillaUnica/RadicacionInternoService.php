@@ -2,7 +2,7 @@
 
 namespace App\Services\VentanillaUnica;
 
-use App\Models\VentanillaUnica\VentanillaRadicaInterno;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class RadicacionInternoService

@@ -44,6 +44,11 @@ return new class extends Migration
             $table->date('fecha_disposicion_final')->nullable();
             $table->date('fecha_retencion_fin')->nullable();
 
+            // PDF/A
+            $table->boolean('es_pdf_a')->default(false)->comment('Indica si el documento está en formato PDF/A');
+            $table->string('pdf_a_nivel', 10)->nullable()->comment('Nivel PDF/A: 1a, 1b, 2a, 2b, 3');
+            $table->text('pdf_a_metadata')->nullable()->comment('Metadata XMP del PDF/A');
+
             // Clasificación documental
             $table->unsignedBigInteger('clasificacion_id')->nullable();
             $table->string('clasificacion_ruta', 500)->nullable();

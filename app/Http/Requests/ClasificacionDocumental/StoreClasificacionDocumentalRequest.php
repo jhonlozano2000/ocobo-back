@@ -84,6 +84,20 @@ class StoreClasificacionDocumentalRequest extends FormRequest
                 'string',
                 'max:500'
             ],
+            'requiere_pdf_a' => [
+                'nullable',
+                'boolean'
+            ],
+            'pdf_a_nivel' => [
+                'nullable',
+                'string',
+                'max:10',
+                'in:1a,1b,2a,2b,3'
+            ],
+            'convierte_a_pdf_a' => [
+                'nullable',
+                'boolean'
+            ],
             'parent' => [
                 'nullable',
                 'integer',
@@ -160,6 +174,8 @@ class StoreClasificacionDocumentalRequest extends FormRequest
             'e' => $this->boolean('e'),
             'm_d' => $this->boolean('m_d'),
             's' => $this->boolean('s'),
+            'requiere_pdf_a' => $this->boolean('requiere_pdf_a'),
+            'convierte_a_pdf_a' => $this->boolean('convierte_a_pdf_a'),
         ]);
     }
 

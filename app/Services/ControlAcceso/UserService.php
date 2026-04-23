@@ -6,6 +6,7 @@ use App\Helpers\ArchivoHelper;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
@@ -140,15 +141,23 @@ class UserService
     }
 
     /**
-     * Obtiene estadísticas.
+     * Obtiene estadísticas con caché y optimización de consultas.
      */
     public function getStats(): array
     {
-        return [
-            'total_users' => User::count(),
-            'total_users_activos' => User::where('estado', 1)->count(),
-            'total_users_inactivos' => User::where('estado', 0)->count(),
-        ];
+        return Cache::remember('users_statistics', now()->addMinutes(10), function () {
+            $stats = User::selectRaw('
+                COUNT(*) as total,
+                SUM(CASE WHEN estado = 1 THEN 1 ELSE 0 END) as activos,
+                SUM(CASE WHEN estado = 0 THEN 1 ELSE 0 END) as inactivos
+            ')->first();
+
+            return [
+                'total_users' => (int) ($stats->total ?? 0),
+                'total_users_activos' => (int) ($stats->activos ?? 0),
+                'total_users_inactivos' => (int) ($stats->inactivos ?? 0),
+            ];
+        });
     }
 
     /**
