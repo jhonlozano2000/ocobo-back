@@ -20,10 +20,11 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
 use App\Traits\AuditViewTrait;
+use App\Traits\VentanillaAuditTrait;
 
 class VentanillaRadicaReciController extends Controller
 {
-    use ApiResponseTrait, AuditViewTrait;
+    use ApiResponseTrait, AuditViewTrait, VentanillaAuditTrait;
 
     private const PERM = 'Radicar -> Cores. Recibida -> ';
 
@@ -270,6 +271,8 @@ class VentanillaRadicaReciController extends Controller
 
             // Notificación al tercero con archivos adjuntos (según configuración)
             \App\Helpers\AcuseReciboHelper::enviarNotificacionConAdjuntos($radicado);
+
+            $this->auditVentanilla($radicado, 'created', $radicado->num_radicado);
 
             return $this->successResponse(
                 $radicado->load(['clasificacionDocumental', 'tercero', 'medioRecepcion']),
@@ -685,6 +688,10 @@ class VentanillaRadicaReciController extends Controller
 
             $radicado->update($request->validated());
 
+            $this->auditVentanilla($radicado, 'updated', $radicado->num_radicado, [
+                'campos' => array_keys($request->validated())
+            ]);
+
             DB::commit();
 
             return $this->successResponse(
@@ -744,7 +751,10 @@ class VentanillaRadicaReciController extends Controller
 
             $radicado->archivos()->delete();
             $radicado->responsables()->delete();
+            $numRadicado = $radicado->num_radicado;
             $radicado->delete();
+
+            $this->auditVentanilla($radicado, 'deleted', $numRadicado);
 
             DB::commit();
 

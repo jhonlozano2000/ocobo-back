@@ -187,8 +187,10 @@ class TRDService
         $codigoDependencia = trim($sheet->getCell('B4')->getValue() ?? '');
         \Log::info('TRD Import - Codigo dependencia from B4', ['codigo' => $codigoDependencia]);
 
-        // Buscar la dependencia por código
-        $dependencia = \App\Models\Calidad\CalidadOrganigrama::where('cod_organico', $codigoDependencia)->first();
+        // Buscar la dependencia por código y tipo
+        $dependencia = \App\Models\Calidad\CalidadOrganigrama::where('cod_organico', $codigoDependencia)
+            ->where('tipo', 'Dependencia')
+            ->first();
         
         if (!$dependencia) {
             return [

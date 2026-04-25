@@ -57,6 +57,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'password_confirmation',
         ]);
 
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                ], 401);
+            }
+        });
+
         $exceptions->report(function (Throwable $e) {
             //
         });

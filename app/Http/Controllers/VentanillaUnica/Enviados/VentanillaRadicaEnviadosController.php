@@ -16,10 +16,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use App\Traits\AuditViewTrait;
+use App\Traits\VentanillaAuditTrait;
 
 class VentanillaRadicaEnviadosController extends Controller
 {
-    use ApiResponseTrait, AuditViewTrait;
+    use ApiResponseTrait, AuditViewTrait, VentanillaAuditTrait;
 
     private const PERM = 'Radicar -> Cores. Enviada -> ';
 
@@ -126,6 +127,8 @@ class VentanillaRadicaEnviadosController extends Controller
             DB::commit();
 
             Cache::forget('ventanilla_enviados_estadisticas');
+
+            $this->auditVentanilla($radicado, 'created', $radicado->num_radicado);
 
             return $this->successResponse(
                 $radicado->load(['clasificacionDocumental', 'tercero', 'medioEnvio', 'tipoRespuesta']),
@@ -256,6 +259,10 @@ class VentanillaRadicaEnviadosController extends Controller
 
             $radicado->update($request->validated());
 
+            $this->auditVentanilla($radicado, 'updated', $radicado->num_radicado, [
+                'campos' => array_keys($request->validated())
+            ]);
+
             DB::commit();
 
             return $this->successResponse(
@@ -287,7 +294,10 @@ class VentanillaRadicaEnviadosController extends Controller
             $radicado->respuestas()->delete();
             $radicado->firmas()->delete();
             $radicado->proyectores()->delete();
+            $numRadicado = $radicado->num_radicado;
             $radicado->delete();
+
+            $this->auditVentanilla($radicado, 'deleted', $numRadicado);
 
             DB::commit();
 

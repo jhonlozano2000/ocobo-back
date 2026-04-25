@@ -33,6 +33,14 @@ Route::get('/test-session', function () {
     ]);
 });
 
+// Ruta debug - requiere auth:sanctum
+Route::middleware('auth:sanctum')->get('/debug-user', function () {
+    return response()->json([
+        'user' => auth()->user(),
+        'guard' => auth()->getDefaultDriver(),
+    ]);
+});
+
 // ==========================================
 // RUTAS DE GESTIÓN DE ARCHIVO (ISO 27001)
 // ==========================================

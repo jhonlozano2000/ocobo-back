@@ -14,10 +14,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use App\Traits\VentanillaAuditTrait;
 
 class VentanillaRadicaInternoController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, VentanillaAuditTrait;
 
     const PERM = 'Radicar -> Cores. Interna ->';
 
@@ -264,6 +265,9 @@ class VentanillaRadicaInternoController extends Controller
 
             DB::commit();
             Cache::forget('ventanilla_internos_estadisticas');
+
+            $this->auditVentanilla($radicado, 'created', $radicado->num_radicado);
+
             return $this->successResponse($radicado, "Radicación interna completada exitosamente", 201);
 
         } catch (\Exception $e) {
@@ -286,6 +290,10 @@ class VentanillaRadicaInternoController extends Controller
             $radicado->update($request->only([
                 'asunto', 'clasifica_documen_id', 'num_folios', 'num_anexos', 'descrip_anexos', 'fec_venci'
             ]));
+
+            $this->auditVentanilla($radicado, 'updated', $radicado->num_radicado, [
+                'campos' => array_keys($request->only(['asunto', 'clasifica_documen_id', 'num_folios', 'num_anexos', 'descrip_anexos', 'fec_venci']))
+            ]);
 
             DB::commit();
             Cache::forget('ventanilla_internos_estadisticas');
@@ -318,7 +326,10 @@ class VentanillaRadicaInternoController extends Controller
             $radicado->destinatarios()->delete();
             $radicado->responsables()->delete();
             $radicado->proyectores()->delete();
+            $numRadicado = $radicado->num_radicado;
             $radicado->delete();
+
+            $this->auditVentanilla($radicado, 'deleted', $numRadicado);
 
             DB::commit();
             Cache::forget('ventanilla_internos_estadisticas');

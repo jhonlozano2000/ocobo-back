@@ -21,6 +21,17 @@ class ClasificacionDocumentalTRDController extends Controller
         private readonly TRDService $service
     ) {}
 
+    public function debug(Request $request)
+    {
+        return response()->json([
+            'session_id' => $request->session()->getId(),
+            'user_id' => auth()->id(),
+            'logged_in' => auth()->check(),
+            'session_has_user' => $request->session()->has('_login_' . $request->ip()),
+            'cookie' => $request->hasHeader('Cookie') ? 'yes' : 'no',
+        ]);
+    }
+
     public function index(Request $request)
     {
         try {

@@ -17,11 +17,17 @@ use Illuminate\Support\Facades\Route;
  */
 Route::middleware('throttle:config-operations')->group(function () {
 
+    // Rutas autenticadas con Sanctum
+    Route::middleware('auth:sanctum')->group(function () {
+
     /**
      * TRD (Tabla de Retención Documental)
      * Rutas: /api/clasifica-documental/trd/*
      */
     Route::prefix('trd')->name('clasifica-documental.trd.')->group(function () {
+        // Debug route
+        Route::get('/debug-session', [ClasificacionDocumentalTRDController::class, 'debug'])->name('debug');
+
         // Rutas específicas (deben ir ANTES del resource)
         Route::get('/plantilla/descargar', [ClasificacionDocumentalTRDController::class, 'descargarPlantilla'])->name('plantilla.descargar');
         Route::post('/import-trd', [ClasificacionDocumentalTRDController::class, 'importarTRD'])->name('importar');
@@ -97,4 +103,5 @@ Route::middleware('throttle:config-operations')->group(function () {
             ])->except('create', 'edit');
     });
 
-});
+    }); // Fin auth:sanctum
+}); // Fin throttle
