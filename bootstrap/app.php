@@ -35,6 +35,8 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SecurityHeadersMiddleware::class,
             \App\Http\Middleware\AuditLogMiddleware::class,
             \App\Http\Middleware\ValidateContentType::class,
+            \App\Http\Middleware\ValidateRequestSize::class,
+            \App\Http\Middleware\DataIntegrity::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api',
