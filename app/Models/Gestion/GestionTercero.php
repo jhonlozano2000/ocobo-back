@@ -24,6 +24,20 @@ class GestionTercero extends Model
         'notifica_msm'
     ];
 
+    /**
+     * Los atributos que deben ser encriptados.
+     * ISO 27001 A.10.1 - Controles criptográficos
+     * Ley 1581/2012 - Protección de datos personales (Habeas Data)
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'num_docu_nit' => 'encrypted',
+        'direccion' => 'encrypted',
+        'telefono' => 'encrypted',
+        'email' => 'encrypted',
+    ];
+
     public function divisionPolitica()
     {
         return $this->belongsTo(ConfigDiviPoli::class, 'divi_poli_id');

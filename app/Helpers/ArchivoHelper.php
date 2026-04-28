@@ -5,9 +5,63 @@ namespace App\Helpers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use finfo;
 
 class ArchivoHelper
 {
+    /**
+     * Magic bytes para validación de tipo de archivo (OWASP A03:2021)
+     * Formato: [mime_type => [signature_bytes, ...]]
+     *
+     * @var array
+     */
+    private static $MAGIC_BYTES = [
+        'application/pdf' => [[0x25, 0x50, 0x44, 0x46]], // %PDF
+        'image/jpeg' => [
+            [0xFF, 0xD8, 0xFF, 0xE0],
+            [0xFF, 0xD8, 0xFF, 0xE1],
+            [0xFF, 0xD8, 0xFF, 0xE8],
+        ],
+        'image/png' => [[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]],
+        'image/gif' => [
+            [0x47, 0x49, 0x46, 0x38, 0x37, 0x61], // GIF87a
+            [0x47, 0x49, 0x46, 0x38, 0x39, 0x61], // GIF89a
+        ],
+        'application/msword' => [[0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]], // OLE2
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => [
+            [0x50, 0x4B, 0x03, 0x04], // ZIP (DOCX)
+        ],
+        'application/vnd.ms-excel' => [[0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]],
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => [
+            [0x50, 0x4B, 0x03, 0x04],
+        ],
+        'application/vnd.ms-powerpoint' => [[0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]],
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation' => [
+            [0x50, 0x4B, 0x03, 0x04],
+        ],
+        'application/zip' => [[0x50, 0x4B, 0x03, 0x04]],
+        'application/x-zip-compressed' => [[0x50, 0x4B, 0x03, 0x04]],
+        'text/plain' => [], // Text files - validar por contenido
+        'text/csv' => [], // CSV - validar por contenido
+    ];
+
+    /**
+     * Tipos MIME permitidos para radicación (AGN Colombia)
+     *
+     * @var array
+     */
+    private static $ALLOWED_MIMES = [
+        'application/pdf',
+        'image/jpeg',
+        'image/png',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    ];
+
     /**
      * Cache estático de instancias de Storage para evitar recrearlas.
      *
@@ -27,6 +81,169 @@ class ArchivoHelper
             self::$storageCache[$disk] = Storage::disk($disk);
         }
         return self::$storageCache[$disk];
+    }
+
+    /**
+     * Valida los magic bytes de un archivo para verificar su tipo real.
+     * OWASP A03:2021 - Injection, ISO 27001 A.12.2.1
+     *
+     * @param \Illuminate\Http\UploadedFile|string $fileOrPath Ruta o archivo uploaded
+     * @param string|null $expectedMime Mime type esperado (opcional)
+     * @return bool True si los magic bytes coinciden con el tipo esperado
+     */
+    public static function validarMagicBytes($fileOrPath, ?string $expectedMime = null): bool
+    {
+        try {
+            // Obtener el contenido del archivo
+            if ($fileOrPath instanceof \Illuminate\Http\UploadedFile) {
+                $path = $fileOrPath->getRealPath();
+                $content = file_get_contents($path, false, null, 0, 16);
+            } else {
+                $content = file_get_contents($fileOrPath, false, null, 0, 16);
+            }
+
+            if (empty($content)) {
+                return false;
+            }
+
+            // Obtener mime type esperado o detectar de magic bytes
+            if ($expectedMime) {
+                $signatures = self::$MAGIC_BYTES[$expectedMime] ?? [];
+                if (empty($signatures)) {
+                    // Para tipos sin magic bytes (textos), confiar en el MIME
+                    return true;
+                }
+
+                // Verificar si alguno de los signatures coincide
+                foreach ($signatures as $signature) {
+                    if (self::coincideSignature($content, $signature)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            // Detectar mime type por magic bytes
+            foreach (self::$MAGIC_BYTES as $mime => $signatures) {
+                foreach ($signatures as $signature) {
+                    if (self::coincideSignature($content, $signature)) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        } catch (\Exception $e) {
+            Log::error('Error validando magic bytes', ['error' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    /**
+     * Compara los primeros bytes del archivo con una firma esperada.
+     *
+     * @param string $content
+     * @param array $signature
+     * @return bool
+     */
+    private static function coincideSignature(string $content, array $signature): bool
+    {
+        if (empty($signature)) {
+            return false;
+        }
+
+        for ($i = 0; $i < count($signature); $i++) {
+            if (isset($content[$i]) && ord($content[$i]) !== $signature[$i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Valida que el archivo sea seguro para upload.
+     * Combina validación MIME + Magic Bytes + Nombre seguro.
+     *
+     * @param \Illuminate\Http\UploadedFile $file
+     * @param array|null $allowedMimes Lista de MIME types permitidos (null = usar defaults)
+     * @return array ['valido' => bool, 'error' => string|null, 'mime_real' => string|null]
+     */
+    public static function validarArchivoSeguro($file, ?array $allowedMimes = null): array
+    {
+        $allowedMimes = $allowedMimes ?? self::$ALLOWED_MIMES;
+
+        // 1. Validar que el archivo existe y es válido
+        if (!$file || !$file->isValid()) {
+            return ['valido' => false, 'error' => 'Archivo inválido o corrupto', 'mime_real' => null];
+        }
+
+        // 2. Obtener MIME type enviado por el cliente
+        $clientMime = $file->getMimeType();
+
+        // 3. Verificar que el MIME está en la lista de permitidos
+        if (!in_array($clientMime, $allowedMimes)) {
+            return ['valido' => false, 'error' => "Tipo MIME no permitido: {$clientMime}", 'mime_real' => null];
+        }
+
+        // 4. Validar magic bytes (protección contra spoofing)
+        if (!self::validarMagicBytes($file, $clientMime)) {
+            Log::warning('Archivo rechazado por validación de magic bytes', [
+                'nombre' => $file->getClientOriginalName(),
+                'mime_cliente' => $clientMime
+            ]);
+            return ['valido' => false, 'error' => 'El contenido del archivo no corresponde con su extensión', 'mime_real' => null];
+        }
+
+        // 5. Validar nombre de archivo seguro
+        $nombreOriginal = $file->getClientOriginalName();
+        if (!self::esNombreSeguro($nombreOriginal)) {
+            return ['valido' => false, 'error' => 'Nombre de archivo no seguro', 'mime_real' => null];
+        }
+
+        // 6. Verificar tamaño máximo (50MB)
+        $maxSize = 50 * 1024 * 1024; // 50MB
+        if ($file->getSize() > $maxSize) {
+            return ['valido' => false, 'error' => 'El archivo excede el tamaño máximo permitido (50MB)', 'mime_real' => null];
+        }
+
+        // 7. Usar finfo para validación adicional
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $realMime = $finfo->file($file->getRealPath());
+        if (!in_array($realMime, $allowedMimes)) {
+            return ['valido' => false, 'error' => "Tipo MIME real no permitido: {$realMime}", 'mime_real' => $realMime];
+        }
+
+        return ['valido' => true, 'error' => null, 'mime_real' => $realMime];
+    }
+
+    /**
+     * Verifica si el nombre de archivo es seguro (sin path traversal).
+     *
+     * @param string $nombre
+     * @return bool
+     */
+    private static function esNombreSeguro(string $nombre): bool
+    {
+        // Caracteres peligrosos para path traversal
+        $patronesPeligrosos = ['../', '..\\', '/../', '\\..\\', '%00', "\0"];
+
+        foreach ($patronesPeligrosos as $patron) {
+            if (stripos($nombre, $patron) !== false) {
+                return false;
+            }
+        }
+
+        // Verificar que no tenga null bytes
+        if (strpos($nombre, "\0") !== false) {
+            return false;
+        }
+
+        // Verificar longitud máxima
+        if (strlen($nombre) > 255) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

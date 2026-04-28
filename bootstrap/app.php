@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Support\Facades\Log;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -10,7 +11,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Global middleware
+        // Validación de configuración de seguridad en cada request
         $middleware->use([
             \App\Http\Middleware\TrustProxies::class,
             \Illuminate\Http\Middleware\HandleCors::class,
@@ -68,4 +69,47 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->report(function (Throwable $e) {
             //
         });
-    })->create();
+    })
+    ->beforeBootstrapping(function (Application $app) {
+        // =========================================================================
+        // SECURITY VALIDATION - OWASP A05, ISO 27001 A.12.4
+        // =========================================================================
+        
+        // 1. APP_DEBUG no puede ser true en producción
+        if (config('app.env') === 'production' && config('app.debug') === true) {
+            Log::critical('SECURITY: APP_DEBUG is TRUE in production environment');
+            if (!$app->runningUnitTests()) {
+                throw new \RuntimeException('Security Alert: APP_DEBUG cannot be true in production');
+            }
+        }
+        
+        // 2. DB_PASSWORD es obligatoria en producción
+        if (config('app.env') === 'production' && empty(config('database.connections.mysql.password'))) {
+            Log::critical('SECURITY: DB_PASSWORD is empty in production environment');
+            if (!$app->runningUnitTests()) {
+                throw new \RuntimeException('Security Alert: DB_PASSWORD is required for production');
+            }
+        }
+        
+        // 3. Session lifetime no puede exceder 30 minutos en producción
+        if (config('app.env') === 'production' && config('session.lifetime') > 30) {
+            Log::warning('SECURITY: SESSION_LIFETIME exceeds 30 minutes in production', [
+                'current_lifetime' => config('session.lifetime')
+            ]);
+        }
+        
+        // 4. Rate limiting debe estar habilitado
+        $rateLimitConfig = config('cache.default');
+        if ($rateLimitConfig === 'file' && config('app.env') === 'production') {
+            Log::warning('SECURITY: Using file cache driver for rate limiting in production');
+        }
+        
+        Log::info('Security configuration validation completed', [
+            'env' => config('app.env'),
+            'debug' => config('app.debug'),
+            'session_lifetime' => config('session.lifetime'),
+            'rate_limit_driver' => config('cache.default'),
+            'validated_at' => now()->toISOString()
+        ]);
+    })
+    ->create();

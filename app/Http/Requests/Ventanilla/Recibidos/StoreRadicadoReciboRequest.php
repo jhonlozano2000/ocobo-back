@@ -4,15 +4,26 @@ namespace App\Http\Requests\Ventanilla\Recibidos;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth;
 
 class StoreRadicadoReciboRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
+     * OWASP A01:2021 - Broken Access Control
+     * ISO 27001 A.9.4.2 - Rights management
      */
     public function authorize(): bool
     {
-        return true;
+        $user = Auth::user();
+
+        if (!$user) {
+            return false;
+        }
+
+        // Verificar permiso específico para crear radicados recibidos
+        // Según el patrón de permisos: "Radicar -> Cores. Recibida -> Crear"
+        return $user->hasPermissionTo('Radicar -> Cores. Recibida -> Crear');
     }
 
     /**
@@ -43,7 +54,7 @@ class StoreRadicadoReciboRequest extends FormRequest
     public function messages()
     {
         return [
-            'clasifica_documen_id.required' => 'La clasificación documental es obligatoria.',
+            'clasifica_documen_id.required' => 'La clasificación documental es obligatoria según TRD.',
             'clasifica_documen_id.exists' => 'La clasificación documental no es válida.',
             'tercero_id.required' => 'El tercero es obligatorio.',
             'tercero_id.exists' => 'El tercero no es válido.',

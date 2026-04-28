@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Password;
 
 class AuthRegisterRequest extends FormRequest
 {
@@ -26,7 +27,16 @@ class AuthRegisterRequest extends FormRequest
             'nombres' => 'required|string|max:70',
             'apellidos' => 'required|string|max:70',
             'email' => 'required|string|email|max:70|unique:users',
-            'password' => 'required|string|min:6|confirmed',
+            'password' => [
+                'required',
+                'string',
+                'confirmed',
+                Password::min(8)
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols()
+                    ->uncompromised()
+            ],
             'tel' => 'nullable|string|max:20',
             'movil' => 'nullable|string|max:20',
             'dir' => 'nullable|string|max:255',
@@ -58,7 +68,11 @@ class AuthRegisterRequest extends FormRequest
             'email.max' => 'El correo electrónico no puede superar los 70 caracteres.',
 
             'password.required' => 'La contraseña es obligatoria.',
-            'password.min' => 'La contraseña debe tener al menos 6 caracteres.',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.mixed' => 'La contraseña debe contener mayúsculas y minúsculas.',
+            'password.numbers' => 'La contraseña debe contener al menos un número.',
+            'password.symbols' => 'La contraseña debe contener al menos un carácter especial (@$!%*?&#).',
+            'password.uncompromised' => 'Esta contraseña ha sido filtrada en una brecha de datos. Por favor elija otra.',
             'password.confirmed' => 'La confirmación de la contraseña no coincide.',
 
             'tel.max' => 'El teléfono no puede superar los 20 caracteres.',

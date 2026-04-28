@@ -81,6 +81,19 @@ return [
             'replace_placeholders' => true,
         ],
 
+        /**
+         * Canal de auditoría ISO 27001 A.12.4.1
+         * Guarda logs de auditoría separadamente para cumplimiento legal
+         * Retention: 1 año (365 días)
+         */
+        'audit' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/audit.log'),
+            'level' => 'info',
+            'days' => 365, // 1 año para cumplimiento legal
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

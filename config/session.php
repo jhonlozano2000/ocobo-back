@@ -25,13 +25,17 @@ return [
     | Session Lifetime
     |--------------------------------------------------------------------------
     |
-    | Here you may specify the number of minutes that you wish the session
-    | to be allowed to remain idle before it expires. If you want them
-    | to immediately expire on the browser closing, set that option.
+    | Aquí puede especificar el número de minutos que desea que la sesión
+    | permanezca inactiva antes de expirar. Si desea que expiren inmediatamente
+    | al cerrar el navegador, configure esa opción.
+    |
+    | ISO 27001 A.9.4 - Session Management: Para sistemas SGDEA se recomienda
+    | un lifetime menor en producción (30-60 min). Valor actual: 480 min (8h)
+    | para permitir trabajo con documentos extensos.
     |
     */
 
-    'lifetime' => env('SESSION_LIFETIME', 120),
+    'lifetime' => env('SESSION_LIFETIME', 480),
 
     'expire_on_close' => false,
 
@@ -40,13 +44,15 @@ return [
     | Session Encryption
     |--------------------------------------------------------------------------
     |
-    | This option allows you to easily specify that all of your session data
-    | should be encrypted before it is stored. All encryption will be run
-    | automatically by Laravel and you can use the Session like normal.
+    | Esta opción le permite especificar fácilmente que todos los datos de su sesión
+    | deben estar encriptados antes de ser almacenados. Toda la encriptación se
+    | ejecutará automáticamente por Laravel.
+    |
+    | ISO 27001 A.10.1 - Cryptographic Controls
     |
     */
 
-    'encrypt' => false,
+    'encrypt' => true,
 
     /*
     |--------------------------------------------------------------------------

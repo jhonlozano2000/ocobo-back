@@ -4,6 +4,9 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Routing\Router;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Cache\RateLimiting\Limit;
 use App\Contracts\Services\ConfigListaServiceInterface;
 use App\Contracts\Services\ConfigDiviPoliServiceInterface;
 use App\Contracts\Services\CalidadOrganigramaServiceInterface;
@@ -37,11 +40,99 @@ class AppServiceProvider extends ServiceProvider
 
     private function configurarRateLimiting(): void
     {
-        $limite = (int) env('THROTTLE_ZONE_LIMIT', 60);
-        $periodo = env('THROTTLE_ZONE_PER', '1minute');
+        // =========================================================================
+        // RATE LIMITING - OWASP A07:2021, ISO 27001 A.12.4.2
+        // =========================================================================
 
-        \Illuminate\Support\Facades\RateLimiter::for('api', function ($request) use ($limite, $periodo) {
-            return \Illuminate\Support\Facades\Limit::perMinute($limite)->by($request->user()?->id ?: $request->ip());
+        // Rate limit general API: 60 req/min por IP o usuario
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(60)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Demasiadas solicitudes. Por favor espere.',
+                        'retry_after' => $headers['Retry-After'] ?? 60
+                    ], 429);
+                });
+        });
+
+        // Rate limit autenticación: 5 intentos/min por IP (Brute Force Protection)
+        RateLimiter::for('login', function (Request $request) {
+            $loginId = $request->input('email') ?: $request->ip();
+            return Limit::perMinute(5)
+                ->by($loginId)
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Demasiados intentos de inicio de sesión. Intente en 1 minuto.',
+                        'retry_after' => $headers['Retry-After'] ?? 60
+                    ], 429);
+                });
+        });
+
+        // Rate limit registro: 3 registros/min por IP
+        RateLimiter::for('register', function (Request $request) {
+            return Limit::perMinute(3)
+                ->by($request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Demasiados intentos de registro. Intente más tarde.',
+                        'retry_after' => $headers['Retry-After'] ?? 60
+                    ], 429);
+                });
+        });
+
+        // Rate limit radicación: 30 req/min por usuario (ISO 27001 A.12.4)
+        RateLimiter::for('radicacion', function (Request $request) {
+            return Limit::perMinute(30)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Límite de radicaciones alcanzado. Intente en unos minutos.',
+                        'retry_after' => $headers['Retry-After'] ?? 60
+                    ], 429);
+                });
+        });
+
+        // Rate limit uploads: 10 uploads/min por usuario (OWASP A08)
+        RateLimiter::for('uploads', function (Request $request) {
+            return Limit::perMinute(10)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Límite de subida de archivos alcanzado.',
+                        'retry_after' => $headers['Retry-After'] ?? 60
+                    ], 429);
+                });
+        });
+
+        // Rate limit búsqueda: 30 req/min por usuario
+        RateLimiter::for('search', function (Request $request) {
+            return Limit::perMinute(30)
+                ->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Rate limit firma electrónica: 5 req/min por usuario
+        RateLimiter::for('firma', function (Request $request) {
+            return Limit::perMinute(5)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Límite de solicitudes de firma alcanzado.',
+                        'retry_after' => $headers['Retry-After'] ?? 60
+                    ], 429);
+                });
+        });
+
+        // Rate limit específico para API de terceros (protección enumeration)
+        RateLimiter::for('terceros', function (Request $request) {
+            return Limit::perMinute(20)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Límite de consultas a terceros alcanzado.',
+                        'retry_after' => $headers['Retry-After'] ?? 60
+                    ], 429);
+                });
         });
     }
 }
