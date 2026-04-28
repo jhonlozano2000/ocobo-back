@@ -9,6 +9,7 @@ use App\Http\Resources\UserResource;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\UsersAuthenticationLog;
 use App\Models\User;
+use App\Services\Seguridad\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
@@ -51,6 +52,13 @@ class AuthController extends Controller
                 'details'  => 'Credenciales incorrectas - IP: ' . $request->ip() . ' | User-Agent: ' . substr($request->userAgent(), 0, 200),
             ]);
 
+            // Log centralizado de seguridad
+            AuditLogService::logAutenticacion(
+                AuditLogService::EVENTO_LOGIN_FALLO,
+                false,
+                ['ip' => $request->ip(), 'email_domain' => explode('@', $email)[1] ?? 'unknown']
+            );
+
             return $this->errorResponse('Las credenciales proporcionadas son incorrectas.', null, 401);
         }
 
@@ -86,6 +94,13 @@ class AuthController extends Controller
             'details'  => 'Login exitoso - IP: ' . $request->ip() . ' | Dispositivo: ' . $this->parseDevice($request->userAgent()),
         ]);
 
+        // Log centralizado de seguridad
+        AuditLogService::logAutenticacion(
+            AuditLogService::EVENTO_LOGIN_EXITO,
+            true,
+            ['ip' => $request->ip(), 'device' => $this->parseDevice($request->userAgent())]
+        );
+
         // PRINCIPIO DE PRIVILEGIO MÍNIMO (PoLP) - ISO 27001 A.9.4.1
         // No exponer datos sensibles innecesarios al cliente
         return $this->successResponse([
@@ -113,6 +128,12 @@ class AuthController extends Controller
                 'success'  => true,
                 'details'  => 'Logout exitoso',
             ]);
+
+            AuditLogService::logAutenticacion(
+                AuditLogService::EVENTO_LOGOUT,
+                true,
+                ['ip' => $request->ip()]
+            );
         }
 
         Auth::guard('web')->logout();

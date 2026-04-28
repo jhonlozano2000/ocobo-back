@@ -62,16 +62,73 @@ return Application::configure(basePath: dirname(__DIR__))
             'password_confirmation',
         ]);
 
+        // No mostrar detalles de errores en producción (OWASP A05)
+        $exceptions->render(function (\Throwable $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                $statusCode = 500;
+
+                if (method_exists($e, 'getStatusCode')) {
+                    $statusCode = $e->getStatusCode();
+                }
+
+                $response = [
+                    'success' => false,
+                    'message' => 'Ha ocurrido un error. Contacte al administrador.',
+                    'error' => 'SERVER_ERROR',
+                ];
+
+                // En desarrollo/local, incluir más información
+                if (config('app.debug') && config('app.env') !== 'production') {
+                    $response['debug'] = [
+                        'message' => $e->getMessage(),
+                        'exception' => get_class($e),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                    ];
+                }
+
+                return response()->json($response, $statusCode);
+            }
+        });
+
+        $exceptions->report(function (\Throwable $e) {
+            // Registrar errores críticos con contexto adicional
+            if (config('app.env') === 'production') {
+                Log::error('Exception reportado', [
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'user_id' => auth()->id(),
+                    'request_id' => request()->header('X-Request-ID'),
+                ]);
+            }
+        });
+
         $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json([
-                    'message' => $e->getMessage(),
+                    'success' => false,
+                    'message' => 'No autenticado.',
                 ], 401);
             }
         });
 
-        $exceptions->report(function (Throwable $e) {
-            //
+        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tiene permiso para realizar esta acción.',
+                ], 403);
+            }
+        });
+
+        $exceptions->render(function (\Illuminate\Validation\ValidationException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error de validación.',
+                    'errors' => $e->errors(),
+                ], 422);
+            }
         });
     })
     ->beforeBootstrapping(function (Application $app) {
@@ -95,25 +152,37 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         }
         
-        // 3. Session lifetime no puede exceder 30 minutos en producción
-        if (config('app.env') === 'production' && config('session.lifetime') > 30) {
-            Log::warning('SECURITY: SESSION_LIFETIME exceeds 30 minutes in production', [
+        // 3. Session lifetime para producción (máx 8 horas = 480 min para flujo documental)
+        if (config('app.env') === 'production' && config('session.lifetime') > 480) {
+            Log::warning('SECURITY: SESSION_LIFETIME exceeds 8 hours in production', [
                 'current_lifetime' => config('session.lifetime')
             ]);
         }
-        
+
         // 4. Rate limiting debe estar habilitado
         $rateLimitConfig = config('cache.default');
         if ($rateLimitConfig === 'file' && config('app.env') === 'production') {
             Log::warning('SECURITY: Using file cache driver for rate limiting in production');
         }
-        
-        Log::info('Security configuration validation completed', [
-            'env' => config('app.env'),
-            'debug' => config('app.debug'),
-            'session_lifetime' => config('session.lifetime'),
-            'rate_limit_driver' => config('cache.default'),
-            'validated_at' => now()->toISOString()
-        ]);
+
+        // 5. Verificar que APP_KEY está configurada en producción
+        if (config('app.env') === 'production' && empty(config('app.key'))) {
+            Log::critical('SECURITY: APP_KEY is not set in production');
+            if (!$app->runningUnitTests()) {
+                throw new \RuntimeException('Security Alert: APP_KEY is required for production');
+            }
+        }
+
+        // 6. CSRF protection debe estar habilitada en producción
+        if (config('app.env') === 'production') {
+            Log::info('Security configuration validation completed', [
+                'env' => config('app.env'),
+                'debug' => config('app.debug'),
+                'session_lifetime' => config('session.lifetime'),
+                'rate_limit_driver' => config('cache.default'),
+                'app_key_set' => !empty(config('app.key')),
+                'validated_at' => now()->toISOString()
+            ]);
+        }
     })
     ->create();
