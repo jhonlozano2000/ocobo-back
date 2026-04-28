@@ -7,9 +7,12 @@ return [
     | Cross-Origin Resource Sharing (CORS) Configuration
     |--------------------------------------------------------------------------
     |
-    | Here you may configure your settings for cross-origin resource sharing
-    | or "CORS". This determines what cross-origin operations may execute
-    | in web browsers. You are free to adjust these settings as needed.
+    | Configuración de CORS para OCOBO.
+    |
+    | OWASP A05:2021 - Security Misconfiguration
+    | Los orígenes permitidos se configuran vía variables de entorno.
+    |
+    | Para producción: usar dominios específicos, NO IPs.
     |
     | To learn more: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
     |
@@ -19,19 +22,29 @@ return [
 
     'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
-    'allowed_origins' => [
-        'http://localhost:3000',
-        'http://localhost:5173',
-        'http://127.0.0.1:3000',
-        'http://127.0.0.1:5173',
-        'http://ocobo.test',
-        'https://ocobo.test',
-        'http://ocobo.test:3000',
-        'http://127.0.0.1',
-        'http://192.168.1.7:3000',
-    ],
+    /*
+    |--------------------------------------------------------------------------
+    | Orígenes Permitidos
+    |--------------------------------------------------------------------------
+    |
+    | IMPORTANTE: En producción usar SOLO dominios verificados.
+    | NO usar IPs hardcoded en producción.
+    |
+    | Formato entorno: comma-separated domains
+    | CORS_ALLOWED_ORIGINS=http://frontend.test,https://ocobo.com
+    |
+    */
+    'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:5173')),
 
-    'allowed_origins_patterns' => [],
+    /*
+    |--------------------------------------------------------------------------
+    | Patrones de Orígenes (para wildcard subdomains)
+    |--------------------------------------------------------------------------
+    |
+    | Ejemplo: *.example.com permite sub.example.com, app.example.com
+    |
+    */
+    'allowed_origins_patterns' => explode(',', env('CORS_ALLOWED_ORIGINS_PATTERNS', '')),
 
     'allowed_headers' => [
         'Accept',
@@ -41,12 +54,33 @@ return [
         'X-CSRF-TOKEN',
         'X-XSRF-TOKEN',
         'Cookie',
+        'Origin',
     ],
 
-    'exposed_headers' => [],
+    'exposed_headers' => [
+        'X-Request-ID',
+    ],
 
-    'max_age' => 86400,
+    /*
+    |--------------------------------------------------------------------------
+    | Max Age
+    |--------------------------------------------------------------------------
+    |
+    | Tiempo en segundos que el navegador cachea la respuesta preflight OPTIONS.
+    | 86400 = 24 horas
+    |
+    */
+    'max_age' => env('CORS_MAX_AGE', 86400),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Credentials
+    |--------------------------------------------------------------------------
+    |
+    | Requiere que Access-Control-Allow-Credentials sea true.
+    | Solo usar con orígenes específicos (no con *).
+    |
+    */
     'supports_credentials' => true,
 
 ];

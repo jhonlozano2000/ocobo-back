@@ -217,34 +217,82 @@ class OcrService
     }
 
     /**
-     * Ejecuta un comando de forma segura (sin shell injection)
+     * Timeout por defecto para comandos OCR (30 segundos)
      */
-    private function ejecutarComandoSeguro(string $command, array &$output, int &$returnCode): void
+    private const DEFAULT_TIMEOUT = 30;
+
+    /**
+     * Timeout para procesamiento de PDF (60 segundos)
+     */
+    private const PDF_TIMEOUT = 60;
+
+    /**
+     * Ejecuta un comando de forma segura (sin shell injection)
+     * Con soporte para timeouts
+     */
+    private function ejecutarComandoSeguro(string $command, array &$output, int &$returnCode, int $timeout = self::DEFAULT_TIMEOUT): void
     {
-        // Usar proc_open en lugar de exec para mayor control
         $descriptorSpec = [
-            0 => ['pipe', 'r'],  // stdin
-            1 => ['pipe', 'w'],  // stdout
-            2 => ['pipe', 'w'],  // stderr
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
         ];
 
         $process = proc_open($command . ' 2>&1', $descriptorSpec, $pipes);
 
         if (is_resource($process)) {
+            // Configurar timeout en segundos
+            stream_set_timeout($pipes[1], $timeout);
+            stream_set_timeout($pipes[2], $timeout);
+
             // Cerrar stdin
             fclose($pipes[0]);
 
-            // Leer stdout
-            $stdout = stream_get_contents($pipes[1]);
-            fclose($pipes[1]);
+            // Leer stdout con timeout
+            $stdout = '';
+            $stderr = '';
+            $timeoutUs = $timeout * 1000000;
 
-            // Leer stderr
-            $stderr = stream_get_contents($pipes[2]);
+            $startTime = microtime(true);
+
+            while (!feof($pipes[1]) || !feof($pipes[2])) {
+                $read = [$pipes[1], $pipes[2]];
+                $write = null;
+                $except = null;
+
+                $remaining = $timeoutUs - (microtime(true) - $startTime) * 1000000;
+                if ($remaining <= 0) {
+                    break;
+                }
+
+                $tvSec = (int)($remaining / 1000000);
+                $tvUsec = (int)($remaining % 1000000);
+
+                if (stream_select($read, $write, $except, $tvSec, $tvUsec) === false) {
+                    break;
+                }
+
+                if (!empty($read)) {
+                    foreach ($read as $pipe) {
+                        if ($pipe === $pipes[1]) {
+                            $stdout .= fread($pipe, 8192);
+                        } elseif ($pipe === $pipes[2]) {
+                            $stderr .= fread($pipe, 8192);
+                        }
+                    }
+                }
+
+                if ((microtime(true) - $startTime) * 1000000 > $timeoutUs) {
+                    Log::warning("OCR: Timeout excedido ({$timeout}s)");
+                    break;
+                }
+            }
+
+            fclose($pipes[1]);
             fclose($pipes[2]);
 
             $returnCode = proc_close($process);
 
-            // Combinar stdout y stderr
             $output = array_filter(array_merge(
                 explode("\n", trim($stdout)),
                 explode("\n", trim($stderr))
@@ -368,7 +416,7 @@ class OcrService
 
         $output = [];
         $returnCode = 0;
-        $this->ejecutarComandoSeguro($command, $output, $returnCode);
+        $this->ejecutarComandoSeguro($command, $output, $returnCode, self::PDF_TIMEOUT);
 
         if ($returnCode !== 0) {
             Log::warning("OCR: Ghostscript falló", ['returnCode' => $returnCode]);
@@ -484,7 +532,7 @@ class OcrService
 
         $output = [];
         $returnCode = 0;
-        $this->ejecutarComandoSeguro($convertCmd, $output, $returnCode);
+        $this->ejecutarComandoSeguro($convertCmd, $output, $returnCode, self::PDF_TIMEOUT);
 
         if ($returnCode !== 0) {
             Log::warning("OCR: Poppler falló");
