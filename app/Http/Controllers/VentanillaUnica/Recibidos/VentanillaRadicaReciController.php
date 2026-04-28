@@ -18,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
 use App\Traits\AuditViewTrait;
 use App\Traits\VentanillaAuditTrait;
@@ -1694,5 +1695,137 @@ class VentanillaRadicaReciController extends Controller
         }, $transiciones);
 
         return $this->successResponse($transicionesInfo, 'Transiciones disponibles obtenidas exitosamente');
+    }
+
+    /**
+     * Solicitar anulación de radicado (permiso Listar)
+     */
+    public function solicitarAnulacion($id, Request $request)
+    {
+        try {
+            $request->validate([
+                'observa_soli_anula' => 'required|string'
+            ], [
+                'observa_soli_anula.required' => 'Las observaciones de la solicitud son obligatorias.'
+            ]);
+
+            $radicado = VentanillaRadicaReci::find($id);
+            if (!$radicado) {
+                return $this->errorResponse('Radicado no encontrado', null, 404);
+            }
+
+            if ($radicado->usua_aprue_anula_id) {
+                return $this->errorResponse('El radicado ya está anulado', null, 400);
+            }
+
+            if ($radicado->usua_soli_anula_id && !$radicado->usua_aprue_anula_id) {
+                return $this->errorResponse('Ya existe una solicitud de anulación pendiente para este radicado', null, 400);
+            }
+
+            $radicado->update([
+                'usua_soli_anula_id' => Auth::id(),
+                'observa_soli_anula' => $request->observa_soli_anula
+            ]);
+
+            return $this->successResponse($radicado, 'Solicitud de anulación creada exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al solicitar la anulación', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Aprobar o rechazar anulación de radicado (permiso Jefe de Archivo)
+     */
+    public function procesarAnulacion($id, Request $request)
+    {
+        try {
+            $request->validate([
+                'accion' => 'required|in:aprobar,rechazar',
+                'observa_aprue_anula' => 'required|string'
+            ], [
+                'observa_aprue_anula.required' => 'Las observaciones son obligatorias.'
+            ]);
+
+            $radicado = VentanillaRadicaReci::find($id);
+            if (!$radicado) {
+                return $this->errorResponse('Radicado no encontrado', null, 404);
+            }
+
+            if (!$radicado->usua_soli_anula_id) {
+                return $this->errorResponse('No existe solicitud de anulación para este radicado', null, 400);
+            }
+
+            if ($radicado->usua_aprue_anula_id) {
+                return $this->errorResponse('La anulación ya fue procesada', null, 400);
+            }
+
+            if ($request->accion === 'rechazar') {
+                $radicado->update([
+                    'usua_aprue_anula_id' => Auth::id(),
+                    'observa_aprue_anula' => $request->observa_aprue_anula
+                ]);
+                return $this->successResponse($radicado, 'Anulación rechazada');
+            }
+
+            $radicado->update([
+                'usua_aprue_anula_id' => Auth::id(),
+                'observa_aprue_anula' => $request->observa_aprue_anula
+            ]);
+
+            return $this->successResponse($radicado, 'Anulación aprobada exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al procesar la anulación', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Listar radicados pendientes de anulación
+     */
+    public function listarPendientesAnulacion()
+    {
+        try {
+            $radicados = VentanillaRadicaReci::whereNotNull('usua_soli_anula_id')
+                ->whereNull('usua_aprue_anula_id')
+                ->with(['usuarioCrea', 'tercero', 'usuario_soli_anula'])
+                ->orderBy('updated_at', 'desc')
+                ->get();
+
+            return $this->successResponse($radicados, 'Radicados pendientes de anulación obtenidos');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al listar pendientes', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Listar radicados asignados al usuario logueado
+     */
+    public function misRadicados(Request $request)
+    {
+        try {
+            $userId = Auth::id();
+            $search = $request->get('search', '');
+            $estado = $request->get('estado', '');
+            
+            $query = VentanillaRadicaReci::orderBy('created_at', 'desc');
+            
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('num_radicado', 'like', "%{$search}%")
+                      ->orWhere('asunto', 'like', "%{$search}%");
+                });
+            }
+            
+            if ($estado) {
+                $query->whereHas('estadoTrabajo', function ($q) use ($estado) {
+                    $q->where('estado', $estado);
+                });
+            }
+            
+            $radicados = $query->limit(50)->get();
+
+            return $this->successResponse($radicados, 'Mis radicados obtenidos');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener mis radicados', $e->getMessage(), 500);
+        }
     }
 }

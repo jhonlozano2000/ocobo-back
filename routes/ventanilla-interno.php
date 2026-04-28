@@ -12,9 +12,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     $permInterno = 'Radicar -> Cores. Interna -> ';
     Route::get('/radica-interno/estadisticas', [VentanillaRadicaInternoController::class, 'estadisticas'])->name('radica-interno.estadisticas')->middleware('can:' . $permInterno . 'Listar');
+    Route::get('/radica-interno/pendientes-anulacion', [VentanillaRadicaInternoController::class, 'listarPendientesAnulacion'])->name('radica-interno.pendientes-anulacion')->middleware('can:Jefe de Archivo');
     Route::put('/radica-interno/{id}/update-clasificacion-documental', [VentanillaRadicaInternoController::class, 'updateClasificacionDocumental'])->name('radica-interno.update-clasificacion-documental')->middleware('can:' . $permInterno . 'Actualizar clasificacion de radicados');
     Route::post('/radica-interno/{id}/notificacion', [VentanillaRadicaInternoController::class, 'enviarNotificacion'])->name('radica-interno.notificacion')->middleware('can:' . $permInterno . 'Notificar Email');
     Route::get('/radica-interno/{id}/linea-tiempo', [VentanillaRadicaInternoController::class, 'lineaTiempo'])->name('radica-interno.linea-tiempo')->middleware('can:' . $permInterno . 'Mostrar');
+    Route::get('/radica-interno/mis-radicados', [VentanillaRadicaInternoController::class, 'misRadicados'])->name('radica-interno.mis-radicados')->middleware('can:' . $permInterno . 'Listar');
+    Route::put('/radica-interno/{id}/estado', [VentanillaRadicaInternoController::class, 'updateEstado'])->name('radica-interno.update-estado')->middleware('can:' . $permInterno . 'Editar');
+    Route::post('/radica-interno/{id}/solicitar-anulacion', [VentanillaRadicaInternoController::class, 'solicitarAnulacion'])->name('radica-interno.solicitar-anulacion')->middleware('can:' . $permInterno . 'Listar');
+    Route::post('/radica-interno/{id}/procesar-anulacion', [VentanillaRadicaInternoController::class, 'procesarAnulacion'])->name('radica-interno.procesar-anulacion')->middleware('can:Jefe de Archivo');
     Route::get('/radica-interno', [VentanillaRadicaInternoController::class, 'index'])->name('radica-interno.index')->middleware('can:' . $permInterno . 'Listar');
     Route::post('/radica-interno', [VentanillaRadicaInternoController::class, 'store'])->name('radica-interno.store')->middleware('can:' . $permInterno . 'Crear');
     Route::get('/radica-interno/{id}', [VentanillaRadicaInternoController::class, 'show'])->name('radica-interno.show')->middleware('can:' . $permInterno . 'Mostrar');

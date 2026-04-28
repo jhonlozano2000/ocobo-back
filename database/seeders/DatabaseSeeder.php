@@ -12,6 +12,15 @@ use Database\Seeders\ControlAcceso\RoleSeeder;
 use Database\Seeders\ControlAcceso\UsersSeeder;
 use Database\Seeders\Gestion\TercerosSeed;
 use Database\Seeders\ClasificacionDocumental\TRDSeed;
+use Database\Seeders\Permisos\PermisosControlAccesoSeeder;
+use Database\Seeders\Permisos\PermisosConfiguracionSeeder;
+use Database\Seeders\Permisos\PermisosCalidadSeeder;
+use Database\Seeders\Permisos\PermisosClasificacionDocumentalSeeder as PermisosPermisosClasificacionDocumentalSeeder;
+use Database\Seeders\Permisos\PermisosGestionSeeder;
+use Database\Seeders\Permisos\PermisosDigitalizacionSeeder;
+use Database\Seeders\Permisos\PermisosReportesSeeder;
+use Database\Seeders\Permisos\PermisosOtrosSeeder;
+use Database\Seeders\Permisos\PermisosRadicarSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -37,7 +46,16 @@ class DatabaseSeeder extends Seeder
         $this->call(SedesSeeder::class);
         $this->call(TRDSeed::class);
 
+        $this->call(PermisosPermisosClasificacionDocumentalSeeder::class);
+
+        $this->call(PermisosControlAccesoSeeder::class);
+        $this->call(PermisosConfiguracionSeeder::class);
+        $this->call(PermisosCalidadSeeder::class);
+        $this->call(PermisosGestionSeeder::class);
+        $this->call(PermisosDigitalizacionSeeder::class);
+        $this->call(PermisosReportesSeeder::class);
+        $this->call(PermisosOtrosSeeder::class);
+
         $this->call(PermisosRadicarSeeder::class);
-        $this->call(PermisoImprimirRotuloSeeder::class);
     }
 }

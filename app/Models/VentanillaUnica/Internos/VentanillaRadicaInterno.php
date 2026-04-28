@@ -30,6 +30,10 @@ class VentanillaRadicaInterno extends Model
         'ocr',
         'ocr_aplicado',
         'estado_trabajo',
+        'usua_soli_anula_id',
+        'observa_soli_anula',
+        'usua_aprue_anula_id',
+        'observa_aprue_anula',
     ];
 
     /**
@@ -52,6 +56,16 @@ class VentanillaRadicaInterno extends Model
     public function usuarioSubido()
     {
         return $this->belongsTo(\App\Models\User::class, 'subido_por');
+    }
+
+    public function usuario_soli_anula()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'usua_soli_anula_id');
+    }
+
+    public function usuario_aprue_anula()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'usua_aprue_anula_id');
     }
 
     /**
@@ -83,7 +97,7 @@ class VentanillaRadicaInterno extends Model
      */
     public function archivos()
     {
-        return $this->hasMany(VentanillaRadicaInternoArchivos::class, 'radica_interno_id');
+        return $this->hasMany(VentanillaRadicaInternoArchivos::class, 'radicado_id');
     }
 
     /**

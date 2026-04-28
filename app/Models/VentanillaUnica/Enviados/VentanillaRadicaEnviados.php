@@ -38,6 +38,10 @@ class VentanillaRadicaEnviados extends Model
         'ocr',
         'ocr_aplicado',
         'estado_trabajo',
+        'usua_soli_anula_id',
+        'observa_soli_anula',
+        'usua_aprue_anula_id',
+        'observa_aprue_anula',
     ];
 
     /**
@@ -80,6 +84,16 @@ class VentanillaRadicaEnviados extends Model
     public function usuarioCreaRadicado()
     {
         return $this->belongsTo(\App\Models\User::class, 'usuario_crea');
+    }
+
+    public function usuario_soli_anula()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'usua_soli_anula_id');
+    }
+
+    public function usuario_aprue_anula()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'usua_aprue_anula_id');
     }
 
     public function tercero()

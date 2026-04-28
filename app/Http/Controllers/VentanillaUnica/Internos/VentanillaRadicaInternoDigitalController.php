@@ -16,8 +16,8 @@ class VentanillaRadicaInternoDigitalController extends Controller
 {
     use ApiResponseTrait;
 
-    private const DISK = 'ventanilla_radica_interno_archivos';
-    private const PERM = 'Radicar -> Cores. Interno -> ';
+    private const DISK = 'radicados_internos';
+    private const PERM = 'Radicar -> Cores. Interna -> ';
 
     public function __construct()
     {
@@ -158,7 +158,7 @@ class VentanillaRadicaInternoDigitalController extends Controller
     public function getFileInfo($id)
     {
         try {
-            $radicado = VentanillaRadicaInterno::with('usuarioSubio')->find($id);
+            $radicado = VentanillaRadicaInterno::with('usuarioSubido')->find($id);
 
             if (!$radicado || !$radicado->archivo_digital) {
                 return $this->errorResponse('Archivo no encontrado', null, 404);
@@ -169,8 +169,8 @@ class VentanillaRadicaInternoDigitalController extends Controller
                 'file_size' => Storage::disk(self::DISK)->size($radicado->archivo_digital),
                 'file_type' => Storage::disk(self::DISK)->mimeType($radicado->archivo_digital),
                 'uploaded_at' => $radicado->updated_at,
-                'uploaded_by' => $radicado->usuarioSubio
-                    ? trim($radicado->usuarioSubio->nombres . ' ' . $radicado->usuarioSubio->apellidos)
+                'uploaded_by' => $radicado->usuarioSubido
+                    ? trim($radicado->usuarioSubido->nombres . ' ' . $radicado->usuarioSubido->apellidos)
                     : 'Usuario no identificado',
                 'file_url' => ArchivoHelper::obtenerUrl($radicado->archivo_digital, self::DISK),
             ];

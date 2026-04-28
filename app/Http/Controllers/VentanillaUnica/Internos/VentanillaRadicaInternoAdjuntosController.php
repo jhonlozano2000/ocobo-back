@@ -16,8 +16,8 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
 {
     use ApiResponseTrait;
 
-    private const DISK = 'ventanilla_radica_interno_archivos';
-    private const PERM = 'Radicar -> Cores. Interno -> ';
+    private const DISK = 'radicados_internos';
+    private const PERM = 'Radicar -> Cores. Interna -> ';
 
     public function __construct()
     {
@@ -62,10 +62,11 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
                 $hashSha256 = $uploadData['hash'];
 
                 $archivoAdicional = VentanillaRadicaInternoArchivos::create([
-                    'radica_interno_id' => $radicado->id,
+                    'radicado_id' => $radicado->id,
                     'subido_por' => $usuario?->id,
                     'archivo' => $rutaArchivo,
                     'nom_origi' => $archivo->getClientOriginalName(),
+                    'archivo_tipo' => $archivo->getMimeType(),
                     'archivo_peso' => $archivo->getSize(),
                     'hash_sha256' => $hashSha256,
                 ]);
@@ -74,10 +75,11 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
 
                 $archivosSubidos[] = [
                     'id' => $archivoAdicional->id,
+                    'nombre' => $archivoAdicional->nom_origi,
                     'path' => $rutaArchivo,
                     'subido_por' => $usuario ? trim($usuario->nombres . ' ' . $usuario->apellidos) : 'No se registró usuario',
-                    'file_size' => $archivo->getSize(),
-                    'file_type' => $archivo->getMimeType(),
+                    'tamaño' => $archivo->getSize(),
+                    'tipo' => $archivo->getMimeType(),
                     'file_url' => $fileUrl,
                 ];
             }
@@ -91,20 +93,22 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
     public function listarArchivosAdjuntos($id)
     {
         try {
-            $radicado = VentanillaRadicaInterno::with('archivos.usuarioSubio')->find($id);
+            $radicado = VentanillaRadicaInterno::with('archivos.usuarioSubido')->find($id);
 
             if (!$radicado) {
                 return $this->errorResponse('Radicado interno no encontrado', null, 404);
             }
 
-            $archivos = $radicado->archivos->map(fn ($archivo) => [
+            $archivos = $radicado->archivos->map(fn($archivo) => [
                 'id' => $archivo->id,
                 'nombre' => $archivo->nom_origi ?? basename($archivo->archivo),
                 'ruta' => $archivo->archivo,
                 'url' => ArchivoHelper::obtenerUrl($archivo->archivo, self::DISK),
+                'tamaño' => $archivo->archivo_peso ?? Storage::disk(self::DISK)->size($archivo->archivo),
+                'tipo' => Storage::disk(self::DISK)->mimeType($archivo->archivo),
                 'fecha_subida' => $archivo->created_at,
-                'subido_por' => $archivo->usuarioSubio
-                    ? trim($archivo->usuarioSubio->nombres . ' ' . $archivo->usuarioSubio->apellidos)
+                'subido_por' => $archivo->usuarioSubido
+                    ? trim($archivo->usuarioSubido->nombres . ' ' . $archivo->usuarioSubido->apellidos)
                     : 'Usuario no identificado',
             ])->values();
 
@@ -117,7 +121,7 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
     public function descargarArchivoAdjunto($id, $archivoId)
     {
         try {
-            $archivo = VentanillaRadicaInternoArchivos::where('radica_interno_id', $id)
+            $archivo = VentanillaRadicaInternoArchivos::where('radicado_id', $id)
                 ->where('id', $archivoId)
                 ->first();
 
@@ -138,7 +142,7 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
     public function eliminarArchivoAdjunto($id, $archivoId)
     {
         try {
-            $archivo = VentanillaRadicaInternoArchivos::where('radica_interno_id', $id)
+            $archivo = VentanillaRadicaInternoArchivos::where('radicado_id', $id)
                 ->where('id', $archivoId)
                 ->first();
 

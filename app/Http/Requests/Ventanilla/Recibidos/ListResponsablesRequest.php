@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Ventanilla;
+namespace App\Http\Requests\Ventanilla\Recibidos;
 
 use Illuminate\Foundation\Http\FormRequest;
 

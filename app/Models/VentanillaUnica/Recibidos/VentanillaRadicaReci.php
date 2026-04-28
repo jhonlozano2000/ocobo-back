@@ -47,6 +47,10 @@ class VentanillaRadicaReci extends Model
         'estado_trabajo',
         'ocr',
         'ocr_aplicado',
+        'usua_soli_anula_id',
+        'observa_soli_anula',
+        'usua_aprue_anula_id',
+        'observa_aprue_anula',
     ];
 
     protected static function boot()
@@ -132,6 +136,16 @@ class VentanillaRadicaReci extends Model
         return $this->belongsTo(\App\Models\User::class, 'uploaded_by');
     }
 
+    public function usuario_soli_anula()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'usua_soli_anula_id');
+    }
+
+    public function usuario_aprue_anula()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'usua_aprue_anula_id');
+    }
+
     /**
      * Expedientes a los que este radicado ha sido incorporado.
      */
@@ -170,6 +184,17 @@ class VentanillaRadicaReci extends Model
     public function archivos()
     {
         return $this->hasMany(VentanillaRadicaReciArchivo::class, 'radicado_id');
+    }
+
+    /**
+     * Obtiene los comentarios asociados al radicado.
+     */
+    public function comentarios()
+    {
+        return $this->hasMany(VentanillaRadicaReciComentario::class, 'radica_reci_id')
+            ->whereNull('parent_id')
+            ->with(['respuestas', 'usuario'])
+            ->orderBy('created_at', 'desc');
     }
 
     /**

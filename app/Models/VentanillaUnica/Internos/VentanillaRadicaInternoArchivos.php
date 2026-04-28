@@ -14,19 +14,18 @@ class VentanillaRadicaInternoArchivos extends Model
     protected $table = 'ventanilla_radica_interno_archivos';
 
     protected $fillable = [
-        'radica_interno_id',
+        'radicado_id',
         'subido_por',
-        'nombre_archivo',
-        'ruta_archivo',
-        'tipo_archivo',
-        'tamano_archivo',
-        'extension_archivo',
+        'archivo',
+        'nom_origi',
+        'archivo_tipo',
+        'archivo_peso',
         'hash_sha256',
     ];
 
     public function radicaInterno()
     {
-        return $this->belongsTo(VentanillaRadicaInterno::class, 'radica_interno_id');
+        return $this->belongsTo(VentanillaRadicaInterno::class, 'radicado_id');
     }
 
     public function metadata()
@@ -41,7 +40,7 @@ class VentanillaRadicaInternoArchivos extends Model
 
     public function getArchivoUrl(): ?string
     {
-        return ArchivoHelper::obtenerUrl($this->ruta_archivo, 'ventanilla_radica_interno_archivos');
+        return ArchivoHelper::obtenerUrl($this->archivo, 'ventanilla_radica_interno_archivos');
     }
 
     public function getInfoArchivo(bool $incluirMetadatos = false): ?array
@@ -51,7 +50,7 @@ class VentanillaRadicaInternoArchivos extends Model
         }
         $info = [
             'id' => $this->id,
-            'nombre' => basename($this->archivo),
+            'nombre' => $this->nom_origi ?? basename($this->archivo),
             'ruta' => $this->archivo,
             'url' => $this->getArchivoUrl(),
             'fecha_subida' => $this->created_at,
@@ -60,7 +59,7 @@ class VentanillaRadicaInternoArchivos extends Model
         if ($incluirMetadatos) {
             try {
                 if (Storage::disk('ventanilla_radica_interno_archivos')->exists($this->archivo)) {
-                    $info['tamaño'] = Storage::disk('ventanilla_radica_interno_archivos')->size($this->archivo);
+                    $info['archivo_peso'] = Storage::disk('ventanilla_radica_interno_archivos')->size($this->archivo);
                     $info['tipo'] = Storage::disk('ventanilla_radica_interno_archivos')->mimeType($this->archivo);
                 }
             } catch (\Exception $e) {

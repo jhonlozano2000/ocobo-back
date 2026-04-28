@@ -18,12 +18,17 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::put("/radica-enviada/{id}/update-clasificacion-documental", [VentanillaRadicaEnviadosController::class, "updateClasificacionDocumental"])->name("radica-enviada.update-clasificacion-documental")->middleware("can:" . $permEnvi . "Actualizar clasificacion de radicados");
     Route::post("/radica-enviada/{id}/notificacion", [VentanillaRadicaEnviadosController::class, "enviarNotificacion"])->name("radica-enviada.notificacion")->middleware("can:" . $permEnvi . "Notificar Email");
     Route::get("/radica-enviada/{id}/linea-tiempo", [VentanillaRadicaEnviadosController::class, "lineaTiempo"])->name("radica-enviada.linea-tiempo")->middleware("can:" . $permEnvi . "Mostrar");
+    Route::get("/radica-enviada/mis-radicados", [VentanillaRadicaEnviadosController::class, "misRadicados"])->name("radica-enviada.mis-radicados")->middleware("can:" . $permEnvi . "Listar");
+    Route::put("/radica-enviada/{id}/estado", [VentanillaRadicaEnviadosController::class, "updateEstado"])->name("radica-enviada.update-estado")->middleware("can:" . $permEnvi . "Editar");
     Route::get("/radica-enviada", [VentanillaRadicaEnviadosController::class, "index"])->name("radica-enviada.index")->middleware("can:" . $permEnvi . "Listar");
     Route::post("/radica-enviada", [VentanillaRadicaEnviadosController::class, "store"])->name("radica-enviada.store")->middleware("can:" . $permEnvi . "Crear");
     Route::get("/radica-enviada/{id}", [VentanillaRadicaEnviadosController::class, "show"])->name("radica-enviada.show")->middleware("can:" . $permEnvi . "Mostrar");
     Route::put("/radica-enviada/{id}", [VentanillaRadicaEnviadosController::class, "update"])->name("radica-enviada.update")->middleware("can:" . $permEnvi . "Editar");
     Route::delete("/radica-enviada/{id}", [VentanillaRadicaEnviadosController::class, "destroy"])->name("radica-enviada.destroy")->middleware("can:" . $permEnvi . "Eliminar");
     Route::get("/radica-enviada/search/ocr", [VentanillaRadicaEnviadosController::class, "searchByOcr"])->name("radica-enviada.search-ocr")->middleware("can:" . $permEnvi . "Listar");
+    Route::get("/radica-enviada/pendientes-anulacion", [VentanillaRadicaEnviadosController::class, "listarPendientesAnulacion"])->name("radica-enviada.pendientes-anulacion")->middleware("can:Jefe de Archivo");
+    Route::post("/radica-enviada/{id}/solicitar-anulacion", [VentanillaRadicaEnviadosController::class, "solicitarAnulacion"])->name("radica-enviada.solicitar-anulacion")->middleware("can:" . $permEnvi . "Listar");
+    Route::post("/radica-enviada/{id}/procesar-anulacion", [VentanillaRadicaEnviadosController::class, "procesarAnulacion"])->name("radica-enviada.procesar-anulacion")->middleware("can:Jefe de Archivo");
 
     Route::prefix("radica-enviada/{id}/archivos")->name("radica-enviada.archivos.")->group(function () use ($permEnvi) {
         Route::prefix("digital")->name("digital.")->group(function () use ($permEnvi) {

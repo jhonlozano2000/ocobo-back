@@ -6,40 +6,24 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes
+| API Routes - OCOBO v2.0
 |--------------------------------------------------------------------------
 */
 
-Route::middleware("auth:sanctum")->get("user", function (Request $request) {
-    return $request->user();
-});
+// Rutas públicas con rate limiting específico
+Route::middleware('throttle:login')->post('/login', [AuthController::class, 'login']);
+Route::middleware('throttle:register')->post('/register', [AuthController::class, 'register']);
+Route::post('/logout', [AuthController::class, 'logout']);
 
-Route::post("/register", [AuthController::class, "register"]);
-Route::post("/login", [AuthController::class, "login"]);
-
-Route::middleware("auth:web")->group(function () {
-    Route::get("/getme", [AuthController::class, "getMe"]);
-    Route::post("/refresh", [AuthController::class, "refresh"]);
-});
-
-Route::post("/logout", [AuthController::class, "logout"]);
-
-// Ruta de prueba de sesión
+// Ruta de prueba de sesión - REMOVER EN PRODUCCIÓN
 Route::get('/test-session', function () {
     return response()->json([
+        'warning' => 'Debug endpoint - remove in production',
         'session_id' => session()->getId(),
         'user_id' => auth()->id(),
         'logged_in' => auth()->check(),
     ]);
-});
-
-// Ruta debug - requiere auth:sanctum
-Route::middleware('auth:sanctum')->get('/debug-user', function () {
-    return response()->json([
-        'user' => auth()->user(),
-        'guard' => auth()->getDefaultDriver(),
-    ]);
-});
+})->middleware('throttle:api');
 
 // ==========================================
 // RUTAS DE GESTIÓN DE ARCHIVO (ISO 27001)
