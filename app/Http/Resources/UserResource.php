@@ -2,23 +2,21 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Traits\SanitizesApiOutput;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class UserResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return array
-     */
+    use SanitizesApiOutput;
+
+    protected array $sensitiveFields = ['password', 'token', 'api_key', 'secret'];
+    protected array $maskedFields = ['num_docu' => 'last_4', 'email' => 'mask', 'tel' => 'last_4', 'movil' => 'last_4'];
+
     public function toArray($request)
     {
-        // Limpiar cache de permisos y recargar relaciones
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
         $this->load(['roles.permissions', 'permissions', 'cargoActivo.cargo']);
 
-        // Obtener información de dependencia y oficina
         $oficina = null;
         $dependencia = null;
         $cargo = null;
@@ -33,14 +31,9 @@ class UserResource extends JsonResource
                 'observaciones' => $this->cargoActivo->observaciones
             ];
 
-            // Usar el método existente getJerarquiaCompleta() para obtener la jerarquía
             $jerarquia = $this->cargoActivo->cargo->getJerarquiaCompleta();
-
-            // Buscar la dependencia y oficina directamente relacionadas al cargo
-            // (no la primera en toda la jerarquía, sino la más cercana al cargo)
             $cargoIndex = -1;
 
-            // Encontrar la posición del cargo en la jerarquía
             foreach ($jerarquia as $index => $nivel) {
                 if ($nivel['id'] === $this->cargoActivo->cargo->id && $nivel['tipo'] === 'Cargo') {
                     $cargoIndex = $index;
@@ -48,9 +41,8 @@ class UserResource extends JsonResource
                 }
             }
 
-            // Si encontramos el cargo, buscar su dependencia/oficina padre directa
             if ($cargoIndex > 0) {
-                $parentDirecto = $jerarquia[$cargoIndex - 1]; // El elemento anterior es el padre directo
+                $parentDirecto = $jerarquia[$cargoIndex - 1];
 
                 if ($parentDirecto['tipo'] === 'Oficina') {
                     $oficina = [
@@ -70,27 +62,29 @@ class UserResource extends JsonResource
             }
         }
 
-        return [
-            'id'            => $this->id,
-            'num_docu'      => $this->num_docu,
-            'nombres'       => $this->nombres,
-            'apellidos'     => $this->apellidos,
-            'email'         => $this->email,
-            'tel'           => $this->tel,
-            'movil'         => $this->movil,
-            'dir'           => $this->dir,
-            'estado'        => $this->estado,
-            'firma'         => $this->firma,
-            'avatar'        => $this->avatar,
-            'firma_url'     => $this->firma_url,
-            'avatar_url'    => $this->avatar_url,
-            'roles'         => $this->getRoleNames(),
-            'permissions'   => $this->getAllPermissions()->sortBy('name')->pluck('name')->values()->toArray(),
-            'cargo'         => $cargo,
-            'oficina'       => $oficina,
-            'dependencia'   => $dependencia,
-            'created_at'    => $this->created_at,
-            'updated_at'    => $this->updated_at,
+        $data = [
+            'id' => $this->id,
+            'num_docu' => $this->num_docu,
+            'nombres' => $this->nombres,
+            'apellidos' => $this->apellidos,
+            'email' => $this->email,
+            'tel' => $this->tel,
+            'movil' => $this->movil,
+            'dir' => $this->dir,
+            'estado' => $this->estado,
+            'firma' => $this->firma,
+            'avatar' => $this->avatar,
+            'firma_url' => $this->firma_url,
+            'avatar_url' => $this->avatar_url,
+            'roles' => $this->getRoleNames(),
+            'permissions' => $this->getAllPermissions()->sortBy('name')->pluck('name')->values()->toArray(),
+            'cargo' => $cargo,
+            'oficina' => $oficina,
+            'dependencia' => $dependencia,
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
+
+        return $this->sanitizeOutput($data);
     }
 }
