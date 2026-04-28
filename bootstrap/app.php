@@ -38,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\ValidateRequestSize::class,
             \App\Http\Middleware\DataIntegrity::class,
             \App\Http\Middleware\CombinedSecurityMiddleware::class,
+            \App\Http\Middleware\SanitizeResponse::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api',
