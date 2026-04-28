@@ -1,0 +1,112 @@
+name: Security CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run PHP CodeSniffer
+        run: |
+          ./vendor/bin/phpcs --standard=PSR12 app/Http/Middleware/SecurityHeadersMiddleware.php
+          ./vendor/bin/phpcs --standard=PSR12 app/Http/Middleware/AuditLogMiddleware.php
+          ./vendor/bin/phpcs --standard=PSR12 app/Services/Seguridad/
+
+      - name: Run PHPStan
+        run: ./vendor/bin/phpstan analyse app/Http/Middleware app/Services/Seguridad --level=5
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_sqlite
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Copy environment
+        run: cp .env.example .env
+
+      - name: Generate keys
+        run: php artisan key:generate && php artisan jwt:secret
+
+      - name: Run migrations
+        run: php artisan migrate:fresh --seed
+
+      - name: Run tests
+        run: php artisan test --coverage
+
+  security-audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Install composer-audit
+        run: |
+          composer install --no-interaction
+          composer require --dev roave/security-advisories:dev-laravel
+
+      - name: Check security advisories
+        run: composer audit --no-interaction
+
+      - name: Run security checks
+        run: |
+          # Check for common vulnerabilities
+          grep -r "eval(" app/Http/ --include="*.php" || true
+          grep -r "exec(" app/Http/ --include="*.php" || true
+          grep -r "system(" app/Http/ --include="*.php" || true
+          grep -r "shell_exec(" app/Http/ --include="*.php" || true
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Install Pint
+        run: composer require --dev laravel/pint
+
+      - name: Run Pint
+        run: ./vendor/bin/pint --test app/Http/Middleware app/Services/Seguridad app/Helpers/Security
+
+  deploy:
+    needs: [security, test, security-audit]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Deploy to production
+        run: echo "Deploying..."
+        # Add your deployment commands here
