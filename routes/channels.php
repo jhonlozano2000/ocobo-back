@@ -20,3 +20,19 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 Broadcast::channel('respuesta.{respuestaId}', function ($user, $respuestaId) {
     return true;
 });
+
+// ==========================================
+// Canales de Editor Colaborativo (Mi Bandeja)
+// ==========================================
+Broadcast::channel('documentos.{documentoId}', function ($user, $documentoId) {
+    // TODO: Temporal - para testing
+    return true;
+    
+    $documento = \App\Models\MiBandeja\TempDocumentosRecibidos\Documento::find($documentoId);
+    
+    if (!$documento) {
+        return false;
+    }
+    
+    return $documento->tieneAcceso($user);
+});

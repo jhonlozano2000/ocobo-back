@@ -26,7 +26,8 @@ class ValidateRequestSize
     {
         $maxSize = $this->getMaxSize($request);
 
-        if ($request->getContentLength() > $maxSize) {
+        $contentLength = $request->header('Content-Length') ?? 0;
+        if ($contentLength > $maxSize) {
             return response()->json([
                 'success' => false,
                 'message' => 'El request excede el tamaño máximo permitido.',

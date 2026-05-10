@@ -7,6 +7,8 @@ use App\Policies\VentanillaRadicaReciPolicy;
 use App\Policies\UserPolicy;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\User;
+use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
+use App\Policies\MiBandeja\TempReci\DocumentoPolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -18,6 +20,7 @@ class AuthServiceProvider extends ServiceProvider
     protected $policies = [
         VentanillaRadicaReci::class => VentanillaRadicaReciPolicy::class,
         User::class => UserPolicy::class,
+        Documento::class => DocumentoPolicy::class,
     ];
 
     /**

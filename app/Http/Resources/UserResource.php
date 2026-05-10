@@ -9,9 +9,6 @@ class UserResource extends JsonResource
 {
     use SanitizesApiOutput;
 
-    protected array $sensitiveFields = ['password', 'token', 'api_key', 'secret'];
-    protected array $maskedFields = ['num_docu' => 'last_4', 'email' => 'mask', 'tel' => 'last_4', 'movil' => 'last_4'];
-
     public function toArray($request)
     {
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();

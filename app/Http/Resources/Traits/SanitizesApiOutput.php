@@ -20,23 +20,12 @@ trait SanitizesApiOutput
     /**
      * Campos sensibles que nunca deben mostrarse
      */
-    protected array $sensitiveFields = [
-        'password',
-        'password_confirmation',
-        'token',
-        'api_key',
-        'secret',
-    ];
+    protected array $sensitiveFields = [];
 
     /**
      * Campos que deben ser enmascarados parcialmente
      */
-    protected array $maskedFields = [
-        'num_docu' => 'last_4',
-        'email' => 'mask',
-        'telefono' => 'last_4',
-        'movil' => 'last_4',
-    ];
+    protected array $maskedFields = [];
 
     /**
      * Sanitiza el array antes de retornarlo

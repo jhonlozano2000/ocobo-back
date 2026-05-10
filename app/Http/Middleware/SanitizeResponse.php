@@ -126,7 +126,7 @@ class SanitizeResponse
         $path = $request->path();
 
         foreach ($sensitivePatterns as $pattern) {
-            if (preg_match($pattern, $path)) {
+            if (str_contains($path, $pattern)) {
                 return true;
             }
         }

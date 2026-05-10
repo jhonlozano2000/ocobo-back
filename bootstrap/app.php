@@ -32,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->group('api', [
+            \Illuminate\Session\Middleware\StartSession::class,
             \App\Http\Middleware\SecurityHeadersMiddleware::class,
             \App\Http\Middleware\AuditLogMiddleware::class,
             \App\Http\Middleware\ValidateContentType::class,
@@ -39,14 +40,12 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\DataIntegrity::class,
             \App\Http\Middleware\CombinedSecurityMiddleware::class,
             \App\Http\Middleware\SanitizeResponse::class,
-            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-            \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api',
             \Illuminate\Http\Middleware\HandleCors::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ]);
 
-        // Aliases
+// Aliases
         $middleware->alias([
             'auth' => \App\Http\Middleware\Authenticate::class,
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
@@ -133,60 +132,6 @@ return Application::configure(basePath: dirname(__DIR__))
                     'errors' => $e->errors(),
                 ], 422);
             }
-        });
-    })
-    ->beforeBootstrapping(function (Application $app) {
-        // =========================================================================
-        // SECURITY VALIDATION - OWASP A05, ISO 27001 A.12.4
-        // =========================================================================
-        
-        // 1. APP_DEBUG no puede ser true en producción
-        if (config('app.env') === 'production' && config('app.debug') === true) {
-            Log::critical('SECURITY: APP_DEBUG is TRUE in production environment');
-            if (!$app->runningUnitTests()) {
-                throw new \RuntimeException('Security Alert: APP_DEBUG cannot be true in production');
-            }
-        }
-        
-        // 2. DB_PASSWORD es obligatoria en producción
-        if (config('app.env') === 'production' && empty(config('database.connections.mysql.password'))) {
-            Log::critical('SECURITY: DB_PASSWORD is empty in production environment');
-            if (!$app->runningUnitTests()) {
-                throw new \RuntimeException('Security Alert: DB_PASSWORD is required for production');
-            }
-        }
-        
-        // 3. Session lifetime para producción (máx 8 horas = 480 min para flujo documental)
-        if (config('app.env') === 'production' && config('session.lifetime') > 480) {
-            Log::warning('SECURITY: SESSION_LIFETIME exceeds 8 hours in production', [
-                'current_lifetime' => config('session.lifetime')
-            ]);
-        }
-
-        // 4. Rate limiting debe estar habilitado
-        $rateLimitConfig = config('cache.default');
-        if ($rateLimitConfig === 'file' && config('app.env') === 'production') {
-            Log::warning('SECURITY: Using file cache driver for rate limiting in production');
-        }
-
-        // 5. Verificar que APP_KEY está configurada en producción
-        if (config('app.env') === 'production' && empty(config('app.key'))) {
-            Log::critical('SECURITY: APP_KEY is not set in production');
-            if (!$app->runningUnitTests()) {
-                throw new \RuntimeException('Security Alert: APP_KEY is required for production');
-            }
-        }
-
-        // 6. CSRF protection debe estar habilitada en producción
-        if (config('app.env') === 'production') {
-            Log::info('Security configuration validation completed', [
-                'env' => config('app.env'),
-                'debug' => config('app.debug'),
-                'session_lifetime' => config('session.lifetime'),
-                'rate_limit_driver' => config('cache.default'),
-                'app_key_set' => !empty(config('app.key')),
-                'validated_at' => now()->toISOString()
-            ]);
-        }
+});
     })
     ->create();

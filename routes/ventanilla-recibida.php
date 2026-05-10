@@ -9,11 +9,11 @@ use App\Http\Controllers\VentanillaUnica\Recibidos\RadicadoRespuestasController;
 use App\Http\Controllers\VentanillaUnica\MetadataController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware("auth:sanctum")->group(function () {
-    $permReci = "Radicar -> Cores. Recibida -> ";
+$permReci = "Radicar -> Cores. Recibida -> ";
 
+Route::middleware("auth:sanctum")->group(function () use ($permReci) {
     // Rutas con throttle:api (rate limit general 60/min)
-    Route::middleware("throttle:api")->group(function () {
+    Route::middleware("throttle:api")->group(function () use ($permReci) {
         Route::get("/radica-recibida/estadisticas", [VentanillaRadicaReciController::class, "estadisticas"])->name("radica-recibida.estadisticas")->middleware("can:" . $permReci . "Listar");
         Route::get("/radica-recibida/estados", [VentanillaRadicaReciController::class, "estadosDisponibles"])->name("radica-recibida.estados")->middleware("can:" . $permReci . "Listar");
         Route::get("/radica-recibida/estados/{estadoId}/transiciones", [VentanillaRadicaReciController::class, "transicionesEstado"])->name("radica-recibida.estados.transiciones")->middleware("can:" . $permReci . "Listar");
@@ -35,13 +35,12 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
     // Rutas con throttle:radicacion (30/min) - operaciones de creación/edición
-    Route::middleware("throttle:radicacion")->group(function () {
+    Route::middleware("throttle:radicacion")->group(function () use ($permReci) {
         Route::post("/radica-recibida", [VentanillaRadicaReciController::class, "store"])->name("radica-recibida.store")->middleware("can:" . $permReci . "Crear");
         Route::put("/radica-recibida/{id}", [VentanillaRadicaReciController::class, "update"])->name("radica-recibida.update")->middleware("can:" . $permReci . "Editar");
         Route::delete("/radica-recibida/{id}", [VentanillaRadicaReciController::class, "destroy"])->name("radica-recibida.destroy")->middleware("can:" . $permReci . "Eliminar");
         Route::delete("/radica-recibida", [VentanillaRadicaReciController::class, "bulkDestroy"])->name("radica-recibida.bulk-destroy")->middleware("can:" . $permReci . "Eliminar");
 
-        // Respuestas
         Route::post("/radica-recibida/{radicadoId}/respuestas", [RadicadoRespuestasController::class, "store"])->name("radica-recibida.respuestas.store")->middleware("can:" . $permReci . "Crear");
         Route::put("/radica-recibida/respuestas/{id}", [RadicadoRespuestasController::class, "update"])->name("radica-recibida.respuestas.update")->middleware("can:" . $permReci . "Editar");
         Route::post("/radica-recibida/respuestas/{id}/lock", [RadicadoRespuestasController::class, "adquirirLock"])->name("radica-recibida.respuestas.lock")->middleware("can:" . $permReci . "Editar");
@@ -49,7 +48,6 @@ Route::middleware("auth:sanctum")->group(function () {
         Route::post("/radica-recibida/respuestas/{id}/version", [RadicadoRespuestasController::class, "guardarVersion"])->name("radica-recibida.respuestas.version")->middleware("can:" . $permReci . "Editar");
         Route::delete("/radica-recibida/respuestas/{id}", [RadicadoRespuestasController::class, "destruir"])->name("radica-recibida.respuestas.destroy")->middleware("can:" . $permReci . "Eliminar");
 
-        // Comentarios
         Route::post("/radica-recibida/{radicaReciId}/comentarios", [RadicadoComentariosController::class, "store"])->name("radica-recibida.comentarios.store")->middleware("can:" . $permReci . "Comentar");
         Route::put("/radica-recibida/comentarios/{id}", [RadicadoComentariosController::class, "update"])->name("radica-recibida.comentarios.update")->middleware("can:" . $permReci . "Comentar");
         Route::post("/radica-recibida/comentarios/{id}/resolver", [RadicadoComentariosController::class, "resolver"])->name("radica-recibida.comentarios.resolver")->middleware("can:" . $permReci . "Comentar");
@@ -59,14 +57,14 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
     // Rutas con throttle:uploads (10/min) - subida de archivos
-    Route::middleware("throttle:uploads")->group(function () {
+    Route::middleware("throttle:uploads")->group(function () use ($permReci) {
         Route::post("/radica-recibida/{id}/archivos/digital/upload", [VentanillaRadicaReciDigitalController::class, "upload"])->name("radica-recibida.archivos.digital.upload")->middleware("can:" . $permReci . "Subir digital");
         Route::post("/radica-recibida/{id}/archivos/digital/ocr/recargar", [VentanillaRadicaReciDigitalController::class, "recargarOcr"])->name("radica-recibida.archivos.digital.ocr.recargar")->middleware("can:" . $permReci . "Subir digital");
         Route::post("/radica-recibida/{id}/archivos/adjuntos/upload-adjuntos", [VentanillaRadicaReciAdjuntosController::class, "subirArchivosAdjuntos"])->name("radica-recibida.archivos.adjuntos.upload")->middleware("can:" . $permReci . "Subir adjuntos");
     });
 
     // Rutas de consulta con throttle:search (30/min)
-    Route::middleware("throttle:search")->group(function () {
+    Route::middleware("throttle:search")->group(function () use ($permReci) {
         Route::get("/radica-recibida/{radicadoId}/respuestas", [RadicadoRespuestasController::class, "index"])->name("radica-recibida.respuestas.index")->middleware("can:" . $permReci . "Listar");
         Route::get("/radica-recibida/respuestas/{id}", [RadicadoRespuestasController::class, "show"])->name("radica-recibida.respuestas.show")->middleware("can:" . $permReci . "Mostrar");
         Route::get("/radica-recibida/{radicaReciId}/comentarios", [RadicadoComentariosController::class, "index"])->name("radica-recibida.comentarios.index")->middleware("can:" . $permReci . "Mostrar");
@@ -80,7 +78,7 @@ Route::middleware("auth:sanctum")->group(function () {
     });
 
     // Rutas con throttle:api (generales)
-    Route::middleware("throttle:api")->group(function () {
+    Route::middleware("throttle:api")->group(function () use ($permReci) {
         Route::delete("/radica-recibida/{id}/archivos/digital/delete", [VentanillaRadicaReciDigitalController::class, "deleteFile"])->name("radica-recibida.archivos.digital.delete")->middleware("can:" . $permReci . "Eliminar digital");
         Route::delete("/radica-recibida/{archivoId}/archivos/adjuntos/eliminar", [VentanillaRadicaReciAdjuntosController::class, "eliminarArchivoAdjunto"])->name("radica-recibida.archivos.adjuntos.eliminar")->middleware("can:" . $permReci . "Eliminar adjuntos");
         Route::apiResource("responsables", VentanillaRadicaReciResponsaController::class)->except("create", "edit")->middleware("can:" . $permReci . "Editar");

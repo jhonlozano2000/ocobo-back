@@ -1805,22 +1805,22 @@ class VentanillaRadicaReciController extends Controller
             $userId = Auth::id();
             $search = $request->get('search', '');
             $estado = $request->get('estado', '');
-            
+
             $query = VentanillaRadicaReci::orderBy('created_at', 'desc');
-            
+
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('num_radicado', 'like', "%{$search}%")
-                      ->orWhere('asunto', 'like', "%{$search}%");
+                        ->orWhere('asunto', 'like', "%{$search}%");
                 });
             }
-            
+
             if ($estado) {
                 $query->whereHas('estadoTrabajo', function ($q) use ($estado) {
                     $q->where('estado', $estado);
                 });
             }
-            
+
             $radicados = $query->limit(50)->get();
 
             return $this->successResponse($radicados, 'Mis radicados obtenidos');

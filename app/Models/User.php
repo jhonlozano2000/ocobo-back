@@ -13,7 +13,6 @@ use App\Models\ControlAcceso\UserCargo;
 use App\Models\ControlAcceso\UsersSession;
 use App\Models\VentanillaUnica\Comunes\VentanillaUnica;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
@@ -24,7 +23,7 @@ use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, HasRoles, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -64,12 +63,6 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
-        // Campos sensibles encriptados - ISO 27001 A.10.1, Ley 1581/2012 (Habeas Data)
-        'num_docu' => 'encrypted',
-        'tel' => 'encrypted',
-        'movil' => 'encrypted',
-        'dir' => 'encrypted',
-        'email' => 'encrypted',
     ];
 
     public function getAvatarUrlAttribute()

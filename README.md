@@ -277,6 +277,151 @@ php artisan cache:clear
 - Gestión de archivos
 - Asignación de responsables
 
+### Mi Bandeja - Documentos Colaborativos
+
+Sistema de gestión de documentos colaborativos para comunicaciones recibidas. Permite crear, editar y colaborar en documentos en tiempo real.
+
+#### Modelo Documento (`App\Models\MiBandeja\TempDocumentosRecibidos\Documento`)
+
+Modelo Eloquent para documentos colaborativos vinculado a comunicaciones recibidas.
+
+**Tabla**: `mi_bandeja_temp_reci_documentos`
+
+**Campos**:
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `id` | bigint | Primary key |
+| `radica_reci_id` | foreignId | Vinculación a radicado (nullable) |
+| `user_id` | foreignId | Usuario creador (required) |
+| `titulo` | string | Título del documento |
+| `estado` | enum | `borrador`, `en_revision`, `firmado` |
+| `notas` | text | Notas adicionales (nullable) |
+| `es_publico` | boolean | Visibilidad para otros usuarios |
+| `created_at` | timestamp | Fecha de creación |
+| `updated_at` | timestamp | Última modificación |
+
+**Relaciones**:
+- `creador()` → `BelongsTo(User)` - Usuario que creó el documento
+- `radicado()` → `BelongsTo(VentanillaRadicaReci)` - Radicado asociado
+- `usuarios()` → `HasMany(DocumentoUsuario)` - Usuarios asignados
+- `contenido()` → `HasOne(Contenido)` - Contenido Yjs del editor
+- `versiones()` → `HasMany(Version)` - Historial de versiones
+- `comentarios()` → `HasMany(Comentario)` - Comentarios
+- `cursores()` → `HasMany(Cursor)` - Cursores colaborativos en tiempo real
+
+**Métodos**:
+- `tieneAcceso(User)` - Verifica si un usuario tiene acceso
+- `puedeEditar(User)` - Verifica si un usuario puede editar
+- `puedeFirmar(User)` - Verifica si un usuario puede firmar
+
+#### Controlador DocumentoController
+
+`App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoController`
+
+**Endpoints**:
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/api/mi-bandeja/comunicaciones-recibidas/documentos` | Lista de documentos del usuario |
+| POST | `/api/mi-bandeja/comunicaciones-recibidas/documentos` | Crear nuevo documento |
+| GET | `/api/mi-bandeja/comunicaciones-recibidas/documentos/{id}` | Ver documento |
+| PUT | `/api/mi-bandeja/comunicaciones-recibidas/documentos/{id}` | Actualizar documento |
+| DELETE | `/api/mi-bandeja/comunicaciones-recibidas/documentos/{id}` | Eliminar (solo creador) |
+| POST | `/api/mi-bandeja/comunicaciones-recibidas/documentos/{id}/sincronizar` | Sincronizar contenido Yjs |
+| GET | `/api/mi-bandeja/comunicaciones-recibidas/documentos/{id}/contenido` | Obtener contenido |
+| POST | `/api/mi-bandeja/comunicaciones-recibidas/documentos/{id}/versiones` | Crear versión |
+| GET | `/api/mi-bandeja/comunicaciones-recibidas/documentos/{id}/versiones` | Listar versiones |
+| POST | `/api/mi-bandeja/comunicaciones-recibidas/documentos/{id}/versiones/{versionId}/restaurar` | Restaurar versión |
+| POST | `/api/mi-bandeja/comunicaciones-recibidas/documentos/{id}/usuarios` | Asignar usuarios |
+| GET | `/api/mi-bandeja/comunicaciones-recibidas/documentos/{id}/cursores` | Obtener cursores activos |
+| POST | `/api/mi-bandeja/comunicaciones-recibidas/documentos/{id}/comentarios` | Agregar comentario |
+
+**Resource**: `App\Http\Resources\MiBandeja\TempReci\DocumentoResource`
+
+Transforma el modelo a JSON incluyendo:
+- `id`, `titulo`, `estado`, `notas`, `es_publico`
+- `creador` (whenLoaded) → `{ id, name }`
+- `usuarios` (whenLoaded) → `{ user_id, rol, nombre, color }`
+- `contenido` (whenLoaded) → `{ contenido_yjs, hash, actualizado_por }`
+- `cursores` (whenLoaded) → posiciones de usuarios en tiempo real
+
+**Nota**: El campo `creador.name` se construye desde `nombres + apellidos` del modelo User.
+
+#### Modelo Contenido (`App\Models\MiBandeja\TempDocumentosRecibidos\Contenido`)
+
+Almacena el contenido Yjs del editor colaborativo.
+
+**Tabla**: `mi_bandeja_temp_reci_contenidos`
+
+**Campos**:
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `id` | bigint | Primary key |
+| `documento_id` | foreignId | Documento asociado |
+| `contenido_yjs` | json | Contenido del editor Yjs |
+| `hash_contenido` | string | Hash SHA256 del contenido |
+| `actualizado_por` | foreignId | Usuario que actualizó |
+| `created_at` | timestamp | |
+| `updated_at` | timestamp | |
+
+**Método**: `actualizarContenido($contenido, $usuario)` - Actualiza contenido y hash
+
+#### Modelo Version (`App\Models\MiBandeja\TempDocumentosRecibidos\Version`)
+
+Control de versiones para restaurar contenido anterior.
+
+**Tabla**: `mi_bandeja_temp_reci_versiones`
+
+**Método**: `crearVersion($documento, $contenido, $usuario, $descripcion)` - Crea snapshot
+
+#### Políticas de Acceso
+
+- **Ver documento**: Usuario asignado o documento público
+- **Editar documento**: Creador o usuario con rol (firmante, responsable, proyector)
+- **Eliminar documento**: Solo el creador
+- **Asignar usuarios**: Solo el creador
+
+#### Eventos Broadcasting
+
+- `ContenidoActualizado` - Cuando se sincroniza contenido
+- `UsuarioConectado` - Cuando un usuario entra al documento
+- `UsuarioDesconectado` - Cuando un usuario sale del documento
+
+#### Rutas del Módulo
+
+Archivo: `routes/mi-bandeja-temp-recibidos.php`
+
+```php
+Route::middleware('auth:sanctum')->prefix('comunicaciones-recibidas')->group(function () {
+    // CRUD básico
+    Route::get('/documentos', [DocumentoController::class, 'index']);
+    Route::post('/documentos', [DocumentoController::class, 'store']);
+
+    // Verificación de permisos
+    Route::middleware('can:ver,documento')->group(function () {
+        Route::get('/documentos/{documento}', [DocumentoController::class, 'show']);
+        // ... endpoints de solo lectura
+    });
+
+    // Edición (requiere rol)
+    Route::middleware('can:editar,documento')->group(function () {
+        Route::put('/documentos/{documento}', [DocumentoController::class, 'update']);
+        Route::post('/documentos/{documento}/sincronizar', [DocumentoController::class, 'sincronizar']);
+        // ... endpoints de edición
+    });
+
+    // Gestión de usuarios (solo creador)
+    Route::middleware('can:gestionarUsuarios,documento')->group(function () {
+        Route::post('/documentos/{documento}/usuarios', [DocumentoController::class, 'asignarUsuarios']);
+    });
+
+    // Eliminación (solo creador)
+    Route::middleware('can:eliminar,documento')->group(function () {
+        Route::delete('/documentos/{documento}', [DocumentoController::class, 'destroy']);
+    });
+});
+```
+
 ### Calendario Días No Hábiles (ISO 27001)
 - Gestión de días festivos y no hábiles
 - Cálculo automático de vencimientos
@@ -324,6 +469,20 @@ php artisan cache:clear
 ---
 
 ## 📋 Changelog
+
+### v2.3 (Mayo 2026)
+- ✅ Módulo Mi Bandeja - Documentos Colaborativos
+- ✅ Modelo Documento con relaciones (creador, contenido, versiones, cursores)
+- ✅ Controlador DocumentoController con CRUD completo
+- ✅ DocumentoResource con transformación de datos
+- ✅ Modelo Contenido para almacenar contenido Yjs
+- ✅ Modelo Version para control de versiones
+- ✅ Modelo Cursor para cursores colaborativos en tiempo real
+- ✅ Modelo DocumentoUsuario para asignación de roles
+- ✅ Políticas de acceso (ver, editar, eliminar, gestionar)
+- ✅ Endpoints de sincronización Yjs con hash SHA256
+- ✅ Broadcast events para colaboración en tiempo real
+- ✅ Importación y exportación de documentos (PDF, DOCX, HTML, TXT)
 
 ### v2.2 (Abril 2026)
 - ✅ Calendario de Días No Hábiles con FullCalendar

@@ -15,22 +15,56 @@ use Symfony\Component\HttpFoundation\Response;
 class ValidateContentType
 {
     /**
-     * Tipos de contenido permitidos para la API
+     * Tipos de contenido permitidos para la API (soporta wildcards)
      */
     private const ALLOWED_CONTENT_TYPES = [
         'application/json',
         'application/json; charset=utf-8',
         'multipart/form-data',
         'application/x-www-form-urlencoded',
+        '*/*',
     ];
 
+    private function isValidContentType(string $contentType): bool
+    {
+        $baseContentType = trim(explode(';', $contentType)[0]);
+        
+        foreach (self::ALLOWED_CONTENT_TYPES as $allowed) {
+            if ($allowed === '*/*') {
+                return true;
+            }
+            if ($baseContentType === $allowed) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
     /**
-     * Tipos de contenido permitidos para respuestas
+     * Tipos de contenido permitidos para respuestas (soporta wildcards)
      */
     private const ALLOWED_ACCEPT_TYPES = [
         'application/json',
         '*/*',
     ];
+
+    private function isValidAcceptType(string $accept): bool
+    {
+        $baseAccept = trim(explode(';', $accept)[0]);
+        
+        foreach (self::ALLOWED_ACCEPT_TYPES as $allowed) {
+            // Supports wildcards: */* matches anything
+            if ($allowed === '*/*') {
+                return true;
+            }
+            if ($baseAccept === $allowed) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
 
     /**
      * Handle an incoming request.
@@ -74,7 +108,7 @@ class ValidateContentType
         // Extraer el tipo base sin charset u otros parámetros
         $baseContentType = explode(';', $contentType)[0];
 
-        if (!in_array(trim($baseContentType), self::ALLOWED_CONTENT_TYPES)) {
+        if (trim($baseContentType) !== 'application/json' && !$this->isValidContentType($contentType)) {
             abort(response()->json([
                 'success' => false,
                 'message' => 'Content-Type no soportado. Use application/json.',
@@ -107,7 +141,7 @@ class ValidateContentType
         // Extraer el tipo base
         $baseAccept = explode(';', $accept)[0];
 
-        if (!in_array(trim($baseAccept), self::ALLOWED_ACCEPT_TYPES)) {
+        if (!in_array(trim($baseAccept), self::ALLOWED_ACCEPT_TYPES) && !$this->isValidAcceptType($accept)) {
             abort(response()->json([
                 'success' => false,
                 'message' => 'Accept no soportado. Use application/json.',

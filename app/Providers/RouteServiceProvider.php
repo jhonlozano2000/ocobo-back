@@ -35,6 +35,26 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware("web")
                 ->group(base_path("routes/web.php"));
 
+            // BROADCASTING - WebSocket Authorization (para testing, acepta cualquier usuario)
+            Route::post('/broadcasting/auth', function (\Illuminate\Http\Request $request) {
+                $appKey = config('reverb.app_key', 'ocobo-app-key-2024');
+                $appSecret = config('reverb.app_secret', 'secret-key-2024');
+                
+                // Para testing: usar usuario 1 si no hay sesión
+                $userId = auth()->id() ?? 1;
+                $user = auth()->user() ?? \App\Models\User::find(1);
+                $userName = $user?->name ?? $user?->nombres ?? 'Test User';
+                
+                return response()->json([
+                    'auth' => $appKey . ':user-' . $userId,
+                    'channel_data' => json_encode([
+                        'user_id' => $userId,
+                        'user_info' => ['name' => $userName]
+                    ]),
+                    'shared_secret' => $appSecret
+                ]);
+            });
+
             Route::middleware("api")
                 ->prefix("api/control-acceso")
                 ->group(base_path("routes/controlAcceso.php"));
@@ -72,6 +92,15 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware("api")
                 ->prefix("api/transversal")
                 ->group(base_path("routes/transversal.php"));
+
+            // MODULOS MI BANDEJA
+            Route::middleware("api")
+                ->prefix("api/mi-bandeja")
+                ->group(base_path("routes/mi-bandeja-temp-recibidos.php"));
+
+            Route::middleware("api")
+                ->prefix("api/mi-bandeja/recibidos")
+                ->group(base_path("routes/mi-bandeja-recibidos.php"));
         });
     }
 }

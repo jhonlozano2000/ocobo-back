@@ -52,7 +52,7 @@ return [
     |
     */
 
-    'encrypt' => true,
+    'encrypt' => false,
 
     /*
     |--------------------------------------------------------------------------
@@ -161,7 +161,7 @@ return [
     |
     */
 
-    'domain' => env('SESSION_DOMAIN', '.ocobo.test'),
+    'domain' => env('SESSION_DOMAIN', null),
 
     /*
     |--------------------------------------------------------------------------
@@ -176,7 +176,7 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE', true),
+    'secure' => env('SESSION_SECURE_COOKIE', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -204,7 +204,7 @@ return [
     |
     */
 
-    'same_site' => 'lax',
+    'same_site' => env('SESSION_SAME_SITE', 'lax'),
 
     /*
     |--------------------------------------------------------------------------

@@ -18,7 +18,7 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'firma-electronica/*', 'sanctum/csrf-cookie', 'login', 'logout', 'test-session'],
+    'paths' => ['api/*', 'firma-electronica/*', 'sanctum/csrf-cookie', 'login', 'logout', 'test-session', 'broadcasting/*'],
 
     'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
@@ -34,7 +34,7 @@ return [
     | CORS_ALLOWED_ORIGINS=http://frontend.test,https://ocobo.com
     |
     */
-    'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:5173')),
+    'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:5173,http://ocobo.test')),
 
     /*
     |--------------------------------------------------------------------------

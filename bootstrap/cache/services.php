@@ -38,9 +38,10 @@
     34 => 'Spatie\\Permission\\PermissionServiceProvider',
     35 => 'App\\Providers\\AppServiceProvider',
     36 => 'App\\Providers\\AuthServiceProvider',
-    37 => 'App\\Providers\\EventServiceProvider',
-    38 => 'App\\Providers\\RouteServiceProvider',
-    39 => 'Spatie\\Permission\\PermissionServiceProvider',
+    37 => 'App\\Providers\\BroadcastServiceProvider',
+    38 => 'App\\Providers\\EventServiceProvider',
+    39 => 'App\\Providers\\RouteServiceProvider',
+    40 => 'Spatie\\Permission\\PermissionServiceProvider',
   ),
   'eager' => 
   array (
@@ -65,9 +66,10 @@
     18 => 'Spatie\\Permission\\PermissionServiceProvider',
     19 => 'App\\Providers\\AppServiceProvider',
     20 => 'App\\Providers\\AuthServiceProvider',
-    21 => 'App\\Providers\\EventServiceProvider',
-    22 => 'App\\Providers\\RouteServiceProvider',
-    23 => 'Spatie\\Permission\\PermissionServiceProvider',
+    21 => 'App\\Providers\\BroadcastServiceProvider',
+    22 => 'App\\Providers\\EventServiceProvider',
+    23 => 'App\\Providers\\RouteServiceProvider',
+    24 => 'Spatie\\Permission\\PermissionServiceProvider',
   ),
   'deferred' => 
   array (
