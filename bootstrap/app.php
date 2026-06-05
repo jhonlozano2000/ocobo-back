@@ -8,11 +8,12 @@ use Illuminate\Support\Facades\Log;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         api: __DIR__.'/../routes/api.php',
+        web: __DIR__.'/../routes/web.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Validación de configuración de seguridad en cada request
         $middleware->use([
+            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             \App\Http\Middleware\TrustProxies::class,
             \Illuminate\Http\Middleware\HandleCors::class,
             \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->group('api', [
             \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \App\Http\Middleware\SecurityHeadersMiddleware::class,
             \App\Http\Middleware\AuditLogMiddleware::class,
             \App\Http\Middleware\ValidateContentType::class,

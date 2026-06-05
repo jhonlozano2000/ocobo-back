@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MiBandeja\TempDocumentosRecibidos;
 
 use App\Http\Controllers\Controller;
+use App\Helpers\OutputSanitizer;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Comentario;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use Illuminate\Http\JsonResponse;
@@ -99,8 +100,10 @@ class ComentarioController extends Controller
 
         $comentario = $documento->comentarios()->create([
             'user_id' => $request->user()->id,
-            'contenido' => $request->input('contenido'),
-            'seleccion_texto' => $request->input('seleccion_texto'),
+            'contenido' => OutputSanitizer::sanitize($request->input('contenido')),
+            'seleccion_texto' => $request->input('seleccion_texto')
+                ? OutputSanitizer::sanitize($request->input('seleccion_texto')['text'] ?? '')
+                : null,
             'parent_id' => $request->input('parent_id'),
         ]);
 
@@ -140,7 +143,7 @@ class ComentarioController extends Controller
             'contenido' => 'required|string|min:1|max:2000',
         ]);
 
-        $comentario->update(['contenido' => $request->input('contenido')]);
+        $comentario->update(['contenido' => OutputSanitizer::sanitize($request->input('contenido'))]);
 
         return response()->json([
             'message' => 'Comentario actualizado',
@@ -204,5 +207,16 @@ class ComentarioController extends Controller
         $comentario->resolver();
 
         return response()->json(['message' => 'Comentario resuelto']);
+    }
+
+    public function desresolver(Request $request, Comentario $comentario): JsonResponse
+    {
+        if (!$request->user()->can('gestionar-comentarios')) {
+            return response()->json(['message' => 'No tienes permiso para gestionar comentarios'], 403);
+        }
+
+        $comentario->desmarcarResuelto();
+
+        return response()->json(['message' => 'Comentario marcado como pendiente']);
     }
 }

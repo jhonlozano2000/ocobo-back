@@ -15,6 +15,11 @@ Route::middleware('throttle:login')->post('/login', [AuthController::class, 'log
 Route::middleware('throttle:register')->post('/register', [AuthController::class, 'register']);
 Route::post('/logout', [AuthController::class, 'logout']);
 
+// Verificación de sesión activa (usado por GuestOnlyRoute)
+Route::middleware('auth:sanctum')->get('/auth/check', function () {
+    return response()->json(['authenticated' => true]);
+});
+
 
 // ==========================================
 // RUTAS DE GESTIÓN DE ARCHIVO (ISO 27001)

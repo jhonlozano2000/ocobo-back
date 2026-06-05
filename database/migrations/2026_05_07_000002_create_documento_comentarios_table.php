@@ -29,8 +29,8 @@ return new class extends Migration
             $table->string('user_agent', 500)->nullable();
             $table->timestamps();
 
-            $table->index(['documento_id', 'resuelto']);
-            $table->index(['parent_id']);
+            $table->index(['documento_id', 'resuelto'], 'documento_resuelto_index');
+            $table->index(['parent_id'], 'parent_id_index');
         });
     }
 

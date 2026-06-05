@@ -12,7 +12,7 @@ class DocumentoImportService
     {
         $extension = strtolower($archivo->getClientOriginalExtension());
 
-        $contenido = match($extension) {
+        $contenido = match ($extension) {
             'docx' => $this->importarDocx($archivo),
             'doc' => $this->importarDocx($archivo),
             'html', 'htm' => $this->importarHtml($archivo),
@@ -63,7 +63,7 @@ class DocumentoImportService
     private function importarDocx(UploadedFile $archivo): array
     {
         $tempPath = $archivo->getRealPath();
-        
+
         $zip = new \ZipArchive();
         if ($zip->open($tempPath) === true) {
             $documentXml = $zip->getFromName('word/document.xml');
@@ -96,7 +96,7 @@ class DocumentoImportService
 
         foreach ($lineas as $linea) {
             if (trim($linea) === '') continue;
-            
+
             $contenido['content'][] = [
                 'type' => 'paragraph',
                 'content' => [
@@ -139,7 +139,7 @@ class DocumentoImportService
 
         $localName = $node->localName ?? $node->nodeName;
 
-        return match($localName) {
+        return match ($localName) {
             'p' => $this->parseParagraph($node),
             'h1', 'h2', 'h3', 'h4', 'h5', 'h6' => $this->parseHeading($node, (int) substr($localName, 1)),
             'ul' => $this->parseList($node, 'bulletList'),
@@ -155,7 +155,7 @@ class DocumentoImportService
     private function parseParagraph(\DOMNode $node): array
     {
         $content = $this->parseInlineElements($node);
-        
+
         return [
             'type' => 'paragraph',
             'content' => $content ?: [['type' => 'text', 'text' => '']]
@@ -174,7 +174,7 @@ class DocumentoImportService
     private function parseList(\DOMNode $node, string $type): array
     {
         $items = [];
-        
+
         foreach ($node->childNodes as $child) {
             if ($child->localName === 'li' || $child->nodeName === 'li') {
                 $items[] = [
@@ -250,7 +250,7 @@ class DocumentoImportService
                 $marks = [];
                 $localName = $child->localName ?? $child->nodeName;
 
-                $markType = match($localName) {
+                $markType = match ($localName) {
                     'b', 'strong' => 'bold',
                     'i', 'em' => 'italic',
                     'u' => 'underline',
@@ -289,11 +289,11 @@ class DocumentoImportService
     private function getSpanMark(\DOMNode $node): ?array
     {
         $style = $node->getAttribute('style') ?? '';
-        
+
         if (preg_match('/color:\s*([^;]+)/', $style, $matches)) {
             return ['type' => 'textStyle', 'attrs' => ['color' => trim($matches[1])]];
         }
-        
+
         return null;
     }
 
@@ -320,7 +320,7 @@ class DocumentoImportService
     {
         $className = get_class($element);
 
-        return match(true) {
+        return match (true) {
             str_contains($className, 'TextRun') => $this->parseTextRun($element),
             str_contains($className, 'Title') => [
                 'type' => 'heading',
@@ -363,7 +363,7 @@ class DocumentoImportService
         @$dom->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'));
 
         $body = $dom->getElementsByTagName('body')->item(0);
-        
+
         $contenido = [
             'type' => 'doc',
             'content' => []
@@ -391,7 +391,7 @@ class DocumentoImportService
 
         $localName = strtolower($node->localName ?? $node->nodeName);
 
-        return match($localName) {
+        return match ($localName) {
             'p', 'div' => $this->htmlParagraphToTipTap($node),
             'h1' => $this->htmlHeadingToTipTap($node, 1),
             'h2' => $this->htmlHeadingToTipTap($node, 2),
@@ -430,7 +430,7 @@ class DocumentoImportService
     private function htmlListToTipTap(\DOMNode $node, string $type): array
     {
         $items = [];
-        
+
         foreach ($node->childNodes as $child) {
             if (strtolower($child->localName ?? $child->nodeName) === 'li') {
                 $items[] = [

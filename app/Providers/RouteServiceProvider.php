@@ -88,6 +88,10 @@ class RouteServiceProvider extends ServiceProvider
                 ->prefix("api/ventanilla")
                 ->group(base_path("routes/ventanilla-interno.php"));
 
+            Route::middleware("api")
+                ->prefix("api/ventanilla")
+                ->group(base_path("routes/ventanilla-pqrs.php"));
+
             // SERVICIOS TRANSVERSALES (FIRMA, ETC)
             Route::middleware("api")
                 ->prefix("api/transversal")

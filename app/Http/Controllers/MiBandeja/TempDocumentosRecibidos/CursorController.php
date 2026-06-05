@@ -40,12 +40,23 @@ class CursorController extends Controller
      */
     public function obtenerCursores(Documento $documento): JsonResponse
     {
+        $this->limpiarCursoresHuerfanos();
+
         $cursores = $documento->cursores()
             ->where('ultima_actividad', '>', now()->subSeconds(30))
             ->get()
             ->map(fn($cursor) => $cursor->toArray());
 
         return response()->json(['cursores' => $cursores]);
+    }
+
+    private function limpiarCursoresHuerfanos(int $segundos = 60): void
+    {
+        \App\Models\MiBandeja\TempDocumentosRecibidos\Cursor::where('ultima_actividad', '<', now()->subSeconds($segundos))
+            ->whereDoesntHave('usuario', function ($q) {
+                $q->whereRaw('last_login_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)');
+            })
+            ->delete();
     }
 
     /**

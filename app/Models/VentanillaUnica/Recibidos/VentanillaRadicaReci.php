@@ -13,10 +13,15 @@ use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Helpers\ArchivoHelper;
+use App\Traits\AbacHierarquico;
 
 class VentanillaRadicaReci extends Model
 {
-    use HasFactory;
+    use HasFactory, AbacHierarquico;
+
+    // Constantes para ABAC
+    protected const ABAC_USER_COLUMN = 'usuario_crea';
+    protected const ABAC_RESPONSABLES_RELATION = 'responsables';
 
     protected $table = 'ventanilla_radica_reci';
 
@@ -158,6 +163,14 @@ class VentanillaRadicaReci extends Model
             'documentable_id',
             'expediente_id'
         )->withPivot('numero_folio', 'fecha_incorporacion');
+    }
+
+    /**
+     * Relación con PQRS (si este radicado fue convertido a PQRS).
+     */
+    public function pqrs()
+    {
+        return $this->hasOne(\App\Models\VentanillaUnica\Comunes\VentanillaPqrs::class, 'ventanilla_radica_reci_id');
     }
 
     /**

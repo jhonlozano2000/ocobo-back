@@ -86,16 +86,25 @@
             color: #666;
         }
         
-        .barcode-placeholder {
-            height: 40px;
-            background: #f5f5f5;
-            border: 1px dashed #ccc;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 4px 0;
-            font-size: 9px;
-            color: #999;
+        .barcode-container {
+            text-align: center;
+            margin: 8px 0;
+            padding: 8px;
+            background: #fff;
+        }
+        
+        .barcode-text {
+            font-family: 'Libre Barcode 39', 'Courier New', monospace;
+            font-size: 36px;
+            letter-spacing: 2px;
+            color: #000;
+        }
+        
+        .barcode-number {
+            font-size: 10px;
+            font-weight: bold;
+            margin-top: 4px;
+            font-family: 'Courier New', monospace;
         }
     </style>
 </head>
@@ -138,8 +147,13 @@
             </div>
         </div>
         
-        <div class="barcode-placeholder">
-            [Código de barras]
+        <div class="barcode-container">
+            <div class="barcode-text">
+                *{{ $radicado['num_radicado'] ?? 'N/A' }}*
+            </div>
+            <div class="barcode-number">
+                {{ $radicado['num_radicado'] ?? 'N/A' }}
+            </div>
         </div>
         
         <div class="footer">

@@ -91,6 +91,28 @@ class Comentario extends Model
     }
 
     /**
+     * Scope para comentarios pendientes.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopePendientes($query)
+    {
+        return $query->where('resuelto', false);
+    }
+
+    /**
+     * Scope para comentarios resueltos.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeResueltos($query)
+    {
+        return $query->where('resuelto', true);
+    }
+
+    /**
      * Marca el comentario como resuelto.
      *
      * @return void
@@ -110,10 +132,44 @@ class Comentario extends Model
     {
         $this->marcarResuelto();
 
-        if ($this->respuestas) {
-            foreach ($this->respuestas as $respuesta) {
+        $respuestas = $this->respuestas()->get();
+        if ($respuestas->isNotEmpty()) {
+            foreach ($respuestas as $respuesta) {
                 $respuesta->marcarResuelto();
             }
         }
+    }
+
+    /**
+     * Desmarca el comentario como resuelto.
+     *
+     * @return void
+     */
+    public function desmarcarResuelto(): void
+    {
+        $this->resuelto = false;
+        $this->save();
+    }
+
+    /**
+     * Obtiene el texto seleccionado formateado.
+     *
+     * @return string|null
+     */
+    public function obtenerSeleccionFormateada(): ?string
+    {
+        if (!$this->seleccion_texto) {
+            return null;
+        }
+
+        if (is_string($this->seleccion_texto)) {
+            return $this->seleccion_texto;
+        }
+
+        if (is_array($this->seleccion_texto)) {
+            return $this->seleccion_texto['text'] ?? null;
+        }
+
+        return null;
     }
 }

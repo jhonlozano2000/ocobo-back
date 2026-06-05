@@ -3,15 +3,18 @@
 namespace App\Http\Controllers\MiBandeja\TempDocumentosRecibidos;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\MiBandeja\TempReci\ConfiguracionPaginaRequest;
 use App\Http\Requests\MiBandeja\TempReci\DocumentoRequest;
 use App\Http\Resources\MiBandeja\TempReci\DocumentoResource;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Contenido;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\MiBandeja\TempDocumentosRecibidos\DocumentoUsuario;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Version;
+use App\Services\MiBandeja\TempDocumentosRecibidos\CursorService;
 use App\Events\MiBandeja\TempReci\ContenidoActualizado;
 use App\Events\MiBandeja\TempReci\UsuarioConectado;
 use App\Events\MiBandeja\TempReci\UsuarioDesconectado;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -24,6 +27,9 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
  */
 class DocumentoController extends Controller
 {
+    public function __construct(
+        protected CursorService $cursorService
+    ) {}
     /**
      * Obtiene el listado de documentos colaborativos del usuario autenticado.
      *
@@ -53,7 +59,7 @@ class DocumentoController extends Controller
         $documentos = Documento::whereHas('usuarios', function ($query) use ($request) {
             $query->where('user_id', $request->user()->id);
         })->orWhere('user_id', $request->user()->id)
-            ->with(['contenido', 'creador'])
+            ->with(['usuarios', 'contenido', 'creador'])
             ->orderBy('updated_at', 'desc')
             ->paginate(20);
 
@@ -149,11 +155,15 @@ class DocumentoController extends Controller
             $this->inicializarCursor($documento, $request->user());
         }
 
-        UsuarioConectado::dispatch(
-            $documento->id,
-            $request->user()->id,
-            $request->user()->nombres
-        );
+        try {
+            UsuarioConectado::dispatch(
+                $documento->id,
+                $request->user()->id,
+                $request->user()->nombres
+            );
+        } catch (\Exception $e) {
+            \Log::warning('Broadcast UsuarioConectado falló: ' . $e->getMessage());
+        }
 
         return new DocumentoResource($documento->load(['contenido', 'cursores', 'usuarios.usuario']));
     }
@@ -260,41 +270,98 @@ class DocumentoController extends Controller
         $contenido = $request->input('contenido');
         $hashCliente = hash('sha256', json_encode($contenido));
 
-        $contenidoDoc = $documento->contenido;
-        
-        if (!$contenidoDoc) {
-            $contenidoDoc = Contenido::create([
-                'documento_id' => $documento->id,
-                'contenido_yjs' => $contenido,
-                'hash_contenido' => $hashCliente,
-                'actualizado_por' => $request->user()->id,
-            ]);
-        } elseif ($contenidoDoc->hash_contenido === $hashCliente) {
+        return DB::transaction(function () use ($documento, $contenido, $hashCliente, $request) {
+            $contenidoDoc = $documento->contenido;
+
+            if (!$contenidoDoc) {
+                $contenidoDoc = Contenido::create([
+                    'documento_id' => $documento->id,
+                    'contenido_yjs' => $contenido,
+                    'hash_contenido' => $hashCliente,
+                    'actualizado_por' => $request->user()->id,
+                ]);
+            } elseif ($contenidoDoc->hash_contenido === $hashCliente) {
+                return response()->json([
+                    'sincronizado' => true,
+                    'hash' => $hashCliente,
+                ]);
+            } else {
+                $contenidoAnterior = $contenidoDoc->contenido_yjs;
+                $contenidoDoc->actualizarContenido($contenido, $request->user());
+
+                $this->autoVersionarSiEsNecesario($documento, $contenidoAnterior, $contenido, $request->user());
+            }
+
+            try {
+                ContenidoActualizado::dispatch(
+                    $documento->id,
+                    $contenidoDoc->contenido_yjs,
+                    $hashCliente,
+                    $request->user()->id
+                );
+            } catch (\Exception $e) {
+                \Log::warning('Broadcast falló en sincronizar: ' . $e->getMessage());
+            }
+
             return response()->json([
                 'sincronizado' => true,
                 'hash' => $hashCliente,
+                'contenido' => $contenidoDoc->contenido_yjs,
             ]);
-        } else {
-            $contenidoDoc->actualizarContenido($contenido, $request->user());
+        });
+    }
+
+    private function autoVersionarSiEsNecesario(Documento $documento, array $contenidoAnterior, array $contenidoNuevo, $user): void
+    {
+        $ultimaVersion = $documento->versiones()->first();
+
+        if (!$ultimaVersion) {
+            Version::crearVersion($documento, $contenidoNuevo, $user, 'Auto-guardado: primera versión');
+            return;
         }
 
-        // Broadcast a otros usuarios (no fallar si no funciona)
-        try {
-            ContenidoActualizado::dispatch(
-                $documento->id,
-                $contenidoDoc->contenido_yjs,
-                $hashCliente,
-                $request->user()->id
-            );
-        } catch (\Exception $e) {
-            \Log::warning('Broadcast falló en sincronizar: ' . $e->getMessage());
+        $minutosDesdeUltimaVersion = $ultimaVersion->created_at->diffInMinutes(now());
+        if ($minutosDesdeUltimaVersion >= 5) {
+            Version::crearVersion($documento, $contenidoNuevo, $user, 'Auto-guardado automático');
+            return;
         }
 
-        return response()->json([
-            'sincronizado' => true,
-            'hash' => $hashCliente,
-            'contenido' => $contenidoDoc->contenido_yjs,
-        ]);
+        $cambioSignificativo = $this->esCambioSignificativo($contenidoAnterior, $contenidoNuevo);
+        if ($cambioSignificativo) {
+            Version::crearVersion($documento, $contenidoNuevo, $user, 'Auto-guardado: cambio significativo');
+        }
+    }
+
+    private function esCambioSignificativo(array $anterior, array $nuevo): bool
+    {
+        $textoAnterior = $this->extraerTextoDeContenido($anterior);
+        $textoNuevo = $this->extraerTextoDeContenido($nuevo);
+
+        $diff = abs(strlen($textoNuevo) - strlen($textoAnterior));
+
+        return $diff > 100;
+    }
+
+    private function extraerTextoDeContenido(array $contenido): string
+    {
+        $texto = '';
+
+        foreach ($contenido as $bloque) {
+            if (!isset($bloque['type'])) continue;
+
+            if ($bloque['type'] === 'doc') {
+                $texto .= $this->extraerTextoDeContenido($bloque['content'] ?? []);
+            } elseif ($bloque['type'] === 'paragraph' && isset($bloque['content'])) {
+                foreach ($bloque['content'] as $inline) {
+                    if (isset($inline['text'])) {
+                        $texto .= $inline['text'];
+                    }
+                }
+                $texto .= "\n";
+            }
+        }
+
+        return $texto;
     }
 
     /**
@@ -436,15 +503,17 @@ class DocumentoController extends Controller
             return response()->json(['message' => 'La versión no pertenece a este documento'], 400);
         }
 
-        $contenido = $version->restaurar();
-        $documento->contenido->actualizarContenido($contenido, $request->user());
+        return DB::transaction(function () use ($request, $documento, $version) {
+            $contenido = $version->restaurar();
+            $documento->contenido->actualizarContenido($contenido, $request->user());
 
-        Version::crearVersion($documento, $contenido, $request->user(), "Restaurado desde versión {$version->numero_version}");
+            Version::crearVersion($documento, $contenido, $request->user(), "Restaurado desde versión {$version->numero_version}");
 
-        return response()->json([
-            'message' => 'Versión restaurada correctamente',
-            'contenido' => $contenido,
-        ]);
+            return response()->json([
+                'message' => 'Versión restaurada correctamente',
+                'contenido' => $contenido,
+            ]);
+        });
     }
 
     /**
@@ -476,39 +545,30 @@ class DocumentoController extends Controller
 
         $usuarios = $request->input('usuarios', []);
 
-        foreach ($usuarios as $usuario) {
-            DocumentoUsuario::updateOrCreate(
-                [
-                    'documento_id' => $documento->id,
-                    'user_id' => $usuario['user_id'],
-                ],
-                [
-                    'rol' => $usuario['rol'],
-                ]
-            );
-        }
+        return DB::transaction(function () use ($documento, $usuarios) {
+            foreach ($usuarios as $usuario) {
+                DocumentoUsuario::updateOrCreate(
+                    [
+                        'documento_id' => $documento->id,
+                        'user_id' => $usuario['user_id'],
+                    ],
+                    [
+                        'rol' => $usuario['rol'],
+                    ]
+                );
+            }
 
-        return response()->json(['message' => 'Usuarios asignados correctamente']);
+            return response()->json(['message' => 'Usuarios asignados correctamente']);
+        });
     }
 
-    public function guardarConfiguracionPagina(Request $request, Documento $documento): JsonResponse
+    public function guardarConfiguracionPagina(ConfiguracionPaginaRequest $request, Documento $documento): JsonResponse
     {
         if (!$documento->puedeEditar($request->user())) {
             return response()->json(['message' => 'No tienes permisos para editar este documento'], 403);
         }
 
-        $validated = $request->validate([
-            'tamano_papel' => 'sometimes|string|in:a4,carta,legal,oficio',
-            'orientacion' => 'sometimes|string|in:vertical,horizontal',
-            'margenes' => 'sometimes|array',
-            'margenes.superior' => 'sometimes|numeric|min:0|max:100',
-            'margenes.inferior' => 'sometimes|numeric|min:0|max:100',
-            'margenes.izquierdo' => 'sometimes|numeric|min:0|max:100',
-            'margenes.derecho' => 'sometimes|numeric|min:0|max:100',
-            'configuracion_columnas' => 'sometimes|array',
-            'configuracion_header' => 'sometimes|array|null',
-            'configuracion_footer' => 'sometimes|array|null',
-        ]);
+        $validated = $request->validated();
 
         $updateData = [];
 
@@ -552,12 +612,12 @@ class DocumentoController extends Controller
      */
     private function inicializarCursor(Documento $documento, $user): void
     {
-        $colors = ['#E53935', '#43A047', '#1E88E5', '#FB8C00', '#8E24AA'];
-        $colorIndex = $documento->cursores()->count() % count($colors);
+        $colors = ['#E53935', '#43A047', '#1E88E5', '#FB8C00', '#8E24AA', '#00ACC1', '#F4511E', '#6D4C41'];
+        $colorIndex = $user->id % count($colors);
 
         $documento->cursores()->create([
             'user_id' => $user->id,
-            'nombre_usuario' => $user->name,
+            'nombre_usuario' => $user->nombres,
             'color' => $colors[$colorIndex],
             'posicion' => 0,
         ]);

@@ -146,5 +146,29 @@ class AppServiceProvider extends ServiceProvider
                     ], 429);
                 });
         });
+
+        // Rate limit documentos colaborativos: 120 req/min por usuario (sincronización frecuente)
+        RateLimiter::for('documentos', function (Request $request) {
+            return Limit::perMinute(120)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Límite de operaciones de documentos alcanzado.',
+                        'retry_after' => $headers['Retry-After'] ?? 60
+                    ], 429);
+                });
+        });
+
+        // Rate limit sincronización de contenido: 60 req/min por usuario
+        RateLimiter::for('sincronizacion', function (Request $request) {
+            return Limit::perMinute(60)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Límite de sincronización alcanzado.',
+                        'retry_after' => $headers['Retry-After'] ?? 60
+                    ], 429);
+                });
+        });
     }
 }

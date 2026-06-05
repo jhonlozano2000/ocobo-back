@@ -27,6 +27,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Version extends Model
 {
+    /** @var int Número máximo de versiones a mantener */
+    public const MAX_VERIONES = 50;
+
     /** @var string Nombre de la tabla */
     protected $table = 'mi_bandeja_temp_reci_versiones';
 
@@ -68,24 +71,63 @@ class Version extends Model
     /**
      * Crea una nueva versión del documento.
      *
+     * Solo crea versión si el contenido es diferente al de la última versión.
+     * Además mantiene un límite máximo de versiones (50).
+     *
      * @param Documento $documento Documento a versionar
      * @param array $contenido Contenido Yjs actual
      * @param User $user Usuario que crea la versión
      * @param string|null $descripcion Descripción opcional
-     * @return static
+     * @return static|null Retorna la versión creada o null si el contenido no cambió
      */
-    public static function crearVersion(Documento $documento, array $contenido, User $user, ?string $descripcion = null): Version
+    public static function crearVersion(Documento $documento, array $contenido, User $user, ?string $descripcion = null): ?Version
     {
+        $nuevoHash = hash('sha256', json_encode($contenido));
         $ultimaVersion = $documento->versiones()->first();
 
-        return self::create([
+        if ($ultimaVersion && $ultimaVersion->hash_contenido === $nuevoHash) {
+            return null;
+        }
+
+        $version = self::create([
             'documento_id' => $documento->id,
             'user_id' => $user->id,
             'contenido_yjs' => $contenido,
-            'hash_contenido' => hash('sha256', json_encode($contenido)),
+            'hash_contenido' => $nuevoHash,
             'descripcion' => $descripcion,
             'numero_version' => ($ultimaVersion?->numero_version ?? 0) + 1,
         ]);
+
+        $documento->limitarVersiones();
+
+        return $version;
+    }
+
+    /**
+     * Limita el número de versiones de un documento.
+     *
+     * Elimina las versiones más antiguas si excede MAX_VERIONES.
+     *
+     * @param Documento $documento Documento a limitar
+     * @param int $maxVersiones Número máximo de versiones (default: MAX_VERIONES)
+     * @return int Número de versiones eliminadas
+     */
+    public static function limitarVersiones(Documento $documento, int $maxVersiones = self::MAX_VERIONES): int
+    {
+        $totalVersiones = $documento->versiones()->count();
+
+        if ($totalVersiones <= $maxVersiones) {
+            return 0;
+        }
+
+        $aEliminar = $totalVersiones - $maxVersiones;
+
+        $versionesAEliminar = $documento->versiones()
+            ->orderBy('numero_version', 'asc')
+            ->limit($aEliminar)
+            ->pluck('id');
+
+        return self::whereIn('id', $versionesAEliminar)->delete();
     }
 
     /**

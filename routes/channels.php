@@ -25,14 +25,11 @@ Broadcast::channel('respuesta.{respuestaId}', function ($user, $respuestaId) {
 // Canales de Editor Colaborativo (Mi Bandeja)
 // ==========================================
 Broadcast::channel('documentos.{documentoId}', function ($user, $documentoId) {
-    // TODO: Temporal - para testing
-    return true;
-    
     $documento = \App\Models\MiBandeja\TempDocumentosRecibidos\Documento::find($documentoId);
-    
+
     if (!$documento) {
         return false;
     }
-    
+
     return $documento->tieneAcceso($user);
 });

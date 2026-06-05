@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Route;
  * Rate limiting específico para operaciones sensibles de configuración
  * Protege contra ataques de fuerza bruta en operaciones de escritura
  */
-Route::middleware('throttle:config-operations')->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:config-operations'])->group(function () {
 
     /**
      * División política

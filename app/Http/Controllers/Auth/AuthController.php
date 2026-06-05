@@ -41,50 +41,75 @@ class AuthController extends Controller
         
         // Sanitización de entrada para prevenir inyección
         $email = filter_var($credentials['email'], FILTER_SANITIZE_EMAIL);
+        
+        // Buscar usuario por email (case-insensitive)
+        $user = User::where(function ($query) use ($email) {
+            $query->where('email', $email)
+                  ->orWhereRaw('LOWER(email) = LOWER(?)', [$email]);
+        })->first();
 
-        if (!Auth::attempt(['email' => $email, 'password' => $credentials['password']], $remember)) {
-            // Auditoría ISO 27001 - Registro de intento fallido
-            UsersAuthenticationLog::logEvent([
-                'user_id'  => null,
-                'event'    => 'login_failed',
-                'success'  => false,
-                'email'    => $email,
-                'details'  => 'Credenciales incorrectas - IP: ' . $request->ip() . ' | User-Agent: ' . substr($request->userAgent(), 0, 200),
-            ]);
-
-            // Log centralizado de seguridad
-            AuditLogService::logAutenticacion(
-                AuditLogService::EVENTO_LOGIN_FALLO,
-                false,
-                ['ip' => $request->ip(), 'email_domain' => explode('@', $email)[1] ?? 'unknown']
-            );
-
+        // Si no se encuentra el usuario
+        if (!$user) {
+            $this->logFailedLoginAttempt(null, $email, 'Usuario no encontrado', $request);
             return $this->errorResponse('Las credenciales proporcionadas son incorrectas.', null, 401);
         }
 
-        $user = Auth::user();
-        
-        // Verificar estado de cuenta
-        if ($user->estado == 0) {
-            Auth::guard('web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-            
-            UsersAuthenticationLog::logEvent([
-                'user_id'  => $user->id,
-                'event'    => 'login_failed',
-                'success'  => false,
-                'email'    => $user->email,
-                'details'  => 'Cuenta desactivada',
-            ]);
-
+        // Verificar estado de cuenta (asumiendo que 1 = activo, 0 = inactivo)
+        if (!isset($user->estado) || $user->estado == 0) {
+            $this->logFailedLoginAttempt($user->id, $user->email, 'Cuenta desactivada', $request);
             return $this->errorResponse('Tu cuenta se encuentra desactivada.', null, 401);
         }
 
+        // Validar credenciales
+        if (!Hash::check($credentials['password'], $user->password)) {
+            $this->logFailedLoginAttempt($user->id, $user->email, 'Credenciales incorrectas', $request);
+            return $this->errorResponse('Las credenciales proporcionadas son incorrectas.', null, 401);
+        }
+
+        // Autenticar al usuario (esto establecerá la sesión)
+        Auth::login($user, $remember);
+        
         // REGENERAR SESIÓN - Prevención Session Fixation (ISO 27001)
         // Cada login genera un nuevo ID de sesión
         $request->session()->regenerate();
+        
+        // Registrar login exitoso
+        $this->logSuccessfulLogin($user, $request);
+        
+        // PRINCIPIO DE PRIVILEGIO MÍNIMO (PoLP) - ISO 27001 A.9.4.1
+        // No exponer datos sensibles innecesarios al cliente
+        return $this->successResponse([
+            'user' => new UserResource($user),
+        ], 'Login exitoso');
+    }
 
+    /**
+     * Registrar intento de login fallido
+     */
+    private function logFailedLoginAttempt(?int $userId, string $email, string $reason, AuthLoginRequest $request): void
+    {
+        // Auditoría ISO 27001 - Registro de intento fallido
+        UsersAuthenticationLog::logEvent([
+            'user_id'  => $userId,
+            'event'    => 'login_failed',
+            'success'  => false,
+            'email'    => $email,
+            'details'  => $reason . ' - IP: ' . $request->ip() . ' | User-Agent: ' . substr($request->userAgent(), 0, 200),
+        ]);
+
+        // Log centralizado de seguridad
+        AuditLogService::logAutenticacion(
+            AuditLogService::EVENTO_LOGIN_FALLO,
+            false,
+            ['ip' => $request->ip(), 'email_domain' => explode('@', $email)[1] ?? 'unknown']
+        );
+    }
+
+    /**
+     * Registrar login exitoso
+     */
+    private function logSuccessfulLogin(User $user, AuthLoginRequest $request): void
+    {
         // Auditoría ISO 27001 - Registro de login exitoso
         UsersAuthenticationLog::logEvent([
             'user_id'  => $user->id,
@@ -100,12 +125,6 @@ class AuthController extends Controller
             true,
             ['ip' => $request->ip(), 'device' => $this->parseDevice($request->userAgent())]
         );
-
-        // PRINCIPIO DE PRIVILEGIO MÍNIMO (PoLP) - ISO 27001 A.9.4.1
-        // No exponer datos sensibles innecesarios al cliente
-        return $this->successResponse([
-            'user' => new UserResource($user),
-        ], 'Login exitoso');
     }
 
     /**

@@ -64,5 +64,31 @@ class ListaSeed extends Seeder
         ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Solicitud de trámite']);
         ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Solicitud de recurso']);
         ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Solicitud de recurso']);
+
+        $lista = ConfigLista::create(['cod' => 'TipoPQRSF', 'nombre' => 'Tipos de PQRS']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Pregunta']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Queja']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Reclamo']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Solicitud']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Felicitaciones']);
+
+        $lista = ConfigLista::create(['cod' => 'PrioriPqrs', 'nombre' => 'Prioridad PQRS']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Urgente']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Normal (15 Días)']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Tutela (10 Días)']);
+
+        $lista = ConfigLista::create(['cod' => 'ModaliPqrs', 'nombre' => 'Modalidad PQRS']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Reconocimiento de un derecho']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Intervención de una entidad o funcionario']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Resolución de una situación jurídica']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Prestación de un servicio']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Requerir información']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Consultar, examinar y requerir copias']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Formular consultas']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Formular quejas']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Formular reclamos']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Formular sugerencias']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Formular felicitaciones']);
+        ConfigListaDetalle::create(['lista_id' => $lista->id, 'codigo' => '', 'nombre' => 'Presentar recursos']);
     }
 }

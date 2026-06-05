@@ -3,6 +3,7 @@
 namespace App\Models\MiBandeja\TempDocumentosRecibidos;
 
 use App\Models\MiBandeja\TempDocumentosRecibidos\DocumentoUsuario;
+use App\Models\MiBandeja\TempDocumentosRecibidos\Sugerencia;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Version;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
@@ -54,6 +55,8 @@ class Documento extends Model
         'configuracion_columnas',
         'configuracion_header',
         'configuracion_footer',
+        'nombre_archivo_original',
+        'archivo_path',
     ];
 
     /** @var array<string, string> Conversiones de tipos */
@@ -177,6 +180,16 @@ class Documento extends Model
     public function cursores(): HasMany
     {
         return $this->hasMany(Cursor::class, 'documento_id');
+    }
+
+    /**
+     * Relación con las sugerencias de cambio (modo revisión).
+     *
+     * @return HasMany<Sugerencia>
+     */
+    public function sugerencias(): HasMany
+    {
+        return $this->hasMany(Sugerencia::class, 'documento_id');
     }
 
     /**

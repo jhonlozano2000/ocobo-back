@@ -29,6 +29,28 @@ class DocumentoResource extends JsonResource
             'notas' => $this->notas,
             'es_publico' => $this->es_publico,
             'configuracion_pagina' => $this->getConfiguracionPagina(),
+            'estadisticas' => [
+                'versiones' => $this->when($this->relationLoaded('versiones') || $request->routeIs('*.show'), function () {
+                    return $this->versiones()->count();
+                }),
+                'comentarios' => $this->when($this->relationLoaded('comentarios') || $request->routeIs('*.show'), function () {
+                    return $this->comentarios()->count();
+                }),
+                'comentarios_pendientes' => $this->when($this->relationLoaded('comentarios') || $request->routeIs('*.show'), function () {
+                    return $this->comentarios()->where('resuelto', false)->count();
+                }),
+                'sugerencias' => [
+                    'total' => $this->when($this->relationLoaded('sugerencias') || $request->routeIs('*.show'), function () {
+                        return $this->sugerencias()->count();
+                    }),
+                    'pendientes' => $this->when($this->relationLoaded('sugerencias') || $request->routeIs('*.show'), function () {
+                        return $this->sugerencias()->where('estado', 'pendiente')->count();
+                    }),
+                ],
+                'usuarios_activos' => $this->whenLoaded('cursores', function () {
+                    return $this->cursores->filter(fn($c) => $c->esActivo())->count();
+                }),
+            ],
             'creador' => $this->whenLoaded('creador', function () {
                 $creador = $this->creador;
                 return [

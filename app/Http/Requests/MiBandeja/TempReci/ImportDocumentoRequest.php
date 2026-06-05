@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Documento;
+namespace App\Http\Requests\MiBandeja\TempReci;
 
 use Illuminate\Foundation\Http\FormRequest;
 

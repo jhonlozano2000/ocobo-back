@@ -24,8 +24,8 @@ return new class extends Migration
             $table->string('user_agent', 500)->nullable();
             $table->timestamps();
 
-            $table->index(['documento_id', 'version']);
-            $table->unique(['documento_id', 'version']);
+            $table->index(['documento_id', 'version'], 'idx_doc_version');
+            $table->unique(['documento_id', 'version'], 'uniq_doc_version');
         });
     }
 

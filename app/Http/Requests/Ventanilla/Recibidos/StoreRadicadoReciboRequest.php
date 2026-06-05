@@ -46,8 +46,12 @@ class StoreRadicadoReciboRequest extends FormRequest
             'num_anexos' => 'required|integer|min:0',
             'descrip_anexos' => 'nullable|string|max:300',
             'asunto' => 'nullable|string|max:300',
-            // 'archivo_radica' => 'nullable|string|max:100', // Se maneja en el controlador de archivos
             'num_radicado' => ['nullable', 'string', 'max:50', Rule::unique('ventanilla_radica_reci', 'num_radicado')],
+            'crear_pqrs' => 'nullable|boolean',
+            'tipo_pqrs_id' => 'nullable|required_if:crear_pqrs,true|exists:config_listas_detalles,id',
+            'prioridad' => 'nullable|required_if:crear_pqrs,true|in:Normal,Urgente,Tutela',
+            'fallo_judicial' => 'nullable|in:Si,No',
+            'observaciones_pqrs' => 'nullable|string',
         ];
     }
 
@@ -70,8 +74,12 @@ class StoreRadicadoReciboRequest extends FormRequest
             'num_anexos.integer' => 'El número de anexos debe ser un número entero.',
             'descrip_anexos.max' => 'La descripción de anexos no puede superar los 300 caracteres.',
             'asunto.max' => 'El asunto no puede superar los 300 caracteres.',
-            // 'archivo_radica.max' => 'El nombre del archivo no puede superar los 100 caracteres.', // Se maneja en el controlador de archivos
             'num_radicado.unique' => 'El número de radicado ya existe, por favor intente nuevamente.',
+            'tipo_pqrs_id.required_if' => 'El tipo de PQRS es obligatorio cuando se solicita crear una PQRS.',
+            'tipo_pqrs_id.exists' => 'El tipo de PQRS seleccionado no es válido.',
+            'prioridad.required_if' => 'La prioridad es obligatoria cuando se solicita crear una PQRS.',
+            'prioridad.in' => 'La prioridad debe ser Normal, Urgente o Tutela.',
+            'fallo_judicial.in' => 'El campo fallo judicial debe ser Si o No.',
         ];
     }
 }

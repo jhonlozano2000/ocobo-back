@@ -4,6 +4,7 @@ namespace App\Models\VentanillaUnica\Recibidos;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use App\Models\ControlAcceso\UserCargo;
 
 class VentanillaRadicaReciOptimizedView extends Model
 {
@@ -153,6 +154,78 @@ class VentanillaRadicaReciOptimizedView extends Model
         }
 
         return $query->where('estado_trabajo', $estadoTrabajo);
+    }
+
+    /**
+     * Scope para filtrado ABAC jerárquico automático.
+     * 
+     * Filtra registros basándose en la jerarquía organizacional del usuario:
+     * - Registros creados por el usuario
+     * - Registros de la misma dependencia
+     * - Registros de dependencias subordinadas
+     * 
+     * @param Builder $query
+     * @param \App\Models\User|null $user
+     * @return Builder
+     */
+    public function scopeConPermisoJerarquico(Builder $query, $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        
+        if (!$user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        // Si el usuario tiene permiso de ver todo, no filtrar
+        if ($user->hasPermissionTo('Radicar -> Ver Todos')) {
+            return $query;
+        }
+
+        // Obtener códigos de la jerarquía del usuario
+        $cargoActivo = UserCargo::cargoActivoDelUsuario($user->id);
+        
+        if (!$cargoActivo || !$cargoActivo->cargo) {
+            // Sin cargo activo, solo ver sus propios registros
+            return $query->where('usuario_crea', $user->id);
+        }
+
+        // Obtener todos los códigos de la jerarquía (propio + subordinados)
+        $codigosJerarquia = [];
+        $cargo = $cargoActivo->cargo;
+        
+        // Agregar código propio y padres
+        while ($cargo) {
+            $codigosJerarquia[] = $cargo->cod_organico;
+            $cargo = $cargo->parent;
+        }
+        
+        // Agregar códigos de subordinados
+        $codigosJerarquia = array_merge(
+            $codigosJerarquia,
+            $cargoActivo->cargo->getDescendientesCodigos()
+        );
+        
+        $codigosJerarquia = array_unique($codigosJerarquia);
+
+        if (empty($codigosJerarquia)) {
+            return $query->where('usuario_crea', $user->id);
+        }
+
+        // Filtrar por usuario creador O por dependencia usando subquery
+        return $query->where(function ($q) use ($user, $codigosJerarquia) {
+            // 1. Registros creados por el usuario
+            $q->where('usuario_crea', $user->id);
+            
+            // 2. O registros de usuarios en la jerarquía organizacional
+            $q->orWhereIn('usuario_crea', function ($subQ) use ($codigosJerarquia) {
+                $subQ->select('users_cargos.user_id')
+                    ->from('users_cargos')
+                    ->join('calidad_organigrama', 'users_cargos.cargo_id', '=', 'calidad_organigrama.id')
+                    ->whereIn('calidad_organigrama.cod_organico', $codigosJerarquia)
+                    ->where('users_cargos.estado', true)
+                    ->whereNull('users_cargos.fecha_fin');
+            });
+        });
     }
 
     /**

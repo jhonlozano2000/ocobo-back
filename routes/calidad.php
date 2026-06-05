@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 /**
  * Rate limiting específico para Calidad
  */
-Route::middleware('throttle:config-operations')->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
 
     /**
      * Organigrama - Gestión completa

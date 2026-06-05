@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\MiBandeja\TempDocumentosRecibidos;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Documento\ImportDocumentoRequest;
+use App\Http\Requests\MiBandeja\TempReci\ImportDocumentoRequest;
 use App\Services\MiBandeja\TempDocumentosRecibidos\DocumentoImportService;
 use Illuminate\Http\JsonResponse;
 
@@ -64,11 +64,6 @@ class DocumentoImportController extends Controller
     public function importarHtml(ImportDocumentoRequest $request): JsonResponse
     {
         try {
-            $request->validate([
-                'contenido' => 'required|string',
-                'titulo' => 'required|string|max:255',
-            ]);
-
             $documento = $this->importService->importarDesdeTexto(
                 $request->input('contenido'),
                 $request->input('titulo'),

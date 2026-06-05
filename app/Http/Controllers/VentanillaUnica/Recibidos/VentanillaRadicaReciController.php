@@ -96,10 +96,11 @@ class VentanillaRadicaReciController extends Controller
     public function index(ListRadicadosRecibidosRequest $request)
     {
         try {
-            // Usar la vista optimizada en lugar de la consulta compleja
-            $query = VentanillaRadicaReciOptimizedView::query();
+            // Usar la vista optimizada con filtrado ABAC jerárquico
+            $query = VentanillaRadicaReciOptimizedView::query()
+                ->conPermisoJerarquico(auth()->user()); // Filtrado ABAC automático
 
-            // Aplicar filtros usando los scopes del modelo optimizado
+            // Aplicar filtros adicionales usando los scopes del modelo optimizado
             $query->search($request->search)
                 ->fechaEntre($request->fecha_desde, $request->fecha_hasta)
                 ->clasificacionDocumental($request->clasifica_documen_id)
@@ -234,19 +235,15 @@ class VentanillaRadicaReciController extends Controller
         try {
             DB::beginTransaction();
 
-            // Validar la solicitud
             $validatedData = $request->validated();
 
-            // Generar el número de radicado (sin dependencia específica por ahora)
             $num_radicado = $this->generarNumeroRadicado();
 
-            // Crear el radicado con los datos enviados
             $radicado = new VentanillaRadicaReci($validatedData);
             $radicado->num_radicado = $num_radicado;
             $radicado->cod_verifica = $this->generarCodigoVerificacion();
-            $radicado->usuario_crea = auth()->id(); // Asignar usuario que crea el radicado
+            $radicado->usuario_crea = auth()->id();
 
-            // Obtener días de vencimiento - usar el enviado o calcular desde TRD
             if (isset($validatedData['dias_vencimiento']) && $validatedData['dias_vencimiento'] !== null) {
                 $radicado->dias_vencimiento = $validatedData['dias_vencimiento'];
             } elseif (!empty($validatedData['clasifica_documen_id'])) {
@@ -256,28 +253,48 @@ class VentanillaRadicaReciController extends Controller
                 }
             }
 
-            // Guardar el radicado
             $radicado->save();
+
+            // ============================================================
+            // FLUJO PQRS - Creación atómica dentro de la misma transacción
+            // Si falla la creación de PQRS, se hace rollback del radicado
+            // ============================================================
+            $pqrsCreada = null;
+            if (!empty($validatedData['crear_pqrs']) && $validatedData['crear_pqrs']) {
+                $pqrsService = new \App\Services\VentanillaUnica\PqrsService();
+                $datosPqrs = [
+                    'tipo_pqrs_id' => $validatedData['tipo_pqrs_id'],
+                    'prioridad' => $validatedData['prioridad'] ?? 'Normal',
+                    'fallo_judicial' => $validatedData['fallo_judicial'] ?? 'No',
+                    'observaciones' => $validatedData['observaciones_pqrs'] ?? null,
+                    'clasificacion_documental_trd_id' => $validatedData['clasifica_documen_id'],
+                ];
+                $pqrsCreada = $pqrsService->crearDesdeRadicado($radicado->id, $datosPqrs);
+            }
+            // ============================================================
 
             DB::commit();
 
             Cache::forget('ventanilla_recibidos_estadisticas');
+            Cache::forget('ventanilla_pqrs_estadisticas');
 
-            // Recargar con relaciones necesarias para enviar notificación con adjuntos
             $radicado->load(['archivos', 'tercero']);
 
-            // Acuse de recibo automático — fuera de la transacción
-            // para que un fallo en el email no revierta el radicado
             \App\Helpers\AcuseReciboHelper::enviar($radicado, 'recibida');
-
-            // Notificación al tercero con archivos adjuntos (según configuración)
             \App\Helpers\AcuseReciboHelper::enviarNotificacionConAdjuntos($radicado);
 
             $this->auditVentanilla($radicado, 'created', $radicado->num_radicado);
 
+            $response = $radicado->load(['clasificacionDocumental', 'tercero', 'medioRecepcion']);
+            
+            $responseData = [
+                'radicado' => $response,
+                'pqrs' => $pqrsCreada ? new \App\Http\Resources\VentanillaUnica\PqrsResource($pqrsCreada) : null,
+            ];
+            
             return $this->successResponse(
-                $radicado->load(['clasificacionDocumental', 'tercero', 'medioRecepcion']),
-                'Radicación creada exitosamente',
+                $responseData,
+                'Radicación creada exitosamente' . ($pqrsCreada ? ' con PQRS asociada' : ''),
                 201
             );
         } catch (\Exception $e) {

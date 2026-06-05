@@ -512,16 +512,73 @@ Route::middleware('auth:sanctum')->prefix('comunicaciones-recibidas')->group(fun
 ### Dominios Configurados
 
 ```env
-# Frontend
-http://localhost:3000
+# Frontend (Next.js debe iniciar con -H ocobo.test)
 http://ocobo.test:3000
 
 # Backend
 http://ocobo.test (puerto 80)
 ```
 
+### Importante: Mismo Dominio para Cookies HttpOnly
+
+Para que el login funcione correctamente con **Laravel Sanctum en modo SPA** (cookies HttpOnly), el frontend y backend **DEBEN** estar en el mismo dominio.
+
+**Cuando inicies Next.js, usa:**
+```powershell
+cd C:\Users\jhonl\Desktop\ocobo-frond
+npm run dev -- -H ocobo.test
+```
+
+Esto hace que Next.js escuche en `http://ocobo.test:3000` en lugar de `localhost:3000`.
+
+### Configuración de Sesión en .env
+
+```env
+SESSION_DRIVER=file
+SESSION_LIFETIME=480
+SESSION_DOMAIN=ocobo.test
+SESSION_SAME_SITE=null
+SESSION_SECURE_COOKIE=false
+```
+
+| Variable | Valor | Propósito |
+|----------|-------|-----------|
+| SESSION_DOMAIN | ocobo.test | Cookie válida para el dominio |
+| SESSION_SAME_SITE | null | Permite cookies cross-origin dentro del mismo dominio |
+
 ### Hosts (Windows)
 ```
 127.0.0.1    ocobo.test
 127.0.0.1    ocobo-back.test
+```
+
+### Verificación de Cookies
+
+Después de hacer login,，你应该在浏览器中看到：
+- `ocobo_session` - Cookie de sesión (HttpOnly, dominio=ocobo.test)
+- `XSRF-TOKEN` - Token CSRF (legible por JS, usado como header)
+
+### Solución de Problemas de Login
+
+**Síntoma**: Login funciona pero no se crean cookies
+- Causa: Frontend y backend en dominios diferentes
+- Solución: Asegúrate de iniciar Next.js con `-H ocobo.test` y acceder desde `http://ocobo.test:3000`
+
+**Síntoma**: Página en blanco al acceder a ocobo.test:3000
+- Causa: Next.js no está escuchando en ese host
+- Solución: `npm run dev -- -H ocobo.test`
+
+### Inicio Rápido
+
+```powershell
+# 1. Backend (Laravel)
+cd C:\laragon\www\ocobo-back
+php artisan config:clear
+
+# 2. Frontend (Next.js) - IMPORTANTE: usar -H ocobo.test
+cd C:\Users\jhonl\Desktop\ocobo-frond
+npm run dev -- -H ocobo.test
+
+# 3. Acceder desde
+http://ocobo.test:3000/es/login
 ```

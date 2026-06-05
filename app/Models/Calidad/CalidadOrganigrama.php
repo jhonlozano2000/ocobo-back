@@ -453,4 +453,21 @@ class CalidadOrganigrama extends Model
     {
         return $this->attributes['parent'] ?? null;
     }
+
+    /**
+     * Obtiene todos los códigos orgánicos de los descendientes (hijos, nietos, etc.).
+     * 
+     * @return array
+     */
+    public function getDescendientesCodigos(): array
+    {
+        $codigos = [];
+        
+        foreach ($this->children as $child) {
+            $codigos[] = $child->cod_organico;
+            $codigos = array_merge($codigos, $child->getDescendientesCodigos());
+        }
+        
+        return array_unique($codigos);
+    }
 }
