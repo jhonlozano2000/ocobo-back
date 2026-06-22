@@ -2,7 +2,6 @@
 
 namespace App\Services\VentanillaUnica;
 
-use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 /**
@@ -17,24 +16,24 @@ class PdfService
     public function generate(string $view, array $data = [], array $options = [])
     {
         $pdf = Pdf::loadView($view, $data);
-        
+
         if (isset($options['orientation'])) {
             $pdf->setPaper('a4', $options['orientation']);
         }
-        
+
         if (isset($options['filename'])) {
             $pdf->filename = $options['filename'];
         }
-        
+
         return $pdf;
     }
 
     /**
      * Genera un PDF/A-1b para archivo a largo plazo
-     * 
-     * @param string $view Vista de Blade para el contenido
-     * @param array $data Datos para la vista
-     * @param array $options Opciones adicionales (orientation, filename, metadata)
+     *
+     * @param  string  $view  Vista de Blade para el contenido
+     * @param  array  $data  Datos para la vista
+     * @param  array  $options  Opciones adicionales (orientation, filename, metadata)
      * @return \Barryvdh\DomPDF\PDF
      */
     public function generatePdfA(string $view, array $data = [], array $options = [])
@@ -42,40 +41,40 @@ class PdfService
         $defaultMetadata = [
             'Title' => 'Documento OCOBO',
             'Author' => config('app.name', 'OCOBO'),
-            'Creator' => config('app.name', 'OCOBO') . ' - Sistema de Gestión Documental',
+            'Creator' => config('app.name', 'OCOBO').' - Sistema de Gestión Documental',
             'Producer' => 'DomPDF',
             'CreationDate' => now()->format('Y-m-d\TH:i:s+00:00'),
         ];
 
         $metadata = array_merge($defaultMetadata, $options['metadata'] ?? []);
-        
+
         $pdf = Pdf::loadView($view, $data);
-        
+
         $pdf->setPaper('a4', $options['orientation'] ?? 'portrait');
-        
+
         $pdf->getDomPDF()->set_option('isRemoteEnabled', true);
-        
+
         $pdf->getDomPDF()->get_canvas()->page_text(
-            0, 0, 
-            "Página {PAGE_NUM} de {PAGE_COUNT}", 
-            $pdf->getDomPDF()->get_font_metrics()->get_font('Helvetica', 'regular'), 
-            8, 
+            0, 0,
+            'Página {PAGE_NUM} de {PAGE_COUNT}',
+            $pdf->getDomPDF()->get_font_metrics()->get_font('Helvetica', 'regular'),
+            8,
             [128, 128, 128]
         );
 
         $dompdf = $pdf->getDomPDF();
-        
+
         $dompdf->add_info('Title', $metadata['Title']);
         $dompdf->add_info('Author', $metadata['Author']);
         $dompdf->add_info('Creator', $metadata['Creator']);
         $dompdf->add_info('Producer', $metadata['Producer']);
-        
+
         if (isset($options['filename'])) {
             $pdf->filename = $options['filename'];
         } else {
-            $pdf->filename = $metadata['Title'] . '.pdf';
+            $pdf->filename = $metadata['Title'].'.pdf';
         }
-        
+
         return $pdf;
     }
 
@@ -85,7 +84,7 @@ class PdfService
     public function generateRotulo(array $radicado, array $options = [])
     {
         $isPdfA = $options['pdf_a'] ?? false;
-        
+
         $data = [
             'radicado' => $radicado,
             'entidad' => config('app.name', 'Entidad'),
@@ -98,15 +97,15 @@ class PdfService
             return $this->generatePdfA('pdf.rotulo', $data, [
                 'orientation' => 'landscape',
                 'metadata' => [
-                    'Title' => 'Rótulo - ' . ($radicado['num_radicado'] ?? ''),
+                    'Title' => 'Rótulo - '.($radicado['num_radicado'] ?? ''),
                 ],
-                'filename' => 'rotulo-' . ($radicado['num_radicado'] ?? date('YmdHis')) . '.pdf',
+                'filename' => 'rotulo-'.($radicado['num_radicado'] ?? date('YmdHis')).'.pdf',
             ]);
         }
 
         return $this->generate('pdf.rotulo', $data, [
             'orientation' => 'landscape',
-            'filename' => 'rotulo-' . ($radicado['num_radicado'] ?? date('YmdHis')) . '.pdf',
+            'filename' => 'rotulo-'.($radicado['num_radicado'] ?? date('YmdHis')).'.pdf',
         ]);
     }
 
@@ -116,7 +115,7 @@ class PdfService
     public function generateReporte(array $radicado, array $options = [])
     {
         $isPdfA = $options['pdf_a'] ?? false;
-        
+
         $data = [
             'radicado' => $radicado,
             'entidad' => config('app.name', 'Entidad'),
@@ -128,14 +127,14 @@ class PdfService
             return $this->generatePdfA('pdf.reporte', $data, [
                 'orientation' => 'portrait',
                 'metadata' => [
-                    'Title' => 'Reporte Radicación - ' . ($radicado['num_radicado'] ?? ''),
+                    'Title' => 'Reporte Radicación - '.($radicado['num_radicado'] ?? ''),
                 ],
-                'filename' => 'reporte-' . ($radicado['num_radicado'] ?? date('YmdHis')) . '.pdf',
+                'filename' => 'reporte-'.($radicado['num_radicado'] ?? date('YmdHis')).'.pdf',
             ]);
         }
 
         return $this->generate('pdf.reporte', $data, [
-            'filename' => 'reporte-' . ($radicado['num_radicado'] ?? date('YmdHis')) . '.pdf',
+            'filename' => 'reporte-'.($radicado['num_radicado'] ?? date('YmdHis')).'.pdf',
         ]);
     }
 
@@ -145,7 +144,7 @@ class PdfService
     public function generateConstancia(array $radicado, array $options = [])
     {
         $isPdfA = $options['pdf_a'] ?? false;
-        
+
         $data = [
             'radicado' => $radicado,
             'entidad' => config('app.name', 'Entidad'),
@@ -157,39 +156,80 @@ class PdfService
             return $this->generatePdfA('pdf.constancia', $data, [
                 'orientation' => 'portrait',
                 'metadata' => [
-                    'Title' => 'Constancia de Recibido - ' . ($radicado['num_radicado'] ?? ''),
+                    'Title' => 'Constancia de Recibido - '.($radicado['num_radicado'] ?? ''),
                 ],
-                'filename' => 'constancia-' . ($radicado['num_radicado'] ?? date('YmdHis')) . '.pdf',
+                'filename' => 'constancia-'.($radicado['num_radicado'] ?? date('YmdHis')).'.pdf',
             ]);
         }
 
         return $this->generate('pdf.constancia', $data, [
-            'filename' => 'constancia-' . ($radicado['num_radicado'] ?? date('YmdHis')) . '.pdf',
+            'filename' => 'constancia-'.($radicado['num_radicado'] ?? date('YmdHis')).'.pdf',
         ]);
     }
 
     /**
      * Descarga el PDF generado
      */
-    public function download($pdf, string $filename = null)
+    public function download($pdf, ?string $filename = null)
     {
         if ($filename) {
             return $pdf->download($filename);
         }
-        
+
         return $pdf->download();
     }
 
     /**
      * Stream del PDF al navegador
      */
-    public function stream($pdf, string $filename = null)
+    public function stream($pdf, ?string $filename = null)
     {
         if ($filename) {
             return $pdf->stream($filename);
         }
-        
+
         return $pdf->stream();
+    }
+
+    /**
+     * Genera PDF del contenido de un correo electrónico radicado.
+     *
+     * @param  array  $data  Datos del correo y radicado
+     * @param  array  $options  Opciones (filename, orientation)
+     * @return \Barryvdh\DomPDF\PDF
+     */
+    public function generarPdfCorreo(array $data = [], array $options = [])
+    {
+        $defaultMetadata = [
+            'Title' => 'Correo Radicado - '.($data['radicado']['num_radicado'] ?? ''),
+            'Author' => config('app.name', 'OCOBO'),
+            'Creator' => config('app.name', 'OCOBO').' - Sistema de Gestión Documental',
+            'Producer' => 'DomPDF',
+            'CreationDate' => now()->format('Y-m-d\TH:i:s+00:00'),
+        ];
+
+        $metadata = array_merge($defaultMetadata, $options['metadata'] ?? []);
+
+        $pdf = Pdf::loadView('pdf.correo-radicado', $data);
+
+        $pdf->setPaper('a4', $options['orientation'] ?? 'portrait');
+
+        $enableRemoteImages = $options['enable_remote_images'] ?? true;
+        $pdf->getDomPDF()->set_option('isRemoteEnabled', $enableRemoteImages);
+
+        $dompdf = $pdf->getDomPDF();
+        $dompdf->add_info('Title', $metadata['Title']);
+        $dompdf->add_info('Author', $metadata['Author']);
+        $dompdf->add_info('Creator', $metadata['Creator']);
+        $dompdf->add_info('Producer', $metadata['Producer']);
+
+        if (isset($options['filename'])) {
+            $pdf->filename = $options['filename'];
+        } else {
+            $pdf->filename = $metadata['Title'].'.pdf';
+        }
+
+        return $pdf;
     }
 
     /**
@@ -198,7 +238,7 @@ class PdfService
      */
     public function shouldUsePdfA(?string $clasificacion): bool
     {
-        if (!$clasificacion) {
+        if (! $clasificacion) {
             return false;
         }
 
