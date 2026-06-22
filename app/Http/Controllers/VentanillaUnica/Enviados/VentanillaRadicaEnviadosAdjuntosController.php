@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers\VentanillaUnica\Enviados;
 
-use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
-use App\Http\Requests\Ventanilla\Enviados\UploadArchivosAdjuntosEnviadoRequest;
 use App\Helpers\ArchivoHelper;
 use App\Helpers\FileMetadataHelper;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Ventanilla\Enviados\UploadArchivosAdjuntosEnviadoRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivos;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
@@ -17,25 +18,26 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
     use ApiResponseTrait;
 
     private const DISK = 'radicados_enviados';
+
     private const PERM = 'Radicar -> Cores. Enviada -> ';
 
     public function __construct()
     {
-        $this->middleware('can:' . self::PERM . 'Subir adjuntos')->only(['subirArchivosAdjuntos']);
-        $this->middleware('can:' . self::PERM . 'Eliminar adjuntos')->only(['eliminarArchivoAdjunto']);
-        $this->middleware('can:' . self::PERM . 'Mostrar')->only(['listarArchivosAdjuntos', 'descargarArchivoAdjunto']);
+        $this->middleware('can:'.self::PERM.'Subir adjuntos')->only(['subirArchivosAdjuntos']);
+        $this->middleware('can:'.self::PERM.'Eliminar adjuntos')->only(['eliminarArchivoAdjunto']);
+        $this->middleware('can:'.self::PERM.'Mostrar')->only(['listarArchivosAdjuntos', 'descargarArchivoAdjunto']);
     }
 
     public function subirArchivosAdjuntos($id, UploadArchivosAdjuntosEnviadoRequest $request)
     {
         try {
             $radicado = VentanillaRadicaEnviados::find($id);
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicado enviado no encontrado', null, 404);
             }
 
             $archivos = $request->file('archivos');
-            if (!is_array($archivos)) {
+            if (! is_array($archivos)) {
                 $archivos = $request->hasFile('archivos') ? [$archivos] : [];
             }
             if (empty($archivos)) {
@@ -46,12 +48,14 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
             $usuario = Auth::user();
 
             foreach ($archivos as $archivo) {
-                $tempRequest = new \Illuminate\Http\Request();
+                $tempRequest = new Request;
                 $tempRequest->files->set('archivo', $archivo);
 
                 $uploadData = ArchivoHelper::guardarArchivoConHash($tempRequest, 'archivo', self::DISK);
 
-                if (!$uploadData) continue;
+                if (! $uploadData) {
+                    continue;
+                }
 
                 $rutaArchivo = $uploadData['path'];
                 $hashSha256 = $uploadData['hash'];
@@ -67,7 +71,7 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
 
                 FileMetadataHelper::crearMetadataArchivoAdjuntoEnviados($archivoAdicional);
 
-                $nombreUsuario = $usuario ? trim($usuario->nombres . ' ' . $usuario->apellidos) : 'No se registró usuario';
+                $nombreUsuario = $usuario ? trim($usuario->nombres.' '.$usuario->apellidos) : 'No se registró usuario';
                 $fileUrl = ArchivoHelper::obtenerUrl($rutaArchivo, self::DISK);
 
                 $archivosSubidos[] = [
@@ -91,7 +95,7 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
         try {
             $radicado = VentanillaRadicaEnviados::with('archivos.usuarioSubio')->find($id);
 
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicado enviado no encontrado', null, 404);
             }
 
@@ -116,11 +120,11 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
                 ->where('id', $archivoId)
                 ->first();
 
-            if (!$archivo) {
+            if (! $archivo) {
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 
-            if (!ArchivoHelper::obtenerUrl($archivo->archivo, self::DISK)) {
+            if (! ArchivoHelper::obtenerUrl($archivo->archivo, self::DISK)) {
                 return $this->errorResponse('El archivo no existe en el servidor', null, 404);
             }
 
@@ -137,7 +141,7 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
                 ->where('id', $archivoId)
                 ->first();
 
-            if (!$archivo) {
+            if (! $archivo) {
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 

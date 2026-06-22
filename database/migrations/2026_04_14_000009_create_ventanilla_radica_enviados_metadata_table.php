@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('ventanilla_radica_enviados_metadata', function (Blueprint $table) {
             $table->id();
-            
+
             // Relaciones
             $table->unsignedBigInteger('archivo_id')->nullable();
             $table->unsignedBigInteger('radicado_id')->nullable();

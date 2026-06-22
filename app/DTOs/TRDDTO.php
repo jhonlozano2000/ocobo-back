@@ -45,6 +45,6 @@ class TRDDTO
 
     public static function collection($trds): array
     {
-        return $trds->map(fn($t) => self::fromModel($t))->toArray();
+        return $trds->map(fn ($t) => self::fromModel($t))->toArray();
     }
 }

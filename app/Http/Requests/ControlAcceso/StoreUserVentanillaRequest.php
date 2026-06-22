@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\ControlAcceso;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreUserVentanillaRequest extends FormRequest
@@ -19,7 +20,7 @@ class StoreUserVentanillaRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -27,20 +28,18 @@ class StoreUserVentanillaRequest extends FormRequest
             'user_id' => [
                 'required',
                 'integer',
-                'exists:users,id'
+                'exists:users,id',
             ],
             'ventanilla_id' => [
                 'required',
                 'integer',
-                'exists:config_ventanillas,id'
-            ]
+                'exists:config_ventanillas,id',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -50,20 +49,18 @@ class StoreUserVentanillaRequest extends FormRequest
             'user_id.exists' => 'El usuario seleccionado no existe en el sistema.',
             'ventanilla_id.required' => 'La ventanilla es obligatoria.',
             'ventanilla_id.integer' => 'El ID de la ventanilla debe ser un número entero.',
-            'ventanilla_id.exists' => 'La ventanilla seleccionada no existe en el sistema.'
+            'ventanilla_id.exists' => 'La ventanilla seleccionada no existe en el sistema.',
         ];
     }
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
         return [
             'user_id' => 'usuario',
-            'ventanilla_id' => 'ventanilla'
+            'ventanilla_id' => 'ventanilla',
         ];
     }
 }

@@ -2,8 +2,8 @@
 
 namespace App\Models\ControlAcceso;
 
-use App\Models\User;
 use App\Models\Configuracion\configVentanilla;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -25,7 +25,7 @@ class UserVentanilla extends Model
      */
     protected $fillable = [
         'user_id',
-        'ventanilla_id'
+        'ventanilla_id',
     ];
 
     /**

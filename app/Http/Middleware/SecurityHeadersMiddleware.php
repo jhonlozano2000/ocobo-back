@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Middleware de Headers de Seguridad
@@ -44,7 +45,7 @@ class SecurityHeadersMiddleware
         }
 
         // No aplicar a respuestas streaming
-        if ($response instanceof \Symfony\Component\HttpFoundation\StreamedResponse) {
+        if ($response instanceof StreamedResponse) {
             return false;
         }
 

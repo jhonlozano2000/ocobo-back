@@ -4,11 +4,9 @@ namespace App\Services\ControlAcceso;
 
 use App\Helpers\ArchivoHelper;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 
 class UserService
 {
@@ -20,15 +18,15 @@ class UserService
         $query = User::with([
             'roles',
             'cargoActivo.cargo',
-            'divisionPolitica.padre.padre'
+            'divisionPolitica.padre.padre',
         ]);
 
-        if (!empty($filters['solo_activos'])) {
+        if (! empty($filters['solo_activos'])) {
             $query->where('estado', 1);
         }
 
-        if (!empty($filters['search'])) {
-            $query->where(fn($q) => $q
+        if (! empty($filters['search'])) {
+            $query->where(fn ($q) => $q
                 ->where('nombres', 'like', "%{$filters['search']}%")
                 ->orWhere('apellidos', 'like', "%{$filters['search']}%")
                 ->orWhere('email', 'like', "%{$filters['search']}%")
@@ -36,7 +34,7 @@ class UserService
         }
 
         return $query->orderBy('nombres')->orderBy('apellidos')->get()
-            ->map(fn($u) => $this->mapUserData($u));
+            ->map(fn ($u) => $this->mapUserData($u));
     }
 
     /**
@@ -45,7 +43,7 @@ class UserService
     public function getById(string $id): ?array
     {
         $user = User::with(['roles', 'cargoActivo.cargo', 'divisionPolitica.padre.padre'])->find($id);
-        
+
         return $user ? $this->mapUserData($user) : null;
     }
 
@@ -54,31 +52,31 @@ class UserService
      */
     public function create(array $data): User
     {
-        if (!empty($data['avatar'])) {
+        if (! empty($data['avatar'])) {
             $data['avatar'] = ArchivoHelper::guardarArchivo(
-                new \Illuminate\Http\Request(['avatar' => $data['avatar']]),
+                new Request(['avatar' => $data['avatar']]),
                 'avatar', 'avatars', null
             );
         }
 
-        if (!empty($data['firma'])) {
+        if (! empty($data['firma'])) {
             $data['firma'] = ArchivoHelper::guardarArchivo(
-                new \Illuminate\Http\Request(['firma' => $data['firma']]),
+                new Request(['firma' => $data['firma']]),
                 'firma', 'firmas', null
             );
         }
 
-        if (!empty($data['password'])) {
+        if (! empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);
         }
 
         $user = User::create($data);
 
-        if (!empty($data['roles'])) {
+        if (! empty($data['roles'])) {
             $user->syncRoles($data['roles']);
         }
 
-        if (!empty($data['cargo_id'])) {
+        if (! empty($data['cargo_id'])) {
             $user->asignarCargo(
                 $data['cargo_id'],
                 $data['fecha_inicio_cargo'] ?? now()->format('Y-m-d'),
@@ -96,7 +94,7 @@ class UserService
     {
         $user = User::findOrFail($id);
 
-        if (!empty($data['password'])) {
+        if (! empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);
         } else {
             unset($data['password']);
@@ -104,7 +102,7 @@ class UserService
 
         $user->fill($data)->save();
 
-        if (!empty($data['roles'])) {
+        if (! empty($data['roles'])) {
             $user->syncRoles($data['roles']);
         }
 
@@ -129,14 +127,14 @@ class UserService
     public function delete(string $id): bool
     {
         $user = User::find($id);
-        
-        if (!$user) {
+
+        if (! $user) {
             return false;
         }
 
         ArchivoHelper::eliminarArchivo($user->avatar, 'avatars');
         ArchivoHelper::eliminarArchivo($user->firma, 'firmas');
-        
+
         return $user->delete();
     }
 
@@ -166,12 +164,12 @@ class UserService
     private function mapUserData($user): array
     {
         $data = $user->append(['avatar_url', 'firma_url'])->toArray();
-        
+
         unset($data['cargos'], $data['cargo_activo'], $data['division_politica']);
 
         $data = array_merge($data, [
             'cargo' => null, 'oficina' => null, 'dependencia' => null,
-            'pais' => null, 'departamento' => null, 'municipio' => null
+            'pais' => null, 'departamento' => null, 'municipio' => null,
         ]);
 
         // División política
@@ -190,7 +188,7 @@ class UserService
     private function mapDivisionPolitica($user, array &$data): void
     {
         $diviPoli = $user->divisionPolitica;
-        
+
         if ($diviPoli->tipo === 'Municipio') {
             $dept = $diviPoli->padre;
             $pais = $dept?->padre;
@@ -216,7 +214,7 @@ class UserService
             'cod_organico' => $cargo->cod_organico,
             'tipo' => $cargo->tipo,
             'fecha_inicio' => $user->cargoActivo->fecha_inicio?->format('Y-m-d'),
-            'observaciones' => $user->cargoActivo->observaciones
+            'observaciones' => $user->cargoActivo->observaciones,
         ];
 
         $jerarquia = $cargo->getJerarquiaCompleta();

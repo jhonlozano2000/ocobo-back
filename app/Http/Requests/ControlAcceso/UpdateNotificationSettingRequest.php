@@ -2,8 +2,9 @@
 
 namespace App\Http\Requests\ControlAcceso;
 
-use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
 class UpdateNotificationSettingRequest extends FormRequest
@@ -21,7 +22,7 @@ class UpdateNotificationSettingRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -30,27 +31,27 @@ class UpdateNotificationSettingRequest extends FormRequest
             'new_for_you.app' => 'nullable|boolean',
             'new_for_you.email' => 'nullable|boolean',
             'new_for_you.browser' => 'nullable|boolean',
-            
+
             'account_activity' => 'nullable|array',
             'account_activity.app' => 'nullable|boolean',
             'account_activity.email' => 'nullable|boolean',
             'account_activity.browser' => 'nullable|boolean',
-            
+
             'new_browser_login' => 'nullable|array',
             'new_browser_login.app' => 'nullable|boolean',
             'new_browser_login.email' => 'nullable|boolean',
             'new_browser_login.browser' => 'nullable|boolean',
-            
+
             'new_device_linked' => 'nullable|array',
             'new_device_linked.app' => 'nullable|boolean',
             'new_device_linked.email' => 'nullable|boolean',
             'new_device_linked.browser' => 'nullable|boolean',
-            
+
             'email_notifications' => 'nullable|array',
             'email_notifications.app' => 'nullable|boolean',
             'email_notifications.email' => 'nullable|boolean',
             'email_notifications.browser' => 'nullable|boolean',
-            
+
             // Legacy format support
             'new_for_you_boolean' => 'nullable|boolean',
             'account_activity_boolean' => 'nullable|boolean',
@@ -62,8 +63,6 @@ class UpdateNotificationSettingRequest extends FormRequest
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -79,7 +78,6 @@ class UpdateNotificationSettingRequest extends FormRequest
     /**
      * Handle a failed validation attempt.
      *
-     * @param Validator $validator
      * @throws HttpResponseException
      */
     protected function failedValidation(Validator $validator)
@@ -87,7 +85,7 @@ class UpdateNotificationSettingRequest extends FormRequest
         throw new HttpResponseException(response()->json([
             'status' => false,
             'message' => 'Datos de validación incorrectos',
-            'errors' => $validator->errors()
+            'errors' => $validator->errors(),
         ], 422));
     }
 }

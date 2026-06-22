@@ -20,7 +20,7 @@ class ConfigServerArchivo extends Model
     public function setPasswordAttribute($value)
     {
         // Solo hashear si el valor no está vacío
-        if (!empty($value)) {
+        if (! empty($value)) {
             $this->attributes['password'] = Hash::make($value);
         }
     }

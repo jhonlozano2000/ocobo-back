@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\Ventanilla\Internos;
 
-use Illuminate\Foundation\Http\FormRequest;
 use App\Models\Configuracion\ConfigVarias;
+use Illuminate\Foundation\Http\FormRequest;
 
 class UploadArchivosAdjuntosInternoRequest extends FormRequest
 {
@@ -20,14 +20,15 @@ class UploadArchivosAdjuntosInternoRequest extends FormRequest
             'archivos' => 'required|array|min:1|max:10',
             'archivos.*' => [
                 'file',
-                'max:' . $maxSize
-            ]
+                'max:'.$maxSize,
+            ],
         ];
     }
 
     public function messages(): array
     {
         $maxSize = ConfigVarias::getValor('max_tamano_archivo', 10240);
+
         return [
             'archivos.required' => 'Los archivos son obligatorios.',
             'archivos.array' => 'Los archivos deben ser enviados como un array.',
@@ -35,7 +36,7 @@ class UploadArchivosAdjuntosInternoRequest extends FormRequest
             'archivos.max' => 'No puede enviar más de 10 archivos a la vez.',
             'archivos.*.required' => 'Cada archivo es obligatorio.',
             'archivos.*.file' => 'Cada elemento debe ser un archivo válido.',
-            'archivos.*.max' => "Cada archivo no puede superar los {$maxSize} KB."
+            'archivos.*.max' => "Cada archivo no puede superar los {$maxSize} KB.",
         ];
     }
 
@@ -43,7 +44,7 @@ class UploadArchivosAdjuntosInternoRequest extends FormRequest
     {
         return [
             'archivos' => 'archivos adjuntos',
-            'archivos.*' => 'archivo'
+            'archivos.*' => 'archivo',
         ];
     }
 }

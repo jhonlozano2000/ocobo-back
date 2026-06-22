@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::table('users_notification_settings', function (Blueprint $table) {
             $table->boolean('new_device_linked')->default(false)->after('new_browser_login');
             $table->boolean('email_notifications')->default(true)->after('new_device_linked');
-            
+
             $table->boolean('new_for_you_email')->default(true)->after('email_notifications');
             $table->boolean('new_for_you_browser')->default(true)->after('new_for_you_email');
             $table->boolean('account_activity_email')->default(true)->after('new_for_you_browser');

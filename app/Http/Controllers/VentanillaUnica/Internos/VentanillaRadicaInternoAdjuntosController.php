@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\VentanillaUnica\Internos;
 
-use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
-use App\Http\Requests\Ventanilla\Internos\UploadArchivosAdjuntosInternoRequest;
 use App\Helpers\ArchivoHelper;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Ventanilla\Internos\UploadArchivosAdjuntosInternoRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoArchivos;
 use Illuminate\Http\Request;
@@ -17,13 +17,14 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
     use ApiResponseTrait;
 
     private const DISK = 'radicados_internos';
+
     private const PERM = 'Radicar -> Cores. Interna -> ';
 
     public function __construct()
     {
-        $this->middleware('can:' . self::PERM . 'Subir adjuntos')->only(['subirArchivosAdjuntos']);
-        $this->middleware('can:' . self::PERM . 'Eliminar adjuntos')->only(['eliminarArchivoAdjunto']);
-        $this->middleware('can:' . self::PERM . 'Mostrar')->only(['listarArchivosAdjuntos', 'descargarArchivoAdjunto']);
+        $this->middleware('can:'.self::PERM.'Subir adjuntos')->only(['subirArchivosAdjuntos']);
+        $this->middleware('can:'.self::PERM.'Eliminar adjuntos')->only(['eliminarArchivoAdjunto']);
+        $this->middleware('can:'.self::PERM.'Mostrar')->only(['listarArchivosAdjuntos', 'descargarArchivoAdjunto']);
     }
 
     public function subirArchivosAdjuntos($id, UploadArchivosAdjuntosInternoRequest $request)
@@ -31,17 +32,17 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
         try {
             $radicado = VentanillaRadicaInterno::find($id);
 
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicado interno no encontrado', null, 404);
             }
 
             $archivos = $request->file('archivos');
 
-            if (!$archivos || (!is_array($archivos) && !$request->hasFile('archivos'))) {
+            if (! $archivos || (! is_array($archivos) && ! $request->hasFile('archivos'))) {
                 return $this->errorResponse('No se encontraron archivos para subir', null, 400);
             }
 
-            if (!is_array($archivos)) {
+            if (! is_array($archivos)) {
                 $archivos = [$archivos];
             }
 
@@ -49,12 +50,12 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
             $usuario = Auth::user();
 
             foreach ($archivos as $archivo) {
-                $tempRequest = new Request();
+                $tempRequest = new Request;
                 $tempRequest->files->set('archivo', $archivo);
 
                 $uploadData = ArchivoHelper::guardarArchivoConHash($tempRequest, 'archivo', self::DISK);
 
-                if (!$uploadData) {
+                if (! $uploadData) {
                     continue;
                 }
 
@@ -77,7 +78,7 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
                     'id' => $archivoAdicional->id,
                     'nombre' => $archivoAdicional->nom_origi,
                     'path' => $rutaArchivo,
-                    'subido_por' => $usuario ? trim($usuario->nombres . ' ' . $usuario->apellidos) : 'No se registró usuario',
+                    'subido_por' => $usuario ? trim($usuario->nombres.' '.$usuario->apellidos) : 'No se registró usuario',
                     'tamaño' => $archivo->getSize(),
                     'tipo' => $archivo->getMimeType(),
                     'file_url' => $fileUrl,
@@ -95,11 +96,11 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
         try {
             $radicado = VentanillaRadicaInterno::with('archivos.usuarioSubido')->find($id);
 
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicado interno no encontrado', null, 404);
             }
 
-            $archivos = $radicado->archivos->map(fn($archivo) => [
+            $archivos = $radicado->archivos->map(fn ($archivo) => [
                 'id' => $archivo->id,
                 'nombre' => $archivo->nom_origi ?? basename($archivo->archivo),
                 'ruta' => $archivo->archivo,
@@ -108,7 +109,7 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
                 'tipo' => Storage::disk(self::DISK)->mimeType($archivo->archivo),
                 'fecha_subida' => $archivo->created_at,
                 'subido_por' => $archivo->usuarioSubido
-                    ? trim($archivo->usuarioSubido->nombres . ' ' . $archivo->usuarioSubido->apellidos)
+                    ? trim($archivo->usuarioSubido->nombres.' '.$archivo->usuarioSubido->apellidos)
                     : 'Usuario no identificado',
             ])->values();
 
@@ -125,11 +126,11 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
                 ->where('id', $archivoId)
                 ->first();
 
-            if (!$archivo) {
+            if (! $archivo) {
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 
-            if (!ArchivoHelper::obtenerUrl($archivo->archivo, self::DISK)) {
+            if (! ArchivoHelper::obtenerUrl($archivo->archivo, self::DISK)) {
                 return $this->errorResponse('El archivo no existe en el servidor', null, 404);
             }
 
@@ -146,7 +147,7 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
                 ->where('id', $archivoId)
                 ->first();
 
-            if (!$archivo) {
+            if (! $archivo) {
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 

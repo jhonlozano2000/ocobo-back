@@ -3,10 +3,10 @@
 namespace App\Http\Requests;
 
 use App\Services\Seguridad\AuditLogService;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
-use Illuminate\Routing\Route;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Base FormRequest con sanitización automática
@@ -39,8 +39,6 @@ abstract class SanitizedFormRequest extends FormRequest
      * - 'email' : Formatea como email válido
      * - 'url' : Formatea como URL válida
      * - 'escape' : Escapa caracteres especiales HTML
-     *
-     * @var array
      */
     protected array $sanitizationRules = [];
 
@@ -91,13 +89,14 @@ abstract class SanitizedFormRequest extends FormRequest
     {
         foreach ($datos as $clave => $valor) {
             // Omitir archivos
-            if ($valor instanceof \Illuminate\Http\UploadedFile) {
+            if ($valor instanceof UploadedFile) {
                 continue;
             }
 
             // Omitir arrays de archivos
             if (is_array($valor)) {
                 $datos[$clave] = $this->sanitizarDatos($valor);
+
                 continue;
             }
 
@@ -123,7 +122,7 @@ abstract class SanitizedFormRequest extends FormRequest
      */
     private function aplicarFiltro($valor, string $filtro)
     {
-        if (!is_string($valor)) {
+        if (! is_string($valor)) {
             return $valor;
         }
 
@@ -147,7 +146,7 @@ abstract class SanitizedFormRequest extends FormRequest
      */
     private function sanitizarValor($valor): string
     {
-        if (!is_string($valor)) {
+        if (! is_string($valor)) {
             return $valor;
         }
 

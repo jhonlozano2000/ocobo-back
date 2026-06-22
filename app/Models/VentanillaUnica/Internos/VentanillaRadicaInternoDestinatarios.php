@@ -2,6 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Internos;
 
+use App\Models\ControlAcceso\UserCargo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -15,7 +16,7 @@ class VentanillaRadicaInternoDestinatarios extends Model
         'radica_interno_id',
         'users_cargos_id',
         'visto',
-        'fechor_visto'
+        'fechor_visto',
     ];
 
     public function radicaInterno()
@@ -25,12 +26,12 @@ class VentanillaRadicaInternoDestinatarios extends Model
 
     public function userCargo()
     {
-        return $this->belongsTo(\App\Models\ControlAcceso\UserCargo::class, 'users_cargos_id');
+        return $this->belongsTo(UserCargo::class, 'users_cargos_id');
     }
 
     public function marcarComoVisto(): void
     {
-        if (!$this->fechor_visto) {
+        if (! $this->fechor_visto) {
             $this->update(['fechor_visto' => now()]);
         }
     }
@@ -50,7 +51,7 @@ class VentanillaRadicaInternoDestinatarios extends Model
         $user = $this->userCargo?->user;
         $cargo = $this->userCargo?->cargo;
 
-        if (!$user) {
+        if (! $user) {
             return null;
         }
 
@@ -61,7 +62,7 @@ class VentanillaRadicaInternoDestinatarios extends Model
             'usuario' => [
                 'nombres' => $user->nombres,
                 'apellidos' => $user->apellidos,
-                'nombre_completo' => trim($user->nombres . ' ' . $user->apellidos),
+                'nombre_completo' => trim($user->nombres.' '.$user->apellidos),
             ],
             'cargo' => $cargo ? [
                 'id' => $cargo->id,

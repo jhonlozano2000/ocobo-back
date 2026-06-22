@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Configuracion;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreConfigSedeRequest extends FormRequest
@@ -30,7 +31,7 @@ class StoreConfigSedeRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -38,41 +39,41 @@ class StoreConfigSedeRequest extends FormRequest
             'nombre' => [
                 'required',
                 'string',
-                'max:100'
+                'max:100',
             ],
             'codigo' => [
                 'required',
                 'string',
                 'max:20',
-                'unique:config_sedes,codigo'
+                'unique:config_sedes,codigo',
             ],
             'direccion' => [
                 'required',
                 'string',
-                'max:255'
+                'max:255',
             ],
             'telefono' => [
                 'nullable',
                 'string',
-                'max:20'
+                'max:20',
             ],
             'email' => [
                 'nullable',
                 'email',
-                'max:100'
+                'max:100',
             ],
             'ubicacion' => [
                 'nullable',
                 'string',
-                'max:255'
+                'max:255',
             ],
             'divi_poli_id' => [
                 'nullable',
-                'exists:config_divi_poli,id'
+                'exists:config_divi_poli,id',
             ],
             'estado' => [
                 'nullable',
-                'in:0,1,true,false'
+                'in:0,1,true,false',
             ],
 
         ];
@@ -80,8 +81,6 @@ class StoreConfigSedeRequest extends FormRequest
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -109,8 +108,6 @@ class StoreConfigSedeRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
@@ -122,7 +119,7 @@ class StoreConfigSedeRequest extends FormRequest
             'email' => 'email',
             'ubicacion' => 'ubicación',
             'divi_poli_id' => 'departamento/policía',
-            'estado' => 'estado'
+            'estado' => 'estado',
         ];
     }
 }

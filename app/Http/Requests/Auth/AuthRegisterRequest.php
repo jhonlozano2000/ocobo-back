@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Auth;
 
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class AuthRegisterRequest extends FormRequest
 {
@@ -35,7 +37,7 @@ class AuthRegisterRequest extends FormRequest
                     ->mixedCase()
                     ->numbers()
                     ->symbols()
-                    ->uncompromised()
+                    ->uncompromised(),
             ],
             'tel' => 'nullable|string|max:20',
             'movil' => 'nullable|string|max:20',
@@ -83,14 +85,14 @@ class AuthRegisterRequest extends FormRequest
         ];
     }
 
-    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
+    protected function failedValidation(Validator $validator)
     {
         $response = response()->json([
-            'status'  => false,
+            'status' => false,
             'message' => 'Errores de validación.',
-            'errors'  => $validator->errors(),
+            'errors' => $validator->errors(),
         ], 422);
 
-        throw new \Illuminate\Validation\ValidationException($validator, $response);
+        throw new ValidationException($validator, $response);
     }
 }

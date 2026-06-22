@@ -50,7 +50,7 @@ class CombinedSecurityMiddleware
         $forwardedIp = $request->header('X-Forwarded-IP');
 
         // Si hay headers de proxy pero el trust proxy no está configurado
-        if (($forwardedFor || $forwardedProto || $forwardedIp) && !config('trustedproxy.proxies')) {
+        if (($forwardedFor || $forwardedProto || $forwardedIp) && ! config('trustedproxy.proxies')) {
             // Solo warn, no bloquear - el TrustProxies middleware maneja esto
         }
     }
@@ -61,7 +61,7 @@ class CombinedSecurityMiddleware
     private function verifyRequiredHeaders(Request $request): void
     {
         // Solo para endpoints de API que requieren Content-Type
-        if (!$request->is('api/*')) {
+        if (! $request->is('api/*')) {
             return;
         }
 

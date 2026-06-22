@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\MiBandeja\TempDocumentosRecibidos;
 
-use App\Http\Controllers\Controller;
 use App\Helpers\OutputSanitizer;
+use App\Http\Controllers\Controller;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Sugerencia;
 use Illuminate\Http\JsonResponse;
@@ -14,7 +14,7 @@ class SugerenciaController extends Controller
 {
     public function index(Request $request, Documento $documento): JsonResponse
     {
-        if (!$documento->tieneAcceso($request->user())) {
+        if (! $documento->tieneAcceso($request->user())) {
             return response()->json(['message' => 'No tienes acceso'], 403);
         }
 
@@ -38,7 +38,7 @@ class SugerenciaController extends Controller
 
     public function store(Request $request, Documento $documento): JsonResponse
     {
-        if (!$documento->puedeEditar($request->user())) {
+        if (! $documento->puedeEditar($request->user())) {
             return response()->json(['message' => 'No tienes permisos para editar'], 403);
         }
 
@@ -78,7 +78,7 @@ class SugerenciaController extends Controller
 
     public function aceptar(Request $request, Documento $documento, Sugerencia $sugerencia): JsonResponse
     {
-        if (!$documento->puedeEditar($request->user())) {
+        if (! $documento->puedeEditar($request->user())) {
             return response()->json(['message' => 'No tienes permisos'], 403);
         }
 
@@ -111,7 +111,7 @@ class SugerenciaController extends Controller
 
     public function rechazar(Request $request, Documento $documento, Sugerencia $sugerencia): JsonResponse
     {
-        if (!$documento->puedeEditar($request->user())) {
+        if (! $documento->puedeEditar($request->user())) {
             return response()->json(['message' => 'No tienes permisos'], 403);
         }
 
@@ -148,7 +148,7 @@ class SugerenciaController extends Controller
 
     public function estadisticas(Request $request, Documento $documento): JsonResponse
     {
-        if (!$documento->tieneAcceso($request->user())) {
+        if (! $documento->tieneAcceso($request->user())) {
             return response()->json(['message' => 'No tienes acceso'], 403);
         }
 

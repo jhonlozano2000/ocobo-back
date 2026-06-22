@@ -15,9 +15,6 @@ class DocumentoResource extends JsonResource
 {
     /**
      * Transforma el recurso a array.
-     *
-     * @param Request $request
-     * @return array
      */
     public function toArray(Request $request): array
     {
@@ -48,31 +45,30 @@ class DocumentoResource extends JsonResource
                     }),
                 ],
                 'usuarios_activos' => $this->whenLoaded('cursores', function () {
-                    return $this->cursores->filter(fn($c) => $c->esActivo())->count();
+                    return $this->cursores->filter(fn ($c) => $c->esActivo())->count();
                 }),
             ],
             'creador' => $this->whenLoaded('creador', function () {
                 $creador = $this->creador;
+
                 return [
                     'id' => $creador->id,
-                    'name' => $creador->name ?? trim($creador->nombres . ' ' . $creador->apellidos) ?: 'Usuario',
+                    'name' => $creador->name ?? trim($creador->nombres.' '.$creador->apellidos) ?: 'Usuario',
                 ];
             }),
-            'usuarios' => $this->whenLoaded('usuarios', fn () => 
-                $this->usuarios->map(fn ($u) => [
-                    'user_id' => $u->user_id,
-                    'rol' => $u->rol,
-                    'nombre' => $u->nombreUsuario(),
-                    'color' => $u->color(),
-                ])
+            'usuarios' => $this->whenLoaded('usuarios', fn () => $this->usuarios->map(fn ($u) => [
+                'user_id' => $u->user_id,
+                'rol' => $u->rol,
+                'nombre' => $u->nombreUsuario(),
+                'color' => $u->color(),
+            ])
             ),
             'contenido' => $this->whenLoaded('contenido', fn () => [
                 'contenido_yjs' => $this->contenido->contenido_yjs,
                 'hash' => $this->contenido->hash_contenido,
                 'actualizado_por' => $this->contenido->actualizado_por,
             ]),
-            'cursores' => $this->whenLoaded('cursores', fn () => 
-                $this->cursores->map(fn ($c) => $c->toArray())
+            'cursores' => $this->whenLoaded('cursores', fn () => $this->cursores->map(fn ($c) => $c->toArray())
             ),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),

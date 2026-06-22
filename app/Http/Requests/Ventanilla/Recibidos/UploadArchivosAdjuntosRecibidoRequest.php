@@ -2,8 +2,9 @@
 
 namespace App\Http\Requests\Ventanilla\Recibidos;
 
-use Illuminate\Foundation\Http\FormRequest;
 use App\Models\Configuracion\ConfigVarias;
+use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Foundation\Http\FormRequest;
 
 class UploadArchivosAdjuntosRecibidoRequest extends FormRequest
 {
@@ -20,7 +21,7 @@ class UploadArchivosAdjuntosRecibidoRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -31,15 +32,13 @@ class UploadArchivosAdjuntosRecibidoRequest extends FormRequest
             'archivos' => 'required|array|min:1|max:10',
             'archivos.*' => [
                 'file',
-                'max:' . $maxSize
-            ]
+                'max:'.$maxSize,
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -54,20 +53,18 @@ class UploadArchivosAdjuntosRecibidoRequest extends FormRequest
             'archivos.*.required' => 'Cada archivo es obligatorio.',
             'archivos.*.file' => 'Cada elemento debe ser un archivo válido.',
             'archivos.*.max' => "Cada archivo no puede superar los {$maxSize} KB.",
-            'archivos.*.mimes' => "Cada archivo debe ser de tipo: {$allowedExtensions}."
+            'archivos.*.mimes' => "Cada archivo debe ser de tipo: {$allowedExtensions}.",
         ];
     }
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
         return [
             'archivos' => 'archivos adjuntos',
-            'archivos.*' => 'archivo adjunto'
+            'archivos.*' => 'archivo adjunto',
         ];
     }
 }

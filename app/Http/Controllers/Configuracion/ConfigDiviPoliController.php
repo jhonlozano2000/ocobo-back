@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
+use App\Http\Requests\Configuracion\ListConfigDiviPoliRequest;
 use App\Http\Requests\Configuracion\StoreConfigDiviPoliRequest;
 use App\Http\Requests\Configuracion\UpdateConfigDiviPoliRequest;
-use App\Http\Requests\Configuracion\ListConfigDiviPoliRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\Configuracion\ConfigDiviPoli;
-use Illuminate\Http\Request;
 use App\Services\Configuracion\ConfigDiviPoliService;
 
 class ConfigDiviPoliController extends Controller
@@ -90,7 +89,7 @@ class ConfigDiviPoliController extends Controller
     public function destroy(int $id)
     {
         try {
-            if (!$this->service->delete($id)) {
+            if (! $this->service->delete($id)) {
                 return $this->errorResponse(
                     'No se puede eliminar porque tiene divisiones políticas asociadas',
                     null,
@@ -155,7 +154,7 @@ class ConfigDiviPoliController extends Controller
     public function listarPorTipo(string $tipo)
     {
         try {
-            if (!$this->service->isTipoValido($tipo)) {
+            if (! $this->service->isTipoValido($tipo)) {
                 return $this->errorResponse(
                     'Tipo de división política no válido',
                     null,
@@ -214,17 +213,18 @@ class ConfigDiviPoliController extends Controller
             \Log::info('cargarRecursivo called', ['id' => $id]);
             $result = $this->service->getWithAncestors($id);
             \Log::info('cargarRecursivo result', ['result' => $result]);
-            
-            if (!$result) {
+
+            if (! $result) {
                 return $this->errorResponse('División política no encontrada', null, 404);
             }
-            
+
             return $this->successResponse(
                 $result,
                 'División política con ancestros obtenida exitosamente'
             );
         } catch (\Exception $e) {
-            \Log::error('cargarRecursivo error: ' . $e->getMessage());
+            \Log::error('cargarRecursivo error: '.$e->getMessage());
+
             return $this->errorResponse('Error al obtener división política', $e->getMessage(), 500);
         }
     }

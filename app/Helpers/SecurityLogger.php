@@ -2,9 +2,9 @@
 
 namespace App\Helpers;
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * Helper de Logging de Seguridad
@@ -15,10 +15,6 @@ class SecurityLogger
 {
     /**
      * Log de intento de acceso
-     *
-     * @param string $email
-     * @param bool $success
-     * @param string $reason
      */
     public static function loginAttempt(string $email, bool $success, string $reason = ''): void
     {
@@ -34,10 +30,6 @@ class SecurityLogger
 
     /**
      * Log de acceso a recurso
-     *
-     * @param string $resourceType
-     * @param int $resourceId
-     * @param string $action
      */
     public static function resourceAccess(string $resourceType, int $resourceId, string $action = 'read'): void
     {
@@ -53,10 +45,6 @@ class SecurityLogger
 
     /**
      * Log de intento de intrusión
-     *
-     * @param string $type
-     * @param string $description
-     * @param array $context
      */
     public static function intrusionAttempt(string $type, string $description, array $context = []): void
     {
@@ -72,10 +60,6 @@ class SecurityLogger
 
     /**
      * Log de cambio de configuración
-     *
-     * @param string $configKey
-     * @param string $oldValue
-     * @param string $newValue
      */
     public static function configChange(string $configKey, string $oldValue, string $newValue): void
     {
@@ -91,9 +75,6 @@ class SecurityLogger
 
     /**
      * Log de exportación de datos
-     *
-     * @param string $dataType
-     * @param int $recordCount
      */
     public static function dataExport(string $dataType, int $recordCount): void
     {
@@ -108,10 +89,6 @@ class SecurityLogger
 
     /**
      * Log de error de seguridad
-     *
-     * @param string $errorType
-     * @param string $message
-     * @param array $context
      */
     public static function securityError(string $errorType, string $message, array $context = []): void
     {

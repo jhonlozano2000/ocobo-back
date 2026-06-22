@@ -18,8 +18,6 @@ trait ValidacionArchivosTrait
 {
     /**
      * Lista de MIME types permitidos por defecto
-     *
-     * @var array
      */
     protected array $allowedMimes = [
         'application/pdf',
@@ -29,19 +27,18 @@ trait ValidacionArchivosTrait
 
     /**
      * Tamaño máximo de archivo en bytes (50MB)
-     *
-     * @var int
      */
     protected int $maxFileSize = 52428800;
 
     /**
      * Valida un archivo usando la validación centralizada
      *
-     * @param mixed $file Archivo a validar
-     * @param array|null $allowedMimes MIME types permitidos (null = usar default)
-     * @param int|null $maxSize Tamaño máximo en bytes (null = usar default)
-     * @throws HttpResponseException
+     * @param  mixed  $file  Archivo a validar
+     * @param  array|null  $allowedMimes  MIME types permitidos (null = usar default)
+     * @param  int|null  $maxSize  Tamaño máximo en bytes (null = usar default)
      * @return array ['valido' => bool, 'error' => string|null]
+     *
+     * @throws HttpResponseException
      */
     protected function validarArchivo($file, ?array $allowedMimes = null, ?int $maxSize = null): array
     {
@@ -50,7 +47,7 @@ trait ValidacionArchivosTrait
 
         $resultado = ArchivoHelper::validarArchivoSeguro($file, $allowedMimes);
 
-        if (!$resultado['valido']) {
+        if (! $resultado['valido']) {
             AuditLogService::logIntentoIntrusion(
                 'upload_invalid',
                 $resultado['error'],
@@ -86,11 +83,12 @@ trait ValidacionArchivosTrait
     /**
      * Valida múltiples archivos
      *
-     * @param array $files Archivos a validar
-     * @param array|null $allowedMimes MIME types permitidos
-     * @param int|null $maxSize Tamaño máximo por archivo
-     * @throws HttpResponseException
+     * @param  array  $files  Archivos a validar
+     * @param  array|null  $allowedMimes  MIME types permitidos
+     * @param  int|null  $maxSize  Tamaño máximo por archivo
      * @return array Resultados de validación
+     *
+     * @throws HttpResponseException
      */
     protected function validarArchivosMultiples(array $files, ?array $allowedMimes = null, ?int $maxSize = null): array
     {
@@ -101,12 +99,12 @@ trait ValidacionArchivosTrait
             $resultado = $this->validarArchivo($file, $allowedMimes, $maxSize);
             $resultados[$index] = $resultado;
 
-            if (!$resultado['valido']) {
+            if (! $resultado['valido']) {
                 $errores[$index] = $resultado['error'];
             }
         }
 
-        if (!empty($errores)) {
+        if (! empty($errores)) {
             throw new HttpResponseException(
                 response()->json([
                     'success' => false,
@@ -123,12 +121,13 @@ trait ValidacionArchivosTrait
     /**
      * Verifica que el archivo exista en el request
      *
-     * @param string $campo Nombre del campo
+     * @param  string  $campo  Nombre del campo
+     *
      * @throws HttpResponseException
      */
     protected function verificarArchivoExiste(string $campo): void
     {
-        if (!$this->hasFile($campo)) {
+        if (! $this->hasFile($campo)) {
             throw new HttpResponseException(
                 response()->json([
                     'success' => false,

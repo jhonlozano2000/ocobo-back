@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\Configuracion\StoreConfigVariasRequest;
 use App\Http\Requests\Configuracion\UpdateConfigVariasRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\Configuracion\ConfigVarias;
 use App\Services\Configuracion\ConfigVariasService;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +17,7 @@ class ConfigVariasController extends Controller
     use ApiResponseTrait;
 
     private const KEY_LOGO_EMPRESA = 'logo_empresa';
+
     private const KEY_NUMERACION_UNIFICADA = 'numeracion_unificada';
 
     public function __construct(
@@ -33,6 +34,7 @@ class ConfigVariasController extends Controller
                 'per_page' => 'nullable|integer',
             ]);
             $configs = $this->service->getAll($validated);
+
             return $this->successResponse($configs, 'Listado de configuraciones obtenido exitosamente');
         } catch (ValidationException $e) {
             return $this->errorResponse('Error de validación', $e->errors(), 422);
@@ -47,6 +49,7 @@ class ConfigVariasController extends Controller
             $validated = $this->prepareData($request->validated(), $request);
 
             $config = $this->service->create($validated);
+
             return $this->successResponse($config, 'Configuración creada exitosamente', 201);
         } catch (\Exception $e) {
             return $this->errorResponse('Error al crear', $e->getMessage(), 500);
@@ -96,7 +99,7 @@ class ConfigVariasController extends Controller
         try {
             return $this->successResponse([
                 'numeracion_unificada' => $this->service->getNumeracionUnificada(),
-                'descripcion' => 'Define si la numeración de radicados es unificada o por ventanilla'
+                'descripcion' => 'Define si la numeración de radicados es unificada o por ventanilla',
             ], 'Configuración de numeración unificada obtenida exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener', $e->getMessage(), 500);

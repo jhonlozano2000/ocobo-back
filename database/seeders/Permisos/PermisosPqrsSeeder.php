@@ -28,6 +28,8 @@ class PermisosPqrsSeeder extends Seeder
             'Radicar -> PQRSF -> Subir adjuntos',
             'Radicar -> PQRSF -> Eliminar digital',
             'Radicar -> PQRSF -> Eliminar adjuntos',
+            'Radicar -> PQRSF -> Firmar peticionario',
+            'Radicar -> PQRSF -> Anular',
         ];
 
         $rolAdmin = Role::where('name', 'Administrador')->first();

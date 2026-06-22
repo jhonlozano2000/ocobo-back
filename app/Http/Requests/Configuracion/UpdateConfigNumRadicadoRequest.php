@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Configuracion;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateConfigNumRadicadoRequest extends FormRequest
@@ -19,7 +20,7 @@ class UpdateConfigNumRadicadoRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -28,15 +29,13 @@ class UpdateConfigNumRadicadoRequest extends FormRequest
                 'required',
                 'string',
                 'max:50',
-                'regex:/^[A-Z0-9\-_#]+$/'
-            ]
+                'regex:/^[A-Z0-9\-_#]+$/',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -50,13 +49,11 @@ class UpdateConfigNumRadicadoRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
         return [
-            'formato' => 'formato de numeración'
+            'formato' => 'formato de numeración',
         ];
     }
 }

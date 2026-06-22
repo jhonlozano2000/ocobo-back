@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Configuracion;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreConfigDiviPoliRequest extends FormRequest
@@ -19,7 +20,7 @@ class StoreConfigDiviPoliRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -27,32 +28,30 @@ class StoreConfigDiviPoliRequest extends FormRequest
             'parent' => [
                 'nullable',
                 'integer',
-                'exists:config_divi_poli,id'
+                'exists:config_divi_poli,id',
             ],
             'codigo' => [
                 'required',
                 'string',
                 'max:5',
-                'unique:config_divi_poli,codigo'
+                'unique:config_divi_poli,codigo',
             ],
             'nombre' => [
                 'required',
                 'string',
-                'max:70'
+                'max:70',
             ],
             'tipo' => [
                 'required',
                 'string',
                 'max:15',
-                'in:Pais,Departamento,Municipio'
-            ]
+                'in:Pais,Departamento,Municipio',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -75,8 +74,6 @@ class StoreConfigDiviPoliRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
@@ -84,7 +81,7 @@ class StoreConfigDiviPoliRequest extends FormRequest
             'parent' => 'división política padre',
             'codigo' => 'código',
             'nombre' => 'nombre',
-            'tipo' => 'tipo'
+            'tipo' => 'tipo',
         ];
     }
 }

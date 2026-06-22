@@ -2,8 +2,11 @@
 
 namespace App\Http\Requests\ClasificacionDocumental;
 
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreClasificacionDocumentalRequest extends FormRequest
 {
@@ -18,7 +21,7 @@ class StoreClasificacionDocumentalRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -28,81 +31,81 @@ class StoreClasificacionDocumentalRequest extends FormRequest
             'tipo' => [
                 'required',
                 'string',
-                'in:Serie,SubSerie,TipoDocumento'
+                'in:Serie,SubSerie,TipoDocumento',
             ],
             'cod' => [
                 'required',
                 'string',
                 'max:50',
                 Rule::unique('clasificacion_documental_trd', 'cod')
-                    ->where('dependencia_id', $this->input('dependencia_id'))
+                    ->where('dependencia_id', $this->input('dependencia_id')),
             ],
             'nom' => [
                 'required',
                 'string',
-                'max:255'
+                'max:255',
             ],
             'dependencia_id' => [
                 'required',
                 'integer',
-                'exists:calidad_organigrama,id'
+                'exists:calidad_organigrama,id',
             ],
             'dias_vencimiento' => [
                 'nullable',
                 'integer',
                 'min:0',
-                'max:365'
+                'max:365',
             ],
             'a_g' => [
                 'nullable',
                 'string',
-                'max:10'
+                'max:10',
             ],
             'a_c' => [
                 'nullable',
                 'string',
-                'max:10'
+                'max:10',
             ],
             'ct' => [
                 'nullable',
-                'boolean'
+                'boolean',
             ],
             'e' => [
                 'nullable',
-                'boolean'
+                'boolean',
             ],
             'm_d' => [
                 'nullable',
-                'boolean'
+                'boolean',
             ],
             's' => [
                 'nullable',
-                'boolean'
+                'boolean',
             ],
             'procedimiento' => [
                 'nullable',
                 'string',
-                'max:500'
+                'max:500',
             ],
             'requiere_pdf_a' => [
                 'nullable',
-                'boolean'
+                'boolean',
             ],
             'pdf_a_nivel' => [
                 'nullable',
                 'string',
                 'max:10',
-                'in:1a,1b,2a,2b,3'
+                'in:1a,1b,2a,2b,3',
             ],
             'convierte_a_pdf_a' => [
                 'nullable',
-                'boolean'
+                'boolean',
             ],
             'parent' => [
                 'nullable',
                 'integer',
-                'exists:clasificacion_documental_trd,id'
-            ]
+                'exists:clasificacion_documental_trd,id',
+            ],
         ];
 
         // Validaciones específicas según el tipo
@@ -110,7 +113,7 @@ class StoreClasificacionDocumentalRequest extends FormRequest
             $rules['parent'] = [
                 'required',
                 'integer',
-                'exists:clasificacion_documental_trd,id'
+                'exists:clasificacion_documental_trd,id',
             ];
         }
 
@@ -119,8 +122,6 @@ class StoreClasificacionDocumentalRequest extends FormRequest
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -142,8 +143,6 @@ class StoreClasificacionDocumentalRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
@@ -182,7 +181,7 @@ class StoreClasificacionDocumentalRequest extends FormRequest
     /**
      * Configure the validator instance.
      *
-     * @param  \Illuminate\Validation\Validator  $validator
+     * @param  Validator  $validator
      * @return void
      */
     public function withValidator($validator)
@@ -195,8 +194,7 @@ class StoreClasificacionDocumentalRequest extends FormRequest
     /**
      * Valida la jerarquía según el tipo de elemento.
      *
-     * @param \Illuminate\Validation\Validator $validator
-     * @return void
+     * @param  Validator  $validator
      */
     private function validarJerarquia($validator): void
     {
@@ -204,28 +202,32 @@ class StoreClasificacionDocumentalRequest extends FormRequest
         $parentId = $this->input('parent');
 
         if (in_array($tipo, ['SubSerie', 'TipoDocumento']) && $parentId) {
-            $parent = \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::find($parentId);
+            $parent = ClasificacionDocumentalTRD::find($parentId);
 
-            if (!$parent) {
+            if (! $parent) {
                 $validator->errors()->add('parent', 'El elemento padre seleccionado no existe.');
+
                 return;
             }
 
             // Validar jerarquía para SubSerie
             if ($tipo === 'SubSerie' && $parent->tipo !== 'Serie') {
                 $validator->errors()->add('parent', 'Las SubSeries solo pueden tener como padre una Serie.');
+
                 return;
             }
 
             // Validar jerarquía para TipoDocumento
-            if ($tipo === 'TipoDocumento' && !in_array($parent->tipo, ['Serie', 'SubSerie'])) {
+            if ($tipo === 'TipoDocumento' && ! in_array($parent->tipo, ['Serie', 'SubSerie'])) {
                 $validator->errors()->add('parent', 'Los Tipos de Documento solo pueden tener como padre una Serie o SubSerie.');
+
                 return;
             }
 
             // Validar que el padre pertenezca a la misma dependencia
             if ($parent->dependencia_id != $this->input('dependencia_id')) {
                 $validator->errors()->add('parent', 'El elemento padre debe pertenecer a la misma dependencia.');
+
                 return;
             }
         }

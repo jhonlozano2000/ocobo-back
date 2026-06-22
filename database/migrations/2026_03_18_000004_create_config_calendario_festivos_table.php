@@ -18,7 +18,7 @@ return new class extends Migration
             $table->enum('tipo', ['Nacional', 'Regional', 'Empresarial'])->default('Nacional');
             $table->integer('anio')->index()->comment('Año de la fecha para optimizar consultas');
             $table->timestamps();
-            
+
             $table->index('fecha');
         });
     }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\ControlAcceso;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ListUserSessionRequest extends FormRequest
@@ -19,7 +20,7 @@ class ListUserSessionRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -28,20 +29,18 @@ class ListUserSessionRequest extends FormRequest
                 'nullable',
                 'integer',
                 'min:1',
-                'max:50'
+                'max:50',
             ],
             'user_id' => [
                 'nullable',
                 'integer',
-                'exists:users,id'
-            ]
+                'exists:users,id',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -56,14 +55,12 @@ class ListUserSessionRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
         return [
             'limit' => 'límite',
-            'user_id' => 'usuario'
+            'user_id' => 'usuario',
         ];
     }
 }

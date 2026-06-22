@@ -39,14 +39,14 @@ trait Loggable
         $old = $oldValues;
 
         UsersActivityLog::log([
-            'module'       => $module,
-            'action'       => $action,
-            'description'  => self::getLogDescription($action, $model),
-            'entity_id'    => $entityId,
-            'entity_type'  => $entityType,
-            'old_values'   => $old,
-            'new_values'   => $newValues,
-            'is_critical'  => $isCritical,
+            'module' => $module,
+            'action' => $action,
+            'description' => self::getLogDescription($action, $model),
+            'entity_id' => $entityId,
+            'entity_type' => $entityType,
+            'old_values' => $old,
+            'new_values' => $newValues,
+            'is_critical' => $isCritical,
         ]);
     }
 
@@ -63,6 +63,7 @@ trait Loggable
             str_contains($class, 'Clasifica') => 'Clasificación Documental',
             default => 'General'
         };
+
         return $module;
     }
 

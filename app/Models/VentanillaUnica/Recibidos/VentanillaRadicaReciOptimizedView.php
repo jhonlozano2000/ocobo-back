@@ -2,9 +2,11 @@
 
 namespace App\Models\VentanillaUnica\Recibidos;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Builder;
 use App\Models\ControlAcceso\UserCargo;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class VentanillaRadicaReciOptimizedView extends Model
 {
@@ -158,33 +160,35 @@ class VentanillaRadicaReciOptimizedView extends Model
 
     /**
      * Scope para filtrado ABAC jerárquico automático.
-     * 
+     *
      * Filtra registros basándose en la jerarquía organizacional del usuario:
      * - Registros creados por el usuario
      * - Registros de la misma dependencia
      * - Registros de dependencias subordinadas
-     * 
-     * @param Builder $query
-     * @param \App\Models\User|null $user
-     * @return Builder
+     *
+     * @param  User|null  $user
      */
     public function scopeConPermisoJerarquico(Builder $query, $user = null): Builder
     {
         $user = $user ?? auth()->user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return $query->whereRaw('1 = 0');
         }
 
         // Si el usuario tiene permiso de ver todo, no filtrar
-        if ($user->hasPermissionTo('Radicar -> Ver Todos')) {
-            return $query;
+        try {
+            if ($user->hasPermissionTo('Radicar -> Ver Todos')) {
+                return $query;
+            }
+        } catch (PermissionDoesNotExist $e) {
+            // Permiso no definido en BD, continuar con filtrado jerárquico
         }
 
         // Obtener códigos de la jerarquía del usuario
         $cargoActivo = UserCargo::cargoActivoDelUsuario($user->id);
-        
-        if (!$cargoActivo || !$cargoActivo->cargo) {
+
+        if (! $cargoActivo || ! $cargoActivo->cargo) {
             // Sin cargo activo, solo ver sus propios registros
             return $query->where('usuario_crea', $user->id);
         }
@@ -192,19 +196,20 @@ class VentanillaRadicaReciOptimizedView extends Model
         // Obtener todos los códigos de la jerarquía (propio + subordinados)
         $codigosJerarquia = [];
         $cargo = $cargoActivo->cargo;
-        
+
         // Agregar código propio y padres
-        while ($cargo) {
+        while ($cargo && is_object($cargo)) {
             $codigosJerarquia[] = $cargo->cod_organico;
-            $cargo = $cargo->parent;
+            $parent = $cargo->parent;
+            $cargo = is_object($parent) ? $parent : null;
         }
-        
+
         // Agregar códigos de subordinados
         $codigosJerarquia = array_merge(
             $codigosJerarquia,
             $cargoActivo->cargo->getDescendientesCodigos()
         );
-        
+
         $codigosJerarquia = array_unique($codigosJerarquia);
 
         if (empty($codigosJerarquia)) {
@@ -215,7 +220,7 @@ class VentanillaRadicaReciOptimizedView extends Model
         return $query->where(function ($q) use ($user, $codigosJerarquia) {
             // 1. Registros creados por el usuario
             $q->where('usuario_crea', $user->id);
-            
+
             // 2. O registros de usuarios en la jerarquía organizacional
             $q->orWhereIn('usuario_crea', function ($subQ) use ($codigosJerarquia) {
                 $subQ->select('users_cargos.user_id')
@@ -278,15 +283,15 @@ class VentanillaRadicaReciOptimizedView extends Model
         $jerarquia = [];
 
         if ($this->clasificacion_grandparent_nom) {
-            $jerarquia[] = $this->clasificacion_grandparent_cod . ' - ' . $this->clasificacion_grandparent_nom;
+            $jerarquia[] = $this->clasificacion_grandparent_cod.' - '.$this->clasificacion_grandparent_nom;
         }
 
         if ($this->clasificacion_parent_nom) {
-            $jerarquia[] = $this->clasificacion_parent_cod . ' - ' . $this->clasificacion_parent_nom;
+            $jerarquia[] = $this->clasificacion_parent_cod.' - '.$this->clasificacion_parent_nom;
         }
 
         if ($this->clasificacion_nom) {
-            $jerarquia[] = $this->clasificacion_cod . ' - ' . $this->clasificacion_nom;
+            $jerarquia[] = $this->clasificacion_cod.' - '.$this->clasificacion_nom;
         }
 
         return implode(' > ', $jerarquia);
@@ -297,7 +302,7 @@ class VentanillaRadicaReciOptimizedView extends Model
      */
     public function getTerceroCompletoAttribute(): string
     {
-        return $this->tercero_documento . ' - ' . $this->tercero_nombre;
+        return $this->tercero_documento.' - '.$this->tercero_nombre;
     }
 
     /**
@@ -313,7 +318,7 @@ class VentanillaRadicaReciOptimizedView extends Model
      */
     public function getDiasParaVencimientoAttribute(): ?int
     {
-        if (!$this->fec_venci) {
+        if (! $this->fec_venci) {
             return null;
         }
 
@@ -333,7 +338,7 @@ class VentanillaRadicaReciOptimizedView extends Model
      */
     public function getHaSidoVisualizadoAttribute(): bool
     {
-        return !is_null($this->ultima_visualizacion);
+        return ! is_null($this->ultima_visualizacion);
     }
 
     /**
@@ -356,7 +361,7 @@ class VentanillaRadicaReciOptimizedView extends Model
         return [
             'total' => $this->total_custodios_activos,
             'con_nombres' => $this->total_custodios_con_nombres,
-            'tiene_custodios' => $this->total_custodios_activos > 0
+            'tiene_custodios' => $this->total_custodios_activos > 0,
         ];
     }
 
@@ -368,7 +373,7 @@ class VentanillaRadicaReciOptimizedView extends Model
         return [
             'total' => $this->total_responsables,
             'con_nombres' => $this->total_responsables_con_nombres,
-            'tiene_responsables' => $this->total_responsables > 0
+            'tiene_responsables' => $this->total_responsables > 0,
         ];
     }
 
@@ -380,7 +385,7 @@ class VentanillaRadicaReciOptimizedView extends Model
         return [
             'total' => $this->total_archivos,
             'nombres' => $this->archivos_lista,
-            'tiene_archivos' => $this->tiene_archivos
+            'tiene_archivos' => $this->tiene_archivos,
         ];
     }
 }

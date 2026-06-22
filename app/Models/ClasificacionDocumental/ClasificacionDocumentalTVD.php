@@ -171,7 +171,7 @@ class ClasificacionDocumentalTVD extends Model
                 'id' => $elemento->id,
                 'tipo' => $elemento->tipo,
                 'cod' => $elemento->cod,
-                'nom' => $elemento->nom
+                'nom' => $elemento->nom,
             ]);
             $elemento = $elemento->parent;
         }
@@ -185,6 +185,7 @@ class ClasificacionDocumentalTVD extends Model
     public function getCodigoCompleto(): string
     {
         $jerarquia = $this->getJerarquia();
+
         return implode('.', array_column($jerarquia, 'cod'));
     }
 
@@ -194,6 +195,7 @@ class ClasificacionDocumentalTVD extends Model
     public function getNombreCompleto(): string
     {
         $jerarquia = $this->getJerarquia();
+
         return implode(' > ', array_column($jerarquia, 'nom'));
     }
 
@@ -210,6 +212,6 @@ class ClasificacionDocumentalTVD extends Model
      */
     public function puedeEliminar(): bool
     {
-        return !$this->hasChildren();
+        return ! $this->hasChildren();
     }
 }

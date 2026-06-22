@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Configuracion;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreConfigServerArchivoRequest extends FormRequest
@@ -19,7 +20,7 @@ class StoreConfigServerArchivoRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -27,43 +28,41 @@ class StoreConfigServerArchivoRequest extends FormRequest
             'proceso_id' => [
                 'required',
                 'integer',
-                'exists:config_listas_detalles,id'
+                'exists:config_listas_detalles,id',
             ],
             'host' => [
                 'required',
                 'string',
-                'max:15'
+                'max:15',
             ],
             'ruta' => [
                 'nullable',
                 'string',
-                'max:100'
+                'max:100',
             ],
             'user' => [
                 'required',
                 'string',
-                'max:20'
+                'max:20',
             ],
             'password' => [
                 'required',
-                'string'
+                'string',
             ],
             'detalle' => [
                 'nullable',
                 'string',
-                'max:200'
+                'max:200',
             ],
             'estado' => [
                 'nullable',
-                'in:0,1,true,false'
-            ]
+                'in:0,1,true,false',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -89,8 +88,6 @@ class StoreConfigServerArchivoRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
@@ -101,7 +98,7 @@ class StoreConfigServerArchivoRequest extends FormRequest
             'user' => 'usuario',
             'password' => 'contraseña',
             'detalle' => 'detalle',
-            'estado' => 'estado'
+            'estado' => 'estado',
         ];
     }
 }

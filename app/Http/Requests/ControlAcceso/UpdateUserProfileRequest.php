@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\ControlAcceso;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateUserProfileRequest extends FormRequest
@@ -19,7 +20,7 @@ class UpdateUserProfileRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -27,20 +28,18 @@ class UpdateUserProfileRequest extends FormRequest
             'nombres' => [
                 'required',
                 'string',
-                'max:70'
+                'max:70',
             ],
             'apellidos' => [
                 'required',
                 'string',
-                'max:70'
-            ]
+                'max:70',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -56,14 +55,12 @@ class UpdateUserProfileRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
         return [
             'nombres' => 'nombres',
-            'apellidos' => 'apellidos'
+            'apellidos' => 'apellidos',
         ];
     }
 }

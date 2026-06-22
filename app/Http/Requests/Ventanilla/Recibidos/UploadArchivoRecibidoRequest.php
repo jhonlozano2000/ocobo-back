@@ -2,22 +2,19 @@
 
 namespace App\Http\Requests\Ventanilla\Recibidos;
 
-use Illuminate\Foundation\Http\FormRequest;
 use App\Models\Configuracion\ConfigVarias;
+use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Foundation\Http\FormRequest;
 
 class UploadArchivoRecibidoRequest extends FormRequest
 {
     /**
      * Valores de configuración cacheados para evitar múltiples consultas.
-     *
-     * @var array|null
      */
     private static ?array $configCache = null;
 
     /**
      * Obtiene los valores de configuración (cacheados para evitar múltiples consultas).
-     *
-     * @return array
      */
     private function getConfigValues(): array
     {
@@ -44,7 +41,7 @@ class UploadArchivoRecibidoRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -55,16 +52,14 @@ class UploadArchivoRecibidoRequest extends FormRequest
             'archivo_digital' => [
                 'required',
                 'file',
-                'max:' . $config['maxSize'],
-                'mimes:' . implode(',', $allowedExtensions)
-            ]
+                'max:'.$config['maxSize'],
+                'mimes:'.implode(',', $allowedExtensions),
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -74,19 +69,17 @@ class UploadArchivoRecibidoRequest extends FormRequest
             'archivo_digital.required' => 'El archivo es obligatorio.',
             'archivo_digital.file' => 'El archivo debe ser un archivo válido.',
             'archivo_digital.max' => "El archivo no puede superar los {$config['maxSize']} KB.",
-            'archivo.mimes' => "El archivo debe ser de tipo: {$config['allowedExtensions']}."
+            'archivo.mimes' => "El archivo debe ser de tipo: {$config['allowedExtensions']}.",
         ];
     }
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
         return [
-            'archivo_digital' => 'archivo'
+            'archivo_digital' => 'archivo',
         ];
     }
 }

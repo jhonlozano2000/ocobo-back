@@ -35,7 +35,7 @@ return new class extends Migration
                 'ip_address_extra',
                 'logout_at',
                 'is_active',
-                'metadata'
+                'metadata',
             ]);
         });
     }

@@ -2,9 +2,10 @@
 
 namespace App\Http\Requests\Ventanilla\Recibidos;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class StoreRadicadoReciboRequest extends FormRequest
 {
@@ -17,7 +18,7 @@ class StoreRadicadoReciboRequest extends FormRequest
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -29,7 +30,7 @@ class StoreRadicadoReciboRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules()
     {
@@ -40,12 +41,16 @@ class StoreRadicadoReciboRequest extends FormRequest
             'config_server_id' => 'nullable|exists:config_server_archivos,id',
             'usuario_crea' => 'nullable|exists:users,id',
             'uploaded_by' => 'nullable|exists:users,id',
+            'fec_docu' => 'nullable|date',
             'fec_venci' => 'nullable|date',
+            'fec_radicado' => 'nullable|date',
             'dias_vencimiento' => 'nullable|integer|min:0',
             'num_folios' => 'required|integer|min:0',
             'num_anexos' => 'required|integer|min:0',
             'descrip_anexos' => 'nullable|string|max:300',
             'asunto' => 'nullable|string|max:300',
+            'tipo_solicitud_id' => 'nullable|exists:config_listas_detalles,id',
+            'observaciones' => 'nullable|string|max:1000',
             'num_radicado' => ['nullable', 'string', 'max:50', Rule::unique('ventanilla_radica_reci', 'num_radicado')],
             'crear_pqrs' => 'nullable|boolean',
             'tipo_pqrs_id' => 'nullable|required_if:crear_pqrs,true|exists:config_listas_detalles,id',
@@ -68,6 +73,7 @@ class StoreRadicadoReciboRequest extends FormRequest
             'usuario_crea.exists' => 'El usuario que creó el radicado no es válido.',
             'uploaded_by.exists' => 'El usuario que subió el archivo no es válido.',
             'fec_venci.date' => 'La fecha de vencimiento debe ser una fecha válida.',
+            'fec_radicado.date' => 'La fecha de radicado debe ser una fecha válida.',
             'num_folios.required' => 'El número de folios es obligatorio.',
             'num_folios.integer' => 'El número de folios debe ser un número entero.',
             'num_anexos.required' => 'El número de anexos es obligatorio.',
@@ -75,6 +81,8 @@ class StoreRadicadoReciboRequest extends FormRequest
             'descrip_anexos.max' => 'La descripción de anexos no puede superar los 300 caracteres.',
             'asunto.max' => 'El asunto no puede superar los 300 caracteres.',
             'num_radicado.unique' => 'El número de radicado ya existe, por favor intente nuevamente.',
+            'tipo_solicitud_id.exists' => 'El tipo de solicitud seleccionado no es válido.',
+            'observaciones.max' => 'Las observaciones no pueden superar los 1000 caracteres.',
             'tipo_pqrs_id.required_if' => 'El tipo de PQRS es obligatorio cuando se solicita crear una PQRS.',
             'tipo_pqrs_id.exists' => 'El tipo de PQRS seleccionado no es válido.',
             'prioridad.required_if' => 'La prioridad es obligatoria cuando se solicita crear una PQRS.',

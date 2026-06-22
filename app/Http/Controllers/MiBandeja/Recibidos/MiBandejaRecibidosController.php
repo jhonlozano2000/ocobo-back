@@ -42,13 +42,13 @@ class MiBandejaRecibidosController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Mis radicados obtenidos',
-                'data' => $radicados
+                'data' => $radicados,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
                 'message' => 'Error al obtener mis radicados',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

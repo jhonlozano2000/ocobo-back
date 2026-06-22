@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Configuracion;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class UpdateConfigVariasRequest extends FormRequest
 {
@@ -19,7 +21,7 @@ class UpdateConfigVariasRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -27,29 +29,29 @@ class UpdateConfigVariasRequest extends FormRequest
             'valor' => [
                 'nullable',
                 'string',
-                'max:500'
+                'max:500',
             ],
             'descripcion' => [
                 'nullable',
                 'string',
-                'max:500'
+                'max:500',
             ],
             'tipo' => [
                 'nullable',
                 'string',
-                'max:50'
+                'max:50',
             ],
             'estado' => [
                 'nullable',
-                'in:0,1,true,false'
-            ]
+                'in:0,1,true,false',
+            ],
         ];
     }
 
     /**
      * Configure the validator instance.
      *
-     * @param  \Illuminate\Validation\Validator  $validator
+     * @param  Validator  $validator
      * @return void
      */
     public function withValidator($validator)
@@ -58,27 +60,31 @@ class UpdateConfigVariasRequest extends FormRequest
             // Validar archivos si existen
             $archivos = $this->allFiles();
             foreach ($archivos as $campo => $archivo) {
-                if (!$archivo->isValid()) {
+                if (! $archivo->isValid()) {
                     $validator->errors()->add($campo, 'El archivo no es válido.');
+
                     continue;
                 }
 
                 // Validar que sea una imagen
-                if (!$archivo->getMimeType() || !str_starts_with($archivo->getMimeType(), 'image/')) {
+                if (! $archivo->getMimeType() || ! str_starts_with($archivo->getMimeType(), 'image/')) {
                     $validator->errors()->add($campo, 'El archivo debe ser una imagen válida.');
+
                     continue;
                 }
 
                 // Validar tipos permitidos
                 $tiposPermitidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-                if (!in_array($archivo->getMimeType(), $tiposPermitidos)) {
+                if (! in_array($archivo->getMimeType(), $tiposPermitidos)) {
                     $validator->errors()->add($campo, 'El archivo debe ser de tipo: jpg, jpeg, png, gif.');
+
                     continue;
                 }
 
                 // Validar tamaño (2MB)
                 if ($archivo->getSize() > 2 * 1024 * 1024) {
                     $validator->errors()->add($campo, 'El archivo no puede ser mayor a 2MB.');
+
                     continue;
                 }
             }
@@ -87,8 +93,6 @@ class UpdateConfigVariasRequest extends FormRequest
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -105,8 +109,6 @@ class UpdateConfigVariasRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
@@ -114,7 +116,7 @@ class UpdateConfigVariasRequest extends FormRequest
             'valor' => 'valor',
             'descripcion' => 'descripción',
             'tipo' => 'tipo',
-            'estado' => 'estado'
+            'estado' => 'estado',
         ];
     }
 }

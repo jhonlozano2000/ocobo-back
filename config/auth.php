@@ -1,5 +1,9 @@
 <?php
 
+use App\Models\User;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+
 return [
 
     /*
@@ -66,7 +70,7 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\User::class,
+            'model' => User::class,
         ],
 
         // 'users' => [
@@ -117,8 +121,8 @@ return [
     'password_timeout' => 10800,
 
     'models' => [
-        'role' => Spatie\Permission\Models\Role::class,
-        'permission' => Spatie\Permission\Models\Permission::class,
+        'role' => Role::class,
+        'permission' => Permission::class,
     ],
     'default_guard_name' => 'web',
 

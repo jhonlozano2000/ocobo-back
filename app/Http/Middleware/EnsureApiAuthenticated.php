@@ -11,9 +11,9 @@ class EnsureApiAuthenticated
     public function handle(Request $request, Closure $next): Response
     {
         // Si no hay sesión activa, denegar acceso
-        if (!$request->session()->has('login_' . $request->ip())) {
+        if (! $request->session()->has('login_'.$request->ip())) {
             return response()->json([
-                'message' => 'Unauthenticated.'
+                'message' => 'Unauthenticated.',
             ], 401);
         }
 

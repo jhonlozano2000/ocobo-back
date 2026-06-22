@@ -18,10 +18,6 @@ class DocumentoPolicy
 
     /**
      * Verifica si puede ver el documento.
-     *
-     * @param User $user
-     * @param Documento $documento
-     * @return bool
      */
     public function ver(User $user, Documento $documento): bool
     {
@@ -30,9 +26,6 @@ class DocumentoPolicy
 
     /**
      * Verifica si puede crear documentos.
-     *
-     * @param User $user
-     * @return bool
      */
     public function crear(User $user): bool
     {
@@ -41,10 +34,6 @@ class DocumentoPolicy
 
     /**
      * Verifica si puede editar el documento.
-     *
-     * @param User $user
-     * @param Documento $documento
-     * @return bool
      */
     public function editar(User $user, Documento $documento): bool
     {
@@ -53,10 +42,6 @@ class DocumentoPolicy
 
     /**
      * Verifica si puede eliminar el documento.
-     *
-     * @param User $user
-     * @param Documento $documento
-     * @return bool
      */
     public function eliminar(User $user, Documento $documento): bool
     {
@@ -65,10 +50,6 @@ class DocumentoPolicy
 
     /**
      * Verifica si puede sincronizar contenido.
-     *
-     * @param User $user
-     * @param Documento $documento
-     * @return bool
      */
     public function sincronizar(User $user, Documento $documento): bool
     {
@@ -77,10 +58,6 @@ class DocumentoPolicy
 
     /**
      * Verifica si puede gestionar usuarios asignados.
-     *
-     * @param User $user
-     * @param Documento $documento
-     * @return bool
      */
     public function gestionarUsuarios(User $user, Documento $documento): bool
     {
@@ -89,10 +66,6 @@ class DocumentoPolicy
 
     /**
      * Verifica si puede crear versiones.
-     *
-     * @param User $user
-     * @param Documento $documento
-     * @return bool
      */
     public function crearVersion(User $user, Documento $documento): bool
     {
@@ -101,10 +74,6 @@ class DocumentoPolicy
 
     /**
      * Verifica si puede restaurar versiones.
-     *
-     * @param User $user
-     * @param Documento $documento
-     * @return bool
      */
     public function restaurarVersion(User $user, Documento $documento): bool
     {

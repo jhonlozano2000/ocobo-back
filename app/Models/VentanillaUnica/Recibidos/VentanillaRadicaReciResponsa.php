@@ -2,6 +2,8 @@
 
 namespace App\Models\VentanillaUnica\Recibidos;
 
+use App\Models\ControlAcceso\UserCargo;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -15,14 +17,14 @@ class VentanillaRadicaReciResponsa extends Model
         'radica_reci_id',
         'users_cargos_id',
         'custodio',
-        'fechor_visto'
+        'fechor_visto',
     ];
 
     protected $casts = [
         'custodio' => 'boolean',
         'fechor_visto' => 'datetime',
         'created_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'updated_at' => 'datetime',
     ];
 
     /**
@@ -30,7 +32,7 @@ class VentanillaRadicaReciResponsa extends Model
      */
     public function userCargo()
     {
-        return $this->belongsTo(\App\Models\ControlAcceso\UserCargo::class, 'users_cargos_id');
+        return $this->belongsTo(UserCargo::class, 'users_cargos_id');
     }
 
     /**
@@ -38,7 +40,7 @@ class VentanillaRadicaReciResponsa extends Model
      */
     public function usuarioCargo()
     {
-        return $this->belongsTo(\App\Models\User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     /**
@@ -54,7 +56,7 @@ class VentanillaRadicaReciResponsa extends Model
      */
     public function usuario()
     {
-        return $this->belongsTo(\App\Models\User::class, 'deleted_by');
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 
     /**
@@ -100,15 +102,13 @@ class VentanillaRadicaReciResponsa extends Model
     /**
      * Obtiene información formateada del responsable para respuestas API.
      * Optimizado para usar relaciones ya cargadas con eager loading.
-     *
-     * @return array|null
      */
     public function getInfoResponsable(): ?array
     {
         // Usar relación ya cargada si existe (optimización)
         $userCargo = $this->relationLoaded('userCargo') ? $this->userCargo : $this->userCargo()->with(['user', 'cargo'])->first();
 
-        if (!$userCargo) {
+        if (! $userCargo) {
             return null;
         }
 

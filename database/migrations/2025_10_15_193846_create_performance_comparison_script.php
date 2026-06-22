@@ -39,7 +39,7 @@ return new class extends Migration
                 'cd.cod as clasificacion_cod',
                 'cd.nom as clasificacion_nom',
                 'gt.nom_razo_soci as tercero_nombre',
-                'cld.nombre as medio_recepcion_nombre'
+                'cld.nombre as medio_recepcion_nombre',
             ])
             ->orderBy('vrr.created_at', 'desc')
             ->limit(100)
@@ -66,17 +66,17 @@ return new class extends Migration
         // 4. Log de resultados
         Log::info('CONSULTA ORIGINAL:');
         Log::info("Tiempo de ejecución: {$originalTime} segundos");
-        Log::info("Número de consultas: " . count($originalQueries));
-        Log::info("Registros obtenidos: " . $originalQuery->count());
+        Log::info('Número de consultas: '.count($originalQueries));
+        Log::info('Registros obtenidos: '.$originalQuery->count());
 
         Log::info('CONSULTA OPTIMIZADA:');
         Log::info("Tiempo de ejecución: {$optimizedTime} segundos");
-        Log::info("Número de consultas: " . count($optimizedQueries));
-        Log::info("Registros obtenidos: " . $optimizedQuery->count());
+        Log::info('Número de consultas: '.count($optimizedQueries));
+        Log::info('Registros obtenidos: '.$optimizedQuery->count());
 
         Log::info('MEJORA DE RENDIMIENTO:');
         Log::info("Mejora de tiempo: {$improvement}%");
-        Log::info("Reducción de consultas: " . (count($originalQueries) - count($optimizedQueries)));
+        Log::info('Reducción de consultas: '.(count($originalQueries) - count($optimizedQueries)));
 
         // 5. Mostrar consultas SQL ejecutadas
         Log::info('CONSULTAS ORIGINALES:');

@@ -3,6 +3,7 @@
 namespace App\Models\MiBandeja\TempDocumentosRecibidos;
 
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,10 +25,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $justificación Razón del cambio propuesto
  * @property string $estado Estado: pendiente|aceptada|rechazada
  * @property int|null $resuelto_por Usuario que resolvió la sugerencia
- * @property \Carbon\Carbon|null $fecha_resolucion Fecha de resolución
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- *
+ * @property Carbon|null $fecha_resolucion Fecha de resolución
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Documento $documento
  * @property-read User $usuario
  * @property-read User|null $resueltoPor
@@ -117,7 +117,7 @@ class Sugerencia extends Model
             return $contenido;
         }
 
-        if (!$this->posicion || !isset($this->posicion['from']) || !isset($this->posicion['to'])) {
+        if (! $this->posicion || ! isset($this->posicion['from']) || ! isset($this->posicion['to'])) {
             return $contenido;
         }
 
@@ -177,7 +177,9 @@ class Sugerencia extends Model
 
     private function insertarTextoEnPosicion(array &$contenido, int $posicion, string $texto): void
     {
-        if (!isset($contenido['content'])) return;
+        if (! isset($contenido['content'])) {
+            return;
+        }
 
         $offset = 0;
         foreach ($contenido['content'] as &$bloque) {
@@ -187,7 +189,8 @@ class Sugerencia extends Model
                         $longitud = strlen($inline['text']);
                         if ($posicion >= $offset && $posicion <= $offset + $longitud) {
                             $posRelativa = $posicion - $offset;
-                            $inline['text'] = substr($inline['text'], 0, $posRelativa) . $texto . substr($inline['text'], $posRelativa);
+                            $inline['text'] = substr($inline['text'], 0, $posRelativa).$texto.substr($inline['text'], $posRelativa);
+
                             return;
                         }
                         $offset += $longitud;
@@ -199,7 +202,9 @@ class Sugerencia extends Model
 
     private function eliminarTextoEnRango(array &$contenido, int $from, int $to): void
     {
-        if (!isset($contenido['content'])) return;
+        if (! isset($contenido['content'])) {
+            return;
+        }
 
         $offset = 0;
         foreach ($contenido['content'] as &$bloque) {
@@ -213,7 +218,7 @@ class Sugerencia extends Model
                         if ($from < $finBloque && $to > $inicioBloque) {
                             $inicioRelativo = max(0, $from - $inicioBloque);
                             $finRelativo = min($longitud, $to - $inicioBloque);
-                            $inline['text'] = substr($inline['text'], 0, $inicioRelativo) . substr($inline['text'], $finRelativo);
+                            $inline['text'] = substr($inline['text'], 0, $inicioRelativo).substr($inline['text'], $finRelativo);
                         }
 
                         $offset += $longitud;

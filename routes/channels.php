@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use Illuminate\Support\Facades\Broadcast;
 
 /*
@@ -25,9 +26,9 @@ Broadcast::channel('respuesta.{respuestaId}', function ($user, $respuestaId) {
 // Canales de Editor Colaborativo (Mi Bandeja)
 // ==========================================
 Broadcast::channel('documentos.{documentoId}', function ($user, $documentoId) {
-    $documento = \App\Models\MiBandeja\TempDocumentosRecibidos\Documento::find($documentoId);
+    $documento = Documento::find($documentoId);
 
-    if (!$documento) {
+    if (! $documento) {
         return false;
     }
 

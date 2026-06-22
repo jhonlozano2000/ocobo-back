@@ -5,12 +5,12 @@ Aplicación gestora del proceso de gestión documental desarrollada en Laravel.
 ![Laravel](https://img.shields.io/badge/Laravel-11.x-FF2D20?style=flat-square&logo=laravel)
 ![PHP](https://img.shields.io/badge/PHP-8.4+-777BB4?style=flat-square&logo=php)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
-![Version](https://img.shields.io/badge/Version-2.1-blue?style=flat-square)
-![Status](https://img.shields.io/badge/Status-En%20Desarrollo-yellow?style=flat-square)
+![Version](https://img.shields.io/badge/Version-2.5-blue?style=flat-square)
+![Status](https://img.shields.io/badge/Status-Producci%C3%B3n-green?style=flat-square)
 
-**Versión**: 2.2  
-**Última actualización**: Abril 2026  
-**Estado**: En desarrollo activo
+**Versión**: 2.5  
+**Última actualización**: Junio 2026  
+**Estado**: Producción — 18/18 módulos completados (100%)
 
 ## 📋 Descripción
 
@@ -25,9 +25,17 @@ OCOBO-BACK es una aplicación web desarrollada en Laravel que gestiona procesos 
 - **Gestión de Terceros**: CRUD de terceros con filtros y estadísticas
 - **Configuración del Sistema**: Módulos de configuración para división política, sedes, listas, etc.
 - **Gestión Documental**: Procesos de radicación y clasificación documental
-- **Clasificación Documental**: Sistema completo de TRD (Tabla de Retención Documental) con versiones y datos de prueba
+- **Clasificación Documental**: Sistema completo de TRD/TVD con versiones
 - **Control de Calidad**: Gestión de organigramas y estructuras organizacionales
-- **Ventanilla Única**: Sistema completo de gestión de ventanillas y radicaciones
+- **Ventanilla Única**: Sistema completo de gestión de ventanillas y radicaciones (recibidos, enviados, internos, PQRS)
+- **Firma Electrónica**: OTP + PDF stamping (FPDI) + registro de eventos ISO 27001 para recibidos, enviados, internos y PQRS (Ley 527/1999)
+- **Anulación de PQRS**: Flujo de anulación con motivo + cambio de estado a Vencida
+- **Bandeja de Correo**: Integración IMAP, generación PDF, rótulos PNG, respuesta automática (ISO 27001)
+- **Gestión de Archivo**: Expedientes electrónicos, préstamos, transferencias, eliminaciones, reportes, dashboard (AGN 003/2015)
+- **Notificaciones y Alertas**: Alertas de vencimiento por email (diario 7am), endpoint de pendientes para badge del frontend (Ley 1437/2011)
+- **Depuración Digital**: Comando semanal de cuarentena de archivos huérfanos (AGN 060, ISO 27001 A.8.3)
+- **Metadata Extendida**: Write endpoint + sugerencia automática de TRD por palabras clave del asunto
+- **Scheduler**: 5 comandos programados (marcar PQRS vencidas, sync email, alertas vencimiento, depuración recibidos/enviados)
 - **Calendario Días No Hábiles**: Gestión de festivos con cálculo de vencimientos (ISO 27001)
 - **Semáforo de Vencimientos**: Sistema configurable de alertas visuales para términos legales
 - **API RESTful**: Endpoints bien documentados y estructurados
@@ -160,7 +168,10 @@ routes/
 ├── clasifica_documental.php  # Rutas de clasificación documental
 ├── ventanilla-recibida.php   # Rutas de radicación recibida
 ├── ventanilla-enviada.php    # Rutas de radicación enviada
-└── ventanilla-interno.php    # Rutas de radicación interna
+├── ventanilla-interno.php    # Rutas de radicación interna
+├── gestion-archivo.php       # Rutas de gestión de archivo (26 rutas)
+├── ventanilla-email-radicados.php  # Rutas de bandeja de correo (9 rutas)
+└── ventanilla-email-radicados-api.php  # API pública para radicados desde correo
 ```
 
 ### Modelos de Auditoría
@@ -276,6 +287,18 @@ php artisan cache:clear
 - Radicación interna
 - Gestión de archivos
 - Asignación de responsables
+
+### Bandeja de Correo (Email Radicados)
+- Conexión IMAP a buzón de correo electrónico
+- Sincronización automática de emails entrantes
+- Radicado de emails recibidos con formularios EXACTOS de radicación
+- Radicado de emails enviados con conversión PDF
+- Generación automática de rótulo PNG con código de barras
+- Respuesta automática al remitente con rótulo adjunto
+- Búsqueda de terceros por email
+- Gestión de adjuntos (descarga, previsualización)
+- Estadísticas de bandeja (pendientes, radicados, respondidos, errores)
+- Integración ISO 27001 — hash SHA-256 para integridad de documentos
 
 ### Mi Bandeja - Documentos Colaborativos
 
@@ -435,6 +458,53 @@ Route::middleware('auth:sanctum')->prefix('comunicaciones-recibidas')->group(fun
 - Cálculo de días hábiles restantes
 - Integración con `CalendarioHelper`
 
+### Bandeja de Correo - Arquitectura Backend
+
+#### Servicios
+- **ImapEmailService** — Conexión IMAP, descarga de emails, conversión HTML→texto plano
+- **EmailRadicacionService** — Orquestación: sync → buscar tercero → radicar → adjuntos → PDF → rótulo → respuesta automática
+- **RadicacionReciService** — CRUD de radicados recibidos (reutilizado por email)
+- **RadicacionEnviadaService** — CRUD de radicados enviados (reutilizado por email)
+- **PdfService** — Generación de PDF con dompdf, HTML→texto plano para contenido de email
+- **RotuloPngService** — Generación de rótulo PNG con código de barras (Intervention Image + Picqer)
+- **ArchivoHelper** — Almacenamiento centralizado en `{disk}/{num_radicado}/`
+
+#### Controladores
+- **EmailRadicadosController** — CRUD de tracking de emails, sync IMAP, búsqueda, estadísticas
+- **VentanillaRadicaReciController** — CRUD de radicados recibidos (reutilizado por email)
+- **VentanillaRadicaEnviadaController** — CRUD de radicados enviados (reutilizado por email)
+- **TerceroSearchController** — Búsqueda de terceros por email o número de documento
+
+#### Mailable
+- **RespuestaRadicadoMail** — Email automático con rótulo PNG adjunto enviado al remitente
+
+#### Validación
+- **RadicarEmailRequest** — Validación centralizada para radicado de emails (recibido/enviado)
+
+#### Migraciones
+- **ventanilla_email_radicados** — Tracking de emails (id, num_expediente, asunto, remitente, destinatario, estado, radicado_id, radicado_type, fecha_radicacion, error_mensaje)
+- **ventanilla_email_radicados_adjuntos** — Adjuntos de emails
+- **ventanilla_email_radicados_log** — Log de operaciones
+- **drop_radicado_id_foreign** — FK constraint eliminada (puede apuntar a recibidos O enviados)
+
+#### Flujo de Radicado desde Email
+```
+1. Sync IMAP → Descargar emails nuevos
+2. Buscar tercero por email en gestion_terceros
+3. Si no existe, crear tercero automáticamente
+4. Crear radicado (recibido o enviado)
+5. Guardar adjuntos en {disk}/{num_radicado}/
+6. Convertir email a PDF → guardar en {disk}/{num_radicado}/
+7. Generar rótulo PNG con código de barras → guardar en {disk}/{num_radicado}/rotulos/
+8. Respuesta automática al remitente con rótulo adjunto
+```
+
+#### Seguridad ISO 27001
+- Hash SHA-256 calculado desde contenido del email
+- Almacenamiento centralizado por número de radicado
+- Log de operaciones en ventanilla_email_radicados_log
+- Permisos: Listar, Crear, Ver, Actualizar, Eliminar por módulo
+
 ### OCR - Extracción de Texto (PaddleOCR)
 - Extracción automática de texto desde documentos escaneados
 - Motor **PaddleOCR** (más preciso para español) con fallback a Tesseract
@@ -469,6 +539,38 @@ Route::middleware('auth:sanctum')->prefix('comunicaciones-recibidas')->group(fun
 ---
 
 ## 📋 Changelog
+
+### v2.5 (Junio 2026) — Firma Electrónica + Notificaciones + Mejoras
+- ✅ **M13 Firma Electrónica** — OTP + PDF stamping (FPDI) + FirmaEvento (ISO 27001) para recibidos, enviados, internos y PQRS (Ley 527/1999)
+- ✅ **AnularPqrs** — Endpoint con motivo, estado_tramite → Vencida
+- ✅ **Migración estado_firma/fecha_firma** en ventanilla_radica_reci, _enviados, _internos
+- ✅ **FirmaEventosController** — `GET /transversal/firma-eventos/{tipo}/{id}` historial de firmas
+- ✅ **MetadataController::store()** — PUT write endpoint para metadata extendida
+- ✅ **MetadataController::sugerirClasificacion()** — sugerencia TRD por palabras clave del asunto
+- ✅ **M16 Notificaciones** — `AlertasVencimientoCommand` (diario 7am, recibidos+enviados+PQRS), endpoint `/transversal/notificaciones/pendientes`
+- ✅ **M17 Depuración** — `DepuracionDigitalCommand` (semanal domingos, cuarentena archivos huérfanos)
+- ✅ **Scheduler completo** — 5 comandos programados en routes/console.php + bootstrap/app.php
+- ✅ **Bootstrap fix** — commands: registrado en withRouting() para activar scheduler
+- ✅ **FirmaElectronicaController** reparado — usa FirmaService para email OTP
+- ✅ **Permisos firma** creados para Cores. Recibida / Enviada / Interna / PQRS
+- ✅ **40+ rutas backend** (ventanilla + firma + notificaciones + metadata)
+- ✅ **511 archivos PHP — 0 fallos Pint**
+
+### v2.4 (Junio 2026)
+- ✅ Bandeja de Correo — Conexión IMAP, sync automática de emails
+- ✅ EmailRadicacionService — Orquestación completa de radicado desde email
+- ✅ RadicarEmailRequest — Validación centralizada para radicado de emails
+- ✅ EmailRadicadosController — CRUD de tracking de emails con permisos
+- ✅ TerceroSearchController — Búsqueda de terceros por email
+- ✅ RotuloPngService — Generación de rótulo PNG con código de barras
+- ✅ PdfService — Conversión de emails a PDF con dompdf
+- ✅ RespuestaRadicadoMail — Email automático con rótulo adjunto
+- ✅ Gestión de Archivo — Expedientes electrónicos, préstamos, transferencias
+- ✅ M11-M15 — Préstamo, Transferencia/Eliminación, Reportes, Dashboard
+- ✅ 35 rutas backend (26 gestión-archivo + 9 email-radicados)
+- ✅ Race condition fix — DB::transaction + lockForUpdate() en obtención de número
+- ✅ Almacenamiento centralizado en {disk}/{num_radicado}/
+- ✅ FK constraint eliminada en radicado_id (puede apuntar a recibidos O enviados)
 
 ### v2.3 (Mayo 2026)
 - ✅ Módulo Mi Bandeja - Documentos Colaborativos

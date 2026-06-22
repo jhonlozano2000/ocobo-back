@@ -4,7 +4,6 @@ namespace App\Http\Controllers\VentanillaUnica\Recibidos;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciComentario;
 use Illuminate\Http\JsonResponse;
@@ -17,20 +16,21 @@ class RadicadoComentariosController extends Controller
     use ApiResponseTrait;
 
     private const PERM = 'Radicar -> Cores. Recibida -> ';
+
     private const PERM_COMENTARIOS = 'Radicar -> Cores. Recibida -> Comentar';
 
     public function __construct()
     {
-        $this->middleware('can:' . self::PERM . 'Mostrar')->only(['index', 'show']);
-        $this->middleware('can:' . self::PERM_COMENTARIOS . 'Crear')->only(['store']);
-        $this->middleware('can:' . self::PERM_COMENTARIOS . 'Editar')->only(['update', 'resolver']);
-        $this->middleware('can:' . self::PERM_COMENTARIOS . 'Eliminar')->only(['destroy']);
+        $this->middleware('can:'.self::PERM.'Mostrar')->only(['index', 'show']);
+        $this->middleware('can:'.self::PERM_COMENTARIOS.'Crear')->only(['store']);
+        $this->middleware('can:'.self::PERM_COMENTARIOS.'Editar')->only(['update', 'resolver']);
+        $this->middleware('can:'.self::PERM_COMENTARIOS.'Eliminar')->only(['destroy']);
     }
 
     public function index(int $radicaReciId): JsonResponse
     {
         $radicado = VentanillaRadicaReci::find($radicaReciId);
-        if (!$radicado) {
+        if (! $radicado) {
             return $this->apiResponseError('Radicado no encontrado', 404);
         }
 
@@ -40,7 +40,7 @@ class RadicadoComentariosController extends Controller
             ->get();
 
         return $this->apiResponseSuccess(
-            $comentarios->map(fn($c) => $c->getInfo()),
+            $comentarios->map(fn ($c) => $c->getInfo()),
             'Comentarios obtenidos exitosamente'
         );
     }
@@ -50,7 +50,7 @@ class RadicadoComentariosController extends Controller
         $comentario = VentanillaRadicaReciComentario::with(['usuario', 'respuestas.usuario'])
             ->find($id);
 
-        if (!$comentario) {
+        if (! $comentario) {
             return $this->apiResponseError('Comentario no encontrado', 404);
         }
 
@@ -67,13 +67,13 @@ class RadicadoComentariosController extends Controller
         ]);
 
         $radicado = VentanillaRadicaReci::find($radicaReciId);
-        if (!$radicado) {
+        if (! $radicado) {
             return $this->apiResponseError('Radicado no encontrado', 404);
         }
 
         if ($request->parent_id) {
             $parent = VentanillaRadicaReciComentario::find($request->parent_id);
-            if (!$parent || $parent->radica_reci_id !== $radicaReciId) {
+            if (! $parent || $parent->radica_reci_id !== $radicaReciId) {
                 return $this->apiResponseError('Comentario padre no válido', 400);
             }
         }
@@ -103,7 +103,7 @@ class RadicadoComentariosController extends Controller
                 201
             );
         } catch (\Exception $e) {
-            return $this->apiResponseError('Error al crear comentario: ' . $e->getMessage(), 500);
+            return $this->apiResponseError('Error al crear comentario: '.$e->getMessage(), 500);
         }
     }
 
@@ -114,7 +114,7 @@ class RadicadoComentariosController extends Controller
         ]);
 
         $comentario = VentanillaRadicaReciComentario::find($id);
-        if (!$comentario) {
+        if (! $comentario) {
             return $this->apiResponseError('Comentario no encontrado', 404);
         }
 
@@ -132,14 +132,14 @@ class RadicadoComentariosController extends Controller
 
             return $this->apiResponseSuccess($comentario->getInfo(), 'Comentario actualizado');
         } catch (\Exception $e) {
-            return $this->apiResponseError('Error al actualizar: ' . $e->getMessage(), 500);
+            return $this->apiResponseError('Error al actualizar: '.$e->getMessage(), 500);
         }
     }
 
     public function resolver(int $id): JsonResponse
     {
         $comentario = VentanillaRadicaReciComentario::find($id);
-        if (!$comentario) {
+        if (! $comentario) {
             return $this->apiResponseError('Comentario no encontrado', 404);
         }
 
@@ -153,14 +153,14 @@ class RadicadoComentariosController extends Controller
 
             return $this->apiResponseSuccess($comentario->getInfo(), 'Comentario resuelto');
         } catch (\Exception $e) {
-            return $this->apiResponseError('Error al resolver: ' . $e->getMessage(), 500);
+            return $this->apiResponseError('Error al resolver: '.$e->getMessage(), 500);
         }
     }
 
     public function destroy(int $id): JsonResponse
     {
         $comentario = VentanillaRadicaReciComentario::find($id);
-        if (!$comentario) {
+        if (! $comentario) {
             return $this->apiResponseError('Comentario no encontrado', 404);
         }
 
@@ -174,9 +174,10 @@ class RadicadoComentariosController extends Controller
 
         try {
             $comentario->delete();
+
             return $this->apiResponseSuccess(null, 'Comentario eliminado');
         } catch (\Exception $e) {
-            return $this->apiResponseError('Error al eliminar: ' . $e->getMessage(), 500);
+            return $this->apiResponseError('Error al eliminar: '.$e->getMessage(), 500);
         }
     }
 }

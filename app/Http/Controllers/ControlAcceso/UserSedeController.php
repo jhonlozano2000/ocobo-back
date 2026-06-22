@@ -3,16 +3,17 @@
 namespace App\Http\Controllers\ControlAcceso;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
+use App\Http\Requests\ControlAcceso\ListUserSedeRequest;
 use App\Http\Requests\ControlAcceso\StoreUserSedeRequest;
 use App\Http\Requests\ControlAcceso\UpdateUserSedeRequest;
-use App\Http\Requests\ControlAcceso\ListUserSedeRequest;
-use App\Models\User;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\Configuracion\ConfigSede;
+use App\Models\User;
 use App\Models\UsersSede;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class UserSedeController extends Controller
 {
@@ -25,8 +26,8 @@ class UserSedeController extends Controller
      * Es útil para interfaces de administración donde se necesita mostrar
      * las asignaciones de usuarios a sedes.
      *
-     * @param ListUserSedeRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de relaciones
+     * @param  ListUserSedeRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con el listado de relaciones
      *
      * @queryParam user_id integer Filtrar por ID de usuario. Example: 1
      * @queryParam sede_id integer Filtrar por ID de sede. Example: 1
@@ -58,7 +59,6 @@ class UserSedeController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el listado de relaciones usuario-sede",
@@ -106,8 +106,8 @@ class UserSedeController extends Controller
      * Este método permite asignar un usuario a una sede específica.
      * La relación incluye un estado (activo/inactivo) y observaciones opcionales.
      *
-     * @param StoreUserSedeRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la relación creada
+     * @param  StoreUserSedeRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con la relación creada
      *
      * @bodyParam user_id integer required ID del usuario a asignar. Example: 1
      * @bodyParam sede_id integer required ID de la sede a asignar. Example: 1
@@ -127,7 +127,6 @@ class UserSedeController extends Controller
      *     "updated_at": "2024-01-01T00:00:00.000000Z"
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -136,7 +135,6 @@ class UserSedeController extends Controller
      *     "sede_id": ["La sede es obligatoria."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al crear la relación usuario-sede",
@@ -175,6 +173,7 @@ class UserSedeController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al crear la relación usuario-sede', $e->getMessage(), 500);
         }
     }
@@ -185,8 +184,8 @@ class UserSedeController extends Controller
      * Este método permite obtener los detalles de una relación usuario-sede específica.
      * Es útil para mostrar información detallada o para formularios de edición.
      *
-     * @param UsersSede $userSede La relación a obtener (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la relación
+     * @param  UsersSede  $userSede  La relación a obtener (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON con la relación
      *
      * @urlParam userSede integer required El ID de la relación. Example: 1
      *
@@ -211,12 +210,10 @@ class UserSedeController extends Controller
      *     }
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Relación usuario-sede no encontrada"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener la relación usuario-sede",
@@ -241,9 +238,9 @@ class UserSedeController extends Controller
      * Este método permite modificar los datos de una relación usuario-sede existente,
      * incluyendo conversión automática del campo estado.
      *
-     * @param UpdateUserSedeRequest $request La solicitud HTTP validada
-     * @param UsersSede $userSede La relación a actualizar (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la relación actualizada
+     * @param  UpdateUserSedeRequest  $request  La solicitud HTTP validada
+     * @param  UsersSede  $userSede  La relación a actualizar (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON con la relación actualizada
      *
      * @bodyParam estado boolean Estado de la relación (activo/inactivo). Example: true
      * @bodyParam observaciones string Observaciones sobre la asignación. Example: "Asignación actualizada"
@@ -260,12 +257,10 @@ class UserSedeController extends Controller
      *     "updated_at": "2024-01-01T00:00:00.000000Z"
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Relación usuario-sede no encontrada"
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -273,7 +268,6 @@ class UserSedeController extends Controller
      *     "estado": ["El estado debe ser 0, 1, true o false."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al actualizar la relación usuario-sede",
@@ -302,6 +296,7 @@ class UserSedeController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar la relación usuario-sede', $e->getMessage(), 500);
         }
     }
@@ -312,8 +307,8 @@ class UserSedeController extends Controller
      * Este método permite eliminar una relación usuario-sede específica del sistema.
      * Se recomienda verificar que no tenga dependencias antes de eliminar.
      *
-     * @param UsersSede $userSede La relación a eliminar (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la eliminación
+     * @param  UsersSede  $userSede  La relación a eliminar (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON confirmando la eliminación
      *
      * @urlParam userSede integer required El ID de la relación a eliminar. Example: 1
      *
@@ -321,7 +316,6 @@ class UserSedeController extends Controller
      *   "status": true,
      *   "message": "Relación usuario-sede eliminada exitosamente"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al eliminar la relación usuario-sede",
@@ -340,6 +334,7 @@ class UserSedeController extends Controller
             return $this->successResponse(null, 'Relación usuario-sede eliminada exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar la relación usuario-sede', $e->getMessage(), 500);
         }
     }
@@ -350,11 +345,12 @@ class UserSedeController extends Controller
      * Este método permite obtener todas las sedes que están asignadas a un usuario,
      * incluyendo información detallada de cada sede.
      *
-     * @param int $userId ID del usuario
-     * @param Request $request La solicitud HTTP
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las sedes del usuario
+     * @param  int  $userId  ID del usuario
+     * @param  Request  $request  La solicitud HTTP
+     * @return JsonResponse Respuesta JSON con las sedes del usuario
      *
      * @urlParam userId integer required El ID del usuario. Example: 1
+     *
      * @queryParam activas_only boolean Filtrar solo sedes activas. Example: true
      *
      * @response 200 {
@@ -372,7 +368,6 @@ class UserSedeController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Usuario no encontrado"
@@ -404,11 +399,12 @@ class UserSedeController extends Controller
      * las asignaciones que no están en el array proporcionado y agregando las nuevas.
      * Cada sede puede incluir información adicional como estado y observaciones.
      *
-     * @param int $userId ID del usuario
-     * @param Request $request La solicitud HTTP con el array de sedes
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las sedes actualizadas
+     * @param  int  $userId  ID del usuario
+     * @param  Request  $request  La solicitud HTTP con el array de sedes
+     * @return JsonResponse Respuesta JSON con las sedes actualizadas
      *
      * @urlParam userId integer required El ID del usuario. Example: 1
+     *
      * @bodyParam sedes array required Array de sedes a asignar. Example: [1, 2, 3]
      * @bodyParam sedes.*.sede_id integer ID de la sede. Example: 1
      * @bodyParam sedes.*.estado boolean Estado de la relación (opcional, por defecto true). Example: true
@@ -429,12 +425,10 @@ class UserSedeController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Usuario no encontrado"
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -453,24 +447,24 @@ class UserSedeController extends Controller
             // Validar que se envíe el array de sedes
             $request->validate([
                 'sedes' => 'required|array',
-                'sedes.*' => 'nullable|integer|exists:config_sedes,id'
+                'sedes.*' => 'nullable|integer|exists:config_sedes,id',
             ], [
                 'sedes.required' => 'El campo sedes es obligatorio.',
                 'sedes.array' => 'El campo sedes debe ser un array.',
                 'sedes.*.integer' => 'Cada sede debe ser un ID válido.',
-                'sedes.*.exists' => 'Una o más sedes no existen.'
+                'sedes.*.exists' => 'Una o más sedes no existen.',
             ]);
 
             $sedesIds = $request->input('sedes', []);
 
             // Si se envía un array de objetos con sede_id, extraer solo los IDs
-            if (!empty($sedesIds) && is_array($sedesIds[0] ?? null) && isset($sedesIds[0]['sede_id'])) {
+            if (! empty($sedesIds) && is_array($sedesIds[0] ?? null) && isset($sedesIds[0]['sede_id'])) {
                 $sedesIds = array_column($sedesIds, 'sede_id');
             }
 
             // Filtrar valores nulos y vacíos
             $sedesIds = array_filter($sedesIds, function ($id) {
-                return !is_null($id) && $id !== '';
+                return ! is_null($id) && $id !== '';
             });
 
             // Preparar datos para sincronización con información adicional
@@ -478,7 +472,7 @@ class UserSedeController extends Controller
             foreach ($sedesIds as $sedeId) {
                 $syncData[$sedeId] = [
                     'estado' => true,
-                    'observaciones' => null
+                    'observaciones' => null,
                 ];
             }
 
@@ -505,11 +499,13 @@ class UserSedeController extends Controller
             $sedes = $user->sedes()->get();
 
             return $this->successResponse($sedes, 'Sedes del usuario sincronizadas exitosamente');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al sincronizar las sedes del usuario', $e->getMessage(), 500);
         }
     }
@@ -520,11 +516,12 @@ class UserSedeController extends Controller
      * Este método permite obtener todos los usuarios que están asignados a una sede,
      * incluyendo información detallada de cada usuario.
      *
-     * @param int $sedeId ID de la sede
-     * @param Request $request La solicitud HTTP
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con los usuarios de la sede
+     * @param  int  $sedeId  ID de la sede
+     * @param  Request  $request  La solicitud HTTP
+     * @return JsonResponse Respuesta JSON con los usuarios de la sede
      *
      * @urlParam sedeId integer required El ID de la sede. Example: 1
+     *
      * @queryParam activos_only boolean Filtrar solo usuarios activos. Example: true
      *
      * @response 200 {
@@ -542,7 +539,6 @@ class UserSedeController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Sede no encontrada"

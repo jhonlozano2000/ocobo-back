@@ -11,7 +11,6 @@ class PermisosReportesSeeder extends Seeder
     public function run(): void
     {
 
-
         $permisos = [
             'Reporte - Ventanilla -> Imprimir planillas correspondencia recibida',
             'Reporte - Ventanilla -> Imprimir planillas correspondencia enviada',

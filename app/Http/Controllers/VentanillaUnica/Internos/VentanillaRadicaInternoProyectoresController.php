@@ -4,14 +4,16 @@ namespace App\Http\Controllers\VentanillaUnica\Internos;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoProyectores;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoProyectores;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class VentanillaRadicaInternoProyectoresController extends Controller
 {
     use ApiResponseTrait;
+
     /**
      * Obtiene un listado de todos los proyectores.
      *
@@ -30,12 +32,10 @@ class VentanillaRadicaInternoProyectoresController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "No hay proyectores asignados"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el listado de proyectores",
@@ -56,7 +56,7 @@ class VentanillaRadicaInternoProyectoresController extends Controller
     /**
      * Crea un nuevo proyector.
      *
-     * @param Request $request La solicitud HTTP validada
+     * @param  Request  $request  La solicitud HTTP validada
      * @return JsonResponse Respuesta JSON con el proyector creado
      *
      * @response 201 {
@@ -70,7 +70,6 @@ class VentanillaRadicaInternoProyectoresController extends Controller
      *     "updated_at": "2024-01-01T10:00:00.000000Z"
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -79,7 +78,6 @@ class VentanillaRadicaInternoProyectoresController extends Controller
      *     "users_cargos_id": ["El proyector es obligatorio."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al crear el proyector",
@@ -98,6 +96,7 @@ class VentanillaRadicaInternoProyectoresController extends Controller
             return $this->successResponse($proyector, 'Proyector creado exitosamente', 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al crear el proyector', $e->getMessage(), 500);
         }
     }
@@ -105,7 +104,7 @@ class VentanillaRadicaInternoProyectoresController extends Controller
     /**
      * Obtiene un proyector específico por su ID.
      *
-     * @param int $id ID del proyector
+     * @param  int  $id  ID del proyector
      * @return JsonResponse Respuesta JSON con el proyector
      *
      * @urlParam id integer required El ID del proyector. Example: 1
@@ -121,12 +120,10 @@ class VentanillaRadicaInternoProyectoresController extends Controller
      *     "updated_at": "2024-01-01T10:00:00.000000Z"
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Proyector no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el proyector",
@@ -138,7 +135,7 @@ class VentanillaRadicaInternoProyectoresController extends Controller
         try {
             $proyector = VentanillaRadicaInternoProyectores::find($id);
 
-            if (!$proyector) {
+            if (! $proyector) {
                 return $this->errorResponse('Proyector no encontrado', null, 404);
             }
 
@@ -151,8 +148,8 @@ class VentanillaRadicaInternoProyectoresController extends Controller
     /**
      * Actualiza un proyector específico por su ID con los datos enviados.
      *
-     * @param int $id ID del proyector
-     * @param Request $request La solicitud HTTP validada
+     * @param  int  $id  ID del proyector
+     * @param  Request  $request  La solicitud HTTP validada
      * @return JsonResponse Respuesta JSON con el proyector actualizado
      *
      * @urlParam id integer required El ID del proyector. Example: 1
@@ -168,7 +165,6 @@ class VentanillaRadicaInternoProyectoresController extends Controller
      *     "updated_at": "2024-01-01T10:00:00.000000Z"
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -177,7 +173,6 @@ class VentanillaRadicaInternoProyectoresController extends Controller
      *     "users_cargos_id": ["El proyector es obligatorio."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al actualizar el proyector",
@@ -191,7 +186,7 @@ class VentanillaRadicaInternoProyectoresController extends Controller
 
             $proyector = VentanillaRadicaInternoProyectores::find($id);
 
-            if (!$proyector) {
+            if (! $proyector) {
                 return $this->errorResponse('Proyector no encontrado', null, 404);
             }
 
@@ -202,6 +197,7 @@ class VentanillaRadicaInternoProyectoresController extends Controller
             return $this->successResponse($proyector, 'Proyector actualizado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar el proyector', $e->getMessage(), 500);
         }
     }
@@ -209,7 +205,7 @@ class VentanillaRadicaInternoProyectoresController extends Controller
     /**
      * Elimina un proyector específico por su ID.
      *
-     * @param int $id ID del proyector
+     * @param  int  $id  ID del proyector
      * @return JsonResponse Respuesta JSON confirmando la eliminación
      *
      * @urlParam id integer required El ID del proyector. Example: 1
@@ -218,12 +214,10 @@ class VentanillaRadicaInternoProyectoresController extends Controller
      *   "status": true,
      *   "message": "Proyector eliminado exitosamente"
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Proyector no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al eliminar el proyector",
@@ -235,7 +229,7 @@ class VentanillaRadicaInternoProyectoresController extends Controller
         try {
             $proyector = VentanillaRadicaInternoProyectores::find($id);
 
-            if (!$proyector) {
+            if (! $proyector) {
                 return $this->errorResponse('Proyector no encontrado', null, 404);
             }
 
@@ -246,6 +240,7 @@ class VentanillaRadicaInternoProyectoresController extends Controller
             return $this->successResponse(null, 'Proyector eliminado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar el proyector', $e->getMessage(), 500);
         }
     }
@@ -258,9 +253,10 @@ class VentanillaRadicaInternoProyectoresController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-$data = $proyectores->map(function ($p) {
+            $data = $proyectores->map(function ($p) {
                 $user = $p->userCargo?->user;
                 $cargo = $p->userCargo?->cargo;
+
                 return [
                     'id' => $p->id,
                     'radica_interno_id' => $p->radica_interno_id,
@@ -268,13 +264,13 @@ $data = $proyectores->map(function ($p) {
                     'usuario' => $user ? [
                         'nombres' => $user->nombres,
                         'apellidos' => $user->apellidos,
-                        'nombre_completo' => trim($user->nombres . ' ' . $user->apellidos)
+                        'nombre_completo' => trim($user->nombres.' '.$user->apellidos),
                     ] : null,
                     'cargo' => $cargo ? [
                         'id' => $cargo->id,
                         'nombre' => $cargo->nom_organico,
                         'nom_organico' => $cargo->nom_organico,
-                        'codigo' => $cargo->cod_organico
+                        'codigo' => $cargo->cod_organico,
                     ] : null,
                     'created_at' => $p->created_at,
                 ];
@@ -293,7 +289,7 @@ $data = $proyectores->map(function ($p) {
 
             $radicado = VentanillaRadicaInterno::find($radica_interno_id);
 
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicado interno no encontrado', null, 404);
             }
 
@@ -315,11 +311,13 @@ $data = $proyectores->map(function ($p) {
             DB::commit();
 
             return $this->successResponse($proyectoresCreados, 'Proyectores asignados exitosamente', 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al asignar proyectores', $e->getMessage(), 500);
         }
     }

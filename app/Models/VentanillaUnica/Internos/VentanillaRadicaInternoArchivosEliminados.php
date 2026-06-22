@@ -2,6 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Internos;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -24,7 +25,7 @@ class VentanillaRadicaInternoArchivosEliminados extends Model
 
     public function usuario()
     {
-        return $this->belongsTo(\App\Models\User::class, 'eliminado_por');
+        return $this->belongsTo(User::class, 'eliminado_por');
     }
 
     public function radicaInterno()

@@ -3,9 +3,10 @@
 namespace App\Services\ControlAcceso;
 
 use App\Models\User;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RoleService
 {
@@ -16,8 +17,8 @@ class RoleService
     {
         $query = Role::with('permissions');
 
-        if (!empty($filters['search'])) {
-            $query->where('name', 'like', '%' . $filters['search'] . '%');
+        if (! empty($filters['search'])) {
+            $query->where('name', 'like', '%'.$filters['search'].'%');
         }
 
         return $query->orderBy('name', 'asc')
@@ -27,10 +28,10 @@ class RoleService
     /**
      * Obtiene roles con conteo de usuarios.
      */
-    public function getWithUsers(): \Illuminate\Database\Eloquent\Collection
+    public function getWithUsers(): Collection
     {
         $roles = Role::with('permissions')->orderBy('name', 'asc')->get();
-        
+
         $roleIds = $roles->pluck('id');
         $userCounts = DB::table('model_has_roles')
             ->whereIn('role_id', $roleIds)
@@ -39,8 +40,8 @@ class RoleService
             ->groupBy('role_id')
             ->pluck('users_count', 'role_id');
 
-        return $roles->map(fn($r) => array_merge($r->toArray(), [
-            'users_count' => $userCounts->get($r->id, 0)
+        return $roles->map(fn ($r) => array_merge($r->toArray(), [
+            'users_count' => $userCounts->get($r->id, 0),
         ]));
     }
 
@@ -51,8 +52,8 @@ class RoleService
     {
         $query = Permission::query();
 
-        if (!empty($filters['search'])) {
-            $query->where('name', 'like', '%' . $filters['search'] . '%');
+        if (! empty($filters['search'])) {
+            $query->where('name', 'like', '%'.$filters['search'].'%');
         }
 
         return $query->orderBy('name', 'asc')->get();
@@ -66,7 +67,7 @@ class RoleService
         $totalRoles = Role::count();
         $totalPermisos = Permission::count();
         $totalUsuarios = User::count();
-        
+
         $usuariosConRoles = DB::table('model_has_roles')
             ->where('model_type', User::class)
             ->distinct('model_id')
@@ -84,7 +85,7 @@ class RoleService
     /**
      * Obtiene todos los roles con sus permisos.
      */
-    public function getAllWithPermissions(): \Illuminate\Database\Eloquent\Collection
+    public function getAllWithPermissions(): Collection
     {
         return Role::with('permissions')->orderBy('name', 'asc')->get();
     }
@@ -96,6 +97,7 @@ class RoleService
     {
         $role = Role::create(['name' => $data['name']]);
         $role->syncPermissions($data['permissions'] ?? []);
+
         return $role->fresh(['permissions']);
     }
 
@@ -105,13 +107,14 @@ class RoleService
     public function update(int $id, array $data): ?Role
     {
         $role = Role::find($id);
-        
-        if (!$role) {
+
+        if (! $role) {
             return null;
         }
 
         $role->update(['name' => $data['name']]);
         $role->syncPermissions($data['permissions'] ?? []);
+
         return $role->fresh(['permissions']);
     }
 
@@ -121,8 +124,8 @@ class RoleService
     public function delete(int $id): array
     {
         $role = Role::find($id);
-        
-        if (!$role) {
+
+        if (! $role) {
             return ['success' => false, 'message' => 'Rol no encontrado', 'code' => 404];
         }
 
@@ -136,7 +139,7 @@ class RoleService
         }
 
         $role->delete();
-        
+
         return ['success' => true];
     }
 }

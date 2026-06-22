@@ -3,6 +3,7 @@
 namespace App\Models\VentanillaUnica\Internos;
 
 use App\Helpers\ArchivoHelper;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -35,7 +36,7 @@ class VentanillaRadicaInternoArchivos extends Model
 
     public function usuarioSubido()
     {
-        return $this->belongsTo(\App\Models\User::class, 'subido_por');
+        return $this->belongsTo(User::class, 'subido_por');
     }
 
     public function getArchivoUrl(): ?string
@@ -45,7 +46,7 @@ class VentanillaRadicaInternoArchivos extends Model
 
     public function getInfoArchivo(bool $incluirMetadatos = false): ?array
     {
-        if (!$this->archivo) {
+        if (! $this->archivo) {
             return null;
         }
         $info = [
@@ -65,6 +66,7 @@ class VentanillaRadicaInternoArchivos extends Model
             } catch (\Exception $e) {
             }
         }
+
         return $info;
     }
 }

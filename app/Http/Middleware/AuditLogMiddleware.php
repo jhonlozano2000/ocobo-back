@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use App\Services\Seguridad\AuditLogService;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\Response;
 
 /**

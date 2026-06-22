@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Http\Resources\Traits\SanitizesApiOutput;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Spatie\Permission\PermissionRegistrar;
 
 class UserResource extends JsonResource
 {
@@ -11,7 +12,7 @@ class UserResource extends JsonResource
 
     public function toArray($request)
     {
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
         $this->load(['roles.permissions', 'permissions', 'cargoActivo.cargo']);
 
         $oficina = null;
@@ -25,7 +26,7 @@ class UserResource extends JsonResource
                 'cod_organico' => $this->cargoActivo->cargo->cod_organico,
                 'tipo' => $this->cargoActivo->cargo->tipo,
                 'fecha_inicio' => $this->cargoActivo->fecha_inicio?->format('Y-m-d'),
-                'observaciones' => $this->cargoActivo->observaciones
+                'observaciones' => $this->cargoActivo->observaciones,
             ];
 
             $jerarquia = $this->cargoActivo->cargo->getJerarquiaCompleta();
@@ -46,14 +47,14 @@ class UserResource extends JsonResource
                         'id' => $parentDirecto['id'],
                         'nom_organico' => $parentDirecto['nom_organico'],
                         'cod_organico' => $parentDirecto['cod_organico'],
-                        'tipo' => $parentDirecto['tipo']
+                        'tipo' => $parentDirecto['tipo'],
                     ];
                 } elseif ($parentDirecto['tipo'] === 'Dependencia') {
                     $dependencia = [
                         'id' => $parentDirecto['id'],
                         'nom_organico' => $parentDirecto['nom_organico'],
                         'cod_organico' => $parentDirecto['cod_organico'],
-                        'tipo' => $parentDirecto['tipo']
+                        'tipo' => $parentDirecto['tipo'],
                     ];
                 }
             }

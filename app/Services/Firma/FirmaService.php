@@ -4,9 +4,8 @@ namespace App\Services\Firma;
 
 use App\Mail\OtpFirmaMail;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
 
 class FirmaService
 {
@@ -16,7 +15,7 @@ class FirmaService
     public function generarYEnviarOtp($user)
     {
         $otp = rand(100000, 999999);
-        $cacheKey = "otp_firma_" . $user->id;
+        $cacheKey = 'otp_firma_'.$user->id;
 
         // Guardar en caché por 5 minutos
         Cache::put($cacheKey, $otp, now()->addMinutes(5));
@@ -32,16 +31,16 @@ class FirmaService
      */
     public function validarOtp($user, $otp)
     {
-        $cacheKey = "otp_firma_" . $user->id;
+        $cacheKey = 'otp_firma_'.$user->id;
         $otpGuardado = Cache::get($cacheKey);
 
-        if (!$otpGuardado || $otpGuardado != $otp) {
+        if (! $otpGuardado || $otpGuardado != $otp) {
             return false;
         }
 
         // Eliminar el OTP tras validarlo con éxito
         Cache::forget($cacheKey);
-        
+
         return true;
     }
 
@@ -50,18 +49,18 @@ class FirmaService
      */
     public function registrarEventoFirma($user, $documentable, $data)
     {
-        return DB::table("firmas_eventos")->insert([
-            "documentable_id"   => $documentable->id,
-            "documentable_type" => get_class($documentable),
-            "user_id"           => $user->id,
-            "hash_original"     => $data["hash_original"] ?? null,
-            "hash_firmado"      => $data["hash_firmado"] ?? null,
-            "otp_utilizado"     => $data["otp"],
-            "ip_address"        => request()->ip(),
-            "user_agent"        => request()->userAgent(),
-            "fecha_firma"       => now(),
-            "created_at"        => now(),
-            "updated_at"        => now(),
+        return DB::table('firmas_eventos')->insert([
+            'documentable_id' => $documentable->id,
+            'documentable_type' => get_class($documentable),
+            'user_id' => $user->id,
+            'hash_original' => $data['hash_original'] ?? null,
+            'hash_firmado' => $data['hash_firmado'] ?? null,
+            'otp_utilizado' => $data['otp'],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+            'fecha_firma' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 }

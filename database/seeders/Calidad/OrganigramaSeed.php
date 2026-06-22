@@ -3,7 +3,6 @@
 namespace Database\Seeders\Calidad;
 
 use App\Models\Calidad\CalidadOrganigrama;
-use App\Models\Calidad\Organigrama;
 use Illuminate\Database\Seeder;
 
 class OrganigramaSeed extends Seeder

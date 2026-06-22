@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Configuracion\ConfigCalendarioFestivo;
 use App\Services\Configuracion\BusinessDaysService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class ConfigCalendarioFestivoController extends Controller
@@ -40,10 +40,10 @@ class ConfigCalendarioFestivoController extends Controller
             $validated = $request->validate([
                 'fecha' => 'required|date|unique:config_calendario_festivos,fecha',
                 'nombre' => 'required|string|max:150',
-                'tipo' => 'nullable|string|in:' . implode(',', ConfigCalendarioFestivo::getTipos()),
+                'tipo' => 'nullable|string|in:'.implode(',', ConfigCalendarioFestivo::getTipos()),
             ]);
 
-            $validated['anio'] = \Carbon\Carbon::parse($validated['fecha'])->year;
+            $validated['anio'] = Carbon::parse($validated['fecha'])->year;
 
             $festivo = ConfigCalendarioFestivo::create($validated);
             $this->businessDaysService->clearCache($validated['anio']);
@@ -61,18 +61,18 @@ class ConfigCalendarioFestivoController extends Controller
         try {
             $festivo = ConfigCalendarioFestivo::find($id);
 
-            if (!$festivo) {
+            if (! $festivo) {
                 return $this->errorResponse('Día no hábil no encontrado', null, 404);
             }
 
             $validated = $request->validate([
-                'fecha' => 'sometimes|date|unique:config_calendario_festivos,fecha,' . $id,
+                'fecha' => 'sometimes|date|unique:config_calendario_festivos,fecha,'.$id,
                 'nombre' => 'sometimes|string|max:150',
-                'tipo' => 'nullable|string|in:' . implode(',', ConfigCalendarioFestivo::getTipos()),
+                'tipo' => 'nullable|string|in:'.implode(',', ConfigCalendarioFestivo::getTipos()),
             ]);
 
             if (isset($validated['fecha'])) {
-                $validated['anio'] = \Carbon\Carbon::parse($validated['fecha'])->year;
+                $validated['anio'] = Carbon::parse($validated['fecha'])->year;
             }
 
             $festivo->update($validated);
@@ -91,7 +91,7 @@ class ConfigCalendarioFestivoController extends Controller
         try {
             $festivo = ConfigCalendarioFestivo::find($id);
 
-            if (!$festivo) {
+            if (! $festivo) {
                 return $this->errorResponse('Día no hábil no encontrado', null, 404);
             }
 
@@ -143,7 +143,7 @@ class ConfigCalendarioFestivoController extends Controller
             ]);
 
             $fechaVencimiento = $this->businessDaysService->calcularVencimiento(
-                \Carbon\Carbon::parse($validated['fecha_inicio']),
+                Carbon::parse($validated['fecha_inicio']),
                 (int) $validated['dias_habiles']
             );
 
@@ -166,7 +166,7 @@ class ConfigCalendarioFestivoController extends Controller
                 'festivos' => 'required|array|min:1',
                 'festivos.*.fecha' => 'required|date',
                 'festivos.*.nombre' => 'required|string|max:150',
-                'festivos.*.tipo' => 'nullable|string|in:' . implode(',', ConfigCalendarioFestivo::getTipos()),
+                'festivos.*.tipo' => 'nullable|string|in:'.implode(',', ConfigCalendarioFestivo::getTipos()),
             ]);
 
             $resultados = $this->businessDaysService->importarFestivos($validated['festivos']);
@@ -188,7 +188,7 @@ class ConfigCalendarioFestivoController extends Controller
                 return $this->successResponse([
                     'ya_existen' => true,
                     'cantidad' => $festivosExistentes,
-                    'mensaje' => "Ya existen {$festivosExistentes} días no hábiles configurados para el año {$anio}"
+                    'mensaje' => "Ya existen {$festivosExistentes} días no hábiles configurados para el año {$anio}",
                 ], 'Los festivos ya están configurados para este año');
             }
 

@@ -2,11 +2,9 @@
 
 namespace App\Models\MiBandeja\TempDocumentosRecibidos;
 
-use App\Models\MiBandeja\TempDocumentosRecibidos\DocumentoUsuario;
-use App\Models\MiBandeja\TempDocumentosRecibidos\Sugerencia;
-use App\Models\MiBandeja\TempDocumentosRecibidos\Version;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -25,9 +23,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $estado Estado: borrador|en_revision|firmado
  * @property string|null $notas Notas adicionales
  * @property bool $es_publico Si es visible para todos los usuarios
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- *
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read RecibidosVentanillaRadicaReci $radicado
  * @property-read User $creador
  * @property-read HasMany<DocumentoUsuario> $usuarios
@@ -195,7 +192,7 @@ class Documento extends Model
     /**
      * Verifica si un usuario tiene acceso al documento.
      *
-     * @param User $user Usuario a verificar
+     * @param  User  $user  Usuario a verificar
      * @return bool true si tiene acceso
      */
     public function tieneAcceso(User $user): bool
@@ -211,14 +208,14 @@ class Documento extends Model
     /**
      * Verifica si un usuario puede editar el documento.
      *
-     * @param User $user Usuario a verificar
+     * @param  User  $user  Usuario a verificar
      * @return bool true si puede editar
      */
     public function puedeEditar(User $user): bool
     {
         $rol = $this->usuarios()->where('user_id', $user->id)->first();
 
-        if (!$rol) {
+        if (! $rol) {
             return $this->user_id === $user->id;
         }
 
@@ -228,7 +225,7 @@ class Documento extends Model
     /**
      * Verifica si un usuario puede firmar el documento.
      *
-     * @param User $user Usuario a verificar
+     * @param  User  $user  Usuario a verificar
      * @return bool true si puede firmar
      */
     public function puedeFirmar(User $user): bool

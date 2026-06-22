@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\Configuracion\StoreConfigServerArchivoRequest;
 use App\Http\Requests\Configuracion\UpdateConfigServerArchivoRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\Configuracion\ConfigServerArchivo;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -21,8 +22,8 @@ class ConfigServerArchivoController extends Controller
      * de proceso asociadas. Es útil para interfaces de administración donde
      * se necesita mostrar la configuración de servidores de archivos.
      *
-     * @param Request $request La solicitud HTTP que puede contener parámetros de filtrado
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de servidores
+     * @param  Request  $request  La solicitud HTTP que puede contener parámetros de filtrado
+     * @return JsonResponse Respuesta JSON con el listado de servidores
      *
      * @queryParam search string Buscar por host, usuario, ruta o detalle. Example: "ftp"
      * @queryParam estado integer Filtrar por estado (0 inactivo, 1 activo). Example: 1
@@ -47,7 +48,6 @@ class ConfigServerArchivoController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el listado de servidores",
@@ -98,8 +98,8 @@ class ConfigServerArchivoController extends Controller
      * Este método permite crear un nuevo servidor de archivos con validación
      * de datos y conversión automática del campo estado.
      *
-     * @param StoreConfigServerArchivoRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el servidor creado
+     * @param  StoreConfigServerArchivoRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con el servidor creado
      *
      * @bodyParam nombre string required Nombre del servidor. Example: "Servidor FTP Principal"
      * @bodyParam url string required URL del servidor. Example: "ftp://example.com"
@@ -124,7 +124,6 @@ class ConfigServerArchivoController extends Controller
      *     "proceso": null
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Datos de validación incorrectos",
@@ -132,7 +131,6 @@ class ConfigServerArchivoController extends Controller
      *     "url": ["La URL debe tener un formato válido."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al crear el servidor",
@@ -162,6 +160,7 @@ class ConfigServerArchivoController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al crear el servidor', $e->getMessage(), 500);
         }
     }
@@ -172,8 +171,8 @@ class ConfigServerArchivoController extends Controller
      * Este método permite obtener los detalles de un servidor de archivos específico,
      * incluyendo su proceso asociado.
      *
-     * @param ConfigServerArchivo $configServerArchivo El servidor a obtener (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el servidor
+     * @param  ConfigServerArchivo  $configServerArchivo  El servidor a obtener (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON con el servidor
      *
      * @urlParam configServerArchivo integer required El ID del servidor. Example: 1
      *
@@ -194,12 +193,10 @@ class ConfigServerArchivoController extends Controller
      *     }
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Servidor de archivos no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el servidor",
@@ -224,9 +221,9 @@ class ConfigServerArchivoController extends Controller
      * Este método permite modificar los datos de un servidor de archivos existente,
      * incluyendo conversión automática del campo estado.
      *
-     * @param UpdateConfigServerArchivoRequest $request La solicitud HTTP validada
-     * @param ConfigServerArchivo $configServerArchivo El servidor a actualizar (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el servidor actualizado
+     * @param  UpdateConfigServerArchivoRequest  $request  La solicitud HTTP validada
+     * @param  ConfigServerArchivo  $configServerArchivo  El servidor a actualizar (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON con el servidor actualizado
      *
      * @bodyParam nombre string Nombre del servidor. Example: "Servidor FTP Principal"
      * @bodyParam url string URL del servidor. Example: "ftp://example.com"
@@ -250,7 +247,6 @@ class ConfigServerArchivoController extends Controller
      *     "estado": 1
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Datos de validación incorrectos",
@@ -258,7 +254,6 @@ class ConfigServerArchivoController extends Controller
      *     "puerto": ["El puerto debe ser al menos 1."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al actualizar el servidor",
@@ -273,7 +268,7 @@ class ConfigServerArchivoController extends Controller
             $validatedData = $request->validated();
 
             // Si el password no viene o está vacío, removerlo de los datos a actualizar
-            if (!isset($validatedData['password']) || empty($validatedData['password'])) {
+            if (! isset($validatedData['password']) || empty($validatedData['password'])) {
                 unset($validatedData['password']);
             }
 
@@ -300,6 +295,7 @@ class ConfigServerArchivoController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar el servidor', $e->getMessage(), 500);
         }
     }
@@ -310,8 +306,8 @@ class ConfigServerArchivoController extends Controller
      * Este método permite eliminar un servidor de archivos específico del sistema.
      * Se recomienda verificar que no tenga dependencias antes de eliminar.
      *
-     * @param ConfigServerArchivo $configServerArchivo El servidor a eliminar (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la eliminación
+     * @param  ConfigServerArchivo  $configServerArchivo  El servidor a eliminar (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON confirmando la eliminación
      *
      * @urlParam configServerArchivo integer required El ID del servidor a eliminar. Example: 1
      *
@@ -319,7 +315,6 @@ class ConfigServerArchivoController extends Controller
      *   "status": true,
      *   "message": "Servidor de archivos eliminado exitosamente"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al eliminar el servidor",
@@ -338,6 +333,7 @@ class ConfigServerArchivoController extends Controller
             return $this->successResponse(null, 'Servidor de archivos eliminado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar el servidor', $e->getMessage(), 500);
         }
     }
@@ -349,7 +345,7 @@ class ConfigServerArchivoController extends Controller
      * incluyendo el total de servidores, servidores activos/inactivos y distribución
      * por proceso. Es útil para dashboards de administración.
      *
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las estadísticas
+     * @return JsonResponse Respuesta JSON con las estadísticas
      *
      * @response 200 {
      *   "status": true,
@@ -365,7 +361,6 @@ class ConfigServerArchivoController extends Controller
      *     "servidores_sin_proceso": 2
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener las estadísticas",

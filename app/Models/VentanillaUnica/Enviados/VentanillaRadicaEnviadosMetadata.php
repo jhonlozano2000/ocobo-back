@@ -2,6 +2,8 @@
 
 namespace App\Models\VentanillaUnica\Enviados;
 
+use App\Models\Configuracion\FileClassificationLevel;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -94,16 +96,16 @@ class VentanillaRadicaEnviadosMetadata extends Model
 
     public function nivelClasificacion(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Configuracion\FileClassificationLevel::class, 'nivel_clasificacion_id');
+        return $this->belongsTo(FileClassificationLevel::class, 'nivel_clasificacion_id');
     }
 
     public function duenoDocumento(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'dueno_documento_id');
+        return $this->belongsTo(User::class, 'dueno_documento_id');
     }
 
     public function custodioActual(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'custodio_actual_id');
+        return $this->belongsTo(User::class, 'custodio_actual_id');
     }
 }

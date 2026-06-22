@@ -2,6 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Enviados;
 
+use App\Models\ControlAcceso\UserCargo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -23,6 +24,6 @@ class VentanillaRadicaEnviadosRespuestas extends Model
 
     public function userCargo()
     {
-        return $this->belongsTo(\App\Models\ControlAcceso\UserCargo::class, 'users_cargos_id');
+        return $this->belongsTo(UserCargo::class, 'users_cargos_id');
     }
 }

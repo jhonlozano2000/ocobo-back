@@ -16,8 +16,7 @@ class DataEncryption
     /**
      * Cifra datos sensibles
      *
-     * @param mixed $data
-     * @return string
+     * @param  mixed  $data
      */
     public static function encrypt($data): string
     {
@@ -31,8 +30,6 @@ class DataEncryption
     /**
      * Descifra datos
      *
-     * @param string $encrypted
-     * @param bool $asArray
      * @return mixed
      */
     public static function decrypt(string $encrypted, bool $asArray = false)
@@ -48,16 +45,13 @@ class DataEncryption
 
     /**
      * Cifra datos PII para almacenamiento
-     *
-     * @param array $piiData
-     * @return array
      */
     public static function encryptPii(array $piiData): array
     {
         $fields = ['num_docu', 'email', 'telefono', 'movil', 'direccion'];
 
         foreach ($fields as $field) {
-            if (isset($piiData[$field]) && !empty($piiData[$field])) {
+            if (isset($piiData[$field]) && ! empty($piiData[$field])) {
                 $piiData[$field] = self::encrypt($piiData[$field]);
             }
         }
@@ -67,16 +61,13 @@ class DataEncryption
 
     /**
      * Descifra datos PII
-     *
-     * @param array $encryptedData
-     * @return array
      */
     public static function decryptPii(array $encryptedData): array
     {
         $fields = ['num_docu', 'email', 'telefono', 'movil', 'direccion'];
 
         foreach ($fields as $field) {
-            if (isset($encryptedData[$field]) && !empty($encryptedData[$field])) {
+            if (isset($encryptedData[$field]) && ! empty($encryptedData[$field])) {
                 $encryptedData[$field] = self::decrypt($encryptedData[$field], true);
             }
         }
@@ -87,8 +78,7 @@ class DataEncryption
     /**
      * Hash de datos para integridad
      *
-     * @param mixed $data
-     * @return string
+     * @param  mixed  $data
      */
     public static function hash($data): string
     {
@@ -102,9 +92,7 @@ class DataEncryption
     /**
      * Verifica integridad de datos
      *
-     * @param mixed $data
-     * @param string $expectedHash
-     * @return bool
+     * @param  mixed  $data
      */
     public static function verify($data, string $expectedHash): bool
     {
@@ -113,9 +101,6 @@ class DataEncryption
 
     /**
      * Genera token seguro
-     *
-     * @param int $length
-     * @return string
      */
     public static function generateToken(int $length = 32): string
     {

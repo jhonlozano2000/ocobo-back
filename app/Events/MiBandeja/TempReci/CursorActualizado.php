@@ -27,9 +27,6 @@ class CursorActualizado implements ShouldBroadcast
 
     /**
      * Crea una nueva instancia del evento.
-     *
-     * @param int $documentoId
-     * @param array $cursor
      */
     public function __construct(int $documentoId, array $cursor)
     {
@@ -40,7 +37,7 @@ class CursorActualizado implements ShouldBroadcast
     /**
      * Canales donde broadcastear.
      *
-     * @return array<int, \Illuminate\Broadcasting\Channel>
+     * @return array<int, Channel>
      */
     public function broadcastOn(): array
     {
@@ -51,8 +48,6 @@ class CursorActualizado implements ShouldBroadcast
 
     /**
      * Datos a enviar con el evento.
-     *
-     * @return array
      */
     public function broadcastWith(): array
     {

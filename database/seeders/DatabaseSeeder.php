@@ -5,22 +5,22 @@ namespace Database\Seeders;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 
 use Database\Seeders\Calidad\OrganigramaSeed;
+use Database\Seeders\ClasificacionDocumental\TRDSeed;
 use Database\Seeders\Configuracion\DiviPoliSeed;
 use Database\Seeders\Configuracion\ListaSeed;
 use Database\Seeders\Configuracion\SedesSeeder;
 use Database\Seeders\ControlAcceso\RoleSeeder;
 use Database\Seeders\ControlAcceso\UsersSeeder;
 use Database\Seeders\Gestion\TercerosSeed;
-use Database\Seeders\ClasificacionDocumental\TRDSeed;
-use Database\Seeders\Permisos\PermisosControlAccesoSeeder;
-use Database\Seeders\Permisos\PermisosConfiguracionSeeder;
 use Database\Seeders\Permisos\PermisosCalidadSeeder;
 use Database\Seeders\Permisos\PermisosClasificacionDocumentalSeeder as PermisosPermisosClasificacionDocumentalSeeder;
-use Database\Seeders\Permisos\PermisosGestionSeeder;
+use Database\Seeders\Permisos\PermisosConfiguracionSeeder;
+use Database\Seeders\Permisos\PermisosControlAccesoSeeder;
 use Database\Seeders\Permisos\PermisosDigitalizacionSeeder;
-use Database\Seeders\Permisos\PermisosReportesSeeder;
+use Database\Seeders\Permisos\PermisosGestionSeeder;
 use Database\Seeders\Permisos\PermisosOtrosSeeder;
 use Database\Seeders\Permisos\PermisosRadicarSeeder;
+use Database\Seeders\Permisos\PermisosReportesSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder

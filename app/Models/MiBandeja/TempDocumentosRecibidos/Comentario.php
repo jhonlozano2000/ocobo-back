@@ -2,8 +2,9 @@
 
 namespace App\Models\MiBandeja\TempDocumentosRecibidos;
 
-use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,9 +22,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $contenido Texto del comentario
  * @property array|null $seleccion_texto Selección de texto contextual
  * @property bool $resuelto Si está marcado como resuelto
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- *
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Documento $documento
  * @property-read User $usuario
  * @property-read Comentario|null $respuesta
@@ -93,8 +93,8 @@ class Comentario extends Model
     /**
      * Scope para comentarios pendientes.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param  Builder  $query
+     * @return Builder
      */
     public function scopePendientes($query)
     {
@@ -104,8 +104,8 @@ class Comentario extends Model
     /**
      * Scope para comentarios resueltos.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param  Builder  $query
+     * @return Builder
      */
     public function scopeResueltos($query)
     {
@@ -114,8 +114,6 @@ class Comentario extends Model
 
     /**
      * Marca el comentario como resuelto.
-     *
-     * @return void
      */
     public function marcarResuelto(): void
     {
@@ -125,8 +123,6 @@ class Comentario extends Model
 
     /**
      * Resuelve el comentario y todas sus respuestas.
-     *
-     * @return void
      */
     public function resolver(): void
     {
@@ -142,8 +138,6 @@ class Comentario extends Model
 
     /**
      * Desmarca el comentario como resuelto.
-     *
-     * @return void
      */
     public function desmarcarResuelto(): void
     {
@@ -153,12 +147,10 @@ class Comentario extends Model
 
     /**
      * Obtiene el texto seleccionado formateado.
-     *
-     * @return string|null
      */
     public function obtenerSeleccionFormateada(): ?string
     {
-        if (!$this->seleccion_texto) {
+        if (! $this->seleccion_texto) {
             return null;
         }
 

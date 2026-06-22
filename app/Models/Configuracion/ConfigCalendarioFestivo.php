@@ -16,15 +16,17 @@ class ConfigCalendarioFestivo extends Model
         'fecha',
         'nombre',
         'tipo',
-        'anio'
+        'anio',
     ];
 
     protected $casts = [
-        'fecha' => 'date'
+        'fecha' => 'date',
     ];
 
     public const TIPO_NACIONAL = 'Nacional';
+
     public const TIPO_REGIONAL = 'Regional';
+
     public const TIPO_EMPRESARIAL = 'Empresarial';
 
     public static function getTipos(): array
@@ -39,6 +41,7 @@ class ConfigCalendarioFestivo extends Model
     protected static function getLogDescription(string $action, $model): string
     {
         $fecha = $model->fecha?->format('Y-m-d') ?? 'desconocida';
+
         return match ($action) {
             'create' => "creó el día no hábil {$fecha} - {$model->nombre}",
             'update' => "actualizó el día no hábil {$fecha} - {$model->nombre}",

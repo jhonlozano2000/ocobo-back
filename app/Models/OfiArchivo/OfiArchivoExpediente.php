@@ -2,6 +2,9 @@
 
 namespace App\Models\OfiArchivo;
 
+use App\Models\Calidad\CalidadOrganigrama;
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -39,35 +42,33 @@ class OfiArchivoExpediente extends Model
         'folios_fisicos' => 'integer',
     ];
 
-    /**
-     * Relación con los documentos (Índice) del expediente.
-     */
     public function documentos()
     {
         return $this->hasMany(OfiArchivoExpedienteDocumento::class, 'expediente_id')->orderBy('numero_folio', 'asc');
     }
 
-    /**
-     * Relación con la dependencia productora.
-     */
     public function dependencia()
     {
-        return $this->belongsTo(\App\Models\Calidad\CalidadOrganigrama::class, 'dependencia_id');
+        return $this->belongsTo(CalidadOrganigrama::class, 'dependencia_id');
     }
 
-    /**
-     * Relación con la serie documental de la TRD.
-     */
     public function serieTrd()
     {
-        return $this->belongsTo(\App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::class, 'serie_trd_id');
+        return $this->belongsTo(ClasificacionDocumentalTRD::class, 'serie_trd_id');
     }
 
-    /**
-     * Usuario que realizó la apertura del expediente.
-     */
     public function usuarioApertura()
     {
-        return $this->belongsTo(\App\Models\User::class, 'usuario_apertura_id');
+        return $this->belongsTo(User::class, 'usuario_apertura_id');
+    }
+
+    public function usuarioCierre()
+    {
+        return $this->belongsTo(User::class, 'usuario_cierre_id');
+    }
+
+    public function scopeDocumentosActivos($query)
+    {
+        return $query->where('activo', true);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Configuracion;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreConfigListaDetalleRequest extends FormRequest
@@ -19,7 +20,7 @@ class StoreConfigListaDetalleRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -27,25 +28,23 @@ class StoreConfigListaDetalleRequest extends FormRequest
             'lista_id' => [
                 'required',
                 'integer',
-                'exists:config_listas,id'
+                'exists:config_listas,id',
             ],
             'codigo' => [
                 'nullable',
                 'string',
-                'max:20'
+                'max:20',
             ],
             'nombre' => [
                 'required',
                 'string',
-                'max:70'
-            ]
+                'max:70',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -63,15 +62,13 @@ class StoreConfigListaDetalleRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
         return [
             'lista_id' => 'lista',
             'codigo' => 'código',
-            'nombre' => 'nombre'
+            'nombre' => 'nombre',
         ];
     }
 }

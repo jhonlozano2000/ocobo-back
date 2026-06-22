@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\VentanillaUnica\Enviados;
 
-use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
-use App\Http\Requests\Ventanilla\Enviados\UploadArchivoEnviadoRequest;
 use App\Helpers\ArchivoHelper;
 use App\Helpers\FileMetadataHelper;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Ventanilla\Enviados\UploadArchivoEnviadoRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivoEliminado;
+use App\Services\VentanillaUnica\OcrHttpService;
+use App\Services\VentanillaUnica\OcrService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -18,13 +20,14 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
     use ApiResponseTrait;
 
     private const DISK = 'radicados_enviados';
+
     private const PERM = 'Radicar -> Cores. Enviada -> ';
 
     public function __construct()
     {
-        $this->middleware('can:' . self::PERM . 'Subir digital')->only(['upload']);
-        $this->middleware('can:' . self::PERM . 'Eliminar digital')->only(['deleteFile']);
-        $this->middleware('can:' . self::PERM . 'Mostrar')->only(['getFileInfo', 'download', 'historialEliminaciones', 'getOcr']);
+        $this->middleware('can:'.self::PERM.'Subir digital')->only(['upload']);
+        $this->middleware('can:'.self::PERM.'Eliminar digital')->only(['deleteFile']);
+        $this->middleware('can:'.self::PERM.'Mostrar')->only(['getFileInfo', 'download', 'historialEliminaciones', 'getOcr']);
     }
 
     public function upload($id, UploadArchivoEnviadoRequest $request)
@@ -34,7 +37,7 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
 
             $radicado = VentanillaRadicaEnviados::find($id);
 
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicado enviado no encontrado', null, 404);
             }
 
@@ -44,18 +47,19 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
             $metadatosInternos = [
                 'titulo' => $radicado->num_radicado,
                 'autor' => $radicado->terceroEnviado ? ($radicado->terceroEnviado->nom_razo_soci ?? $radicado->terceroEnviado->nombre_completo) : 'Destinatario Externo',
-                'asunto' => $radicado->asunto
+                'asunto' => $radicado->asunto,
             ];
 
             $uploadData = ArchivoHelper::guardarArchivoConMetadatos(
-                $request, 
-                'archivo_digital', 
-                self::DISK, 
-                $metadatosInternos, 
-                $archivoActual
+                $request,
+                'archivo_digital',
+                self::DISK,
+                $metadatosInternos,
+                $archivoActual,
+                $radicado->num_radicado
             );
 
-            if (!$uploadData) {
+            if (! $uploadData) {
                 return $this->errorResponse('No se pudo procesar el archivo', null, 400);
             }
 
@@ -77,7 +81,7 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
 
             try {
                 $ocrText = null;
-                $ocrHttpService = app(\App\Services\VentanillaUnica\OcrHttpService::class);
+                $ocrHttpService = app(OcrHttpService::class);
 
                 if ($ocrHttpService->isEnabled() && $ocrHttpService->isAvailable()) {
                     $ocrText = $ocrHttpService->extractText($nuevoArchivo, self::DISK);
@@ -104,7 +108,7 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
 
             DB::commit();
 
-            $nombreUsuario = $usuario ? trim($usuario->nombres . ' ' . $usuario->apellidos) : 'No se registró usuario';
+            $nombreUsuario = $usuario ? trim($usuario->nombres.' '.$usuario->apellidos) : 'No se registró usuario';
             $fileUrl = ArchivoHelper::obtenerUrl($nuevoArchivo, self::DISK);
 
             return $this->successResponse([
@@ -125,6 +129,7 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
             ]);
+
             return $this->errorResponse('Error al subir el archivo', $e->getMessage(), 500);
         }
     }
@@ -134,11 +139,11 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
         try {
             $radicado = VentanillaRadicaEnviados::find($id);
 
-            if (!$radicado || !$radicado->archivo_digital) {
+            if (! $radicado || ! $radicado->archivo_digital) {
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 
-            if (!ArchivoHelper::obtenerUrl($radicado->archivo_digital, self::DISK)) {
+            if (! ArchivoHelper::obtenerUrl($radicado->archivo_digital, self::DISK)) {
                 return $this->errorResponse('El archivo no existe en el servidor', null, 404);
             }
 
@@ -155,7 +160,7 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
 
             $radicado = VentanillaRadicaEnviados::find($id);
 
-            if (!$radicado || !$radicado->archivo_digital) {
+            if (! $radicado || ! $radicado->archivo_digital) {
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 
@@ -174,11 +179,12 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
             DB::commit();
 
             return $this->successResponse([
-                'deleted_by' => $usuario ? trim($usuario->nombres . ' ' . $usuario->apellidos) : 'Usuario no identificado',
+                'deleted_by' => $usuario ? trim($usuario->nombres.' '.$usuario->apellidos) : 'Usuario no identificado',
                 'deleted_at' => now(),
             ], 'Archivo eliminado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar el archivo', $e->getMessage(), 500);
         }
     }
@@ -188,11 +194,11 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
         try {
             $radicado = VentanillaRadicaEnviados::with('usuarioSubio')->find($id);
 
-            if (!$radicado || !$radicado->archivo_digital) {
+            if (! $radicado || ! $radicado->archivo_digital) {
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 
-            if (!ArchivoHelper::obtenerUrl($radicado->archivo_digital, self::DISK)) {
+            if (! ArchivoHelper::obtenerUrl($radicado->archivo_digital, self::DISK)) {
                 return $this->errorResponse('El archivo no existe en el servidor', null, 404);
             }
 
@@ -202,7 +208,7 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
                 'file_type' => Storage::disk(self::DISK)->mimeType($radicado->archivo_digital),
                 'uploaded_at' => $radicado->updated_at,
                 'uploaded_by' => $radicado->usuarioSubio
-                    ? trim($radicado->usuarioSubio->nombres . ' ' . $radicado->usuarioSubio->apellidos)
+                    ? trim($radicado->usuarioSubio->nombres.' '.$radicado->usuarioSubio->apellidos)
                     : 'Usuario no identificado',
                 'file_url' => ArchivoHelper::obtenerUrl($radicado->archivo_digital, self::DISK),
             ];
@@ -217,7 +223,7 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
     {
         try {
             $radicado = VentanillaRadicaEnviados::find($id);
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicado enviado no encontrado', null, 404);
             }
 
@@ -237,7 +243,7 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
         try {
             $radicado = VentanillaRadicaEnviados::find($id);
 
-            if (!$radicado || !$radicado->archivo_digital) {
+            if (! $radicado || ! $radicado->archivo_digital) {
                 return $this->errorResponse('El radicado no tiene archivo digital', null, 400);
             }
 
@@ -256,19 +262,19 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
         try {
             $radicado = VentanillaRadicaEnviados::find($id);
 
-            if (!$radicado || !$radicado->archivo_digital) {
+            if (! $radicado || ! $radicado->archivo_digital) {
                 return $this->errorResponse('El radicado no tiene archivo digital', null, 400);
             }
 
             $ocrText = null;
-            $ocrHttpService = app(\App\Services\VentanillaUnica\OcrHttpService::class);
+            $ocrHttpService = app(OcrHttpService::class);
 
             if ($ocrHttpService->isEnabled() && $ocrHttpService->isAvailable()) {
                 $ocrText = $ocrHttpService->extractText($radicado->archivo_digital, self::DISK);
             }
 
-            if (!$ocrText) {
-                $ocrService = app(\App\Services\VentanillaUnica\OcrService::class);
+            if (! $ocrText) {
+                $ocrService = app(OcrService::class);
                 if ($ocrService->isAvailable()) {
                     $ocrText = $ocrService->extractText($radicado->archivo_digital, self::DISK);
                 }

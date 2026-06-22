@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Traits;
 
 use App\Services\Seguridad\AuditLogService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
@@ -23,17 +24,16 @@ trait PreventsIdor
     /**
      * Verifica que el usuario actual es dueño del recurso
      *
-     * @param Request $request
-     * @param Model $model
-     * @param string $ownerField Campo que contiene el ID del dueño
-     * @param string|null $message Mensaje de error personalizado
-     * @throws \Illuminate\Auth\Access\AuthorizationException
+     * @param  string  $ownerField  Campo que contiene el ID del dueño
+     * @param  string|null  $message  Mensaje de error personalizado
+     *
+     * @throws AuthorizationException
      */
     protected function authorizeOwnership(Request $request, Model $model, string $ownerField = 'user_id', ?string $message = null): void
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(401, 'No autenticado.');
         }
 
@@ -49,7 +49,7 @@ trait PreventsIdor
             // Registrar el intento de acceso no autorizado
             AuditLogService::logPermisoDenegado(
                 'access',
-                get_class($model) . ':' . $resourceId
+                get_class($model).':'.$resourceId
             );
 
             AuditLogService::logIntentoIntrusion(
@@ -70,16 +70,15 @@ trait PreventsIdor
     /**
      * Verifica que el recurso pertenece a la organización/del usuario actual
      *
-     * @param Request $request
-     * @param Model $model
-     * @param string $orgField Campo que contiene el ID de organización
-     * @throws \Illuminate\Auth\Access\AuthorizationException
+     * @param  string  $orgField  Campo que contiene el ID de organización
+     *
+     * @throws AuthorizationException
      */
     protected function authorizeOrganizationAccess(Request $request, Model $model, string $orgField = 'empresa_id'): void
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(401, 'No autenticado.');
         }
 
@@ -93,7 +92,7 @@ trait PreventsIdor
         if ($orgId && $orgId !== $user->empresa_id) {
             AuditLogService::logPermisoDenegado(
                 'organization_access',
-                get_class($model) . ':' . $model->getKey()
+                get_class($model).':'.$model->getKey()
             );
 
             abort(403, 'No tiene permiso para acceder a este recurso.');
@@ -103,16 +102,16 @@ trait PreventsIdor
     /**
      * Verifica acceso a múltiples recursos (para operaciones batch)
      *
-     * @param Request $request
-     * @param array $models Array de modelos
-     * @param string $ownerField Campo que contiene el ID del dueño
-     * @throws \Illuminate\Auth\Access\AuthorizationException
+     * @param  array  $models  Array de modelos
+     * @param  string  $ownerField  Campo que contiene el ID del dueño
+     *
+     * @throws AuthorizationException
      */
     protected function authorizeBulkOwnership(Request $request, array $models, string $ownerField = 'user_id'): void
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(401, 'No autenticado.');
         }
 
@@ -129,10 +128,10 @@ trait PreventsIdor
             }
         }
 
-        if (!empty($unauthorizedIds)) {
+        if (! empty($unauthorizedIds)) {
             AuditLogService::logPermisoDenegado(
                 'bulk_access',
-                'IDs: ' . implode(', ', $unauthorizedIds)
+                'IDs: '.implode(', ', $unauthorizedIds)
             );
 
             abort(403, 'No tiene permiso para acceder a algunos de los recursos solicitados.');
@@ -143,17 +142,17 @@ trait PreventsIdor
      * Verifica que el usuario tiene acceso a un recurso por su ID
      * (Útil para rutas like /api/resource/{id})
      *
-     * @param Request $request
-     * @param string $modelClass Clase del modelo
-     * @param int $resourceId ID del recurso
-     * @param string $ownerField Campo que contiene el ID del dueño
-     * @throws \Illuminate\Auth\Access\AuthorizationException
+     * @param  string  $modelClass  Clase del modelo
+     * @param  int  $resourceId  ID del recurso
+     * @param  string  $ownerField  Campo que contiene el ID del dueño
+     *
+     * @throws AuthorizationException
      */
     protected function authorizeResourceAccess(Request $request, string $modelClass, int $resourceId, string $ownerField = 'user_id'): void
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(401, 'No autenticado.');
         }
 
@@ -164,14 +163,14 @@ trait PreventsIdor
 
         $model = $modelClass::find($resourceId);
 
-        if (!$model) {
+        if (! $model) {
             abort(404, 'Recurso no encontrado.');
         }
 
         if ($model->{$ownerField} !== $user->id) {
             AuditLogService::logPermisoDenegado(
                 'resource_access',
-                $modelClass . ':' . $resourceId
+                $modelClass.':'.$resourceId
             );
 
             AuditLogService::logIntentoIntrusion(

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Configuracion;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ListConfigDiviPoliRequest extends FormRequest
@@ -19,7 +20,7 @@ class ListConfigDiviPoliRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -27,31 +28,29 @@ class ListConfigDiviPoliRequest extends FormRequest
             'tipo' => [
                 'nullable',
                 'string',
-                'in:Pais,Departamento,Municipio'
+                'in:Pais,Departamento,Municipio',
             ],
             'parent' => [
                 'nullable',
                 'integer',
-                'exists:config_divi_poli,id'
+                'exists:config_divi_poli,id',
             ],
             'search' => [
                 'nullable',
                 'string',
-                'max:100'
+                'max:100',
             ],
             'per_page' => [
                 'nullable',
                 'integer',
                 'min:1',
-                'max:100'
-            ]
+                'max:100',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -70,8 +69,6 @@ class ListConfigDiviPoliRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
@@ -79,7 +76,7 @@ class ListConfigDiviPoliRequest extends FormRequest
             'tipo' => 'tipo',
             'parent' => 'división política padre',
             'search' => 'término de búsqueda',
-            'per_page' => 'elementos por página'
+            'per_page' => 'elementos por página',
         ];
     }
 }

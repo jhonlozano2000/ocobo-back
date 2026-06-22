@@ -2,6 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Internos;
 
+use App\Models\ControlAcceso\UserCargo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -15,7 +16,7 @@ class VentanillaRadicaInternoResponsa extends Model
         'radica_interno_id',
         'users_cargos_id',
         'custodio',
-        'fechor_visto'
+        'fechor_visto',
     ];
 
     public function radicaInterno()
@@ -25,12 +26,12 @@ class VentanillaRadicaInternoResponsa extends Model
 
     public function userCargo()
     {
-        return $this->belongsTo(\App\Models\ControlAcceso\UserCargo::class, 'users_cargos_id');
+        return $this->belongsTo(UserCargo::class, 'users_cargos_id');
     }
 
     public function marcarComoVisto(): void
     {
-        if (!$this->fechor_visto) {
+        if (! $this->fechor_visto) {
             $this->update(['fechor_visto' => now()]);
         }
     }
@@ -52,12 +53,12 @@ class VentanillaRadicaInternoResponsa extends Model
 
     public function getInfoResponsable(): ?array
     {
-        if (!$this->relationLoaded('userCargo')) {
+        if (! $this->relationLoaded('userCargo')) {
             $this->load(['userCargo.user', 'userCargo.cargo']);
         }
 
         $userCargo = $this->userCargo;
-        if (!$userCargo) {
+        if (! $userCargo) {
             return null;
         }
 

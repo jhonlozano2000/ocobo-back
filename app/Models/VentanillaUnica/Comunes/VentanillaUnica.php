@@ -17,7 +17,7 @@ class VentanillaUnica extends Model
     protected $fillable = [
         'sede_id',
         'nombre',
-        'descripcion'
+        'descripcion',
     ];
 
     // Relación con la sede

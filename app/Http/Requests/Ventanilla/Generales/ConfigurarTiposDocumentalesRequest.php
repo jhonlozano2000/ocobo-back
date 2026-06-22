@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Ventanilla\Generales;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ConfigurarTiposDocumentalesRequest extends FormRequest
@@ -19,7 +20,7 @@ class ConfigurarTiposDocumentalesRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -27,20 +28,18 @@ class ConfigurarTiposDocumentalesRequest extends FormRequest
             'tipos_documentales' => [
                 'required',
                 'array',
-                'min:1'
+                'min:1',
             ],
             'tipos_documentales.*' => [
                 'required',
                 'integer',
-                'exists:clasificacion_documental_trd,id'
-            ]
+                'exists:clasificacion_documental_trd,id',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -50,20 +49,18 @@ class ConfigurarTiposDocumentalesRequest extends FormRequest
             'tipos_documentales.min' => 'Debe seleccionar al menos un tipo documental.',
             'tipos_documentales.*.required' => 'Cada tipo documental es obligatorio.',
             'tipos_documentales.*.integer' => 'Cada tipo documental debe ser un número entero.',
-            'tipos_documentales.*.exists' => 'Uno o más tipos documentales no existen.'
+            'tipos_documentales.*.exists' => 'Uno o más tipos documentales no existen.',
         ];
     }
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
         return [
             'tipos_documentales' => 'tipos documentales',
-            'tipos_documentales.*' => 'tipo documental'
+            'tipos_documentales.*' => 'tipo documental',
         ];
     }
 }

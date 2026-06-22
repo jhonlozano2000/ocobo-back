@@ -8,9 +8,13 @@ use Carbon\Carbon;
 class RadicadoEstadoTrabajoService
 {
     public const ESTADO_RECIBIDO = 'RECIBIDO';
+
     public const ESTADO_EN_PROCESO = 'EN_PROCESO';
+
     public const ESTADO_POR_VENCER = 'POR_VENCER';
+
     public const ESTADO_VENCIDO = 'VENCIDO';
+
     public const ESTADO_FINALIZADO = 'FINALIZADO';
 
     public const DIAS_PROXIMO_VENCER = 5;
@@ -38,6 +42,7 @@ class RadicadoEstadoTrabajoService
 
         if ($radicado->estado_trabajo !== $nuevoEstado) {
             $radicado->update(['estado_trabajo' => $nuevoEstado]);
+
             return true;
         }
 
@@ -46,7 +51,7 @@ class RadicadoEstadoTrabajoService
 
     public function estaVencido(VentanillaRadicaReci $radicado): bool
     {
-        if (!$radicado->fec_venci) {
+        if (! $radicado->fec_venci) {
             return false;
         }
 
@@ -55,7 +60,7 @@ class RadicadoEstadoTrabajoService
 
     public function estaProximoVencer(VentanillaRadicaReci $radicado): bool
     {
-        if (!$radicado->fec_venci) {
+        if (! $radicado->fec_venci) {
             return false;
         }
 

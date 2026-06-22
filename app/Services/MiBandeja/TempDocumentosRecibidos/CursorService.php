@@ -47,8 +47,8 @@ class CursorService
 
     private function getNombreCompleto(User $user): string
     {
-        if (!empty($user->nombres) && !empty($user->apellidos)) {
-            return trim($user->nombres . ' ' . $user->apellidos);
+        if (! empty($user->nombres) && ! empty($user->apellidos)) {
+            return trim($user->nombres.' '.$user->apellidos);
         }
 
         return $user->name;

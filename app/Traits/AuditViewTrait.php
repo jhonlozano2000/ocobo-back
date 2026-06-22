@@ -3,7 +3,6 @@
 namespace App\Traits;
 
 use App\Models\UsersActivityLog;
-use Illuminate\Support\Facades\Auth;
 
 trait AuditViewTrait
 {
@@ -11,8 +10,8 @@ trait AuditViewTrait
      * Registra un evento de consulta (View) en el log de auditoría.
      * Cumplimiento ISO 27001 - Trazabilidad de acceso.
      *
-     * @param mixed $model El objeto consultado (Radicado, Expediente, etc)
-     * @param string $descripcion Contexto de la consulta
+     * @param  mixed  $model  El objeto consultado (Radicado, Expediente, etc)
+     * @param  string  $descripcion  Contexto de la consulta
      * @return void
      */
     public function auditView($model, string $descripcion = 'Consulta de información')

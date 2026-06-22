@@ -27,7 +27,7 @@ Route::middleware(['auth:sanctum', 'throttle:config-operations'])->group(functio
     // Ruta para cargar recursivamente una división política
     Route::get('/division-politica/{id}/recursivo', [ConfigDiviPoliController::class, 'cargarRecursivo'])->name('divipoli.recursivo');
 
-    Route::apiResource('division-politica', ConfigDiviPoliController::class)->parameters(['divipoli' => 'config_divi_poli',])->names('divipoli')->except('create', 'edit');
+    Route::apiResource('division-politica', ConfigDiviPoliController::class)->parameters(['divipoli' => 'config_divi_poli'])->names('divipoli')->except('create', 'edit');
 
     // Rutas para listar países, departamentos y municipios
     Route::get('/division-politica/list/paises', [ConfigDiviPoliController::class, 'paises'])->name('divipoli.list.paises');
@@ -59,7 +59,7 @@ Route::middleware(['auth:sanctum', 'throttle:config-operations'])->group(functio
      */
     // Ruta para estadísticas de servidores de archivos (debe ir antes del resource)
     Route::get('servidores-archivos/estadisticas', [ConfigServerArchivoController::class, 'estadisticas'])->name('servidores.archivos.estadisticas');
-    Route::apiResource('servidores-archivos', ConfigServerArchivoController::class)->parameters(['servidores-archivos' => 'config_server_archivo',])->except('create', 'edit');
+    Route::apiResource('servidores-archivos', ConfigServerArchivoController::class)->parameters(['servidores-archivos' => 'config_server_archivo'])->except('create', 'edit');
 
     /**
      * Configuraciones varias
@@ -119,32 +119,31 @@ Route::middleware(['auth:sanctum', 'throttle:config-operations'])->group(functio
         Route::post('/clear-cache', [ConfigCalendarioFestivoController::class, 'clearCache']);
     });
 
-    }); // Fin throttle:config-operations
+}); // Fin throttle:config-operations
 
-    /**
-     * Ventanillas Únicas (requieren autenticación + permisos específicos)
-     */
-    $permConfig = "Config - Ventanillas -> ";
-    Route::prefix("sedes/{sedeId}/ventanillas")->group(function () use ($permConfig) {
-        Route::get("/", [VentanillaUnicaController::class, "index"])->middleware("can:" . $permConfig . "Listar");
-        Route::post("/", [VentanillaUnicaController::class, "store"])->middleware("can:" . $permConfig . "Crear");
-        Route::get("/{id}", [VentanillaUnicaController::class, "show"])->middleware("can:" . $permConfig . "Mostrar");
-        Route::put("/{id}", [VentanillaUnicaController::class, "update"])->middleware("can:" . $permConfig . "Editar");
-        Route::delete("/{id}", [VentanillaUnicaController::class, "destroy"])->middleware("can:" . $permConfig . "Eliminar");
-    });
+/**
+ * Ventanillas Únicas (requieren autenticación + permisos específicos)
+ */
+$permConfig = 'Config - Ventanillas -> ';
+Route::prefix('sedes/{sedeId}/ventanillas')->group(function () use ($permConfig) {
+    Route::get('/', [VentanillaUnicaController::class, 'index'])->middleware('can:'.$permConfig.'Listar');
+    Route::post('/', [VentanillaUnicaController::class, 'store'])->middleware('can:'.$permConfig.'Crear');
+    Route::get('/{id}', [VentanillaUnicaController::class, 'show'])->middleware('can:'.$permConfig.'Mostrar');
+    Route::put('/{id}', [VentanillaUnicaController::class, 'update'])->middleware('can:'.$permConfig.'Editar');
+    Route::delete('/{id}', [VentanillaUnicaController::class, 'destroy'])->middleware('can:'.$permConfig.'Eliminar');
+});
 
-    Route::prefix("ventanillas/{id}")->group(function () use ($permConfig) {
-        Route::post("/tipos-documentales", [VentanillaUnicaController::class, "configurarTiposDocumentales"])->middleware("can:" . $permConfig . "Editar");
-        Route::get("/tipos-documentales", [VentanillaUnicaController::class, "listarTiposDocumentales"])->middleware("can:" . $permConfig . "Mostrar");
-    });
+Route::prefix('ventanillas/{id}')->group(function () use ($permConfig) {
+    Route::post('/tipos-documentales', [VentanillaUnicaController::class, 'configurarTiposDocumentales'])->middleware('can:'.$permConfig.'Editar');
+    Route::get('/tipos-documentales', [VentanillaUnicaController::class, 'listarTiposDocumentales'])->middleware('can:'.$permConfig.'Mostrar');
+});
 
-    Route::prefix("ventanillas/{ventanillaId}")->group(function () use ($permConfig) {
-        Route::post("/permisos", [PermisosVentanillaUnicaController::class, "asignarPermisos"])->middleware("can:" . $permConfig . "Editar");
-        Route::get("/usuarios-permitidos", [PermisosVentanillaUnicaController::class, "listarUsuariosPermitidos"])->middleware("can:" . $permConfig . "Listar");
-        Route::delete("/permisos/{usuarioId}", [PermisosVentanillaUnicaController::class, "revocarPermisos"])->middleware("can:" . $permConfig . "Editar");
-    });
+Route::prefix('ventanillas/{ventanillaId}')->group(function () use ($permConfig) {
+    Route::post('/permisos', [PermisosVentanillaUnicaController::class, 'asignarPermisos'])->middleware('can:'.$permConfig.'Editar');
+    Route::get('/usuarios-permitidos', [PermisosVentanillaUnicaController::class, 'listarUsuariosPermitidos'])->middleware('can:'.$permConfig.'Listar');
+    Route::delete('/permisos/{usuarioId}', [PermisosVentanillaUnicaController::class, 'revocarPermisos'])->middleware('can:'.$permConfig.'Editar');
+});
 
-    Route::prefix("usuarios/{usuarioId}")->group(function () use ($permConfig) {
-        Route::get("/ventanillas-permitidas", [PermisosVentanillaUnicaController::class, "listarVentanillasPermitidas"])->middleware("can:" . $permConfig . "Listar");
-    });
-
+Route::prefix('usuarios/{usuarioId}')->group(function () use ($permConfig) {
+    Route::get('/ventanillas-permitidas', [PermisosVentanillaUnicaController::class, 'listarVentanillasPermitidas'])->middleware('can:'.$permConfig.'Listar');
+});

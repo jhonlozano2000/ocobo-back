@@ -2,13 +2,17 @@
 
 namespace App\Services\VentanillaUnica;
 
+use App\Helpers\CalendarioHelper;
+use App\Mail\OtpFirmaMail;
+use App\Models\Configuracion\ConfigListaDetalle;
+use App\Models\Gestion\GestionTercero;
+use App\Models\Transversal\FirmaEvento;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
-use App\Models\Gestion\GestionTercero;
-use App\Helpers\CalendarioHelper;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class PqrsService
 {
@@ -19,7 +23,7 @@ class PqrsService
 
             $tercero = $radicado->tercero;
 
-            $tipoPqrs = \App\Models\Configuracion\ConfigListaDetalle::find($datosPqrs['tipo_pqrs_id']);
+            $tipoPqrs = ConfigListaDetalle::find($datosPqrs['tipo_pqrs_id']);
             $tipoLabel = $tipoPqrs?->nombre ?? 'Peticion';
 
             $diasTermino = VentanillaPqrs::TERMINOS[$tipoLabel] ?? 15;
@@ -76,7 +80,7 @@ class PqrsService
     public function crearIndependiente(array $datosPqrs): VentanillaPqrs
     {
         return DB::transaction(function () use ($datosPqrs) {
-            $tipoPqrs = \App\Models\Configuracion\ConfigListaDetalle::find($datosPqrs['tipo_pqrs_id']);
+            $tipoPqrs = ConfigListaDetalle::find($datosPqrs['tipo_pqrs_id']);
             $tipoLabel = $tipoPqrs?->nombre ?? 'Peticion';
 
             $diasTermino = VentanillaPqrs::TERMINOS[$tipoLabel] ?? 15;
@@ -91,7 +95,7 @@ class PqrsService
             $fechaVencimiento = CalendarioHelper::calcularVencimiento(Carbon::parse($fechorTramite), $diasTermino);
 
             $tercero = null;
-            if (!empty($datosPqrs['gestion_tercero_id'])) {
+            if (! empty($datosPqrs['gestion_tercero_id'])) {
                 $tercero = GestionTercero::find($datosPqrs['gestion_tercero_id']);
             }
 
@@ -204,6 +208,7 @@ class PqrsService
 
         $proximoVencer->transform(function ($item) {
             $item->dias_habiles_restantes = $item->getDiasHabilesRestantes();
+
             return $item;
         });
 
@@ -226,5 +231,100 @@ class PqrsService
     private function limpiarCacheEstadisticas(): void
     {
         Cache::forget('ventanilla_pqrs_estadisticas');
+    }
+
+    /**
+     * Genera un OTP de 6 dígitos y lo envía al correo del usuario para firmar PQRS.
+     */
+    public function solicitarOtpFirma($user, VentanillaPqrs $pqrs): bool
+    {
+        $otp = (string) random_int(100000, 999999);
+        $cacheKey = "pqrs_firma_otp_{$pqrs->id}_{$user->id}";
+
+        Cache::put($cacheKey, $otp, now()->addMinutes(5));
+
+        Mail::to($user->email)->send(new OtpFirmaMail($otp, $user->nombres));
+
+        return true;
+    }
+
+    /**
+     * Valida que el OTP sea correcto y no haya expirado para firma de PQRS.
+     */
+    public function validarOtpFirma($user, string $otp, VentanillaPqrs $pqrs): bool
+    {
+        $cacheKey = "pqrs_firma_otp_{$pqrs->id}_{$user->id}";
+        $otpGuardado = Cache::get($cacheKey);
+
+        if (! $otpGuardado || $otpGuardado !== $otp) {
+            return false;
+        }
+
+        Cache::forget($cacheKey);
+
+        return true;
+    }
+
+    /**
+     * Registra la firma electrónica de un PQRS.
+     */
+    public function guardarFirma(VentanillaPqrs $pqrs, array $data, $user): VentanillaPqrs
+    {
+        $pqrs->update([
+            'estado_firma' => 'firmada',
+            'firma_digital' => $data['firma_digital'],
+            'fecha_firma' => now(),
+            'ip_firma' => request()->ip(),
+            'firmado_en_representacion' => $data['firmado_en_representacion'] ?? false,
+            'nombre_representado' => $data['nombre_representado'] ?? null,
+        ]);
+
+        FirmaEvento::create([
+            'documentable_id' => $pqrs->id,
+            'documentable_type' => get_class($pqrs),
+            'user_id' => $user->id,
+            'hash_original' => null,
+            'hash_firmado' => hash('sha256', $data['firma_digital']),
+            'otp_utilizado' => '***',
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+            'fecha_firma' => now(),
+        ]);
+
+        $pqrs->load(['radicado', 'tercero', 'tipoPqrs', 'clasificacionDocumental']);
+
+        return $pqrs;
+    }
+
+    /**
+     * Anula una PQRS con motivo.
+     */
+    public function anularPqrs(VentanillaPqrs $pqrs, string $motivo): VentanillaPqrs
+    {
+        $observacionesActuales = $pqrs->observaciones ?? '';
+        $nuevasObservaciones = trim($observacionesActuales."\n[ANULADO] ".$motivo);
+
+        $pqrs->update([
+            'estado_tramite' => 'Vencida',
+            'observaciones' => $nuevasObservaciones,
+        ]);
+
+        $pqrs->load(['radicado', 'tercero', 'tipoPqrs', 'clasificacionDocumental']);
+
+        $this->limpiarCacheEstadisticas();
+
+        return $pqrs;
+    }
+
+    /**
+     * Obtiene PQRS con firma pendiente.
+     */
+    public function pendientesFirma()
+    {
+        return VentanillaPqrs::with(['radicado', 'tercero', 'tipoPqrs'])
+            ->where('estado_firma', 'pendiente')
+            ->whereNotNull('ventanilla_radica_reci_id')
+            ->latest()
+            ->paginate(15);
     }
 }

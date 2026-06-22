@@ -4,8 +4,8 @@ use App\Http\Controllers\ControlAcceso\NotificationSettingsController;
 use App\Http\Controllers\ControlAcceso\RoleController;
 use App\Http\Controllers\ControlAcceso\UserCargoController;
 use App\Http\Controllers\ControlAcceso\UserController;
-use App\Http\Controllers\ControlAcceso\UserSessionController;
 use App\Http\Controllers\ControlAcceso\UserSedeController;
+use App\Http\Controllers\ControlAcceso\UserSessionController;
 use App\Http\Controllers\ControlAcceso\UserVentanillaController;
 use Illuminate\Support\Facades\Route;
 
@@ -117,4 +117,4 @@ Route::middleware('throttle:config-operations')->group(function () {
             ])->only('index', 'show');
     });
 
-    }); // Fin throttle
+}); // Fin throttle

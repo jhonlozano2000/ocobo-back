@@ -3,7 +3,6 @@
 namespace Database\Seeders\Configuracion;
 
 use App\Models\Configuracion\ConfigDiviPoli;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DiviPoliSeed extends Seeder
@@ -142,7 +141,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '5893', 'nombre' => 'YONDÓ', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '5895', 'nombre' => 'ZARAGOZA', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '8', 'nombre' => 'Atlántico', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '8001', 'nombre' => 'BARRANQUILLA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '8078', 'nombre' => 'BARANOA', 'parent' => $departamento->id]);
@@ -168,10 +166,8 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '8832', 'nombre' => 'TUBARÁ', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '8849', 'nombre' => 'USIACURÍ', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '11', 'nombre' => 'Bogotá D.C', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '11001', 'nombre' => 'BOGOTÁ, D.C.', 'parent' => $departamento->id]);
-
 
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '13', 'nombre' => 'Bolívar', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '13001', 'nombre' => 'CARTAGENA DE INDIAS', 'parent' => $departamento->id]);
@@ -220,7 +216,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '13838', 'nombre' => 'TURBANÁ', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '13873', 'nombre' => 'VILLANUEVA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '13894', 'nombre' => 'ZAMBRANO', 'parent' => $departamento->id]);
-
 
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '15', 'nombre' => 'Boyacá', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '15001', 'nombre' => 'TUNJA', 'parent' => $departamento->id]);
@@ -347,7 +342,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '15879', 'nombre' => 'VIRACACHÁ', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '15897', 'nombre' => 'ZETAQUIRA', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '17', 'nombre' => 'Caldas', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '17001', 'nombre' => 'MANIZALES', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '17013', 'nombre' => 'AGUADAS', 'parent' => $departamento->id]);
@@ -377,7 +371,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '17873', 'nombre' => 'VILLAMARÍA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '17877', 'nombre' => 'VITERBO', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '18', 'nombre' => 'Caquetá', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '18001', 'nombre' => 'FLORENCIA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '18029', 'nombre' => 'ALBANIA', 'parent' => $departamento->id]);
@@ -395,7 +388,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '18756', 'nombre' => 'SOLANO', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '18785', 'nombre' => 'SOLITA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '18860', 'nombre' => 'VALPARAÍSO', 'parent' => $departamento->id]);
-
 
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '19', 'nombre' => 'Cauca', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '19001', 'nombre' => 'POPAYÁN', 'parent' => $departamento->id]);
@@ -441,7 +433,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '19824', 'nombre' => 'TOTORÓ', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '19845', 'nombre' => 'VILLA RICA', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '20', 'nombre' => 'Cesar', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '20001', 'nombre' => 'VALLEDUPAR', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '20011', 'nombre' => 'AGUACHICA', 'parent' => $departamento->id]);
@@ -468,7 +459,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '20750', 'nombre' => 'SAN DIEGO', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '20770', 'nombre' => 'SAN MARTÍN', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '20787', 'nombre' => 'TAMALAMEQUE', 'parent' => $departamento->id]);
-
 
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '23', 'nombre' => 'Córdoba', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '23001', 'nombre' => 'MONTERÍA', 'parent' => $departamento->id]);
@@ -501,7 +491,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '23807', 'nombre' => 'TIERRALTA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '23815', 'nombre' => 'TUCHÍN', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '23855', 'nombre' => 'VALENCIA', 'parent' => $departamento->id]);
-
 
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '25', 'nombre' => 'Cundinamarca', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '25001', 'nombre' => 'AGUA DE DIOS', 'parent' => $departamento->id]);
@@ -621,7 +610,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '25898', 'nombre' => 'ZIPACÓN', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '25899', 'nombre' => 'ZIPAQUIRÁ', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '27', 'nombre' => 'Chocó', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '27001', 'nombre' => 'QUIBDÓ', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '27006', 'nombre' => 'ACANDÍ', 'parent' => $departamento->id]);
@@ -653,7 +641,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '27787', 'nombre' => 'TADÓ', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '27800', 'nombre' => 'UNGUÍA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '27810', 'nombre' => 'UNIÓN PANAMERICANA', 'parent' => $departamento->id]);
-
 
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '41', 'nombre' => 'Huila', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '41001', 'nombre' => 'NEIVA', 'parent' => $departamento->id]);
@@ -694,7 +681,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '41872', 'nombre' => 'VILLAVIEJA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '41885', 'nombre' => 'YAGUARÁ', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '44', 'nombre' => 'La Guajira', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '44001', 'nombre' => 'RIOHACHA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '44035', 'nombre' => 'ALBANIA', 'parent' => $departamento->id]);
@@ -711,7 +697,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '44847', 'nombre' => 'URIBIA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '44855', 'nombre' => 'URUMITA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '44874', 'nombre' => 'VILLANUEVA', 'parent' => $departamento->id]);
-
 
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '47', 'nombre' => 'Magdalena', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '47001', 'nombre' => 'SANTA MARTA', 'parent' => $departamento->id]);
@@ -745,7 +730,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '47960', 'nombre' => 'ZAPAYÁN', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '47980', 'nombre' => 'ZONA BANANERA', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '50', 'nombre' => 'Meta', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '50001', 'nombre' => 'VILLAVICENCIO', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '50006', 'nombre' => 'ACACÍAS', 'parent' => $departamento->id]);
@@ -776,7 +760,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '50686', 'nombre' => 'SAN JUANITO', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '50689', 'nombre' => 'SAN MARTÍN', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '50711', 'nombre' => 'VISTAHERMOSA', 'parent' => $departamento->id]);
-
 
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '52', 'nombre' => 'Nariño', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '52001', 'nombre' => 'PASTO', 'parent' => $departamento->id]);
@@ -844,7 +827,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '52838', 'nombre' => 'TÚQUERRES', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '52885', 'nombre' => 'YACUANQUER', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '54', 'nombre' => 'Norte de Santander', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '54001', 'nombre' => 'CÚCUTA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '54003', 'nombre' => 'ÁBREGO', 'parent' => $departamento->id]);
@@ -887,7 +869,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '54871', 'nombre' => 'VILLA CARO', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '54874', 'nombre' => 'VILLA DEL ROSARIO', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '63', 'nombre' => 'Quindio', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '63001', 'nombre' => 'ARMENIA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '63111', 'nombre' => 'BUENAVISTA', 'parent' => $departamento->id]);
@@ -901,7 +882,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '63548', 'nombre' => 'PIJAO', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '63594', 'nombre' => 'QUIMBAYA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '63690', 'nombre' => 'SALENTO', 'parent' => $departamento->id]);
-
 
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '66', 'nombre' => 'Risaralda', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '66001', 'nombre' => 'PEREIRA', 'parent' => $departamento->id]);
@@ -918,7 +898,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '66594', 'nombre' => 'QUINCHÍA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '66682', 'nombre' => 'SANTA ROSA DE CABAL', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '66687', 'nombre' => 'SANTUARIO', 'parent' => $departamento->id]);
-
 
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '68', 'nombre' => 'Santander', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '68001', 'nombre' => 'BUCARAMANGA', 'parent' => $departamento->id]);
@@ -1009,7 +988,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '68872', 'nombre' => 'VILLANUEVA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '68895', 'nombre' => 'ZAPATOCA', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '70', 'nombre' => 'Sucre', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '70001', 'nombre' => 'SINCELEJO', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '70110', 'nombre' => 'BUENAVISTA', 'parent' => $departamento->id]);
@@ -1037,7 +1015,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '70771', 'nombre' => 'SUCRE', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '70820', 'nombre' => 'SANTIAGO DE TOLÚ', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '70823', 'nombre' => 'TOLÚ VIEJO', 'parent' => $departamento->id]);
-
 
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '73', 'nombre' => 'Tolima', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '73001', 'nombre' => 'IBAGUÉ', 'parent' => $departamento->id]);
@@ -1088,7 +1065,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '73870', 'nombre' => 'VILLAHERMOSA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '73873', 'nombre' => 'VILLARRICA', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '76', 'nombre' => 'Valle del Cauca', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '76001', 'nombre' => 'CALI', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '76020', 'nombre' => 'ALCALÁ', 'parent' => $departamento->id]);
@@ -1133,7 +1109,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '76892', 'nombre' => 'YUMBO', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '76895', 'nombre' => 'ZARZAL', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '81', 'nombre' => 'Arauca', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '81001', 'nombre' => 'ARAUCA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '81065', 'nombre' => 'ARAUQUITA', 'parent' => $departamento->id]);
@@ -1142,7 +1117,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '81591', 'nombre' => 'PUERTO RONDÓN', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '81736', 'nombre' => 'SARAVENA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '81794', 'nombre' => 'TAME', 'parent' => $departamento->id]);
-
 
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '85', 'nombre' => 'Casanare', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '85001', 'nombre' => 'YOPAL', 'parent' => $departamento->id]);
@@ -1165,7 +1139,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '85430', 'nombre' => 'TRINIDAD', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '85440', 'nombre' => 'VILLANUEVA', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '86', 'nombre' => 'Putumayo', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '86001', 'nombre' => 'MOCOA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '86219', 'nombre' => 'COLÓN', 'parent' => $departamento->id]);
@@ -1181,11 +1154,9 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '86865', 'nombre' => 'VALLE DEL GUAMUEZ', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '86885', 'nombre' => 'VILLAGARZÓN', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '88', 'nombre' => 'Archipiélago de San Andrés, Providencia y Santa Catalina', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '88001', 'nombre' => 'SAN ANDRÉS', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '88564', 'nombre' => 'PROVIDENCIA', 'parent' => $departamento->id]);
-
 
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '91', 'nombre' => 'Amazonas', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '91001', 'nombre' => 'LETICIA', 'parent' => $departamento->id]);
@@ -1200,7 +1171,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '91669', 'nombre' => 'PUERTO SANTANDER', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '91798', 'nombre' => 'TARAPACÁ', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '94', 'nombre' => 'Guainía', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '94001', 'nombre' => 'INÍRIDA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '94343', 'nombre' => 'BARRANCO MINAS', 'parent' => $departamento->id]);
@@ -1212,13 +1182,11 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '94887', 'nombre' => 'PANA PANA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '94888', 'nombre' => 'MORICHAL', 'parent' => $departamento->id]);
 
-
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '95', 'nombre' => 'Guaviare', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '95001', 'nombre' => 'SAN JOSÉ DEL GUAVIARE', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '95015', 'nombre' => 'CALAMAR', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '95025', 'nombre' => 'EL RETORNO', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '95200', 'nombre' => 'MIRAFLORES', 'parent' => $departamento->id]);
-
 
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '97', 'nombre' => 'Vaupés', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '97001', 'nombre' => 'MITÚ', 'parent' => $departamento->id]);
@@ -1227,7 +1195,6 @@ class DiviPoliSeed extends Seeder
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '97666', 'nombre' => 'TARAIRA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '97777', 'nombre' => 'PAPUNAUA', 'parent' => $departamento->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '97889', 'nombre' => 'YAVARATÉ', 'parent' => $departamento->id]);
-
 
         $departamento = ConfigDiviPoli::create(['tipo' => 'Departamento', 'codigo' => '99', 'nombre' => 'Vichada', 'parent' => $pais->id]);
         ConfigDiviPoli::create(['tipo' => 'Municipio', 'codigo' => '99001', 'nombre' => 'PUERTO CARREÑO', 'parent' => $departamento->id]);

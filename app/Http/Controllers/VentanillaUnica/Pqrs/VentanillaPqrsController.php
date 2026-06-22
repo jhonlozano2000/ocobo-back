@@ -3,23 +3,23 @@
 namespace App\Http\Controllers\VentanillaUnica\Pqrs;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Ventanilla\Pqrs\ListPqrsRequest;
 use App\Http\Requests\Ventanilla\Pqrs\StorePqrsRequest;
 use App\Http\Requests\Ventanilla\Pqrs\UpdatePqrsRequest;
-use App\Http\Requests\Ventanilla\Pqrs\ListPqrsRequest;
-use App\Http\Resources\VentanillaUnica\PqrsResource;
 use App\Http\Resources\VentanillaUnica\PqrsCollection;
+use App\Http\Resources\VentanillaUnica\PqrsResource;
+use App\Http\Traits\ApiResponseTrait;
+use App\Mail\PqrsNotificacionEmail;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Services\VentanillaUnica\PqrsService;
-use App\Services\VentanillaUnica\PdfService;
-use App\Mail\PqrsNotificacionEmail;
-use App\Http\Traits\ApiResponseTrait;
 use App\Traits\AuditViewTrait;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
-
 
 class VentanillaPqrsController extends Controller
 {
@@ -30,18 +30,20 @@ class VentanillaPqrsController extends Controller
     public function __construct(
         private PqrsService $pqrsService
     ) {
-        $this->middleware('can:' . self::PERM . 'Listar')->only(['index', 'estadisticas', 'lineaTiempo']);
-        $this->middleware('can:' . self::PERM . 'Crear')->only(['store']);
-        $this->middleware('can:' . self::PERM . 'Editar')->only(['update']);
-        $this->middleware('can:' . self::PERM . 'Mostrar')->only(['show', 'lineaTiempo']);
-        $this->middleware('can:' . self::PERM . 'Eliminar')->only(['destroy']);
-        $this->middleware('can:' . self::PERM . 'Cambiar Estado')->only(['cambiarEstado']);
-        $this->middleware('can:' . self::PERM . 'Aplicar Prorroga')->only(['aplicarProrroga']);
-        $this->middleware('can:' . self::PERM . 'Actualizar asunto')->only(['updateAsunto']);
-        $this->middleware('can:' . self::PERM . 'Atualizar fechas de radicados')->only(['updateFechas']);
-        $this->middleware('can:' . self::PERM . 'Actualizar clasificacion de radicados')->only(['updateClasificacion']);
-        $this->middleware('can:' . self::PERM . 'Imprimir Rotulo')->only(['imprimirRotulo']);
-        $this->middleware('can:' . self::PERM . 'Notificar Email')->only(['notificarEmail']);
+        $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'estadisticas', 'lineaTiempo']);
+        $this->middleware('can:'.self::PERM.'Crear')->only(['store']);
+        $this->middleware('can:'.self::PERM.'Editar')->only(['update']);
+        $this->middleware('can:'.self::PERM.'Mostrar')->only(['show', 'lineaTiempo']);
+        $this->middleware('can:'.self::PERM.'Eliminar')->only(['destroy']);
+        $this->middleware('can:'.self::PERM.'Cambiar Estado')->only(['cambiarEstado']);
+        $this->middleware('can:'.self::PERM.'Aplicar Prorroga')->only(['aplicarProrroga']);
+        $this->middleware('can:'.self::PERM.'Actualizar asunto')->only(['updateAsunto']);
+        $this->middleware('can:'.self::PERM.'Atualizar fechas de radicados')->only(['updateFechas']);
+        $this->middleware('can:'.self::PERM.'Actualizar clasificacion de radicados')->only(['updateClasificacion']);
+        $this->middleware('can:'.self::PERM.'Imprimir Rotulo')->only(['imprimirRotulo']);
+        $this->middleware('can:'.self::PERM.'Notificar Email')->only(['notificarEmail']);
+        $this->middleware('can:'.self::PERM.'Firmar peticionario')->only(['solicitarOtpFirma', 'validarOtpFirma', 'guardarFirma']);
+        $this->middleware('can:'.self::PERM.'Anular')->only(['anular']);
     }
 
     public function index(ListPqrsRequest $request): JsonResponse
@@ -60,9 +62,9 @@ class VentanillaPqrsController extends Controller
                 $query->where(function ($q) use ($request) {
                     $q->whereHas('radicado', function ($q) use ($request) {
                         $q->where('num_radicado', 'like', "%{$request->search}%")
-                          ->orWhere('asunto', 'like', "%{$request->search}%");
+                            ->orWhere('asunto', 'like', "%{$request->search}%");
                     })->orWhere('nom_afectado', 'like', "%{$request->search}%")
-                       ->orWhere('num_docu_afectado', 'like', "%{$request->search}%");
+                        ->orWhere('num_docu_afectado', 'like', "%{$request->search}%");
                 });
             }
 
@@ -94,6 +96,7 @@ class VentanillaPqrsController extends Controller
 
             $pqrs->getCollection()->transform(function ($item) {
                 $item->dias_habiles_restantes = $item->getDiasHabilesRestantes();
+
                 return $item;
             });
 
@@ -108,7 +111,15 @@ class VentanillaPqrsController extends Controller
         try {
             $validated = $request->validated();
 
-            if (!empty($validated['ventanilla_radica_reci_id'])) {
+            \Log::info('DEBUG PQRS Store - datos validados', [
+                'ventanilla_radica_reci_id' => $validated['ventanilla_radica_reci_id'] ?? 'NOT_SET',
+                'tipo_pqrs_id' => $validated['tipo_pqrs_id'] ?? 'NOT_SET',
+                'prioridad' => $validated['prioridad'] ?? 'NOT_SET',
+                'detalle_solicitud' => $validated['detalle_solicitud'] ?? 'NOT_SET',
+                'gestion_tercero_id' => $validated['gestion_tercero_id'] ?? 'NOT_SET',
+            ]);
+
+            if (! empty($validated['ventanilla_radica_reci_id'])) {
                 $pqrs = $this->pqrsService->crearDesdeRadicado(
                     $validated['ventanilla_radica_reci_id'],
                     $validated
@@ -117,14 +128,22 @@ class VentanillaPqrsController extends Controller
                 $pqrs = $this->pqrsService->crearIndependiente($validated);
             }
 
-            $this->auditVentanilla($pqrs, 'created', $pqrs->radicado?->num_radicado ?? 'PQRS #' . $pqrs->id);
+            $this->auditVentanilla($pqrs, 'created', $pqrs->radicado?->num_radicado ?? 'PQRS #'.$pqrs->id);
 
             return $this->successResponse(
                 new PqrsResource($pqrs),
-                'PQRS creada exitosamente. Vence: ' . $pqrs->fecha_vencimiento->format('Y-m-d'),
+                'PQRS creada exitosamente. Vence: '.$pqrs->fecha_vencimiento->format('Y-m-d'),
                 201
             );
         } catch (\Exception $e) {
+            \Log::error('ERROR PQRS Store', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->except(['password', 'token']),
+            ]);
+
             return $this->errorResponse('Error al crear la PQRS', $e->getMessage(), 500);
         }
     }
@@ -136,13 +155,15 @@ class VentanillaPqrsController extends Controller
                 'radicado.tercero',
                 'radicado.clasificacionDocumental',
                 'radicado.archivos',
+                'radicado.responsables.userCargo.user',
+                'radicado.responsables.userCargo.cargo',
                 'tercero',
                 'tipoPqrs',
                 'clasificacionDocumental',
                 'divisionPoliticaAfectado',
             ])->find($id);
 
-            if (!$pqrs) {
+            if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
@@ -159,7 +180,7 @@ class VentanillaPqrsController extends Controller
         try {
             $pqrs = VentanillaPqrs::find($id);
 
-            if (!$pqrs) {
+            if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
@@ -182,7 +203,7 @@ class VentanillaPqrsController extends Controller
         try {
             $pqrs = VentanillaPqrs::find($id);
 
-            if (!$pqrs) {
+            if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
@@ -209,11 +230,11 @@ class VentanillaPqrsController extends Controller
             $pqrs = $this->pqrsService->cambiarEstado($id, $validated['estado_tramite'], $validated['fecha_respuesta'] ?? null);
 
             $this->auditVentanilla($pqrs, 'updated', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
-                'estado' => $validated['estado_tramite']
+                'estado' => $validated['estado_tramite'],
             ]);
 
-            return $this->successResponse(new PqrsResource($pqrs), 'Estado actualizado a: ' . $validated['estado_tramite']);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->successResponse(new PqrsResource($pqrs), 'Estado actualizado a: '.$validated['estado_tramite']);
+        } catch (ModelNotFoundException $e) {
             return $this->errorResponse('PQRS no encontrada', null, 404);
         } catch (\Exception $e) {
             return $this->errorResponse('Error al cambiar el estado', $e->getMessage(), 500);
@@ -226,14 +247,14 @@ class VentanillaPqrsController extends Controller
             $pqrs = $this->pqrsService->aplicarProrroga($id);
 
             $this->auditVentanilla($pqrs, 'updated', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
-                'prorroga' => true
+                'prorroga' => true,
             ]);
 
             return $this->successResponse(
                 new PqrsResource($pqrs),
-                'Prórroga aplicada. Nuevo vencimiento: ' . $pqrs->fecha_vencimiento->format('Y-m-d')
+                'Prórroga aplicada. Nuevo vencimiento: '.$pqrs->fecha_vencimiento->format('Y-m-d')
             );
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return $this->errorResponse('PQRS no encontrada', null, 404);
         } catch (\Exception $e) {
             return $this->errorResponse('Error al aplicar la prórroga', $e->getMessage(), 500);
@@ -260,7 +281,7 @@ class VentanillaPqrsController extends Controller
                 'tipoPqrs',
             ])->find($id);
 
-            if (!$pqrs) {
+            if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
@@ -270,7 +291,7 @@ class VentanillaPqrsController extends Controller
                 'fecha' => $pqrs->created_at->toIso8601String(),
                 'tipo' => 'pqrs_creada',
                 'titulo' => 'PQRS creada',
-                'descripcion' => 'Se creó la PQRS tipo ' . ($pqrs->tipoPqrs?->nombre ?? 'desconocido'),
+                'descripcion' => 'Se creó la PQRS tipo '.($pqrs->tipoPqrs?->nombre ?? 'desconocido'),
                 'datos' => [
                     'id' => $pqrs->id,
                     'estado_tramite' => $pqrs->estado_tramite,
@@ -303,7 +324,7 @@ class VentanillaPqrsController extends Controller
                 ];
             }
 
-            usort($eventos, fn($a, $b) => strcmp($b['fecha'], $a['fecha']));
+            usort($eventos, fn ($a, $b) => strcmp($b['fecha'], $a['fecha']));
 
             return $this->successResponse([
                 'pqrs' => [
@@ -325,19 +346,19 @@ class VentanillaPqrsController extends Controller
     {
         try {
             $request->validate([
-                'detalle_solicitud' => 'required|string|max:3000'
+                'detalle_solicitud' => 'required|string|max:3000',
             ]);
 
             $pqrs = VentanillaPqrs::find($id);
 
-            if (!$pqrs) {
+            if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
             $pqrs->update(['detalle_solicitud' => $request->detalle_solicitud]);
 
             $this->auditVentanilla($pqrs, 'updated', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
-                'campo' => 'detalle_solicitud'
+                'campo' => 'detalle_solicitud',
             ]);
 
             return $this->successResponse(new PqrsResource($pqrs), 'Detalle de solicitud actualizado exitosamente');
@@ -355,7 +376,7 @@ class VentanillaPqrsController extends Controller
 
             $pqrs = VentanillaPqrs::find($id);
 
-            if (!$pqrs) {
+            if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
@@ -365,7 +386,7 @@ class VentanillaPqrsController extends Controller
             ]);
 
             $this->auditVentanilla($pqrs, 'updated', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
-                'campo' => 'fechor_tramite'
+                'campo' => 'fechor_tramite',
             ]);
 
             return $this->successResponse(new PqrsResource($pqrs), 'Fechas actualizadas exitosamente');
@@ -378,12 +399,12 @@ class VentanillaPqrsController extends Controller
     {
         try {
             $request->validate([
-                'clasificacion_documental_trd_id' => 'required|exists:clasificacion_documental_trd,id'
+                'clasificacion_documental_trd_id' => 'required|exists:clasificacion_documental_trd,id',
             ]);
 
             $pqrs = VentanillaPqrs::find($id);
 
-            if (!$pqrs) {
+            if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
@@ -392,7 +413,7 @@ class VentanillaPqrsController extends Controller
             $pqrs->load('clasificacionDocumental');
 
             $this->auditVentanilla($pqrs, 'updated', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
-                'campo' => 'clasificacion_documental_trd_id'
+                'campo' => 'clasificacion_documental_trd_id',
             ]);
 
             return $this->successResponse(new PqrsResource($pqrs), 'Clasificación actualizada exitosamente');
@@ -406,7 +427,7 @@ class VentanillaPqrsController extends Controller
         try {
             $pqrs = VentanillaPqrs::with(['radicado.tercero'])->find($id);
 
-            if (!$pqrs) {
+            if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
@@ -434,7 +455,7 @@ class VentanillaPqrsController extends Controller
             $pdf = Pdf::loadView('pdf.rotulo', $data);
             $pdf->setPaper([0, 0, 280, 420], 'portrait');
 
-            return $pdf->stream('rotulo-' . ($radicado?->num_radicado ?? $pqrs->id) . '.pdf');
+            return $pdf->stream('rotulo-'.($radicado?->num_radicado ?? $pqrs->id).'.pdf');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al generar el rótulo', $e->getMessage(), 500);
         }
@@ -451,7 +472,7 @@ class VentanillaPqrsController extends Controller
 
             $pqrs = VentanillaPqrs::with(['radicado', 'tipoPqrs'])->find($id);
 
-            if (!$pqrs) {
+            if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
@@ -464,9 +485,141 @@ class VentanillaPqrsController extends Controller
                 'asunto' => $validated['asunto'],
             ]);
 
-            return $this->successResponse(null, 'Notificación enviada exitosamente a: ' . $validated['destinatario']);
+            return $this->successResponse(null, 'Notificación enviada exitosamente a: '.$validated['destinatario']);
         } catch (\Exception $e) {
             return $this->errorResponse('Error al enviar la notificación', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Solicita un código OTP para firmar una PQRS electrónicamente.
+     */
+    public function solicitarOtpFirma(int $id): JsonResponse
+    {
+        try {
+            $pqrs = VentanillaPqrs::find($id);
+
+            if (! $pqrs) {
+                return $this->errorResponse('PQRS no encontrada', null, 404);
+            }
+
+            if ($pqrs->estado_firma === 'firmada') {
+                return $this->errorResponse('Esta PQRS ya ha sido firmada', null, 422);
+            }
+
+            $user = Auth::user();
+
+            $this->pqrsService->solicitarOtpFirma($user, $pqrs);
+
+            return $this->successResponse(null, 'Código OTP enviado al correo del usuario');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al solicitar el OTP', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Valida el código OTP para firmar una PQRS.
+     */
+    public function validarOtpFirma(Request $request, int $id): JsonResponse
+    {
+        try {
+            $request->validate([
+                'otp' => 'required|string|size:6',
+            ]);
+
+            $pqrs = VentanillaPqrs::find($id);
+
+            if (! $pqrs) {
+                return $this->errorResponse('PQRS no encontrada', null, 404);
+            }
+
+            $user = Auth::user();
+
+            $valido = $this->pqrsService->validarOtpFirma($user, $request->otp, $pqrs);
+
+            if (! $valido) {
+                return $this->errorResponse('Código OTP inválido o expirado', null, 403);
+            }
+
+            return $this->successResponse(['valido' => true], 'OTP validado correctamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al validar el OTP', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Guarda la firma electrónica de una PQRS.
+     */
+    public function guardarFirma(Request $request, int $id): JsonResponse
+    {
+        try {
+            $request->validate([
+                'firma_digital' => 'required|string',
+                'firmado_en_representacion' => 'nullable|boolean',
+                'nombre_representado' => 'nullable|string|max:255',
+            ]);
+
+            $pqrs = VentanillaPqrs::find($id);
+
+            if (! $pqrs) {
+                return $this->errorResponse('PQRS no encontrada', null, 404);
+            }
+
+            if ($pqrs->estado_firma === 'firmada') {
+                return $this->errorResponse('Esta PQRS ya ha sido firmada', null, 422);
+            }
+
+            $user = Auth::user();
+
+            $pqrs = $this->pqrsService->guardarFirma($pqrs, $request->all(), $user);
+
+            $this->auditVentanilla($pqrs, 'signed', $pqrs->radicado?->num_radicado ?? $pqrs->id);
+
+            return $this->successResponse(new PqrsResource($pqrs), 'PQRS firmada electrónicamente con éxito');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al guardar la firma', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Anula una PQRS con motivo.
+     */
+    public function anular(Request $request, int $id): JsonResponse
+    {
+        try {
+            $request->validate([
+                'motivo' => 'required|string|max:1000',
+            ]);
+
+            $pqrs = VentanillaPqrs::find($id);
+
+            if (! $pqrs) {
+                return $this->errorResponse('PQRS no encontrada', null, 404);
+            }
+
+            $pqrs = $this->pqrsService->anularPqrs($pqrs, $request->motivo);
+
+            $this->auditVentanilla($pqrs, 'annulled', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
+                'motivo' => $request->motivo,
+            ]);
+
+            return $this->successResponse(new PqrsResource($pqrs), 'PQRS anulada exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al anular la PQRS', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Lista PQRS con firma pendiente.
+     */
+    public function pendientesFirma(): JsonResponse
+    {
+        try {
+            $pqrs = $this->pqrsService->pendientesFirma();
+
+            return (new PqrsCollection($pqrs))->toResponse(request());
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener PQRS pendientes de firma', $e->getMessage(), 500);
         }
     }
 }

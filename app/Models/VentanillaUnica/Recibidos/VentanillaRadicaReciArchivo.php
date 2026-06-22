@@ -2,10 +2,11 @@
 
 namespace App\Models\VentanillaUnica\Recibidos;
 
+use App\Helpers\ArchivoHelper;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
-use App\Helpers\ArchivoHelper;
 
 class VentanillaRadicaReciArchivo extends Model
 {
@@ -27,7 +28,7 @@ class VentanillaRadicaReciArchivo extends Model
      */
     public function usuarioSubido()
     {
-        return $this->belongsTo(\App\Models\User::class, 'subido_por');
+        return $this->belongsTo(User::class, 'subido_por');
     }
 
     /**
@@ -48,9 +49,9 @@ class VentanillaRadicaReciArchivo extends Model
 
     /**
      * Obtiene la URL de cualquier archivo usando ArchivoHelper.
-     * @param string $campo Nombre del atributo (ej: 'archivo')
-     * @param string $disk Nombre del disco
-     * @return string|null
+     *
+     * @param  string  $campo  Nombre del atributo (ej: 'archivo')
+     * @param  string  $disk  Nombre del disco
      */
     public function getArchivoUrl(string $campo, string $disk): ?string
     {
@@ -61,15 +62,14 @@ class VentanillaRadicaReciArchivo extends Model
      * Obtiene información básica de un archivo (sin acceder al filesystem).
      * Los metadatos del archivo (tamaño, tipo) se obtienen solo al descargar/ver detalles.
      *
-     * @param string $campo Nombre del atributo del archivo
-     * @param string $disk Nombre del disco
-     * @param bool $incluirMetadatos Si es true, obtiene metadatos del filesystem (por defecto false)
-     * @return array|null
+     * @param  string  $campo  Nombre del atributo del archivo
+     * @param  string  $disk  Nombre del disco
+     * @param  bool  $incluirMetadatos  Si es true, obtiene metadatos del filesystem (por defecto false)
      */
     public function getInfoArchivo(string $campo, string $disk, bool $incluirMetadatos = false): ?array
     {
         $rutaArchivo = $this->{$campo} ?? null;
-        if (!$rutaArchivo) {
+        if (! $rutaArchivo) {
             return null;
         }
 
@@ -95,7 +95,7 @@ class VentanillaRadicaReciArchivo extends Model
             }
         }
 
-        if ($incluirMetadatos && !$this->archivo_peso) {
+        if ($incluirMetadatos && ! $this->archivo_peso) {
             try {
                 if (Storage::disk($disk)->exists($rutaArchivo)) {
                     $info['tipo'] = Storage::disk($disk)->mimeType($rutaArchivo);

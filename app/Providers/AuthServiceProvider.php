@@ -2,13 +2,13 @@
 
 namespace App\Providers;
 
-use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
-use App\Policies\VentanillaRadicaReciPolicy;
-use App\Policies\UserPolicy;
-use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
-use App\Models\User;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
+use App\Models\User;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Policies\MiBandeja\TempReci\DocumentoPolicy;
+use App\Policies\UserPolicy;
+use App\Policies\VentanillaRadicaReciPolicy;
+use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
 {

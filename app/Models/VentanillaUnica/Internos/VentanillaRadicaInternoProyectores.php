@@ -2,6 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Internos;
 
+use App\Models\ControlAcceso\UserCargo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -23,7 +24,7 @@ class VentanillaRadicaInternoProyectores extends Model
 
     public function userCargo()
     {
-        return $this->belongsTo(\App\Models\ControlAcceso\UserCargo::class, 'users_cargos_id');
+        return $this->belongsTo(UserCargo::class, 'users_cargos_id');
     }
 
     public function getInfoProyector(): ?array
@@ -31,7 +32,7 @@ class VentanillaRadicaInternoProyectores extends Model
         $user = $this->userCargo?->user;
         $cargo = $this->userCargo?->cargo;
 
-        if (!$user) {
+        if (! $user) {
             return null;
         }
 
@@ -42,7 +43,7 @@ class VentanillaRadicaInternoProyectores extends Model
             'usuario' => [
                 'nombres' => $user->nombres,
                 'apellidos' => $user->apellidos,
-                'nombre_completo' => trim($user->nombres . ' ' . $user->apellidos),
+                'nombre_completo' => trim($user->nombres.' '.$user->apellidos),
             ],
             'cargo' => $cargo ? [
                 'id' => $cargo->id,

@@ -17,20 +17,20 @@ class DocumentoImportController extends Controller
     {
         try {
             $archivo = $request->file('archivo');
-            
+
             $extension = strtolower($archivo->getClientOriginalExtension());
             $soportados = ['docx', 'doc', 'html', 'htm', 'txt'];
 
-            if (!in_array($extension, $soportados)) {
+            if (! in_array($extension, $soportados)) {
                 return response()->json([
-                    'message' => "Formato no soportado: {$extension}. Use: " . implode(', ', $soportados)
+                    'message' => "Formato no soportado: {$extension}. Use: ".implode(', ', $soportados),
                 ], 400);
             }
 
             $tamanoMaximo = 10 * 1024 * 1024;
             if ($archivo->getSize() > $tamanoMaximo) {
                 return response()->json([
-                    'message' => 'El archivo es demasiado grande. Máximo 10MB'
+                    'message' => 'El archivo es demasiado grande. Máximo 10MB',
                 ], 400);
             }
 
@@ -46,17 +46,17 @@ class DocumentoImportController extends Controller
                     'id' => $documento->id,
                     'titulo' => $documento->titulo,
                     'estado' => $documento->estado,
-                ]
+                ],
             ], 201);
 
         } catch (\InvalidArgumentException $e) {
             return response()->json([
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 400);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error al importar el documento',
-                'error' => config('app.debug') ? $e->getMessage() : 'Error interno'
+                'error' => config('app.debug') ? $e->getMessage() : 'Error interno',
             ], 500);
         }
     }
@@ -77,13 +77,13 @@ class DocumentoImportController extends Controller
                     'id' => $documento->id,
                     'titulo' => $documento->titulo,
                     'estado' => $documento->estado,
-                ]
+                ],
             ], 201);
 
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error al importar el documento',
-                'error' => config('app.debug') ? $e->getMessage() : 'Error interno'
+                'error' => config('app.debug') ? $e->getMessage() : 'Error interno',
             ], 500);
         }
     }

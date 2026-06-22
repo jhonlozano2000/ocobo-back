@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\VentanillaUnica\Enviados;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
-use App\Http\Requests\Ventanilla\Enviados\UpdateResponsaEnviadoRequest;
 use App\Http\Requests\Ventanilla\Enviados\StoreResponsaEnviadoRequest;
-use App\Http\Requests\Ventanilla\Generales\ListResponsablesEnviadosRequest;
+use App\Http\Requests\Ventanilla\Enviados\UpdateResponsaEnviadoRequest;
+use App\Http\Requests\Ventanilla\Generales\ListResponsablesEnviadoRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosRespona;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class VentanillaRadicaEnviadosResponsaController extends Controller
 {
@@ -19,7 +20,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
         $this->middleware('can:Radicar -> Cores. Enviada -> Editar');
     }
 
-    public function index(\App\Http\Requests\Ventanilla\Generales\ListResponsablesEnviadoRequest $request)
+    public function index(ListResponsablesEnviadoRequest $request)
     {
         try {
             $query = VentanillaRadicaEnviadosRespona::with(['userCargo.user', 'userCargo.cargo', 'radicado']);
@@ -63,7 +64,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
 
             foreach ($validatedData['responsables'] as $item) {
                 $radicaEnviadoId = $item['radica_enviado_id'] ?? null;
-                if (!$radicaEnviadoId) {
+                if (! $radicaEnviadoId) {
                     return $this->errorResponse('Cada responsable debe incluir radica_enviado_id', null, 400);
                 }
 
@@ -80,6 +81,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
             return $this->successResponse($responsablesCreados, 'Responsables asignados exitosamente', 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al asignar responsables', $e->getMessage(), 500);
         }
     }
@@ -89,7 +91,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
         try {
             $responsable = VentanillaRadicaEnviadosRespona::with(['userCargo.user', 'userCargo.cargo', 'radicado'])->find($id);
 
-            if (!$responsable) {
+            if (! $responsable) {
                 return $this->errorResponse('Responsable no encontrado', null, 404);
             }
 
@@ -109,7 +111,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
 
             $responsable = VentanillaRadicaEnviadosRespona::find($id);
 
-            if (!$responsable) {
+            if (! $responsable) {
                 return $this->errorResponse('Responsable no encontrado', null, 404);
             }
 
@@ -120,7 +122,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
                 $updateData['custodio'] = filter_var($updateData['custodio'], FILTER_VALIDATE_BOOLEAN);
             }
 
-            if (!empty($updateData)) {
+            if (! empty($updateData)) {
                 $responsable->update($updateData);
             }
 
@@ -132,6 +134,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar el responsable', $e->getMessage(), 500);
         }
     }
@@ -143,7 +146,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
 
             $responsable = VentanillaRadicaEnviadosRespona::find($id);
 
-            if (!$responsable) {
+            if (! $responsable) {
                 return $this->errorResponse('Responsable no encontrado', null, 404);
             }
 
@@ -154,6 +157,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
             return $this->successResponse(null, 'Responsable eliminado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar el responsable', $e->getMessage(), 500);
         }
     }
@@ -200,11 +204,13 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
             DB::commit();
 
             return $this->successResponse($responsablesCreados, 'Responsables asignados exitosamente', 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al asignar responsables', $e->getMessage(), 500);
         }
     }

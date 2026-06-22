@@ -14,7 +14,7 @@ return new class extends Migration
     public function up(): void
     {
         // Eliminar vista antigua
-        DB::statement("DROP VIEW IF EXISTS ventanilla_radica_reci_view");
+        DB::statement('DROP VIEW IF EXISTS ventanilla_radica_reci_view');
 
         // Crear vista optimizada con JOINs en lugar de subconsultas correlacionadas
         DB::statement("
@@ -31,6 +31,7 @@ return new class extends Migration
                 vrr.tercero_id,
                 vrr.medio_recep_id,
                 vrr.config_server_id,
+                vrr.usuario_crea,
 
                 -- Datos de clasificación documental (jerarquía completa)
                 cd.cod as clasificacion_cod,
@@ -118,7 +119,7 @@ return new class extends Migration
     public function down(): void
     {
         // Eliminar vista optimizada
-        DB::statement("DROP VIEW IF EXISTS ventanilla_radica_reci_view");
+        DB::statement('DROP VIEW IF EXISTS ventanilla_radica_reci_view');
 
         // Recrear vista antigua (con subconsultas correlacionadas)
         DB::statement("
@@ -134,6 +135,7 @@ return new class extends Migration
                 vrr.tercero_id,
                 vrr.medio_recep_id,
                 vrr.config_server_id,
+                vrr.usuario_crea,
                 cd.cod as clasificacion_cod,
                 cd.nom as clasificacion_nom,
                 cd.tipo as clasificacion_tipo,

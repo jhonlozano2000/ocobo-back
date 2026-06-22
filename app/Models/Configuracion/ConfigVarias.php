@@ -5,6 +5,7 @@ namespace App\Models\Configuracion;
 use App\Helpers\ArchivoHelper;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 
 class ConfigVarias extends Model
 {
@@ -19,9 +20,8 @@ class ConfigVarias extends Model
     /**
      * Obtiene la URL de cualquier archivo usando ArchivoHelper.
      *
-     * @param string $campo Nombre del atributo (ej: 'valor')
-     * @param string $disk Nombre del disco
-     * @return string|null
+     * @param  string  $campo  Nombre del atributo (ej: 'valor')
+     * @param  string  $disk  Nombre del disco
      */
     public function getArchivoUrl(string $campo, string $disk): ?string
     {
@@ -30,8 +30,6 @@ class ConfigVarias extends Model
 
     /**
      * Obtiene la URL del logo cuando la clave corresponde.
-     *
-     * @return string|null
      */
     public function getLogoUrlAttribute(): ?string
     {
@@ -45,25 +43,27 @@ class ConfigVarias extends Model
     public static function getValor($clave, $default = null)
     {
         $config = self::where('clave', $clave)->first();
+
         return $config ? $config->valor : $default;
     }
 
     /**
      * Obtiene el valor de numeración unificada como booleano.
      *
-     * @param bool $default Valor por defecto si no existe la configuración
+     * @param  bool  $default  Valor por defecto si no existe la configuración
      * @return bool
      */
     public static function getNumeracionUnificada($default = true)
     {
         $valor = self::getValor('numeracion_unificada', $default ? 'true' : 'false');
+
         return filter_var($valor, FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
      * Establece el valor de numeración unificada.
      *
-     * @param bool $valor
+     * @param  bool  $valor
      * @return bool
      */
     public static function setNumeracionUnificada($valor)
@@ -76,7 +76,7 @@ class ConfigVarias extends Model
             self::create([
                 'clave' => 'numeracion_unificada',
                 'valor' => $valor ? 'true' : 'false',
-                'descripcion' => 'Configuración de numeración unificada de radicados'
+                'descripcion' => 'Configuración de numeración unificada de radicados',
             ]);
         }
 
@@ -86,19 +86,20 @@ class ConfigVarias extends Model
     /**
      * Obtiene el valor de multi_sede como entero.
      *
-     * @param int $default Valor por defecto si no existe la configuración
+     * @param  int  $default  Valor por defecto si no existe la configuración
      * @return int
      */
     public static function getMultiSede($default = 0)
     {
-        $valor = self::getValor('multi_sede', (string)$default);
-        return (int)$valor;
+        $valor = self::getValor('multi_sede', (string) $default);
+
+        return (int) $valor;
     }
 
     /**
      * Establece el valor de multi_sede.
      *
-     * @param int $valor
+     * @param  int  $valor
      * @return bool
      */
     public static function setMultiSede($valor)
@@ -106,12 +107,12 @@ class ConfigVarias extends Model
         $config = self::where('clave', 'multi_sede')->first();
 
         if ($config) {
-            $config->update(['valor' => (string)$valor]);
+            $config->update(['valor' => (string) $valor]);
         } else {
             self::create([
                 'clave' => 'multi_sede',
-                'valor' => (string)$valor,
-                'descripcion' => 'Configuración de múltiples sedes (0: deshabilitado, 1: habilitado)'
+                'valor' => (string) $valor,
+                'descripcion' => 'Configuración de múltiples sedes (0: deshabilitado, 1: habilitado)',
             ]);
         }
 
@@ -145,11 +146,11 @@ class ConfigVarias extends Model
             'direccion_empresa',
             'telefono_empresa',
             'correo_electronico_empresa',
-            'web_empresa'
+            'web_empresa',
         ])->pluck('valor', 'clave')->toArray();
 
         // Agregar URL del logo si existe
-        if (!empty($configs['logo_empresa'])) {
+        if (! empty($configs['logo_empresa'])) {
             $configs['logo_url'] = self::getLogoUrlEmpresa();
         }
 
@@ -169,7 +170,7 @@ class ConfigVarias extends Model
     /**
      * Establece el NIT de la empresa.
      *
-     * @param string $nit
+     * @param  string  $nit
      * @return bool
      */
     public static function setNitEmpresa($nit)
@@ -190,7 +191,7 @@ class ConfigVarias extends Model
     /**
      * Establece la razón social de la empresa.
      *
-     * @param string $razonSocial
+     * @param  string  $razonSocial
      * @return bool
      */
     public static function setRazonSocialEmpresa($razonSocial)
@@ -206,20 +207,22 @@ class ConfigVarias extends Model
     public static function getDiviPoliIdEmpresa()
     {
         $valor = self::getValor('divi_poli_id_empresa');
-        return $valor ? (int)$valor : null;
+
+        return $valor ? (int) $valor : null;
     }
 
     /**
      * Establece el ID de la división política de la empresa.
      *
-     * @param int|string $diviPoliId
+     * @param  int|string  $diviPoliId
      * @return bool
      */
     public static function setDiviPoliIdEmpresa($diviPoliId)
     {
         // Asegurar que sea un entero válido y convertirlo a string
-        $diviPoliId = (int)$diviPoliId;
-        return self::actualizarConfiguracion('divi_poli_id_empresa', (string)$diviPoliId);
+        $diviPoliId = (int) $diviPoliId;
+
+        return self::actualizarConfiguracion('divi_poli_id_empresa', (string) $diviPoliId);
     }
 
     /**
@@ -235,7 +238,7 @@ class ConfigVarias extends Model
     /**
      * Establece el nombre del archivo del logo de la empresa.
      *
-     * @param string $logo
+     * @param  string  $logo
      * @return bool
      */
     public static function setLogoEmpresa($logo)
@@ -246,14 +249,14 @@ class ConfigVarias extends Model
     /**
      * Guarda el logo de la empresa usando ArchivoHelper.
      *
-     * @param \Illuminate\Http\Request $request
-     * @param string $campo
+     * @param  Request  $request
+     * @param  string  $campo
      * @return string|null
      */
     public static function guardarLogoEmpresa($request, $campo = 'logo')
     {
         $logoActual = self::getLogoEmpresa();
-        $nuevoLogo = \App\Helpers\ArchivoHelper::guardarArchivo($request, $campo, 'otros_archivos', $logoActual);
+        $nuevoLogo = ArchivoHelper::guardarArchivo($request, $campo, 'otros_archivos', $logoActual);
 
         if ($nuevoLogo) {
             self::setLogoEmpresa($nuevoLogo);
@@ -270,7 +273,8 @@ class ConfigVarias extends Model
     public static function getLogoUrlEmpresa()
     {
         $logo = self::getLogoEmpresa();
-        return $logo ? \App\Helpers\ArchivoHelper::obtenerUrl($logo, 'otros_archivos') : null;
+
+        return $logo ? ArchivoHelper::obtenerUrl($logo, 'otros_archivos') : null;
     }
 
     /**
@@ -286,7 +290,7 @@ class ConfigVarias extends Model
     /**
      * Establece la dirección de la empresa.
      *
-     * @param string $direccion
+     * @param  string  $direccion
      * @return bool
      */
     public static function setDireccionEmpresa($direccion)
@@ -307,7 +311,7 @@ class ConfigVarias extends Model
     /**
      * Establece el teléfono de la empresa.
      *
-     * @param string $telefono
+     * @param  string  $telefono
      * @return bool
      */
     public static function setTelefonoEmpresa($telefono)
@@ -328,7 +332,7 @@ class ConfigVarias extends Model
     /**
      * Establece el correo electrónico de la empresa.
      *
-     * @param string $correo
+     * @param  string  $correo
      * @return bool
      */
     public static function setCorreoElectronicoEmpresa($correo)
@@ -349,7 +353,7 @@ class ConfigVarias extends Model
     /**
      * Establece el sitio web de la empresa.
      *
-     * @param string $web
+     * @param  string  $web
      * @return bool
      */
     public static function setWebEmpresa($web)
@@ -362,6 +366,7 @@ class ConfigVarias extends Model
     public static function getConsiderarDiasHabiles($default = true)
     {
         $valor = self::getValor('considerar_dias_habiles', $default ? 'true' : 'false');
+
         return filter_var($valor, FILTER_VALIDATE_BOOLEAN);
     }
 
@@ -372,13 +377,14 @@ class ConfigVarias extends Model
 
     public static function getDiasVencimientoPredeterminado($default = 5)
     {
-        $valor = self::getValor('dias_vencimiento_predeterminado', (string)$default);
-        return (int)$valor;
+        $valor = self::getValor('dias_vencimiento_predeterminado', (string) $default);
+
+        return (int) $valor;
     }
 
     public static function setDiasVencimientoPredeterminado($valor)
     {
-        return self::actualizarConfiguracion('dias_vencimiento_predeterminado', (int)$valor);
+        return self::actualizarConfiguracion('dias_vencimiento_predeterminado', (int) $valor);
     }
 
     // ==================== MÉTODOS PARA SEMÁFORO ====================
@@ -386,6 +392,7 @@ class ConfigVarias extends Model
     public static function getSemaforoActivo($default = true)
     {
         $valor = self::getValor('semaforo_activo', $default ? 'true' : 'false');
+
         return filter_var($valor, FILTER_VALIDATE_BOOLEAN);
     }
 
@@ -396,42 +403,45 @@ class ConfigVarias extends Model
 
     public static function getSemaforoVerdeDias($default = 2)
     {
-        $valor = self::getValor('semaforo_verde_dias', (string)$default);
-        return (int)$valor;
+        $valor = self::getValor('semaforo_verde_dias', (string) $default);
+
+        return (int) $valor;
     }
 
     public static function setSemaforoVerdeDias($valor)
     {
-        return self::actualizarConfiguracion('semaforo_verde_dias', (int)$valor);
+        return self::actualizarConfiguracion('semaforo_verde_dias', (int) $valor);
     }
 
     public static function getSemaforoAmarilloDias($default = 4)
     {
-        $valor = self::getValor('semaforo_amarillo_dias', (string)$default);
-        return (int)$valor;
+        $valor = self::getValor('semaforo_amarillo_dias', (string) $default);
+
+        return (int) $valor;
     }
 
     public static function setSemaforoAmarilloDias($valor)
     {
-        return self::actualizarConfiguracion('semaforo_amarillo_dias', (int)$valor);
+        return self::actualizarConfiguracion('semaforo_amarillo_dias', (int) $valor);
     }
 
     public static function getSemaforoRojoDias($default = 5)
     {
-        $valor = self::getValor('semaforo_rojo_dias', (string)$default);
-        return (int)$valor;
+        $valor = self::getValor('semaforo_rojo_dias', (string) $default);
+
+        return (int) $valor;
     }
 
     public static function setSemaforoRojoDias($valor)
     {
-        return self::actualizarConfiguracion('semaforo_rojo_dias', (int)$valor);
+        return self::actualizarConfiguracion('semaforo_rojo_dias', (int) $valor);
     }
 
     // ==================== HELPERS DEL SEMÁFORO ====================
 
     public static function getEstadoSemaforo($diasRestantes)
     {
-        if (!self::getSemaforoActivo()) {
+        if (! self::getSemaforoActivo()) {
             return null;
         }
 
@@ -456,17 +466,17 @@ class ConfigVarias extends Model
     /**
      * Método auxiliar para actualizar configuraciones.
      *
-     * @param string $clave
-     * @param mixed $valor
+     * @param  string  $clave
+     * @param  mixed  $valor
      * @return bool
      */
     private static function actualizarConfiguracion($clave, $valor)
     {
         // Encriptar contraseña de correo
-        if ($clave === 'correo_password' && !empty($valor)) {
-            $valorString = encrypt((string)$valor);
+        if ($clave === 'correo_password' && ! empty($valor)) {
+            $valorString = encrypt((string) $valor);
         } else {
-            $valorString = (string)$valor;
+            $valorString = (string) $valor;
         }
 
         $config = self::where('clave', $clave)->first();
@@ -477,7 +487,7 @@ class ConfigVarias extends Model
             self::create([
                 'clave' => $clave,
                 'valor' => $valorString,
-                'descripcion' => 'Configuración de ' . str_replace('_', ' ', $clave)
+                'descripcion' => 'Configuración de '.str_replace('_', ' ', $clave),
             ]);
         }
 

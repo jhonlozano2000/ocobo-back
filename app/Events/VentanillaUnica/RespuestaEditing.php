@@ -3,7 +3,6 @@
 namespace App\Events\VentanillaUnica;
 
 use App\Models\VentanillaUnica\Recibidos\RadicadoRespuesta;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -14,8 +13,11 @@ class RespuestaEditing implements ShouldBroadcast
     use InteractsWithSockets;
 
     public RadicadoRespuesta $respuesta;
+
     public string $evento;
+
     public ?int $userId;
+
     public ?array $data;
 
     public function __construct(RadicadoRespuesta $respuesta, string $evento, array $data = [])
@@ -29,7 +31,7 @@ class RespuestaEditing implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('respuesta.' . $this->respuesta->id),
+            new PrivateChannel('respuesta.'.$this->respuesta->id),
         ];
     }
 

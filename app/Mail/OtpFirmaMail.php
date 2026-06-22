@@ -13,6 +13,7 @@ class OtpFirmaMail extends Mailable
     use Queueable, SerializesModels;
 
     public $otp;
+
     public $nombre;
 
     public function __construct($otp, $nombre)
@@ -24,14 +25,14 @@ class OtpFirmaMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Código de Seguridad para Firma Electrónica - Ocobo SGDEA",
+            subject: 'Código de Seguridad para Firma Electrónica - Ocobo SGDEA',
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            view: "emails.otp_firma",
+            view: 'emails.otp_firma',
         );
     }
 }

@@ -42,6 +42,6 @@ class UserDTO
 
     public static function collection($users): array
     {
-        return $users->map(fn($u) => self::fromModel($u))->toArray();
+        return $users->map(fn ($u) => self::fromModel($u))->toArray();
     }
 }

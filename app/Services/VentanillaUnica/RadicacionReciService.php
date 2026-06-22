@@ -5,7 +5,6 @@ namespace App\Services\VentanillaUnica;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciOptimizedView;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
 
 class RadicacionReciService
 {
@@ -38,7 +37,7 @@ class RadicacionReciService
                     'responsables:id,radica_reci_id,users_cargos_id,custodio,fechor_visto,created_at',
                     'responsables.userCargo:id,user_id,cargo_id',
                     'responsables.userCargo.user:id,nombres,apellidos,email',
-                    'responsables.userCargo.cargo:id,nom_organico,cod_organico,tipo'
+                    'responsables.userCargo.cargo:id,nom_organico,cod_organico,tipo',
                 ])
                 ->get()
                 ->keyBy('id');
@@ -47,6 +46,7 @@ class RadicacionReciService
                 $completo = $completos->get($radicado->id);
                 if ($completo) {
                     $info = $completo->getInformacionCompleta(
+                        false,
                         $radicado->total_responsables ?? 0,
                         $radicado->total_custodios ?? 0
                     );
@@ -56,6 +56,7 @@ class RadicacionReciService
                     $radicado->total_responsables = $info['total_responsables'];
                     $radicado->total_custodios = $info['total_custodios'];
                 }
+
                 return $radicado;
             });
         }
@@ -76,7 +77,7 @@ class RadicacionReciService
             'responsables.userCargo.user',
             'responsables.userCargo.cargo',
             'usuarioSubio',
-            'usuarioCreaRadicado'
+            'usuarioCreaRadicado',
         ])->find($id);
     }
 
@@ -97,12 +98,13 @@ class RadicacionReciService
     public function update(int $id, array $data): ?VentanillaRadicaReci
     {
         $radicado = VentanillaRadicaReci::find($id);
-        
-        if (!$radicado) {
+
+        if (! $radicado) {
             return null;
         }
 
         $radicado->update($data);
+
         return $radicado->fresh();
     }
 
@@ -112,8 +114,8 @@ class RadicacionReciService
     public function delete(int $id): bool
     {
         $radicado = VentanillaRadicaReci::find($id);
-        
-        if (!$radicado) {
+
+        if (! $radicado) {
             return false;
         }
 

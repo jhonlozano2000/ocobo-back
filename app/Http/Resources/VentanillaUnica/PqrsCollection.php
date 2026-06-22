@@ -10,7 +10,7 @@ class PqrsCollection extends ResourceCollection
     public function toArray(Request $request): array
     {
         return [
-            'data' => $this->collection->map(fn($item) => (new PqrsResource($item))->resolve($request)),
+            'data' => $this->collection->map(fn ($item) => (new PqrsResource($item))->resolve($request)),
             'meta' => [
                 'current_page' => $this->currentPage(),
                 'from' => $this->firstItem(),

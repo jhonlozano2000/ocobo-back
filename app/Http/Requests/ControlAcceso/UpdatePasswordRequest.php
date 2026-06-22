@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\ControlAcceso;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
@@ -20,14 +21,14 @@ class UpdatePasswordRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
             'current_password' => [
                 'required',
-                'string'
+                'string',
             ],
             'password' => [
                 'required',
@@ -35,15 +36,13 @@ class UpdatePasswordRequest extends FormRequest
                 Password::min(8)
                     ->mixedCase()
                     ->numbers()
-                    ->symbols()
-            ]
+                    ->symbols(),
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -61,14 +60,12 @@ class UpdatePasswordRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
         return [
             'current_password' => 'contraseña actual',
-            'password' => 'nueva contraseña'
+            'password' => 'nueva contraseña',
         ];
     }
 }

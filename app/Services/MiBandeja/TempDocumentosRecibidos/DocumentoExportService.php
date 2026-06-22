@@ -3,10 +3,10 @@
 namespace App\Services\MiBandeja\TempDocumentosRecibidos;
 
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
-use PhpOffice\PhpWord\PhpWord;
-use PhpOffice\PhpWord\IOFactory;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpWord\IOFactory;
+use PhpOffice\PhpWord\PhpWord;
 
 class DocumentoExportService
 {
@@ -15,7 +15,7 @@ class DocumentoExportService
         $contenido = $documento->contenido;
         $configPagina = $documento->getConfiguracionPagina();
         $creador = $documento->creador;
-        $creadorNombre = $creador ? trim($creador->nombres . ' ' . $creador->apellidos) ?: $creador->name : '';
+        $creadorNombre = $creador ? trim($creador->nombres.' '.$creador->apellidos) ?: $creador->name : '';
 
         $html = $this->contenidoToHtml($contenido->contenido_yjs ?? []);
         $contenidoHtml = $this->wrapHtmlForPdf(
@@ -27,7 +27,7 @@ class DocumentoExportService
 
         $pdf = Pdf::loadHTML($contenidoHtml);
 
-        $papel = match($configPagina['tamano_papel']) {
+        $papel = match ($configPagina['tamano_papel']) {
             'carta' => 'letter',
             'legal' => 'legal',
             'oficio' => [0, 0, 215.9, 330.2],
@@ -43,8 +43,8 @@ class DocumentoExportService
             'defaultFont' => 'sans-serif',
         ]);
 
-        $filename = 'documento_' . $documento->id . '_' . time() . '.pdf';
-        $path = 'exports/' . $filename;
+        $filename = 'documento_'.$documento->id.'_'.time().'.pdf';
+        $path = 'exports/'.$filename;
 
         Storage::disk('local')->makeDirectory('exports');
         Storage::disk('local')->put($path, $pdf->output());
@@ -65,43 +65,47 @@ class DocumentoExportService
         $headerHtml = '';
         $footerHtml = '';
 
-        if (!empty($config['header']['habilitado'])) {
+        if (! empty($config['header']['habilitado'])) {
             $headerElementos = $config['header']['elementos'] ?? [];
             $headerParts = [];
 
             foreach ($headerElementos as $elem) {
-                $val = match($elem) {
+                $val = match ($elem) {
                     'titulo' => htmlspecialchars($titulo),
                     'autor' => htmlspecialchars($autor),
                     'fecha' => date('d/m/Y'),
                     'texto_libre' => htmlspecialchars($config['header']['texto_libre'] ?? ''),
                     default => '',
                 };
-                if ($val) $headerParts[] = $val;
+                if ($val) {
+                    $headerParts[] = $val;
+                }
             }
 
-            if (!empty($headerParts)) {
-                $headerHtml = '<div style="text-align: center; font-size: 9pt; color: #666; border-bottom: 0.5px solid #ccc; padding-bottom: 8pt; margin-bottom: 8pt; width: 100%;">' . implode(' &nbsp;|&nbsp; ', $headerParts) . '</div>';
+            if (! empty($headerParts)) {
+                $headerHtml = '<div style="text-align: center; font-size: 9pt; color: #666; border-bottom: 0.5px solid #ccc; padding-bottom: 8pt; margin-bottom: 8pt; width: 100%;">'.implode(' &nbsp;|&nbsp; ', $headerParts).'</div>';
             }
         }
 
-        if (!empty($config['footer']['habilitado'])) {
+        if (! empty($config['footer']['habilitado'])) {
             $footerElementos = $config['footer']['elementos'] ?? [];
             $footerParts = [];
 
             foreach ($footerElementos as $elem) {
-                $val = match($elem) {
+                $val = match ($elem) {
                     'titulo' => htmlspecialchars($titulo),
                     'autor' => htmlspecialchars($autor),
                     'fecha' => date('d/m/Y'),
                     'texto_libre' => htmlspecialchars($config['footer']['texto_libre'] ?? ''),
                     default => '',
                 };
-                if ($val) $footerParts[] = $val;
+                if ($val) {
+                    $footerParts[] = $val;
+                }
             }
 
-            if (!empty($footerParts)) {
-                $footerHtml = '<div style="text-align: center; font-size: 9pt; color: #666; border-top: 0.5px solid #ccc; padding-top: 8pt; margin-top: 8pt; width: 100%;">' . implode(' &nbsp;|&nbsp; ', $footerParts) . '</div>';
+            if (! empty($footerParts)) {
+                $footerHtml = '<div style="text-align: center; font-size: 9pt; color: #666; border-top: 0.5px solid #ccc; padding-top: 8pt; margin-top: 8pt; width: 100%;">'.implode(' &nbsp;|&nbsp; ', $footerParts).'</div>';
             }
         }
 
@@ -109,7 +113,7 @@ class DocumentoExportService
         $columnCss = '';
         if (($columns['numero'] ?? 1) > 1) {
             $columnCount = $columns['numero'];
-            $columnRule = !empty($columns['con_linea']) ? '1px solid #ccc' : 'none';
+            $columnRule = ! empty($columns['con_linea']) ? '1px solid #ccc' : 'none';
             $columnCss = "-webkit-column-count: {$columnCount}; -moz-column-count: {$columnCount}; column-count: {$columnCount}; -webkit-column-rule: {$columnRule}; -moz-column-rule: {$columnRule}; column-rule: {$columnRule}; -webkit-column-gap: 32px; -moz-column-gap: 32px; column-gap: 32px;";
         }
 
@@ -173,13 +177,13 @@ HTML;
     public function exportarDocx(Documento $documento): string
     {
         $contenido = $documento->contenido;
-        $phpWord = new PhpWord();
+        $phpWord = new PhpWord;
 
         $section = $phpWord->addSection();
         $this->agregarContenidoASection($section, $contenido->contenido_yjs ?? []);
 
-        $filename = 'documento_' . $documento->id . '_' . time() . '.docx';
-        $path = 'exports/' . $filename;
+        $filename = 'documento_'.$documento->id.'_'.time().'.docx';
+        $path = 'exports/'.$filename;
 
         Storage::disk('local')->makeDirectory('exports');
 
@@ -196,8 +200,8 @@ HTML;
 
         $fullHtml = $this->wrapHtmlDocument($documento->titulo, $html);
 
-        $filename = 'documento_' . $documento->id . '_' . time() . '.html';
-        $path = 'exports/' . $filename;
+        $filename = 'documento_'.$documento->id.'_'.time().'.html';
+        $path = 'exports/'.$filename;
 
         Storage::disk('local')->put($path, $fullHtml);
 
@@ -209,8 +213,8 @@ HTML;
         $contenido = $documento->contenido;
         $texto = $this->contenidoToText($contenido->contenido_yjs ?? []);
 
-        $filename = 'documento_' . $documento->id . '_' . time() . '.txt';
-        $path = 'exports/' . $filename;
+        $filename = 'documento_'.$documento->id.'_'.time().'.txt';
+        $path = 'exports/'.$filename;
 
         Storage::disk('local')->put($path, $texto);
 
@@ -226,25 +230,27 @@ HTML;
         $html = '';
 
         foreach ($contenido as $block) {
-            if (!isset($block['type'])) continue;
+            if (! isset($block['type'])) {
+                continue;
+            }
 
             switch ($block['type']) {
                 case 'doc':
                     $html .= $this->renderNode($block);
                     break;
                 case 'paragraph':
-                    $html .= '<p>' . $this->renderInlineContent($block['content'] ?? []) . '</p>';
+                    $html .= '<p>'.$this->renderInlineContent($block['content'] ?? []).'</p>';
                     break;
                 case 'heading':
                     $level = $block['attrs']['level'] ?? 1;
-                    $html .= "<h{$level}>" . $this->renderInlineContent($block['content'] ?? []) . "</h{$level}>";
+                    $html .= "<h{$level}>".$this->renderInlineContent($block['content'] ?? [])."</h{$level}>";
                     break;
                 case 'bulletList':
                 case 'orderedList':
                     $tag = $block['type'] === 'bulletList' ? 'ul' : 'ol';
                     $html .= "<{$tag}>";
                     foreach ($block['content'] ?? [] as $item) {
-                        $html .= '<li>' . $this->renderNode($item) . '</li>';
+                        $html .= '<li>'.$this->renderNode($item).'</li>';
                     }
                     $html .= "</{$tag}>";
                     break;
@@ -252,16 +258,16 @@ HTML;
                     $html .= '<ul>';
                     foreach ($block['content'] ?? [] as $item) {
                         $checked = $item['attrs']['checked'] ?? false ? 'checked' : '';
-                        $html .= '<li><input type="checkbox" ' . $checked . ' disabled> ' . $this->renderNode($item) . '</li>';
+                        $html .= '<li><input type="checkbox" '.$checked.' disabled> '.$this->renderNode($item).'</li>';
                     }
                     $html .= '</ul>';
                     break;
                 case 'blockquote':
-                    $html .= '<blockquote>' . $this->renderInlineContent($block['content'] ?? []) . '</blockquote>';
+                    $html .= '<blockquote>'.$this->renderInlineContent($block['content'] ?? []).'</blockquote>';
                     break;
                 case 'codeBlock':
                     $code = $this->renderInlineContent($block['content'] ?? []);
-                    $html .= '<pre><code>' . $code . '</code></pre>';
+                    $html .= '<pre><code>'.$code.'</code></pre>';
                     break;
                 case 'horizontalRule':
                     $html .= '<hr>';
@@ -273,7 +279,7 @@ HTML;
                         $tag = $isHeader ? 'th' : 'td';
                         $html .= '<tr>';
                         foreach ($row['content'] ?? [] as $cell) {
-                            $html .= '<' . $tag . '>' . $this->renderNode($cell) . '</' . $tag . '>';
+                            $html .= '<'.$tag.'>'.$this->renderNode($cell).'</'.$tag.'>';
                         }
                         $html .= '</tr>';
                     }
@@ -282,7 +288,7 @@ HTML;
                 case 'image':
                     $src = $block['attrs']['src'] ?? '';
                     $alt = $block['attrs']['alt'] ?? '';
-                    $html .= '<img src="' . $src . '" alt="' . $alt . '" style="max-width: 100%;">';
+                    $html .= '<img src="'.$src.'" alt="'.$alt.'" style="max-width: 100%;">';
                     break;
             }
         }
@@ -292,14 +298,17 @@ HTML;
 
     private function renderNode($node): string
     {
-        if (!isset($node['type'])) return '';
+        if (! isset($node['type'])) {
+            return '';
+        }
 
         switch ($node['type']) {
             case 'paragraph':
-                return '<p>' . $this->renderInlineContent($node['content'] ?? []) . '</p>';
+                return '<p>'.$this->renderInlineContent($node['content'] ?? []).'</p>';
             case 'heading':
                 $level = $node['attrs']['level'] ?? 1;
-                return "<h{$level}>" . $this->renderInlineContent($node['content'] ?? []) . "</h{$level}>";
+
+                return "<h{$level}>".$this->renderInlineContent($node['content'] ?? [])."</h{$level}>";
             case 'listItem':
             case 'taskItem':
                 return $this->renderInlineContent($node['content'] ?? []);
@@ -313,12 +322,16 @@ HTML;
 
     private function renderInlineContent(array $content): string
     {
-        if (empty($content)) return '';
+        if (empty($content)) {
+            return '';
+        }
 
         $html = '';
 
         foreach ($content as $inline) {
-            if (!isset($inline['type'])) continue;
+            if (! isset($inline['type'])) {
+                continue;
+            }
 
             $text = $inline['text'] ?? '';
             $marks = $inline['marks'] ?? [];
@@ -326,32 +339,32 @@ HTML;
             foreach ($marks as $mark) {
                 switch ($mark['type']) {
                     case 'bold':
-                        $text = '<strong>' . $text . '</strong>';
+                        $text = '<strong>'.$text.'</strong>';
                         break;
                     case 'italic':
-                        $text = '<em>' . $text . '</em>';
+                        $text = '<em>'.$text.'</em>';
                         break;
                     case 'underline':
-                        $text = '<u>' . $text . '</u>';
+                        $text = '<u>'.$text.'</u>';
                         break;
                     case 'strike':
-                        $text = '<s>' . $text . '</s>';
+                        $text = '<s>'.$text.'</s>';
                         break;
                     case 'code':
-                        $text = '<code>' . $text . '</code>';
+                        $text = '<code>'.$text.'</code>';
                         break;
                     case 'highlight':
                         $color = $mark['attrs']['color'] ?? 'yellow';
-                        $text = '<span style="background-color: ' . $color . ';">' . $text . '</span>';
+                        $text = '<span style="background-color: '.$color.';">'.$text.'</span>';
                         break;
                     case 'link':
                         $href = $mark['attrs']['href'] ?? '#';
-                        $text = '<a href="' . $href . '">' . $text . '</a>';
+                        $text = '<a href="'.$href.'">'.$text.'</a>';
                         break;
                     case 'textStyle':
                         $color = $mark['attrs']['color'] ?? '';
                         if ($color) {
-                            $text = '<span style="color: ' . $color . ';">' . $text . '</span>';
+                            $text = '<span style="color: '.$color.';">'.$text.'</span>';
                         }
                         break;
                 }
@@ -368,28 +381,30 @@ HTML;
         $text = '';
 
         foreach ($contenido as $block) {
-            if (!isset($block['type'])) continue;
+            if (! isset($block['type'])) {
+                continue;
+            }
 
             switch ($block['type']) {
                 case 'doc':
                     $text .= $this->contenidoToText($block['content'] ?? []);
                     break;
                 case 'paragraph':
-                    $text .= $this->renderInlineText($block['content'] ?? []) . "\n\n";
+                    $text .= $this->renderInlineText($block['content'] ?? [])."\n\n";
                     break;
                 case 'heading':
-                    $text .= strtoupper($this->renderInlineText($block['content'] ?? [])) . "\n\n";
+                    $text .= strtoupper($this->renderInlineText($block['content'] ?? []))."\n\n";
                     break;
                 case 'bulletList':
                     foreach ($block['content'] ?? [] as $item) {
-                        $text .= "• " . $this->contenidoToText([$item]) . "\n";
+                        $text .= '• '.$this->contenidoToText([$item])."\n";
                     }
                     $text .= "\n";
                     break;
                 case 'orderedList':
                     $i = 1;
                     foreach ($block['content'] ?? [] as $item) {
-                        $text .= $i . ". " . $this->contenidoToText([$item]) . "\n";
+                        $text .= $i.'. '.$this->contenidoToText([$item])."\n";
                         $i++;
                     }
                     $text .= "\n";
@@ -397,15 +412,15 @@ HTML;
                 case 'taskList':
                     foreach ($block['content'] ?? [] as $item) {
                         $checked = $item['attrs']['checked'] ?? false ? '[X]' : '[ ]';
-                        $text .= $checked . " " . $this->contenidoToText([$item]) . "\n";
+                        $text .= $checked.' '.$this->contenidoToText([$item])."\n";
                     }
                     $text .= "\n";
                     break;
                 case 'blockquote':
-                    $text .= "> " . $this->renderInlineText($block['content'] ?? []) . "\n\n";
+                    $text .= '> '.$this->renderInlineText($block['content'] ?? [])."\n\n";
                     break;
                 case 'codeBlock':
-                    $text .= $this->renderInlineText($block['content'] ?? []) . "\n\n";
+                    $text .= $this->renderInlineText($block['content'] ?? [])."\n\n";
                     break;
                 case 'horizontalRule':
                     $text .= "---\n\n";
@@ -413,7 +428,7 @@ HTML;
                 case 'table':
                     foreach ($block['content'] ?? [] as $row) {
                         foreach ($row['content'] ?? [] as $cell) {
-                            $text .= $this->renderInlineText($cell['content'] ?? []) . "\t";
+                            $text .= $this->renderInlineText($cell['content'] ?? [])."\t";
                         }
                         $text .= "\n";
                     }
@@ -441,7 +456,9 @@ HTML;
     private function agregarContenidoASection($section, array $contenido): void
     {
         foreach ($contenido as $block) {
-            if (!isset($block['type'])) continue;
+            if (! isset($block['type'])) {
+                continue;
+            }
 
             switch ($block['type']) {
                 case 'doc':

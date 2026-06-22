@@ -11,9 +11,6 @@ class UserPolicy
 
     /**
      * Determina si el usuario puede ver la lista de usuarios.
-     * 
-     * @param User $user
-     * @return bool
      */
     public function viewAny(User $user): bool
     {
@@ -22,10 +19,6 @@ class UserPolicy
 
     /**
      * Determina si el usuario puede ver un usuario específico.
-     * 
-     * @param User $user
-     * @param User $model
-     * @return bool
      */
     public function view(User $user, User $model): bool
     {
@@ -34,9 +27,6 @@ class UserPolicy
 
     /**
      * Determina si el usuario puede crear usuarios.
-     * 
-     * @param User $user
-     * @return bool
      */
     public function create(User $user): bool
     {
@@ -45,10 +35,6 @@ class UserPolicy
 
     /**
      * Determina si el usuario puede actualizar un usuario.
-     * 
-     * @param User $user
-     * @param User $model
-     * @return bool
      */
     public function update(User $user, User $model): bool
     {
@@ -68,10 +54,6 @@ class UserPolicy
 
     /**
      * Determina si el usuario puede eliminar un usuario.
-     * 
-     * @param User $user
-     * @param User $model
-     * @return bool
      */
     public function delete(User $user, User $model): bool
     {
@@ -90,10 +72,6 @@ class UserPolicy
 
     /**
      * Determina si el usuario puede gestionar roles de un usuario.
-     * 
-     * @param User $user
-     * @param User $model
-     * @return bool
      */
     public function manageRoles(User $user, User $model): bool
     {
@@ -112,9 +90,6 @@ class UserPolicy
 
     /**
      * Determina si el usuario puede ver sesiones activas.
-     * 
-     * @param User $user
-     * @return bool
      */
     public function viewSessions(User $user): bool
     {
@@ -123,10 +98,6 @@ class UserPolicy
 
     /**
      * Determina si el usuario puede forzar logout de un usuario.
-     * 
-     * @param User $user
-     * @param User $model
-     * @return bool
      */
     public function forceLogout(User $user, User $model): bool
     {
@@ -140,16 +111,12 @@ class UserPolicy
 
     /**
      * Verifica si un usuario está intentando escalar privilegios sobre otro.
-     * 
-     * @param User $user
-     * @param User $model
-     * @return bool
      */
     private function intentaEscalarPrivilegios(User $user, User $model): bool
     {
         // Verificar si el usuario que se está modificando tiene rol de Administrador
         // y el usuario actual no lo tiene
-        if ($model->hasRole('Administrador') && !$user->hasRole('Administrador')) {
+        if ($model->hasRole('Administrador') && ! $user->hasRole('Administrador')) {
             return true;
         }
 

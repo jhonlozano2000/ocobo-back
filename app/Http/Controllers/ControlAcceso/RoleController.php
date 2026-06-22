@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\ControlAcceso;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
+use App\Http\Requests\ControlAcceso\ListRoleRequest;
 use App\Http\Requests\ControlAcceso\StoreRoleRequest;
 use App\Http\Requests\ControlAcceso\UpdateRoleRequest;
-use App\Http\Requests\ControlAcceso\ListRoleRequest;
-use Spatie\Permission\Models\Role;
-use Illuminate\Http\Request;
+use App\Http\Traits\ApiResponseTrait;
 use App\Services\ControlAcceso\RoleService;
+use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
@@ -86,7 +85,7 @@ class RoleController extends Controller
         try {
             $role = Role::with('permissions')->find($id);
 
-            if (!$role) {
+            if (! $role) {
                 return $this->errorResponse('Rol no encontrado', null, 404);
             }
 
@@ -118,7 +117,7 @@ class RoleController extends Controller
         try {
             $result = $this->service->delete($id);
 
-            if (!$result['success']) {
+            if (! $result['success']) {
                 return $this->errorResponse(
                     $result['message'],
                     $result['code'] === 409 ? ['users_count' => $result['users_count'] ?? null] : null,

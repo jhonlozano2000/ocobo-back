@@ -28,7 +28,7 @@ class ValidateContentType
     private function isValidContentType(string $contentType): bool
     {
         $baseContentType = trim(explode(';', $contentType)[0]);
-        
+
         foreach (self::ALLOWED_CONTENT_TYPES as $allowed) {
             if ($allowed === '*/*') {
                 return true;
@@ -37,7 +37,7 @@ class ValidateContentType
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -52,7 +52,7 @@ class ValidateContentType
     private function isValidAcceptType(string $accept): bool
     {
         $baseAccept = trim(explode(';', $accept)[0]);
-        
+
         foreach (self::ALLOWED_ACCEPT_TYPES as $allowed) {
             // Supports wildcards: */* matches anything
             if ($allowed === '*/*') {
@@ -62,7 +62,7 @@ class ValidateContentType
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -101,27 +101,27 @@ class ValidateContentType
             abort(response()->json([
                 'success' => false,
                 'message' => 'Content-Type es requerido.',
-                'error' => 'MISSING_CONTENT_TYPE'
+                'error' => 'MISSING_CONTENT_TYPE',
             ], 415));
         }
 
         // Extraer el tipo base sin charset u otros parámetros
         $baseContentType = explode(';', $contentType)[0];
 
-        if (trim($baseContentType) !== 'application/json' && !$this->isValidContentType($contentType)) {
+        if (trim($baseContentType) !== 'application/json' && ! $this->isValidContentType($contentType)) {
             abort(response()->json([
                 'success' => false,
                 'message' => 'Content-Type no soportado. Use application/json.',
-                'error' => 'UNSUPPORTED_CONTENT_TYPE'
+                'error' => 'UNSUPPORTED_CONTENT_TYPE',
             ], 415));
         }
 
         // Validar que para multipart/form-data solo se use para uploads
-        if (str_contains($baseContentType, 'multipart/form-data') && !$this->hasFileUpload($request)) {
+        if (str_contains($baseContentType, 'multipart/form-data') && ! $this->hasFileUpload($request)) {
             abort(response()->json([
                 'success' => false,
                 'message' => 'Content-Type multipart/form-data solo es válido para subida de archivos.',
-                'error' => 'INVALID_MULTIPART_USAGE'
+                'error' => 'INVALID_MULTIPART_USAGE',
             ], 415));
         }
     }
@@ -141,11 +141,11 @@ class ValidateContentType
         // Extraer el tipo base
         $baseAccept = explode(';', $accept)[0];
 
-        if (!in_array(trim($baseAccept), self::ALLOWED_ACCEPT_TYPES) && !$this->isValidAcceptType($accept)) {
+        if (! in_array(trim($baseAccept), self::ALLOWED_ACCEPT_TYPES) && ! $this->isValidAcceptType($accept)) {
             abort(response()->json([
                 'success' => false,
                 'message' => 'Accept no soportado. Use application/json.',
-                'error' => 'UNSUPPORTED_ACCEPT_TYPE'
+                'error' => 'UNSUPPORTED_ACCEPT_TYPE',
             ], 406));
         }
     }
@@ -193,7 +193,10 @@ class ValidateContentType
         return $request->hasFile('file') ||
                $request->hasFile('files') ||
                $request->hasFile('archivo') ||
+               $request->hasFile('archivo_digital') ||
                $request->hasFile('documento') ||
-               $request->hasFile('anexos');
+               $request->hasFile('anexos') ||
+               $request->hasFile('archivos') ||
+               $request->files->keys()->count() > 0;
     }
 }

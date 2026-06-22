@@ -26,7 +26,7 @@ class UserNotificationSetting extends Model
         'user_id',
         'new_for_you',
         'account_activity',
-        'new_browser_login'
+        'new_browser_login',
     ];
 
     /**
@@ -51,7 +51,6 @@ class UserNotificationSetting extends Model
     /**
      * Get the notification settings for a specific user.
      *
-     * @param int $userId
      * @return static|null
      */
     public static function forUser(int $userId): ?self
@@ -61,9 +60,6 @@ class UserNotificationSetting extends Model
 
     /**
      * Check if a specific notification type is enabled.
-     *
-     * @param string $type
-     * @return bool
      */
     public function isEnabled(string $type): bool
     {
@@ -72,9 +68,6 @@ class UserNotificationSetting extends Model
 
     /**
      * Enable a specific notification type.
-     *
-     * @param string $type
-     * @return bool
      */
     public function enable(string $type): bool
     {
@@ -83,9 +76,6 @@ class UserNotificationSetting extends Model
 
     /**
      * Disable a specific notification type.
-     *
-     * @param string $type
-     * @return bool
      */
     public function disable(string $type): bool
     {

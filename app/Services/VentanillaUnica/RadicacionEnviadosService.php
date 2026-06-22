@@ -14,32 +14,31 @@ class RadicacionEnviadosService
     {
         $query = VentanillaRadicaEnviados::query();
 
-        if (!empty($filters['search'])) {
-            $query->where(fn($q) => $q
+        if (! empty($filters['search'])) {
+            $query->where(fn ($q) => $q
                 ->where('num_radicado', 'like', "%{$filters['search']}%")
                 ->orWhere('asunto', 'like', "%{$filters['search']}%")
             );
         }
 
-        if (!empty($filters['fecha_desde']) && !empty($filters['fecha_hasta'])) {
+        if (! empty($filters['fecha_desde']) && ! empty($filters['fecha_hasta'])) {
             $query->whereBetween('created_at', [$filters['fecha_desde'], $filters['fecha_hasta']]);
         }
 
-        if (!empty($filters['clasifica_documen_id'])) {
+        if (! empty($filters['clasifica_documen_id'])) {
             $query->where('clasifica_documen_id', $filters['clasifica_documen_id']);
         }
 
-        if (!empty($filters['tercero_enviado_id'])) {
+        if (! empty($filters['tercero_enviado_id'])) {
             $query->where('tercero_id', $filters['tercero_enviado_id']);
         }
 
-        if (!empty($filters['medio_enviado_id'])) {
+        if (! empty($filters['medio_enviado_id'])) {
             $query->where('medio_enviado_id', $filters['medio_enviado_id']);
         }
 
-        if (!empty($filters['usuario_responsable'])) {
-            $query->whereHas('responsables', fn($q) => $q->whereHas('userCargo', fn($qc) => 
-                $qc->where('user_id', $filters['usuario_responsable'])
+        if (! empty($filters['usuario_responsable'])) {
+            $query->whereHas('responsables', fn ($q) => $q->whereHas('userCargo', fn ($qc) => $qc->where('user_id', $filters['usuario_responsable'])
             ));
         }
 
@@ -68,7 +67,7 @@ class RadicacionEnviadosService
             'archivos',
             'responsables.userCargo.user',
             'responsables.userCargo.cargo',
-            'usuarioCreaRadicado'
+            'usuarioCreaRadicado',
         ])->find($id);
     }
 
@@ -78,6 +77,7 @@ class RadicacionEnviadosService
     public function create(array $data): VentanillaRadicaEnviados
     {
         $data['usuario_crea'] = $data['usuario_crea'] ?? auth()->id();
+
         return VentanillaRadicaEnviados::create($data);
     }
 
@@ -87,12 +87,13 @@ class RadicacionEnviadosService
     public function update(int $id, array $data): ?VentanillaRadicaEnviados
     {
         $radicado = VentanillaRadicaEnviados::find($id);
-        
-        if (!$radicado) {
+
+        if (! $radicado) {
             return null;
         }
 
         $radicado->update($data);
+
         return $radicado->fresh();
     }
 
@@ -102,8 +103,8 @@ class RadicacionEnviadosService
     public function delete(int $id): bool
     {
         $radicado = VentanillaRadicaEnviados::find($id);
-        
-        if (!$radicado) {
+
+        if (! $radicado) {
             return false;
         }
 

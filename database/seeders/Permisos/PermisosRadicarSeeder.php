@@ -2,7 +2,6 @@
 
 namespace Database\Seeders\Permisos;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 
@@ -36,6 +35,7 @@ class PermisosRadicarSeeder extends Seeder
         Permission::create(['name' => 'Radicar -> Cores. Recibida -> Atualizar fechas de radicados'])->syncRoles('Administrador');
         Permission::create(['name' => 'Radicar -> Cores. Recibida -> Actualizar clasificacion de radicados'])->syncRoles('Administrador');
         Permission::create(['name' => 'Radicar -> Cores. Recibida -> Notificar Email'])->syncRoles('Administrador');
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Firmar'])->syncRoles('Administrador');
 
         Permission::create(['name' => 'Radicar -> Cores. Enviada -> Listar'])->syncRoles([$Rol1, $Rol3]);
         Permission::create(['name' => 'Radicar -> Cores. Enviada -> Crear'])->syncRoles([$Rol1]);

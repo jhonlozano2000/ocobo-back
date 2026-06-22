@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Calidad;
 
 use App\Models\Calidad\CalidadOrganigrama;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -10,8 +11,6 @@ class CalidadOrganigramaRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
-     *
-     * @return bool
      */
     public function authorize(): bool
     {
@@ -21,14 +20,14 @@ class CalidadOrganigramaRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         // Obtener el ID del nodo desde la ruta (puede venir como 'organigrama' o 'calidadOrganigrama')
         $organigrama = $this->route('organigrama') ?? $this->route('calidadOrganigrama');
         $organigramaId = null;
-        
+
         if ($organigrama) {
             $organigramaId = is_object($organigrama) ? $organigrama->id : $organigrama;
         }
@@ -50,19 +49,19 @@ class CalidadOrganigramaRequest extends FormRequest
             'tipo' => [
                 'required',
                 'string',
-                'in:Dependencia,Oficina,Cargo'
+                'in:Dependencia,Oficina,Cargo',
             ],
             'nom_organico' => [
                 'required',
                 'string',
                 'min:2',
-                'max:100'
+                'max:100',
             ],
             'cod_organico' => $codOrganicoRules,
             'observaciones' => [
                 'nullable',
                 'string',
-                'max:500'
+                'max:500',
             ],
             'parent' => [
                 'nullable',
@@ -89,20 +88,18 @@ class CalidadOrganigramaRequest extends FormRequest
                             }
 
                             // Un Cargo solo puede pertenecer a una Oficina o Dependencia
-                            if ($this->tipo === 'Cargo' && !in_array($parentNode->tipo, ['Dependencia', 'Oficina'])) {
+                            if ($this->tipo === 'Cargo' && ! in_array($parentNode->tipo, ['Dependencia', 'Oficina'])) {
                                 $fail('Los Cargos solo pueden pertenecer a una Dependencia u Oficina.');
                             }
                         }
                     }
-                }
-            ]
+                },
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -116,14 +113,12 @@ class CalidadOrganigramaRequest extends FormRequest
             'cod_organico.unique' => 'El código orgánico ya está en uso.',
             'observaciones.max' => 'Las observaciones no pueden superar los 500 caracteres.',
             'parent.integer' => 'El ID del nodo padre debe ser un número entero.',
-            'parent.exists' => 'El nodo padre seleccionado no existe.'
+            'parent.exists' => 'El nodo padre seleccionado no existe.',
         ];
     }
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
@@ -132,7 +127,7 @@ class CalidadOrganigramaRequest extends FormRequest
             'nom_organico' => 'nombre del organismo',
             'cod_organico' => 'código orgánico',
             'observaciones' => 'observaciones',
-            'parent' => 'nodo padre'
+            'parent' => 'nodo padre',
         ];
     }
 }

@@ -7,12 +7,12 @@ use App\Http\Requests\Auth\AuthLoginRequest;
 use App\Http\Requests\Auth\AuthRegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\UsersAuthenticationLog;
 use App\Models\User;
+use App\Models\UsersAuthenticationLog;
 use App\Services\Seguridad\AuditLogService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
@@ -26,7 +26,7 @@ class AuthController extends Controller
 
     /**
      * Login - Autenticación de usuario con cookies HttpOnly
-     * 
+     *
      * Flujo:
      * 1. Validar CSRF token (Sanctum)
      * 2. Validar credenciales
@@ -38,44 +38,47 @@ class AuthController extends Controller
     {
         $credentials = $request->only('email', 'password');
         $remember = $request->boolean('remember', false);
-        
+
         // Sanitización de entrada para prevenir inyección
         $email = filter_var($credentials['email'], FILTER_SANITIZE_EMAIL);
-        
+
         // Buscar usuario por email (case-insensitive)
         $user = User::where(function ($query) use ($email) {
             $query->where('email', $email)
-                  ->orWhereRaw('LOWER(email) = LOWER(?)', [$email]);
+                ->orWhereRaw('LOWER(email) = LOWER(?)', [$email]);
         })->first();
 
         // Si no se encuentra el usuario
-        if (!$user) {
+        if (! $user) {
             $this->logFailedLoginAttempt(null, $email, 'Usuario no encontrado', $request);
+
             return $this->errorResponse('Las credenciales proporcionadas son incorrectas.', null, 401);
         }
 
         // Verificar estado de cuenta (asumiendo que 1 = activo, 0 = inactivo)
-        if (!isset($user->estado) || $user->estado == 0) {
+        if (! isset($user->estado) || $user->estado == 0) {
             $this->logFailedLoginAttempt($user->id, $user->email, 'Cuenta desactivada', $request);
+
             return $this->errorResponse('Tu cuenta se encuentra desactivada.', null, 401);
         }
 
         // Validar credenciales
-        if (!Hash::check($credentials['password'], $user->password)) {
+        if (! Hash::check($credentials['password'], $user->password)) {
             $this->logFailedLoginAttempt($user->id, $user->email, 'Credenciales incorrectas', $request);
+
             return $this->errorResponse('Las credenciales proporcionadas son incorrectas.', null, 401);
         }
 
         // Autenticar al usuario (esto establecerá la sesión)
         Auth::login($user, $remember);
-        
+
         // REGENERAR SESIÓN - Prevención Session Fixation (ISO 27001)
         // Cada login genera un nuevo ID de sesión
         $request->session()->regenerate();
-        
+
         // Registrar login exitoso
         $this->logSuccessfulLogin($user, $request);
-        
+
         // PRINCIPIO DE PRIVILEGIO MÍNIMO (PoLP) - ISO 27001 A.9.4.1
         // No exponer datos sensibles innecesarios al cliente
         return $this->successResponse([
@@ -90,11 +93,11 @@ class AuthController extends Controller
     {
         // Auditoría ISO 27001 - Registro de intento fallido
         UsersAuthenticationLog::logEvent([
-            'user_id'  => $userId,
-            'event'    => 'login_failed',
-            'success'  => false,
-            'email'    => $email,
-            'details'  => $reason . ' - IP: ' . $request->ip() . ' | User-Agent: ' . substr($request->userAgent(), 0, 200),
+            'user_id' => $userId,
+            'event' => 'login_failed',
+            'success' => false,
+            'email' => $email,
+            'details' => $reason.' - IP: '.$request->ip().' | User-Agent: '.substr($request->userAgent(), 0, 200),
         ]);
 
         // Log centralizado de seguridad
@@ -112,11 +115,11 @@ class AuthController extends Controller
     {
         // Auditoría ISO 27001 - Registro de login exitoso
         UsersAuthenticationLog::logEvent([
-            'user_id'  => $user->id,
-            'event'    => 'login_success',
-            'success'  => true,
-            'email'    => $user->email,
-            'details'  => 'Login exitoso - IP: ' . $request->ip() . ' | Dispositivo: ' . $this->parseDevice($request->userAgent()),
+            'user_id' => $user->id,
+            'event' => 'login_success',
+            'success' => true,
+            'email' => $user->email,
+            'details' => 'Login exitoso - IP: '.$request->ip().' | Dispositivo: '.$this->parseDevice($request->userAgent()),
         ]);
 
         // Log centralizado de seguridad
@@ -129,7 +132,7 @@ class AuthController extends Controller
 
     /**
      * Logout - Cierre de sesión seguro
-     * 
+     *
      * Flujo:
      * 1. Invalidar sesión
      * 2. Regenerar token CSRF
@@ -139,13 +142,13 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $user = $request->user();
-        
+
         if ($user) {
             UsersAuthenticationLog::logEvent([
-                'user_id'  => $user->id,
-                'event'    => 'logout',
-                'success'  => true,
-                'details'  => 'Logout exitoso',
+                'user_id' => $user->id,
+                'event' => 'logout',
+                'success' => true,
+                'details' => 'Logout exitoso',
             ]);
 
             AuditLogService::logAutenticacion(
@@ -164,15 +167,15 @@ class AuthController extends Controller
 
     /**
      * GetMe - Obtener usuario autenticado
-     * 
+     *
      * IMPORTANTE: Este endpoint ES la verificación de sesión
      * El frontend lo usa para verificar si la cookie sigue válida
      */
     public function getMe(Request $request)
     {
         $user = $request->user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return $this->errorResponse('No autenticado', null, 401);
         }
 
@@ -187,15 +190,15 @@ class AuthController extends Controller
     public function register(AuthRegisterRequest $request)
     {
         $user = User::create([
-            'num_docu'   => $request->num_docu,
-            'nombres'    => $request->nombres,
-            'apellidos'  => $request->apellidos,
-            'tel'        => $request->tel,
-            'movil'      => $request->movil,
-            'dir'        => $request->dir,
-            'email'      => filter_var($request->email, FILTER_SANITIZE_EMAIL),
-            'password'   => Hash::make($request->password),
-            'estado'     => 1,
+            'num_docu' => $request->num_docu,
+            'nombres' => $request->nombres,
+            'apellidos' => $request->apellidos,
+            'tel' => $request->tel,
+            'movil' => $request->movil,
+            'dir' => $request->dir,
+            'email' => filter_var($request->email, FILTER_SANITIZE_EMAIL),
+            'password' => Hash::make($request->password),
+            'estado' => 1,
         ]);
 
         if ($request->has('role')) {
@@ -206,10 +209,10 @@ class AuthController extends Controller
         $request->session()->regenerate();
 
         UsersAuthenticationLog::logEvent([
-            'user_id'  => $user->id,
-            'event'    => 'register_success',
-            'success'  => true,
-            'details'  => 'Nuevo usuario registrado',
+            'user_id' => $user->id,
+            'event' => 'register_success',
+            'success' => true,
+            'details' => 'Nuevo usuario registrado',
         ]);
 
         return $this->successResponse([
@@ -222,7 +225,9 @@ class AuthController extends Controller
      */
     private function parseDevice(?string $userAgent): string
     {
-        if (!$userAgent) return 'Unknown';
+        if (! $userAgent) {
+            return 'Unknown';
+        }
 
         $device = 'Desktop';
         if (preg_match('/Mobile|Android|iPhone|iPad/', $userAgent)) {
@@ -230,7 +235,7 @@ class AuthController extends Controller
         }
 
         $browser = 'Unknown';
-        if (preg_match('/Chrome/', $userAgent) && !preg_match('/Edg/', $userAgent)) {
+        if (preg_match('/Chrome/', $userAgent) && ! preg_match('/Edg/', $userAgent)) {
             $browser = 'Chrome';
         } elseif (preg_match('/Firefox/', $userAgent)) {
             $browser = 'Firefox';

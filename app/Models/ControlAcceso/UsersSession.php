@@ -24,14 +24,14 @@ class UsersSession extends Model
         'last_login_at',
         'logout_at',
         'is_active',
-        'metadata'
+        'metadata',
     ];
 
     protected $casts = [
         'last_login_at' => 'datetime',
-        'logout_at'     => 'datetime',
-        'is_active'     => 'boolean',
-        'metadata'      => 'array'
+        'logout_at' => 'datetime',
+        'is_active' => 'boolean',
+        'metadata' => 'array',
     ];
 
     public function user()

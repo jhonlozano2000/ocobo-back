@@ -2,8 +2,9 @@
 
 namespace App\Helpers;
 
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Helper para Validación de URLs y Prevención de SSRF
@@ -58,13 +59,12 @@ class UrlValidator
     /**
      * Valida que una URL sea segura para realizar solicitudes
      *
-     * @param string $url
      * @return array ['valido' => bool, 'error' => string|null]
      */
     public static function validarUrl(string $url): array
     {
         // Verificar que tenga un esquema
-        if (!preg_match('/^https?:\/\//', $url)) {
+        if (! preg_match('/^https?:\/\//', $url)) {
             return ['valido' => false, 'error' => 'URL debe comenzar con http:// o https://'];
         }
 
@@ -82,6 +82,7 @@ class UrlValidator
         if (filter_var($host, FILTER_VALIDATE_IP)) {
             if (self::esIpBloqueada($host)) {
                 Log::warning('SSRF: URL bloqueada - IP interna', ['url' => $url, 'ip' => $host]);
+
                 return ['valido' => false, 'error' => 'No se permiten URLs a direcciones IP internas'];
             }
         }
@@ -89,12 +90,14 @@ class UrlValidator
         // Verificar si el hostname está bloqueado
         if (self::esHostBloqueado($host)) {
             Log::warning('SSRF: URL bloqueada - Host bloqueado', ['url' => $url, 'host' => $host]);
+
             return ['valido' => false, 'error' => 'Este hostname no está permitido'];
         }
 
         // Verificar puerto bloqueado
         if (self::esPuertoBloqueado($port)) {
             Log::warning('SSRF: Puerto bloqueado', ['url' => $url, 'port' => $port]);
+
             return ['valido' => false, 'error' => 'Puerto no permitido'];
         }
 
@@ -104,6 +107,7 @@ class UrlValidator
             foreach ($resolvedIps as $ip) {
                 if (self::esIpBloqueada($ip)) {
                     Log::warning('SSRF: DNS resuelve a IP bloqueada', ['url' => $url, 'ip' => $ip]);
+
                     return ['valido' => false, 'error' => 'El hostname resuelve a una dirección IP no permitida'];
                 }
             }
@@ -118,14 +122,13 @@ class UrlValidator
     /**
      * Valida que una URL sea segura antes de realizar una solicitud HTTP
      *
-     * @param string $url
      * @throws \InvalidArgumentException
      */
     public static function validarYSolicitar(string $url): void
     {
         $resultado = self::validarUrl($url);
 
-        if (!$resultado['valido']) {
+        if (! $resultado['valido']) {
             throw new \InvalidArgumentException($resultado['error']);
         }
     }
@@ -157,7 +160,7 @@ class UrlValidator
         $hostLower = strtolower($host);
 
         foreach (self::BLOCKED_HOSTS as $blockedHost) {
-            if ($hostLower === strtolower($blockedHost) || str_ends_with($hostLower, '.' . strtolower($blockedHost))) {
+            if ($hostLower === strtolower($blockedHost) || str_ends_with($hostLower, '.'.strtolower($blockedHost))) {
                 return true;
             }
         }
@@ -175,8 +178,6 @@ class UrlValidator
 
     /**
      * Resuelve un hostname a IPs
-     *
-     * @return array
      */
     private static function resolverHost(string $host): array
     {
@@ -192,10 +193,8 @@ class UrlValidator
     /**
      * Realiza una solicitud HTTP validando la URL primero
      *
-     * @param string $method
-     * @param string $url
-     * @param array $options
-     * @return \Illuminate\Http\Client\Response
+     * @return Response
+     *
      * @throws \InvalidArgumentException
      */
     public static function httpRequest(string $method, string $url, array $options = [])

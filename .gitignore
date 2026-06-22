@@ -34,6 +34,10 @@ storage/app/firmas/*
 
 # Temporales
 storage/app/temp_files/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/framework/cache/*
+storage/logs/*
 
 # Symlinks públicos que se regeneran con php artisan storage:link
 public/radicados_recibidos

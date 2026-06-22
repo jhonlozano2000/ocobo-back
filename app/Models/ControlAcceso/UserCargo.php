@@ -4,10 +4,12 @@ namespace App\Models\ControlAcceso;
 
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Builder;
-use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class UserCargo extends Model
 {
@@ -21,7 +23,7 @@ class UserCargo extends Model
         'fecha_inicio',
         'fecha_fin',
         'observaciones',
-        'estado'
+        'estado',
     ];
 
     protected $casts = [
@@ -29,13 +31,13 @@ class UserCargo extends Model
         'fecha_fin' => 'date',
         'estado' => 'boolean',
         'created_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'updated_at' => 'datetime',
     ];
 
     /**
      * Relación con el usuario.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function user()
     {
@@ -45,7 +47,7 @@ class UserCargo extends Model
     /**
      * Relación con el cargo del organigrama.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function cargo()
     {
@@ -54,9 +56,6 @@ class UserCargo extends Model
 
     /**
      * Scope para obtener solo cargos activos.
-     *
-     * @param Builder $query
-     * @return Builder
      */
     public function scopeActivos(Builder $query): Builder
     {
@@ -65,9 +64,6 @@ class UserCargo extends Model
 
     /**
      * Scope para obtener cargos finalizados.
-     *
-     * @param Builder $query
-     * @return Builder
      */
     public function scopeFinalizados(Builder $query): Builder
     {
@@ -77,9 +73,7 @@ class UserCargo extends Model
     /**
      * Scope para obtener cargos vigentes en una fecha específica.
      *
-     * @param Builder $query
-     * @param string|Carbon $fecha
-     * @return Builder
+     * @param  string|Carbon  $fecha
      */
     public function scopeVigentesEn(Builder $query, $fecha): Builder
     {
@@ -94,10 +88,6 @@ class UserCargo extends Model
 
     /**
      * Scope para filtrar por usuario.
-     *
-     * @param Builder $query
-     * @param int $userId
-     * @return Builder
      */
     public function scopeDelUsuario(Builder $query, int $userId): Builder
     {
@@ -106,10 +96,6 @@ class UserCargo extends Model
 
     /**
      * Scope para filtrar por cargo.
-     *
-     * @param Builder $query
-     * @param int $cargoId
-     * @return Builder
      */
     public function scopeDelCargo(Builder $query, int $cargoId): Builder
     {
@@ -118,8 +104,6 @@ class UserCargo extends Model
 
     /**
      * Verifica si el cargo está activo actualmente.
-     *
-     * @return bool
      */
     public function estaActivo(): bool
     {
@@ -129,8 +113,7 @@ class UserCargo extends Model
     /**
      * Verifica si el cargo está vigente en una fecha específica.
      *
-     * @param string|Carbon $fecha
-     * @return bool
+     * @param  string|Carbon  $fecha
      */
     public function estaVigenteEn($fecha): bool
     {
@@ -144,9 +127,8 @@ class UserCargo extends Model
     /**
      * Finaliza el cargo actual.
      *
-     * @param string|Carbon|null $fechaFin
-     * @param string|null $observaciones
-     * @return bool
+     * @param  string|Carbon|null  $fechaFin
+     * @param  string|null  $observaciones
      */
     public function finalizar($fechaFin = null, $observaciones = null): bool
     {
@@ -155,7 +137,7 @@ class UserCargo extends Model
 
         if ($observaciones) {
             $this->observaciones = $this->observaciones ?
-                $this->observaciones . ' | ' . $observaciones :
+                $this->observaciones.' | '.$observaciones :
                 $observaciones;
         }
 
@@ -164,8 +146,6 @@ class UserCargo extends Model
 
     /**
      * Reactiva el cargo (solo si no ha sido finalizado definitivamente).
-     *
-     * @return bool
      */
     public function reactivar(): bool
     {
@@ -181,12 +161,10 @@ class UserCargo extends Model
 
     /**
      * Obtiene la duración del cargo en días.
-     *
-     * @return int|null
      */
     public function getDuracionEnDias(): ?int
     {
-        if (!$this->fecha_inicio) {
+        if (! $this->fecha_inicio) {
             return null;
         }
 
@@ -198,8 +176,6 @@ class UserCargo extends Model
 
     /**
      * Obtiene información detallada del cargo.
-     *
-     * @return array
      */
     public function getDetalleCompleto(): array
     {
@@ -209,33 +185,30 @@ class UserCargo extends Model
                 'id' => $this->user->id,
                 'nombres' => $this->user->nombres,
                 'apellidos' => $this->user->apellidos,
-                'email' => $this->user->email
+                'email' => $this->user->email,
             ],
             'cargo' => [
                 'id' => $this->cargo->id,
                 'nombre' => $this->cargo->nom_organico,
                 'codigo' => $this->cargo->cod_organico,
                 'tipo' => $this->cargo->tipo,
-                'jerarquia' => $this->cargo->getJerarquiaCompleta()
+                'jerarquia' => $this->cargo->getJerarquiaCompleta(),
             ],
             'periodo' => [
                 'fecha_inicio' => $this->fecha_inicio?->format('Y-m-d'),
                 'fecha_fin' => $this->fecha_fin?->format('Y-m-d'),
                 'duracion_dias' => $this->getDuracionEnDias(),
-                'esta_activo' => $this->estaActivo()
+                'esta_activo' => $this->estaActivo(),
             ],
             'observaciones' => $this->observaciones,
             'estado' => $this->estado,
             'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at
+            'updated_at' => $this->updated_at,
         ];
     }
 
     /**
      * Obtiene el cargo activo de un usuario específico.
-     *
-     * @param int $userId
-     * @return UserCargo|null
      */
     public static function cargoActivoDelUsuario(int $userId): ?UserCargo
     {
@@ -248,9 +221,7 @@ class UserCargo extends Model
     /**
      * Obtiene todos los usuarios asignados a un cargo específico.
      *
-     * @param int $cargoId
-     * @param bool $soloActivos
-     * @return \Illuminate\Database\Eloquent\Collection
+     * @return Collection
      */
     public static function usuariosDelCargo(int $cargoId, bool $soloActivos = true)
     {
@@ -265,9 +236,6 @@ class UserCargo extends Model
 
     /**
      * Scope para obtener cargos de usuarios activos.
-     *
-     * @param Builder $query
-     * @return Builder
      */
     public function scopeConUsuariosActivos(Builder $query): Builder
     {
@@ -278,10 +246,6 @@ class UserCargo extends Model
 
     /**
      * Scope para filtrar por tipo de cargo.
-     *
-     * @param Builder $query
-     * @param string $tipo
-     * @return Builder
      */
     public function scopeDelTipo(Builder $query, string $tipo): Builder
     {
@@ -293,10 +257,8 @@ class UserCargo extends Model
     /**
      * Scope para obtener cargos vigentes en un rango de fechas.
      *
-     * @param Builder $query
-     * @param string|Carbon $fechaInicio
-     * @param string|Carbon|null $fechaFin
-     * @return Builder
+     * @param  string|Carbon  $fechaInicio
+     * @param  string|Carbon|null  $fechaFin
      */
     public function scopeVigentesEnRango(Builder $query, $fechaInicio, $fechaFin = null): Builder
     {
@@ -317,8 +279,6 @@ class UserCargo extends Model
 
     /**
      * Obtiene estadísticas de asignaciones de cargos.
-     *
-     * @return array
      */
     public static function obtenerEstadisticas(): array
     {
@@ -334,7 +294,7 @@ class UserCargo extends Model
             'asignaciones_finalizadas' => $asignacionesFinalizadas,
             'usuarios_con_cargo' => $usuariosConCargo,
             'cargos_con_usuarios' => $cargosConUsuarios,
-            'porcentaje_activas' => $totalAsignaciones > 0 ? round(($asignacionesActivas / $totalAsignaciones) * 100, 2) : 0
+            'porcentaje_activas' => $totalAsignaciones > 0 ? round(($asignacionesActivas / $totalAsignaciones) * 100, 2) : 0,
         ];
     }
 }

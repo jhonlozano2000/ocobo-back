@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\VentanillaUnica;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\Ventanilla\AsignarPermisosVentanillaRequest;
 use App\Http\Requests\Ventanilla\ListVentanillasPermitidasRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\User;
 use App\Models\VentanillaUnica\Comunes\VentanillaUnica;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class PermisosVentanillaUnicaController extends Controller
 {
@@ -29,23 +29,22 @@ class PermisosVentanillaUnicaController extends Controller
      * para usuarios específicos en una ventanilla. Los usuarios asignados
      * podrán realizar radicaciones en esa ventanilla.
      *
-     * @param int $ventanillaId ID de la ventanilla
-     * @param AsignarPermisosVentanillaRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la asignación
+     * @param  int  $ventanillaId  ID de la ventanilla
+     * @param  AsignarPermisosVentanillaRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON confirmando la asignación
      *
      * @urlParam ventanillaId integer required El ID de la ventanilla. Example: 1
+     *
      * @bodyParam usuarios array required Array de IDs de usuarios a asignar. Example: [1, 2, 3]
      *
      * @response 200 {
      *   "status": true,
      *   "message": "Permisos asignados exitosamente"
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Ventanilla no encontrada"
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -53,7 +52,6 @@ class PermisosVentanillaUnicaController extends Controller
      *     "usuarios": ["Los usuarios son obligatorios."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al asignar permisos",
@@ -73,6 +71,7 @@ class PermisosVentanillaUnicaController extends Controller
             return $this->successResponse(null, 'Permisos asignados exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al asignar permisos', $e->getMessage(), 500);
         }
     }
@@ -83,11 +82,12 @@ class PermisosVentanillaUnicaController extends Controller
      * Este método permite obtener todas las ventanillas donde un usuario
      * específico tiene permisos para realizar radicaciones.
      *
-     * @param int $usuarioId ID del usuario
-     * @param ListVentanillasPermitidasRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las ventanillas permitidas
+     * @param  int  $usuarioId  ID del usuario
+     * @param  ListVentanillasPermitidasRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con las ventanillas permitidas
      *
      * @urlParam usuarioId integer required El ID del usuario. Example: 1
+     *
      * @queryParam sede_id integer Filtrar por sede específica. Example: 1
      * @queryParam per_page integer Número de elementos por página (por defecto: 15). Example: 20
      *
@@ -107,12 +107,10 @@ class PermisosVentanillaUnicaController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Usuario no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener las ventanillas permitidas",
@@ -154,11 +152,12 @@ class PermisosVentanillaUnicaController extends Controller
      * Este método permite obtener todos los usuarios que tienen permisos
      * para radicar en una ventanilla específica.
      *
-     * @param int $ventanillaId ID de la ventanilla
-     * @param Request $request La solicitud HTTP
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con los usuarios permitidos
+     * @param  int  $ventanillaId  ID de la ventanilla
+     * @param  Request  $request  La solicitud HTTP
+     * @return JsonResponse Respuesta JSON con los usuarios permitidos
      *
      * @urlParam ventanillaId integer required El ID de la ventanilla. Example: 1
+     *
      * @queryParam per_page integer Número de elementos por página (por defecto: 15). Example: 20
      *
      * @response 200 {
@@ -173,12 +172,10 @@ class PermisosVentanillaUnicaController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Ventanilla no encontrada"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener los usuarios permitidos",
@@ -215,9 +212,9 @@ class PermisosVentanillaUnicaController extends Controller
      * Este método permite revocar los permisos de radicación de un usuario
      * específico en una ventanilla.
      *
-     * @param int $ventanillaId ID de la ventanilla
-     * @param int $usuarioId ID del usuario
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la revocación
+     * @param  int  $ventanillaId  ID de la ventanilla
+     * @param  int  $usuarioId  ID del usuario
+     * @return JsonResponse Respuesta JSON confirmando la revocación
      *
      * @urlParam ventanillaId integer required El ID de la ventanilla. Example: 1
      * @urlParam usuarioId integer required El ID del usuario. Example: 1
@@ -226,12 +223,10 @@ class PermisosVentanillaUnicaController extends Controller
      *   "status": true,
      *   "message": "Permisos revocados exitosamente"
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Ventanilla o usuario no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al revocar permisos",
@@ -247,7 +242,7 @@ class PermisosVentanillaUnicaController extends Controller
             $usuario = User::findOrFail($usuarioId);
 
             // Verificar que el usuario tenga permisos en la ventanilla
-            if (!$ventanilla->usuariosPermitidos()->where('user_id', $usuarioId)->exists()) {
+            if (! $ventanilla->usuariosPermitidos()->where('user_id', $usuarioId)->exists()) {
                 return $this->errorResponse('El usuario no tiene permisos en esta ventanilla', null, 422);
             }
 
@@ -258,6 +253,7 @@ class PermisosVentanillaUnicaController extends Controller
             return $this->successResponse(null, 'Permisos revocados exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al revocar permisos', $e->getMessage(), 500);
         }
     }

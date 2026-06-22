@@ -2,8 +2,11 @@
 
 namespace App\Http\Requests\ClasificacionDocumental;
 
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateClasificacionDocumentalRequest extends FormRequest
 {
@@ -18,7 +21,7 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -29,7 +32,7 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
             'tipo' => [
                 'sometimes',
                 'string',
-                'in:Serie,SubSerie,TipoDocumento'
+                'in:Serie,SubSerie,TipoDocumento',
             ],
             'cod' => [
                 'sometimes',
@@ -37,75 +40,75 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
                 'max:50',
                 Rule::unique('clasificacion_documental_trd', 'cod')
                     ->where('dependencia_id', $this->input('dependencia_id'))
-                    ->ignore($trdId)
+                    ->ignore($trdId),
             ],
             'nom' => [
                 'sometimes',
                 'string',
-                'max:255'
+                'max:255',
             ],
             'dependencia_id' => [
                 'sometimes',
                 'integer',
-                'exists:calidad_organigrama,id'
+                'exists:calidad_organigrama,id',
             ],
             'dias_vencimiento' => [
                 'nullable',
                 'integer',
                 'min:0',
-                'max:365'
+                'max:365',
             ],
             'a_g' => [
                 'nullable',
                 'string',
-                'max:10'
+                'max:10',
             ],
             'a_c' => [
                 'nullable',
                 'string',
-                'max:10'
+                'max:10',
             ],
             'ct' => [
                 'nullable',
-                'boolean'
+                'boolean',
             ],
             'e' => [
                 'nullable',
-                'boolean'
+                'boolean',
             ],
             'm_d' => [
                 'nullable',
-                'boolean'
+                'boolean',
             ],
             's' => [
                 'nullable',
-                'boolean'
+                'boolean',
             ],
             'procedimiento' => [
                 'nullable',
                 'string',
-                'max:500'
+                'max:500',
             ],
             'requiere_pdf_a' => [
                 'nullable',
-                'boolean'
+                'boolean',
             ],
             'pdf_a_nivel' => [
                 'nullable',
                 'string',
                 'max:10',
-                'in:1a,1b,2a,2b,3'
+                'in:1a,1b,2a,2b,3',
             ],
             'convierte_a_pdf_a' => [
                 'nullable',
-                'boolean'
+                'boolean',
             ],
             'parent' => [
                 'nullable',
                 'integer',
                 'exists:clasificacion_documental_trd,id',
-                'different:' . $trdId // No puede ser padre de sí mismo
-            ]
+                'different:'.$trdId, // No puede ser padre de sí mismo
+            ],
         ];
 
         // Validaciones específicas según el tipo
@@ -114,7 +117,7 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
                 'required',
                 'integer',
                 'exists:clasificacion_documental_trd,id',
-                'different:' . $trdId
+                'different:'.$trdId,
             ];
         }
 
@@ -123,8 +126,6 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -144,8 +145,6 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
@@ -184,7 +183,7 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
     /**
      * Configure the validator instance.
      *
-     * @param  \Illuminate\Validation\Validator  $validator
+     * @param  Validator  $validator
      * @return void
      */
     public function withValidator($validator)
@@ -198,8 +197,7 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
     /**
      * Valida la jerarquía según el tipo de elemento.
      *
-     * @param \Illuminate\Validation\Validator $validator
-     * @return void
+     * @param  Validator  $validator
      */
     private function validarJerarquia($validator): void
     {
@@ -207,22 +205,25 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
         $parentId = $this->input('parent');
 
         if (in_array($tipo, ['SubSerie', 'TipoDocumento']) && $parentId) {
-            $parent = \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::find($parentId);
+            $parent = ClasificacionDocumentalTRD::find($parentId);
 
-            if (!$parent) {
+            if (! $parent) {
                 $validator->errors()->add('parent', 'El elemento padre seleccionado no existe.');
+
                 return;
             }
 
             // Validar jerarquía para SubSerie
             if ($tipo === 'SubSerie' && $parent->tipo !== 'Serie') {
                 $validator->errors()->add('parent', 'Las SubSeries solo pueden tener como padre una Serie.');
+
                 return;
             }
 
             // Validar jerarquía para TipoDocumento
-            if ($tipo === 'TipoDocumento' && !in_array($parent->tipo, ['Serie', 'SubSerie'])) {
+            if ($tipo === 'TipoDocumento' && ! in_array($parent->tipo, ['Serie', 'SubSerie'])) {
                 $validator->errors()->add('parent', 'Los Tipos de Documento solo pueden tener como padre una Serie o SubSerie.');
+
                 return;
             }
 
@@ -230,6 +231,7 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
             $dependenciaId = $this->input('dependencia_id');
             if ($dependenciaId && $parent->dependencia_id != $dependenciaId) {
                 $validator->errors()->add('parent', 'El elemento padre debe pertenecer a la misma dependencia.');
+
                 return;
             }
         }
@@ -238,16 +240,16 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
     /**
      * Valida que los cambios sean permitidos según el estado actual.
      *
-     * @param \Illuminate\Validation\Validator $validator
-     * @return void
+     * @param  Validator  $validator
      */
     private function validarCambiosPermitidos($validator): void
     {
         $trdId = $this->route('trd') ?? $this->route('id');
-        $trd = \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::find($trdId);
+        $trd = ClasificacionDocumentalTRD::find($trdId);
 
-        if (!$trd) {
+        if (! $trd) {
             $validator->errors()->add('id', 'El elemento TRD no existe.');
+
             return;
         }
 
@@ -255,6 +257,7 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
         $nuevoTipo = $this->input('tipo');
         if ($nuevoTipo && $nuevoTipo !== $trd->tipo && $trd->hasChildren()) {
             $validator->errors()->add('tipo', 'No se puede cambiar el tipo de un elemento que tiene hijos.');
+
             return;
         }
 
@@ -262,6 +265,7 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
         $nuevaDependenciaId = $this->input('dependencia_id');
         if ($nuevaDependenciaId && $nuevaDependenciaId != $trd->dependencia_id && $trd->hasChildren()) {
             $validator->errors()->add('dependencia_id', 'No se puede cambiar la dependencia de un elemento que tiene hijos.');
+
             return;
         }
     }

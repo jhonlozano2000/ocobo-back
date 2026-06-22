@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Ventanilla\Recibidos;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ListRadicadosRecibidosRequest extends FormRequest
@@ -19,7 +20,7 @@ class ListRadicadosRecibidosRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -27,55 +28,53 @@ class ListRadicadosRecibidosRequest extends FormRequest
             'search' => [
                 'nullable',
                 'string',
-                'max:100'
+                'max:100',
             ],
             'fecha_desde' => [
                 'nullable',
                 'date',
-                'before_or_equal:fecha_hasta'
+                'before_or_equal:fecha_hasta',
             ],
             'fecha_hasta' => [
                 'nullable',
                 'date',
-                'after_or_equal:fecha_desde'
+                'after_or_equal:fecha_desde',
             ],
             'clasifica_documen_id' => [
                 'nullable',
                 'integer',
-                'exists:clasificacion_documental_trd,id'
+                'exists:clasificacion_documental_trd,id',
             ],
             'tercero_id' => [
                 'nullable',
                 'integer',
-                'exists:gestion_terceros,id'
+                'exists:gestion_terceros,id',
             ],
             'estado' => [
                 'nullable',
-                'in:0,1'
+                'in:0,1',
             ],
             'estado_trabajo' => [
                 'nullable',
                 'string',
-                'in:RECIBIDO,EN_PROCESO,POR_VENCER,VENCIDO,FINALIZADO'
+                'in:RECIBIDO,EN_PROCESO,POR_VENCER,VENCIDO,FINALIZADO',
             ],
             'usuario_responsable' => [
                 'nullable',
                 'integer',
-                'exists:users,id'
+                'exists:users,id',
             ],
             'per_page' => [
                 'nullable',
                 'integer',
                 'min:1',
-                'max:100'
-            ]
+                'max:100',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -95,14 +94,12 @@ class ListRadicadosRecibidosRequest extends FormRequest
             'usuario_responsable.exists' => 'El usuario responsable seleccionado no existe.',
             'per_page.integer' => 'El número de elementos por página debe ser un número entero.',
             'per_page.min' => 'El número de elementos por página debe ser al menos 1.',
-            'per_page.max' => 'El número de elementos por página no puede superar 100.'
+            'per_page.max' => 'El número de elementos por página no puede superar 100.',
         ];
     }
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
@@ -114,7 +111,7 @@ class ListRadicadosRecibidosRequest extends FormRequest
             'tercero_id' => 'tercero',
             'estado' => 'estado',
             'usuario_responsable' => 'usuario responsable',
-            'per_page' => 'elementos por página'
+            'per_page' => 'elementos por página',
         ];
     }
 }

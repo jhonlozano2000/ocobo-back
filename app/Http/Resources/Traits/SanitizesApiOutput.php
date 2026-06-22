@@ -29,9 +29,6 @@ trait SanitizesApiOutput
 
     /**
      * Sanitiza el array antes de retornarlo
-     *
-     * @param array $data
-     * @return array
      */
     protected function sanitizeOutput(array $data): array
     {
@@ -49,9 +46,6 @@ trait SanitizesApiOutput
 
     /**
      * Elimina campos sensibles del array
-     *
-     * @param array $data
-     * @return array
      */
     private function removeSensitiveFields(array $data): array
     {
@@ -64,14 +58,11 @@ trait SanitizesApiOutput
 
     /**
      * Enmaschera datos sensibles parcialmente
-     *
-     * @param array $data
-     * @return array
      */
     private function maskSensitiveData(array $data): array
     {
         foreach ($this->maskedFields as $field => $method) {
-            if (!isset($data[$field])) {
+            if (! isset($data[$field])) {
                 continue;
             }
 
@@ -95,7 +86,8 @@ trait SanitizesApiOutput
         }
 
         $masked = strlen($value) - $visible;
-        return str_repeat('*', $masked) . substr($value, -$visible);
+
+        return str_repeat('*', $masked).substr($value, -$visible);
     }
 
     /**
@@ -112,9 +104,9 @@ trait SanitizesApiOutput
         $domain = $parts[1];
 
         if (strlen($local) > 2) {
-            $local = substr($local, 0, 2) . '***';
+            $local = substr($local, 0, 2).'***';
         } else {
-            $local = '**' . $local;
+            $local = '**'.$local;
         }
 
         return "{$local}@{$domain}";
@@ -122,9 +114,6 @@ trait SanitizesApiOutput
 
     /**
      * Sanitiza todos los strings contra XSS
-     *
-     * @param array $data
-     * @return array
      */
     private function sanitizeStrings(array $data): array
     {

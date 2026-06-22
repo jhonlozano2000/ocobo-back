@@ -21,7 +21,7 @@ class GestionTercero extends Model
         'email',
         'tipo',
         'notifica_email',
-        'notifica_msm'
+        'notifica_msm',
     ];
 
     /**

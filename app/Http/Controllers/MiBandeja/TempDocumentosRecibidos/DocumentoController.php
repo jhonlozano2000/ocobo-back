@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\MiBandeja\TempDocumentosRecibidos;
 
+use App\Events\MiBandeja\TempReci\ContenidoActualizado;
+use App\Events\MiBandeja\TempReci\UsuarioConectado;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\MiBandeja\TempReci\ConfiguracionPaginaRequest;
 use App\Http\Requests\MiBandeja\TempReci\DocumentoRequest;
@@ -11,13 +13,10 @@ use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\MiBandeja\TempDocumentosRecibidos\DocumentoUsuario;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Version;
 use App\Services\MiBandeja\TempDocumentosRecibidos\CursorService;
-use App\Events\MiBandeja\TempReci\ContenidoActualizado;
-use App\Events\MiBandeja\TempReci\UsuarioConectado;
-use App\Events\MiBandeja\TempReci\UsuarioDesconectado;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Controlador de documentos colaborativos para Comunicaciones Recibidas.
@@ -30,13 +29,14 @@ class DocumentoController extends Controller
     public function __construct(
         protected CursorService $cursorService
     ) {}
+
     /**
      * Obtiene el listado de documentos colaborativos del usuario autenticado.
      *
      * Retorna todos los documentos donde el usuario tiene acceso (como creador o asignado).
      * Incluye contenido, creador y paginación.
      *
-     * @param Request $request Solicitud HTTP
+     * @param  Request  $request  Solicitud HTTP
      * @return AnonymousResourceCollection Lista paginada de documentos
      *
      * @queryParam per_page integer Elementos por página (por defecto: 20). Example: 20
@@ -72,7 +72,7 @@ class DocumentoController extends Controller
      * Inicializa un documento vinculado a un radicado de comunicaciones recibidas.
      * Automáticamente crea el registro de contenido vacío.
      *
-     * @param DocumentoRequest $request Solicitud validada
+     * @param  DocumentoRequest  $request  Solicitud validada
      * @return JsonResponse Documento creado con código 201
      *
      * @bodyParam radica_reci_id integer required ID del radicado. Example: 1
@@ -87,7 +87,6 @@ class DocumentoController extends Controller
      *     "estado": "borrador"
      *   }
      * }
-     *
      * @response 422 {
      *   "message": "Error de validación",
      *   "errors": {"titulo": ["El título es obligatorio"]}
@@ -105,7 +104,7 @@ class DocumentoController extends Controller
             'user_id' => $request->user()->id,
         ];
 
-        if (!empty($data['radica_reci_id'])) {
+        if (! empty($data['radica_reci_id'])) {
             $documentoData['radica_reci_id'] = $data['radica_reci_id'];
         }
 
@@ -128,8 +127,8 @@ class DocumentoController extends Controller
      * Retorna el documento, contenido, usuarios asignados y cursores activos.
      * Inicializa el cursor del usuario si no existe.
      *
-     * @param Request $request Solicitud HTTP
-     * @param Documento $documento Documento a mostrar
+     * @param  Request  $request  Solicitud HTTP
+     * @param  Documento  $documento  Documento a mostrar
      * @return DocumentoResource|JsonResponse Documento con relaciones o error 403
      *
      * @response 200 {
@@ -140,14 +139,13 @@ class DocumentoController extends Controller
      *     "cursores": [{"user_id": 1, "color": "#E53935"}]
      *   }
      * }
-     *
      * @response 403 {
      *   "message": "No tienes acceso a este documento"
      * }
      */
     public function show(Request $request, Documento $documento): DocumentoResource|JsonResponse
     {
-        if (!$documento->tieneAcceso($request->user())) {
+        if (! $documento->tieneAcceso($request->user())) {
             return response()->json(['message' => 'No tienes acceso a este documento'], 403);
         }
 
@@ -162,7 +160,7 @@ class DocumentoController extends Controller
                 $request->user()->nombres
             );
         } catch (\Exception $e) {
-            \Log::warning('Broadcast UsuarioConectado falló: ' . $e->getMessage());
+            \Log::warning('Broadcast UsuarioConectado falló: '.$e->getMessage());
         }
 
         return new DocumentoResource($documento->load(['contenido', 'cursores', 'usuarios.usuario']));
@@ -174,8 +172,8 @@ class DocumentoController extends Controller
      * Actualiza título, estado, notas o visibilidad.
      * No actualiza el contenido del editor (usar sincronizar).
      *
-     * @param DocumentoRequest $request Solicitud validada
-     * @param Documento $documento Documento a actualizar
+     * @param  DocumentoRequest  $request  Solicitud validada
+     * @param  Documento  $documento  Documento a actualizar
      * @return DocumentoResource|JsonResponse Documento actualizado o error 403
      *
      * @bodyParam titulo string Nuevo título. Example: "Oficio corregido"
@@ -188,14 +186,13 @@ class DocumentoController extends Controller
      *     "estado": "en_revision"
      *   }
      * }
-     *
      * @response 403 {
      *   "message": "No tienes permisos para editar este documento"
      * }
      */
     public function update(DocumentoRequest $request, Documento $documento): DocumentoResource|JsonResponse
     {
-        if (!$documento->puedeEditar($request->user())) {
+        if (! $documento->puedeEditar($request->user())) {
             return response()->json(['message' => 'No tienes permisos para editar este documento'], 403);
         }
 
@@ -210,14 +207,13 @@ class DocumentoController extends Controller
      * Solo el creador puede eliminar el documento.
      * Elimina en cascada contenido, versiones, comentarios y cursores.
      *
-     * @param Request $request Solicitud HTTP
-     * @param Documento $documento Documento a eliminar
+     * @param  Request  $request  Solicitud HTTP
+     * @param  Documento  $documento  Documento a eliminar
      * @return JsonResponse Mensaje de confirmación o error 403
      *
      * @response 200 {
      *   "message": "Documento eliminado correctamente"
      * }
-     *
      * @response 403 {
      *   "message": "Solo el creador puede eliminar el documento"
      * }
@@ -240,8 +236,8 @@ class DocumentoController extends Controller
      * Si es diferente, actualiza y retorna el contenido del servidor.
      * Si es igual, retorna confirmación sin contenido.
      *
-     * @param Request $request Solicitud con contenido Yjs
-     * @param Documento $documento Documento a sincronizar
+     * @param  Request  $request  Solicitud con contenido Yjs
+     * @param  Documento  $documento  Documento a sincronizar
      * @return JsonResponse Estado de sincronización
      *
      * @bodyParam contenido array required Contenido Yjs JSON. Example: [{"insert": "texto"}]
@@ -250,20 +246,18 @@ class DocumentoController extends Controller
      *   "sincronizado": true,
      *   "hash": "sha256..."
      * }
-     *
      * @response 200 {
      *   "sincronizado": true,
      *   "hash": "sha256...",
      *   "contenido": [{"insert": "texto servidor"}]
      * }
-     *
      * @response 403 {
      *   "message": "No tienes permisos para editar"
      * }
      */
     public function sincronizar(Request $request, Documento $documento): JsonResponse
     {
-        if (!$documento->puedeEditar($request->user())) {
+        if (! $documento->puedeEditar($request->user())) {
             return response()->json(['message' => 'No tienes permisos para editar'], 403);
         }
 
@@ -273,7 +267,7 @@ class DocumentoController extends Controller
         return DB::transaction(function () use ($documento, $contenido, $hashCliente, $request) {
             $contenidoDoc = $documento->contenido;
 
-            if (!$contenidoDoc) {
+            if (! $contenidoDoc) {
                 $contenidoDoc = Contenido::create([
                     'documento_id' => $documento->id,
                     'contenido_yjs' => $contenido,
@@ -300,7 +294,7 @@ class DocumentoController extends Controller
                     $request->user()->id
                 );
             } catch (\Exception $e) {
-                \Log::warning('Broadcast falló en sincronizar: ' . $e->getMessage());
+                \Log::warning('Broadcast falló en sincronizar: '.$e->getMessage());
             }
 
             return response()->json([
@@ -315,14 +309,16 @@ class DocumentoController extends Controller
     {
         $ultimaVersion = $documento->versiones()->first();
 
-        if (!$ultimaVersion) {
+        if (! $ultimaVersion) {
             Version::crearVersion($documento, $contenidoNuevo, $user, 'Auto-guardado: primera versión');
+
             return;
         }
 
         $minutosDesdeUltimaVersion = $ultimaVersion->created_at->diffInMinutes(now());
         if ($minutosDesdeUltimaVersion >= 5) {
             Version::crearVersion($documento, $contenidoNuevo, $user, 'Auto-guardado automático');
+
             return;
         }
 
@@ -347,7 +343,9 @@ class DocumentoController extends Controller
         $texto = '';
 
         foreach ($contenido as $bloque) {
-            if (!isset($bloque['type'])) continue;
+            if (! isset($bloque['type'])) {
+                continue;
+            }
 
             if ($bloque['type'] === 'doc') {
                 $texto .= $this->extraerTextoDeContenido($bloque['content'] ?? []);
@@ -369,28 +367,27 @@ class DocumentoController extends Controller
      *
      * Retorna el contenido y hash para inicializar el editor local.
      *
-     * @param Request $request Solicitud HTTP
-     * @param Documento $documento Documento
+     * @param  Request  $request  Solicitud HTTP
+     * @param  Documento  $documento  Documento
      * @return JsonResponse Contenido Yjs y hash
      *
      * @response 200 {
      *   "contenido": [],
      *   "hash": "sha256..."
      * }
-     *
      * @response 403 {
      *   "message": "No tienes acceso"
      * }
      */
     public function obtenerContenido(Request $request, Documento $documento): JsonResponse
     {
-        if (!$documento->tieneAcceso($request->user())) {
+        if (! $documento->tieneAcceso($request->user())) {
             return response()->json(['message' => 'No tienes acceso'], 403);
         }
 
         $contenido = $documento->contenido;
-        
-        if (!$contenido) {
+
+        if (! $contenido) {
             return response()->json([
                 'contenido' => [],
                 'hash' => null,
@@ -408,8 +405,8 @@ class DocumentoController extends Controller
      *
      * Guarda una versión del contenido para restaurar después.
      *
-     * @param Request $request Solicitud con descripción
-     * @param Documento $documento Documento
+     * @param  Request  $request  Solicitud con descripción
+     * @param  Documento  $documento  Documento
      * @return JsonResponse Versión creada
      *
      * @bodyParam descripcion string Descripción de la versión. Example: "Antes de modificar"
@@ -418,14 +415,13 @@ class DocumentoController extends Controller
      *   "message": "Versión creada correctamente",
      *   "version": {"id": 1, "numero_version": 1}
      * }
-     *
      * @response 403 {
      *   "message": "No tienes permisos"
      * }
      */
     public function crearVersion(Request $request, Documento $documento): JsonResponse
     {
-        if (!$documento->puedeEditar($request->user())) {
+        if (! $documento->puedeEditar($request->user())) {
             return response()->json(['message' => 'No tienes permisos'], 403);
         }
 
@@ -450,7 +446,7 @@ class DocumentoController extends Controller
     /**
      * Lista todas las versiones de un documento.
      *
-     * @param Documento $documento Documento
+     * @param  Documento  $documento  Documento
      * @return JsonResponse Lista de versiones
      *
      * @response 200 {
@@ -475,27 +471,25 @@ class DocumentoController extends Controller
      * Reemplaza el contenido actual con el de la versión.
      * Crea una nueva versión de registro de la restauración.
      *
-     * @param Request $request Solicitud HTTP
-     * @param Documento $documento Documento
-     * @param Version $version Versión a restaurar
+     * @param  Request  $request  Solicitud HTTP
+     * @param  Documento  $documento  Documento
+     * @param  Version  $version  Versión a restaurar
      * @return JsonResponse Contenido restaurado
      *
      * @response 200 {
      *   "message": "Versión restaurada correctamente",
      *   "contenido": []
      * }
-     *
      * @response 400 {
      *   "message": "La versión no pertenece a este documento"
      * }
-     *
      * @response 403 {
      *   "message": "No tienes permisos"
      * }
      */
     public function restaurarVersion(Request $request, Documento $documento, Version $version): JsonResponse
     {
-        if (!$documento->puedeEditar($request->user())) {
+        if (! $documento->puedeEditar($request->user())) {
             return response()->json(['message' => 'No tienes permisos'], 403);
         }
 
@@ -521,8 +515,8 @@ class DocumentoController extends Controller
      *
      * Roles disponibles: firmante, responsable, proyector.
      *
-     * @param Request $request Solicitud con usuarios
-     * @param Documento $documento Documento
+     * @param  Request  $request  Solicitud con usuarios
+     * @param  Documento  $documento  Documento
      * @return JsonResponse Confirmación
      *
      * @bodyParam usuarios array required Lista de usuarios
@@ -532,7 +526,6 @@ class DocumentoController extends Controller
      * @response 200 {
      *   "message": "Usuarios asignados correctamente"
      * }
-     *
      * @response 403 {
      *   "message": "Solo el creador puede asignar usuarios"
      * }
@@ -564,7 +557,7 @@ class DocumentoController extends Controller
 
     public function guardarConfiguracionPagina(ConfiguracionPaginaRequest $request, Documento $documento): JsonResponse
     {
-        if (!$documento->puedeEditar($request->user())) {
+        if (! $documento->puedeEditar($request->user())) {
             return response()->json(['message' => 'No tienes permisos para editar este documento'], 403);
         }
 
@@ -607,8 +600,8 @@ class DocumentoController extends Controller
     /**
      * Inicializa el cursor de un usuario en el documento.
      *
-     * @param Documento $documento Documento
-     * @param User $user Usuario
+     * @param  Documento  $documento  Documento
+     * @param  User  $user  Usuario
      */
     private function inicializarCursor(Documento $documento, $user): void
     {

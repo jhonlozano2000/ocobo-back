@@ -4,26 +4,30 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
+use App\Helpers\ArchivoHelper;
 use App\Models\Calidad\CalidadOrganigrama;
-use App\Models\Configuracion\configVentanilla;
-use App\Models\Configuracion\ConfigSede;
 use App\Models\Configuracion\ConfigDiviPoli;
-use App\Models\ControlAcceso\UserNotificationSetting;
+use App\Models\Configuracion\ConfigSede;
+use App\Models\Configuracion\configVentanilla;
 use App\Models\ControlAcceso\UserCargo;
+use App\Models\ControlAcceso\UserNotificationSetting;
 use App\Models\ControlAcceso\UsersSession;
 use App\Models\VentanillaUnica\Comunes\VentanillaUnica;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
-use App\Helpers\ArchivoHelper;
-use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, HasRoles;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -77,9 +81,9 @@ class User extends Authenticatable
 
     /**
      * Obtiene la URL de cualquier archivo del usuario usando ArchivoHelper.
-     * @param string $campo Nombre del atributo (ej: 'avatar', 'firma')
-     * @param string $disk Nombre del disco
-     * @return string|null
+     *
+     * @param  string  $campo  Nombre del atributo (ej: 'avatar', 'firma')
+     * @param  string  $disk  Nombre del disco
      */
     public function getArchivoUrl(string $campo, string $disk): ?string
     {
@@ -88,8 +92,6 @@ class User extends Authenticatable
 
     /**
      * Obtiene información formateada del usuario para respuestas API.
-     *
-     * @return array
      */
     public function getInfoUsuario(): array
     {
@@ -97,7 +99,7 @@ class User extends Authenticatable
             'id' => $this->id,
             'nombres' => $this->nombres,
             'apellidos' => $this->apellidos,
-            'nombre_completo' => trim($this->nombres . ' ' . $this->apellidos),
+            'nombre_completo' => trim($this->nombres.' '.$this->apellidos),
             'email' => $this->email ?? null,
         ];
     }
@@ -105,7 +107,7 @@ class User extends Authenticatable
     /**
      * Relación con los cargos históricos del usuario a través del modelo UserCargo.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function cargosHistoricos()
     {
@@ -117,7 +119,7 @@ class User extends Authenticatable
     /**
      * Relación para obtener el cargo ACTIVO del usuario.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     * @return HasOne
      */
     public function cargoActivo()
     {
@@ -130,7 +132,7 @@ class User extends Authenticatable
     /**
      * Relación many-to-many con CalidadOrganigrama (para compatibilidad).
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     * @return BelongsToMany
      */
     public function cargos()
     {
@@ -142,10 +144,10 @@ class User extends Authenticatable
     /**
      * Asigna un nuevo cargo al usuario y finaliza el cargo anterior si existe.
      *
-     * @param int $cargoId ID del cargo a asignar
-     * @param string|null $fechaInicio Fecha de inicio (por defecto hoy)
-     * @param string|null $observaciones Observaciones adicionales
-     * @return UserCargo
+     * @param  int  $cargoId  ID del cargo a asignar
+     * @param  string|null  $fechaInicio  Fecha de inicio (por defecto hoy)
+     * @param  string|null  $observaciones  Observaciones adicionales
+     *
      * @throws \Exception
      */
     public function asignarCargo(int $cargoId, ?string $fechaInicio = null, ?string $observaciones = null): UserCargo
@@ -155,7 +157,7 @@ class User extends Authenticatable
             ->where('tipo', 'Cargo')
             ->first();
 
-        if (!$cargo) {
+        if (! $cargo) {
             throw new \Exception('El cargo especificado no existe o no es válido.');
         }
 
@@ -168,16 +170,15 @@ class User extends Authenticatable
             'cargo_id' => $cargoId,
             'fecha_inicio' => $fechaInicio ?? now()->format('Y-m-d'),
             'observaciones' => $observaciones,
-            'estado' => true
+            'estado' => true,
         ]);
     }
 
     /**
      * Finaliza el cargo activo actual del usuario.
      *
-     * @param string|null $fechaFin Fecha de finalización (por defecto hoy)
-     * @param string|null $observaciones Observaciones adicionales
-     * @return bool
+     * @param  string|null  $fechaFin  Fecha de finalización (por defecto hoy)
+     * @param  string|null  $observaciones  Observaciones adicionales
      */
     public function finalizarCargoActivo(?string $fechaFin = null, ?string $observaciones = null): bool
     {
@@ -192,8 +193,6 @@ class User extends Authenticatable
 
     /**
      * Obtiene el cargo activo del usuario como objeto.
-     *
-     * @return UserCargo|null
      */
     public function obtenerCargoActivo(): ?UserCargo
     {
@@ -202,8 +201,6 @@ class User extends Authenticatable
 
     /**
      * Verifica si el usuario tiene un cargo activo.
-     *
-     * @return bool
      */
     public function tieneCargoActivo(): bool
     {
@@ -212,19 +209,18 @@ class User extends Authenticatable
 
     /**
      * Obtiene información detallada del cargo actual.
-     *
-     * @return array|null
      */
     public function getInfoCargoActivo(): ?array
     {
         $cargoActivo = $this->obtenerCargoActivo();
+
         return $cargoActivo ? $cargoActivo->getDetalleCompleto() : null;
     }
 
     /**
      * Obtiene el historial completo de cargos del usuario.
      *
-     * @return \Illuminate\Database\Eloquent\Collection
+     * @return Collection
      */
     public function getHistorialCargos()
     {
@@ -254,7 +250,7 @@ class User extends Authenticatable
     /**
      * Obtiene la división política asociada al usuario.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function divisionPolitica()
     {
@@ -289,7 +285,7 @@ class User extends Authenticatable
     {
         return $this->sedes()->attach($sedeId, [
             'estado' => true,
-            'observaciones' => $observaciones
+            'observaciones' => $observaciones,
         ]);
     }
 

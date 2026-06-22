@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\ClasificacionDocumental;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ClasificacionDocumentalRequest extends FormRequest
@@ -17,13 +18,13 @@ class ClasificacionDocumentalRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
             'file' => 'required|file|mimes:xlsx|max:2048',
-            'dependencia_id' => 'required|exists:calidad_organigrama,id'
+            'dependencia_id' => 'required|exists:calidad_organigrama,id',
         ];
     }
 

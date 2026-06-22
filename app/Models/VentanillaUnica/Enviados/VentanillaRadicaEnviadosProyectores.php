@@ -2,6 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Enviados;
 
+use App\Models\ControlAcceso\UserCargo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -23,16 +24,18 @@ class VentanillaRadicaEnviadosProyectores extends Model
 
     public function userCargo()
     {
-        return $this->belongsTo(\App\Models\ControlAcceso\UserCargo::class, 'users_cargos_id');
+        return $this->belongsTo(UserCargo::class, 'users_cargos_id');
     }
 
     public function getInfoProyector(): ?array
     {
         $user = $this->relationLoaded('userCargo') ? $this->userCargo?->user : null;
         $cargo = $this->relationLoaded('userCargo') ? $this->userCargo?->cargo : null;
-        
-        if (!$user) return null;
-        
+
+        if (! $user) {
+            return null;
+        }
+
         return [
             'id' => $this->id,
             'usuario' => $user ? [

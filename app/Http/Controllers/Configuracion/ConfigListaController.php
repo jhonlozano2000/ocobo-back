@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\Configuracion\StoreConfigListaRequest;
 use App\Http\Requests\Configuracion\UpdateConfigListaRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\Configuracion\ConfigLista;
+use App\Services\Configuracion\ConfigListaService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Services\Configuracion\ConfigListaService;
 use Symfony\Component\HttpFoundation\Request as HttpFoundationRequest;
 
 class ConfigListaController extends Controller
@@ -59,8 +60,8 @@ class ConfigListaController extends Controller
      * Este método permite obtener los detalles de una lista maestra específica,
      * incluyendo todos sus elementos asociados.
      *
-     * @param ConfigLista $lista La lista a obtener (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la lista
+     * @param  ConfigLista  $lista  La lista a obtener (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON con la lista
      *
      * @urlParam lista integer required El ID de la lista. Example: 1
      *
@@ -80,12 +81,10 @@ class ConfigListaController extends Controller
      *     ]
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Lista no encontrada"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener la lista",
@@ -112,7 +111,7 @@ class ConfigListaController extends Controller
         try {
             $lista = $this->service->update($id, $request->validated());
 
-            if (!$lista) {
+            if (! $lista) {
                 return $this->errorResponse('Lista no encontrada', null, 404);
             }
 
@@ -144,8 +143,8 @@ class ConfigListaController extends Controller
      * Este método retorna todas las listas maestras (cabezas) con todos sus detalles asociados.
      * Útil para obtener la estructura completa de todas las listas del sistema.
      *
-     * @param Request $request La solicitud HTTP que puede contener parámetros de filtrado
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las listas y sus detalles
+     * @param  Request  $request  La solicitud HTTP que puede contener parámetros de filtrado
+     * @return JsonResponse Respuesta JSON con las listas y sus detalles
      *
      * @queryParam search string Buscar por código o nombre de lista. Example: "TIPOS"
      * @queryParam per_page integer Número de elementos por página (por defecto: 15). Example: 20
@@ -178,7 +177,6 @@ class ConfigListaController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener las listas con detalles",
@@ -201,7 +199,7 @@ class ConfigListaController extends Controller
                     'detalle.id as id_detalle',
                     'detalle.codigo',
                     'detalle.nombre as nombre_detalle',
-                    'detalle.estado as estado_detalle'
+                    'detalle.estado as estado_detalle',
                 ]);
 
             // Aplicar filtros si se proporcionan
@@ -246,7 +244,8 @@ class ConfigListaController extends Controller
 
             return $this->successResponse($listas, 'Listas obtenidas exitosamente');
         } catch (\Exception $e) {
-            \Log::error('listaCabeza error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            \Log::error('listaCabeza error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
             return $this->errorResponse('Error al obtener las listas', $e->getMessage(), 500);
         }
     }
@@ -257,7 +256,7 @@ class ConfigListaController extends Controller
     public function destroy(int $id)
     {
         try {
-            if (!$this->service->delete($id)) {
+            if (! $this->service->delete($id)) {
                 return $this->errorResponse(
                     'No se puede eliminar porque tiene detalles asociados',
                     null,

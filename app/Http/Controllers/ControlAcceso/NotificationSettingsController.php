@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\ControlAcceso;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\ControlAcceso\UpdateNotificationSettingRequest;
-use App\Models\ControlAcceso\UserNotificationSetting;
+use App\Http\Traits\ApiResponseTrait;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -21,7 +22,7 @@ class NotificationSettingsController extends Controller
      * Es útil para que los usuarios puedan revisar y modificar sus preferencias
      * de notificaciones.
      *
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la configuración
+     * @return JsonResponse Respuesta JSON con la configuración
      *
      * @response 200 {
      *   "status": true,
@@ -36,7 +37,6 @@ class NotificationSettingsController extends Controller
      *     "updated_at": "2024-01-01T00:00:00.000000Z"
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener la configuración",
@@ -63,28 +63,28 @@ class NotificationSettingsController extends Controller
                 'new_for_you' => [
                     'app' => $settings->new_for_you,
                     'email' => $settings->new_for_you_email ?? $settings->new_for_you,
-                    'browser' => $settings->new_for_you_browser ?? $settings->new_for_you
+                    'browser' => $settings->new_for_you_browser ?? $settings->new_for_you,
                 ],
                 'account_activity' => [
                     'app' => $settings->account_activity,
                     'email' => $settings->account_activity_email ?? $settings->account_activity,
-                    'browser' => $settings->account_activity_browser ?? $settings->account_activity
+                    'browser' => $settings->account_activity_browser ?? $settings->account_activity,
                 ],
                 'new_browser_login' => [
                     'app' => $settings->new_browser_login,
                     'email' => $settings->new_browser_login_email ?? false,
-                    'browser' => $settings->new_browser_login_browser ?? false
+                    'browser' => $settings->new_browser_login_browser ?? false,
                 ],
                 'new_device_linked' => [
                     'app' => $settings->new_device_linked ?? false,
                     'email' => $settings->new_device_linked_email ?? false,
-                    'browser' => $settings->new_device_linked_browser ?? false
+                    'browser' => $settings->new_device_linked_browser ?? false,
                 ],
                 'email_notifications' => [
                     'app' => $settings->email_notifications ?? true,
                     'email' => true,
-                    'browser' => true
-                ]
+                    'browser' => true,
+                ],
             ];
 
             return $this->successResponse($formattedSettings, 'Configuración de notificaciones obtenida exitosamente');
@@ -100,8 +100,8 @@ class NotificationSettingsController extends Controller
      * habilitando o deshabilitando diferentes tipos de notificaciones según
      * sus preferencias.
      *
-     * @param UpdateNotificationSettingRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la configuración actualizada
+     * @param  UpdateNotificationSettingRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con la configuración actualizada
      *
      * @bodyParam new_for_you boolean required Habilitar notificaciones nuevas. Example: true
      * @bodyParam account_activity boolean required Habilitar notificaciones de actividad de cuenta. Example: true
@@ -120,7 +120,6 @@ class NotificationSettingsController extends Controller
      *     "updated_at": "2024-01-01T00:00:00.000000Z"
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Datos de validación incorrectos",
@@ -128,7 +127,6 @@ class NotificationSettingsController extends Controller
      *     "new_for_you": ["La configuración de notificaciones nuevas es obligatoria."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al actualizar la configuración",
@@ -144,9 +142,9 @@ class NotificationSettingsController extends Controller
             $validatedData = $request->validated();
 
             $settingsData = [];
-            
+
             if (isset($validatedData['new_for_you'])) {
-                $settingsData['new_for_you'] = is_array($validatedData['new_for_you']) 
+                $settingsData['new_for_you'] = is_array($validatedData['new_for_you'])
                     ? ($validatedData['new_for_you']['app'] ?? true)
                     : $validatedData['new_for_you'];
                 $settingsData['new_for_you_email'] = is_array($validatedData['new_for_you'])
@@ -227,6 +225,7 @@ class NotificationSettingsController extends Controller
             return $this->successResponse($settings->fresh(), 'Configuración actualizada exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar la configuración', $e->getMessage(), 500);
         }
     }
@@ -237,8 +236,8 @@ class NotificationSettingsController extends Controller
      * Este método permite a los administradores obtener la configuración de
      * notificaciones de cualquier usuario del sistema.
      *
-     * @param int $userId El ID del usuario
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la configuración
+     * @param  int  $userId  El ID del usuario
+     * @return JsonResponse Respuesta JSON con la configuración
      *
      * @urlParam userId integer required El ID del usuario. Example: 1
      *
@@ -253,12 +252,10 @@ class NotificationSettingsController extends Controller
      *     "new_browser_login": true
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Usuario no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener la configuración",
@@ -268,9 +265,9 @@ class NotificationSettingsController extends Controller
     public function getUserSettings(int $userId)
     {
         try {
-            $user = \App\Models\User::find($userId);
+            $user = User::find($userId);
 
-            if (!$user) {
+            if (! $user) {
                 return $this->errorResponse('Usuario no encontrado', null, 404);
             }
 
@@ -289,28 +286,28 @@ class NotificationSettingsController extends Controller
                 'new_for_you' => [
                     'app' => $settings->new_for_you,
                     'email' => $settings->new_for_you_email ?? $settings->new_for_you,
-                    'browser' => $settings->new_for_you_browser ?? $settings->new_for_you
+                    'browser' => $settings->new_for_you_browser ?? $settings->new_for_you,
                 ],
                 'account_activity' => [
                     'app' => $settings->account_activity,
                     'email' => $settings->account_activity_email ?? $settings->account_activity,
-                    'browser' => $settings->account_activity_browser ?? $settings->account_activity
+                    'browser' => $settings->account_activity_browser ?? $settings->account_activity,
                 ],
                 'new_browser_login' => [
                     'app' => $settings->new_browser_login,
                     'email' => $settings->new_browser_login_email ?? false,
-                    'browser' => $settings->new_browser_login_browser ?? false
+                    'browser' => $settings->new_browser_login_browser ?? false,
                 ],
                 'new_device_linked' => [
                     'app' => $settings->new_device_linked ?? false,
                     'email' => $settings->new_device_linked_email ?? false,
-                    'browser' => $settings->new_device_linked_browser ?? false
+                    'browser' => $settings->new_device_linked_browser ?? false,
                 ],
                 'email_notifications' => [
                     'app' => $settings->email_notifications ?? true,
                     'email' => true,
-                    'browser' => true
-                ]
+                    'browser' => true,
+                ],
             ];
 
             return $this->successResponse($formattedSettings, 'Configuración de notificaciones obtenida exitosamente');
@@ -325,11 +322,12 @@ class NotificationSettingsController extends Controller
      * Este método permite a los administradores modificar la configuración de
      * notificaciones de cualquier usuario del sistema.
      *
-     * @param UpdateNotificationSettingRequest $request La solicitud HTTP validada
-     * @param int $userId El ID del usuario
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la configuración actualizada
+     * @param  UpdateNotificationSettingRequest  $request  La solicitud HTTP validada
+     * @param  int  $userId  El ID del usuario
+     * @return JsonResponse Respuesta JSON con la configuración actualizada
      *
      * @urlParam userId integer required El ID del usuario. Example: 1
+     *
      * @bodyParam new_for_you boolean required Habilitar notificaciones nuevas. Example: true
      * @bodyParam account_activity boolean required Habilitar notificaciones de actividad de cuenta. Example: true
      * @bodyParam new_browser_login boolean required Habilitar notificaciones de nuevos inicios de sesión. Example: false
@@ -345,12 +343,10 @@ class NotificationSettingsController extends Controller
      *     "new_browser_login": false
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Usuario no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al actualizar la configuración",
@@ -362,18 +358,18 @@ class NotificationSettingsController extends Controller
         try {
             DB::beginTransaction();
 
-            $user = \App\Models\User::find($userId);
+            $user = User::find($userId);
 
-            if (!$user) {
+            if (! $user) {
                 return $this->errorResponse('Usuario no encontrado', null, 404);
             }
 
             $validatedData = $request->validated();
 
             $settingsData = [];
-            
+
             if (isset($validatedData['new_for_you'])) {
-                $settingsData['new_for_you'] = is_array($validatedData['new_for_you']) 
+                $settingsData['new_for_you'] = is_array($validatedData['new_for_you'])
                     ? ($validatedData['new_for_you']['app'] ?? true)
                     : $validatedData['new_for_you'];
                 $settingsData['new_for_you_email'] = is_array($validatedData['new_for_you'])
@@ -444,6 +440,7 @@ class NotificationSettingsController extends Controller
             return $this->successResponse($settings->fresh(), 'Configuración actualizada exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar la configuración', $e->getMessage(), 500);
         }
     }

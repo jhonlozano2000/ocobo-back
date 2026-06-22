@@ -2,9 +2,9 @@
 
 namespace App\Services\Seguridad;
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 /**
@@ -25,51 +25,76 @@ class AuditLogService
      * Categorías de eventos de auditoría
      */
     public const CATEGORIA_AUTENTICACION = 'autenticacion';
+
     public const CATEGORIA_AUTORIZACION = 'autorizacion';
+
     public const CATEGORIA_DATO = 'dato';
+
     public const CATEGORIA_DOCUMENTO = 'documento';
+
     public const CATEGORIA_CONFIGURACION = 'configuracion';
+
     public const CATEGORIA_SEGURIDAD = 'seguridad';
+
     public const CATEGORIA_SISTEMA = 'sistema';
 
     /**
      * Niveles de severidad
      */
     public const NIVEL_INFO = 'info';
+
     public const NIVEL_WARNING = 'warning';
+
     public const NIVEL_CRITICAL = 'critical';
 
     /**
      * Eventos específicos de auditoría
      */
     public const EVENTO_LOGIN_EXITO = 'auth.login.success';
+
     public const EVENTO_LOGIN_FALLO = 'auth.login.failure';
+
     public const EVENTO_LOGOUT = 'auth.logout';
+
     public const EVENTO_PERMISO_DENEGADO = 'auth.permission.denied';
+
     public const EVENTO_ACCESO_DATOS = 'data.access';
+
     public const EVENTO_CREACION_DATOS = 'data.create';
+
     public const EVENTO_MODIFICACION_DATOS = 'data.update';
+
     public const EVENTO_ELIMINACION_DATOS = 'data.delete';
+
     public const EVENTO_SUBIDA_ARCHIVO = 'document.upload';
+
     public const EVENTO_DESCARGA_ARCHIVO = 'document.download';
+
     public const EVENTO_ELIMINACION_ARCHIVO = 'document.delete';
+
     public const EVENTO_CAMBIO_PASSWORD = 'auth.password.change';
+
     public const EVENTO_CAMBIO_ROL = 'auth.role.change';
+
     public const EVENTO_FIRMA_DOCUMENTO = 'document.sign';
+
     public const EVENTO_RADICACION = 'document.radication';
+
     public const EVENTO_EXPORTE_DATOS = 'data.export';
+
     public const EVENTO_INTENTO_INTRUSION = 'security.intrusion_attempt';
+
     public const EVENTO_RATE_LIMIT_EXCEDIDO = 'security.rate_limit_exceeded';
+
     public const EVENTO_CONFIG_CAMBIO = 'config.change';
 
     /**
      * Registra un evento de auditoría
      *
-     * @param string $evento Evento específico
-     * @param string $categoria Categoría del evento
-     * @param array $datos Datos adicionales del evento
-     * @param string $nivel Nivel de severidad
-     * @return void
+     * @param  string  $evento  Evento específico
+     * @param  string  $categoria  Categoría del evento
+     * @param  array  $datos  Datos adicionales del evento
+     * @param  string  $nivel  Nivel de severidad
      */
     public static function log(
         string $evento,
@@ -116,7 +141,7 @@ class AuditLogService
     ): void {
         $nivel = $exito ? self::NIVEL_INFO : self::NIVEL_WARNING;
 
-        if (!$exito) {
+        if (! $exito) {
             $datosAdicionales['ip'] = self::getClientIP();
         }
 
@@ -133,7 +158,7 @@ class AuditLogService
      */
     public static function logPermisoDenegado(
         string $permiso,
-        string $recurso = null
+        ?string $recurso = null
     ): void {
         self::log(
             self::EVENTO_PERMISO_DENEGADO,
@@ -253,7 +278,7 @@ class AuditLogService
         $ipKeys = ['HTTP_X_FORWARDED_FOR', 'HTTP_CLIENT_IP', 'REMOTE_ADDR'];
 
         foreach ($ipKeys as $key) {
-            if (!empty($_SERVER[$key])) {
+            if (! empty($_SERVER[$key])) {
                 $ip = $_SERVER[$key];
                 // Verificar si es una IP válida
                 if (filter_var($ip, FILTER_VALIDATE_IP)) {
@@ -289,6 +314,7 @@ class AuditLogService
         if ($route) {
             $uri = $route->uri();
             $parts = explode('/', $uri);
+
             return $parts[0] ?? null;
         }
 

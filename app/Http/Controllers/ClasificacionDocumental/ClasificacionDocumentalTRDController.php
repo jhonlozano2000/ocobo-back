@@ -3,15 +3,15 @@
 namespace App\Http\Controllers\ClasificacionDocumental;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
+use App\Http\Requests\ClasificacionDocumental\ImportarTRDRequest;
 use App\Http\Requests\ClasificacionDocumental\StoreClasificacionDocumentalRequest;
 use App\Http\Requests\ClasificacionDocumental\UpdateClasificacionDocumentalRequest;
-use App\Http\Requests\ClasificacionDocumental\ImportarTRDRequest;
-use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\Calidad\CalidadOrganigrama;
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Services\ClasificacionDocumental\TRDService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use App\Services\ClasificacionDocumental\TRDService;
 
 class ClasificacionDocumentalTRDController extends Controller
 {
@@ -27,7 +27,7 @@ class ClasificacionDocumentalTRDController extends Controller
             'session_id' => $request->session()->getId(),
             'user_id' => auth()->id(),
             'logged_in' => auth()->check(),
-            'session_has_user' => $request->session()->has('_login_' . $request->ip()),
+            'session_has_user' => $request->session()->has('_login_'.$request->ip()),
             'cookie' => $request->hasHeader('Cookie') ? 'yes' : 'no',
         ]);
     }
@@ -35,7 +35,10 @@ class ClasificacionDocumentalTRDController extends Controller
     public function index(Request $request)
     {
         try {
-            $filters = $request->validated();
+            $filters = $request->only([
+                'dependencia_id', 'nombre', 'cod_agrupa_docu', 'codigo', 'estado',
+                'per_page', 'page', 'search', 'sort', 'order',
+            ]);
             $trd = $this->service->getAll($filters);
 
             return $this->successResponse($trd, 'TRD obtenidas exitosamente');
@@ -62,10 +65,10 @@ class ClasificacionDocumentalTRDController extends Controller
                 'children',
                 'dependencia',
                 'parent',
-                'parent.parent'
+                'parent.parent',
             ])->find($id);
 
-            if (!$trd) {
+            if (! $trd) {
                 return $this->errorResponse('Elemento TRD no encontrado', null, 404);
             }
 
@@ -80,7 +83,7 @@ class ClasificacionDocumentalTRDController extends Controller
         try {
             $trd = $this->service->update($id, $request->validated());
 
-            if (!$trd) {
+            if (! $trd) {
                 return $this->errorResponse('Elemento TRD no encontrado', null, 404);
             }
 
@@ -93,7 +96,7 @@ class ClasificacionDocumentalTRDController extends Controller
     public function destroy($id)
     {
         try {
-            if (!$this->service->delete($id)) {
+            if (! $this->service->delete($id)) {
                 return $this->errorResponse('No se puede eliminar el elemento TRD', 'El elemento tiene elementos hijos asociados', 422);
             }
 
@@ -120,7 +123,7 @@ class ClasificacionDocumentalTRDController extends Controller
         try {
             $dependencia = CalidadOrganigrama::find($id);
 
-            if (!$dependencia) {
+            if (! $dependencia) {
                 return $this->errorResponse('Dependencia no encontrada', null, 404);
             }
 
@@ -141,7 +144,7 @@ class ClasificacionDocumentalTRDController extends Controller
         try {
             $dependencia = CalidadOrganigrama::find($id);
 
-            if (!$dependencia) {
+            if (! $dependencia) {
                 return $this->errorResponse('Dependencia no encontrada', null, 404);
             }
 
@@ -151,7 +154,7 @@ class ClasificacionDocumentalTRDController extends Controller
                     'children',
                     'dependencia',
                     'children.parent',
-                    'children.parent.parent'
+                    'children.parent.parent',
                 ])
                 ->orderBy('cod', 'asc')
                 ->get();
@@ -159,7 +162,7 @@ class ClasificacionDocumentalTRDController extends Controller
             return $this->successResponse([
                 'dependencia' => $dependencia,
                 'elementos' => $elementos,
-                'total_elementos' => ClasificacionDocumentalTRD::where('dependencia_id', $id)->count()
+                'total_elementos' => ClasificacionDocumentalTRD::where('dependencia_id', $id)->count(),
             ], 'Elementos TRD obtenidos exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener elementos TRD', $e->getMessage(), 500);
@@ -171,7 +174,7 @@ class ClasificacionDocumentalTRDController extends Controller
         try {
             $rutaArchivo = 'plantillas/Ocobo - Plantilla TRD.xlsx';
 
-            if (!Storage::exists($rutaArchivo)) {
+            if (! Storage::exists($rutaArchivo)) {
                 return $this->errorResponse('Plantilla no encontrada', null, 404);
             }
 
@@ -220,6 +223,7 @@ class ClasificacionDocumentalTRDController extends Controller
                 $item->porcentaje_series = $total > 0 ? round(($item->series / $total) * 100, 2) : 0;
                 $item->porcentaje_subseries = $total > 0 ? round(($item->subseries / $total) * 100, 2) : 0;
                 $item->porcentaje_tipos_documento = $total > 0 ? round(($item->tipos_documento / $total) * 100, 2) : 0;
+
                 return $item;
             });
 
@@ -239,7 +243,7 @@ class ClasificacionDocumentalTRDController extends Controller
         try {
             $clasificacion = ClasificacionDocumentalTRD::find($id);
 
-            if (!$clasificacion) {
+            if (! $clasificacion) {
                 return $this->errorResponse('Elemento TRD no encontrado', null, 404);
             }
 
@@ -251,7 +255,7 @@ class ClasificacionDocumentalTRDController extends Controller
                 'clasificacion_tipo' => $clasificacion->tipo,
                 'dias_vencimiento' => $info['dias'],
                 'fuente' => $info['fuente'],
-                'jerarquia' => $info['jerarquia']
+                'jerarquia' => $info['jerarquia'],
             ], 'Días de vencimiento obtenidos exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener días de vencimiento', $e->getMessage(), 500);

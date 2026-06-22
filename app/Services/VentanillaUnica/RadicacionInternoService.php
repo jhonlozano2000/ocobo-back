@@ -14,18 +14,18 @@ class RadicacionInternoService
     {
         $query = VentanillaRadicaInterno::query();
 
-        if (!empty($filters['search'])) {
-            $query->where(fn($q) => $q
+        if (! empty($filters['search'])) {
+            $query->where(fn ($q) => $q
                 ->where('num_radicado', 'like', "%{$filters['search']}%")
                 ->orWhere('asunto', 'like', "%{$filters['search']}%")
             );
         }
 
-        if (!empty($filters['dependencia_origen_id'])) {
+        if (! empty($filters['dependencia_origen_id'])) {
             $query->where('dependencia_origen_id', $filters['dependencia_origen_id']);
         }
 
-        if (!empty($filters['dependencia_destino_id'])) {
+        if (! empty($filters['dependencia_destino_id'])) {
             $query->where('dependencia_destino_id', $filters['dependencia_destino_id']);
         }
 
@@ -36,7 +36,7 @@ class RadicacionInternoService
             'usuarioCreaRadicado',
             'destinatarios.user',
             'proyectores.userCargo.user',
-            'proyectores.userCargo.cargo'
+            'proyectores.userCargo.cargo',
         ])->orderBy('created_at', 'desc');
 
         return $query->paginate($filters['per_page'] ?? 10);
@@ -55,7 +55,7 @@ class RadicacionInternoService
             'destinatarios.user',
             'proyectores.userCargo.user',
             'proyectores.userCargo.cargo',
-            'archivos'
+            'archivos',
         ])->find($id);
     }
 
@@ -65,6 +65,7 @@ class RadicacionInternoService
     public function create(array $data): VentanillaRadicaInterno
     {
         $data['usuario_crea'] = $data['usuario_crea'] ?? auth()->id();
+
         return VentanillaRadicaInterno::create($data);
     }
 
@@ -74,12 +75,13 @@ class RadicacionInternoService
     public function update(int $id, array $data): ?VentanillaRadicaInterno
     {
         $radicado = VentanillaRadicaInterno::find($id);
-        
-        if (!$radicado) {
+
+        if (! $radicado) {
             return null;
         }
 
         $radicado->update($data);
+
         return $radicado->fresh();
     }
 
@@ -89,8 +91,8 @@ class RadicacionInternoService
     public function delete(int $id): bool
     {
         $radicado = VentanillaRadicaInterno::find($id);
-        
-        if (!$radicado) {
+
+        if (! $radicado) {
             return false;
         }
 

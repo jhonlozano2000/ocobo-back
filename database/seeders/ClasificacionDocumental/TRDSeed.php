@@ -2,9 +2,9 @@
 
 namespace Database\Seeders\ClasificacionDocumental;
 
-use Illuminate\Database\Seeder;
-use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Calidad\CalidadOrganigrama;
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use Illuminate\Database\Seeder;
 
 class TRDSeed extends Seeder
 {
@@ -16,8 +16,9 @@ class TRDSeed extends Seeder
         // Obtener una dependencia existente
         $dependencia = CalidadOrganigrama::first();
 
-        if (!$dependencia) {
+        if (! $dependencia) {
             $this->command->error('No hay dependencias disponibles. Ejecuta primero OrganigramaSeed.');
+
             return;
         }
 
@@ -38,7 +39,7 @@ class TRDSeed extends Seeder
             's' => false,
             'procedimiento' => 'PROC-001',
             'estado' => true,
-            'user_register' => 1
+            'user_register' => 1,
         ]);
 
         $serie2 = ClasificacionDocumentalTRD::create([
@@ -55,7 +56,7 @@ class TRDSeed extends Seeder
             's' => false,
             'procedimiento' => 'PROC-002',
             'estado' => true,
-            'user_register' => 1
+            'user_register' => 1,
         ]);
 
         // Crear SubSeries para la Serie 1
@@ -73,7 +74,7 @@ class TRDSeed extends Seeder
             's' => false,
             'procedimiento' => 'PROC-003',
             'estado' => true,
-            'user_register' => 1
+            'user_register' => 1,
         ]);
 
         $subserie2 = ClasificacionDocumentalTRD::create([
@@ -90,7 +91,7 @@ class TRDSeed extends Seeder
             's' => false,
             'procedimiento' => 'PROC-004',
             'estado' => true,
-            'user_register' => 1
+            'user_register' => 1,
         ]);
 
         // Crear SubSeries para la Serie 2
@@ -108,7 +109,7 @@ class TRDSeed extends Seeder
             's' => false,
             'procedimiento' => 'PROC-005',
             'estado' => true,
-            'user_register' => 1
+            'user_register' => 1,
         ]);
 
         // Crear Tipos de Documento
@@ -126,7 +127,7 @@ class TRDSeed extends Seeder
             's' => false,
             'procedimiento' => 'PROC-006',
             'estado' => true,
-            'user_register' => 1
+            'user_register' => 1,
         ]);
 
         ClasificacionDocumentalTRD::create([
@@ -143,7 +144,7 @@ class TRDSeed extends Seeder
             's' => false,
             'procedimiento' => 'PROC-007',
             'estado' => true,
-            'user_register' => 1
+            'user_register' => 1,
         ]);
 
         ClasificacionDocumentalTRD::create([
@@ -160,13 +161,13 @@ class TRDSeed extends Seeder
             's' => false,
             'procedimiento' => 'PROC-008',
             'estado' => true,
-            'user_register' => 1
+            'user_register' => 1,
         ]);
 
         $this->command->info('✅ Datos de prueba TRD creados exitosamente');
-        $this->command->info("📊 Se crearon:");
-        $this->command->info("   - 2 Series principales");
-        $this->command->info("   - 3 SubSeries");
-        $this->command->info("   - 3 Tipos de Documento");
+        $this->command->info('📊 Se crearon:');
+        $this->command->info('   - 2 Series principales');
+        $this->command->info('   - 3 SubSeries');
+        $this->command->info('   - 3 Tipos de Documento');
     }
 }

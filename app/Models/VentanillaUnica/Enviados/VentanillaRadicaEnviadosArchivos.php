@@ -2,10 +2,11 @@
 
 namespace App\Models\VentanillaUnica\Enviados;
 
+use App\Helpers\ArchivoHelper;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
-use App\Helpers\ArchivoHelper;
 
 class VentanillaRadicaEnviadosArchivos extends Model
 {
@@ -34,7 +35,7 @@ class VentanillaRadicaEnviadosArchivos extends Model
 
     public function usuarioSubio()
     {
-        return $this->belongsTo(\App\Models\User::class, 'subido_por');
+        return $this->belongsTo(User::class, 'subido_por');
     }
 
     public function getArchivoUrl(string $disk = 'radicados_enviados'): ?string
@@ -44,7 +45,7 @@ class VentanillaRadicaEnviadosArchivos extends Model
 
     public function getInfoArchivo(bool $incluirMetadatos = false): ?array
     {
-        if (!$this->archivo) {
+        if (! $this->archivo) {
             return null;
         }
         $info = [
@@ -64,6 +65,7 @@ class VentanillaRadicaEnviadosArchivos extends Model
             } catch (\Exception $e) {
             }
         }
+
         return $info;
     }
 }

@@ -2,11 +2,11 @@
 
 namespace App\Models\VentanillaUnica\Recibidos;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\User;
 
 class VentanillaRadicaReciComentario extends Model
 {
@@ -70,14 +70,16 @@ class VentanillaRadicaReciComentario extends Model
             'resuelto_por' => $userId,
             'fecha_resolucion' => now(),
         ]);
+
         return true;
     }
 
     public function getInfoUsuario(): ?array
     {
-        if (!$this->usuario) {
+        if (! $this->usuario) {
             return null;
         }
+
         return $this->usuario->getInfoUsuario();
     }
 
@@ -91,7 +93,7 @@ class VentanillaRadicaReciComentario extends Model
             'fecha_resolucion' => $this->fecha_resolucion,
             'es_nota_interna' => $this->es_nota_interna,
             'usuario' => $this->getInfoUsuario(),
-            'respuestas' => $this->respuestas->map(fn($r) => $r->getInfo())->toArray(),
+            'respuestas' => $this->respuestas->map(fn ($r) => $r->getInfo())->toArray(),
             'tiene_respuestas' => $this->tieneRespuestas(),
         ];
     }

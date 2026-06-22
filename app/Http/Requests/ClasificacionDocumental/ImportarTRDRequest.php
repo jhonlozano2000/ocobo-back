@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\ClasificacionDocumental;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ImportarTRDRequest extends FormRequest
@@ -17,12 +18,12 @@ class ImportarTRDRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules()
     {
         return [
-            'archivo' => 'required|file|mimes:xlsx,xls|max:2048'
+            'archivo' => 'required|file|mimes:xlsx,xls|max:2048',
         ];
     }
 
@@ -35,7 +36,7 @@ class ImportarTRDRequest extends FormRequest
             'archivo.required' => 'Debe adjuntar un archivo para importar la TRD.',
             'archivo.file' => 'El archivo debe ser un archivo válido.',
             'archivo.mimes' => 'El archivo debe estar en formato Excel (.xlsx o .xls).',
-            'archivo.max' => 'El tamaño del archivo no debe superar los 2MB.'
+            'archivo.max' => 'El tamaño del archivo no debe superar los 2MB.',
         ];
     }
 }

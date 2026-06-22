@@ -3,6 +3,7 @@
 namespace App\Models\MiBandeja\TempDocumentosRecibidos;
 
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -20,10 +21,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $posicion Posición del cursor en el documento
  * @property string|null $seleccion_inicio Inicio de selección
  * @property string|null $seleccion_fin Fin de selección
- * @property \Carbon\Carbon $ultima_actividad Última actualización
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- *
+ * @property Carbon $ultima_actividad Última actualización
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Documento $documento
  * @property-read User $usuario
  */
@@ -72,10 +72,9 @@ class Cursor extends Model
     /**
      * Actualiza la posición del cursor.
      *
-     * @param int $posicion Nueva posición
-     * @param string|null $inicio Inicio de selección
-     * @param string|null $fin Fin de selección
-     * @return void
+     * @param  int  $posicion  Nueva posición
+     * @param  string|null  $inicio  Inicio de selección
+     * @param  string|null  $fin  Fin de selección
      */
     public function actualizarPosicion(int $posicion, ?string $inicio = null, ?string $fin = null): void
     {
@@ -99,8 +98,6 @@ class Cursor extends Model
 
     /**
      * Convierte a array para broadcasting.
-     *
-     * @return array
      */
     public function toArray(): array
     {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Configuracion;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -31,7 +32,7 @@ class UpdateConfigSedeRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -43,41 +44,41 @@ class UpdateConfigSedeRequest extends FormRequest
             'nombre' => [
                 'sometimes',
                 'string',
-                'max:100'
+                'max:100',
             ],
             'codigo' => [
                 'sometimes',
                 'string',
                 'max:20',
-                Rule::unique('config_sedes', 'codigo')->ignore($sedeId, 'id')
+                Rule::unique('config_sedes', 'codigo')->ignore($sedeId, 'id'),
             ],
             'direccion' => [
                 'sometimes',
                 'string',
-                'max:255'
+                'max:255',
             ],
             'telefono' => [
                 'nullable',
                 'string',
-                'max:20'
+                'max:20',
             ],
             'email' => [
                 'nullable',
                 'email',
-                'max:100'
+                'max:100',
             ],
             'ubicacion' => [
                 'nullable',
                 'string',
-                'max:255'
+                'max:255',
             ],
             'divi_poli_id' => [
                 'nullable',
-                'exists:config_divi_poli,id'
+                'exists:config_divi_poli,id',
             ],
             'estado' => [
                 'nullable',
-                'in:0,1,true,false'
+                'in:0,1,true,false',
             ],
 
         ];
@@ -85,8 +86,6 @@ class UpdateConfigSedeRequest extends FormRequest
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -111,8 +110,6 @@ class UpdateConfigSedeRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
@@ -124,7 +121,7 @@ class UpdateConfigSedeRequest extends FormRequest
             'email' => 'email',
             'ubicacion' => 'ubicación',
             'divi_poli_id' => 'departamento/policía',
-            'estado' => 'estado'
+            'estado' => 'estado',
         ];
     }
 }

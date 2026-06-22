@@ -2,6 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Internos;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -33,7 +34,7 @@ class VentanillaRadicaInternoMetadataHistory extends Model
 
     public function usuario(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'usuario_id');
+        return $this->belongsTo(User::class, 'usuario_id');
     }
 
     public static function registrarCreacion(int $metadataId, array $datos, ?int $usuarioId = null, ?string $usuarioNombre = null): self

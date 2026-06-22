@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\VentanillaUnica\Enviados;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
-use App\Http\Requests\Ventanilla\Enviados\UpdateFirmanteEnviadoRequest;
 use App\Http\Requests\Ventanilla\Enviados\StoreFirmanteEnviadoRequest;
+use App\Http\Requests\Ventanilla\Enviados\UpdateFirmanteEnviadoRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosFirmas;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class VentanillaRadicaEnviadosFirmantesController extends Controller
 {
@@ -58,7 +59,7 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
 
             foreach ($firmasData as $item) {
                 $radicaEnviadoId = $item['radica_enviado_id'] ?? $request->route('radica_enviado_id');
-                if (!$radicaEnviadoId) {
+                if (! $radicaEnviadoId) {
                     return $this->errorResponse('Cada firmante debe incluir radica_enviado_id', null, 400);
                 }
 
@@ -74,6 +75,7 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
             return $this->successResponse($firmasCreadas, 'Firmantes asignados exitosamente', 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al asignar firmantes', $e->getMessage(), 500);
         }
     }
@@ -102,11 +104,13 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
             DB::commit();
 
             return $this->successResponse($firmasCreadas, 'Firmantes asignados exitosamente', 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al asignar firmantes', $e->getMessage(), 500);
         }
     }
@@ -116,7 +120,7 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
         try {
             $firma = VentanillaRadicaEnviadosFirmas::with(['userCargo.user', 'userCargo.cargo', 'radicado'])->find($id);
 
-            if (!$firma) {
+            if (! $firma) {
                 return $this->errorResponse('Firmante no encontrado', null, 404);
             }
 
@@ -133,14 +137,14 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
 
             $firma = VentanillaRadicaEnviadosFirmas::find($id);
 
-            if (!$firma) {
+            if (! $firma) {
                 return $this->errorResponse('Firmante no encontrado', null, 404);
             }
 
             $updateData = $request->only(['radica_enviado_id', 'users_cargos_id']);
             $updateData = array_filter($updateData, fn ($v) => $v !== null && $v !== '');
 
-            if (!empty($updateData)) {
+            if (! empty($updateData)) {
                 $firma->update($updateData);
             }
 
@@ -152,6 +156,7 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar el firmante', $e->getMessage(), 500);
         }
     }
@@ -163,7 +168,7 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
 
             $firma = VentanillaRadicaEnviadosFirmas::find($id);
 
-            if (!$firma) {
+            if (! $firma) {
                 return $this->errorResponse('Firmante no encontrado', null, 404);
             }
 
@@ -174,11 +179,12 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
             return $this->successResponse(null, 'Firmante eliminado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar el firmante', $e->getMessage(), 500);
         }
     }
 
-public function getByRadicado($radica_enviado_id)
+    public function getByRadicado($radica_enviado_id)
     {
         try {
             $firmas = VentanillaRadicaEnviadosFirmas::with(['userCargo.user', 'userCargo.cargo'])
@@ -189,6 +195,7 @@ public function getByRadicado($radica_enviado_id)
             $firmasData = $firmas->map(function ($f) {
                 $user = $f->userCargo?->user;
                 $cargo = $f->userCargo?->cargo;
+
                 return [
                     'id' => $f->id,
                     'usuario' => $user ? ['id' => $user->id, 'nombres' => $user->nombres, 'apellidos' => $user->apellidos] : null,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\ControlAcceso;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateUserSedeRequest extends FormRequest
@@ -19,48 +20,44 @@ class UpdateUserSedeRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
             'estado' => [
                 'sometimes',
-                'in:0,1,true,false'
+                'in:0,1,true,false',
             ],
             'observaciones' => [
                 'sometimes',
                 'nullable',
                 'string',
-                'max:1000'
-            ]
+                'max:1000',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
         return [
             'estado.in' => 'El estado debe ser 0, 1, true o false.',
             'observaciones.string' => 'Las observaciones deben ser una cadena de texto.',
-            'observaciones.max' => 'Las observaciones no pueden superar los 1000 caracteres.'
+            'observaciones.max' => 'Las observaciones no pueden superar los 1000 caracteres.',
         ];
     }
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
         return [
             'estado' => 'estado',
-            'observaciones' => 'observaciones'
+            'observaciones' => 'observaciones',
         ];
     }
 }

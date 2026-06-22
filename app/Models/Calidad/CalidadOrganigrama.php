@@ -6,9 +6,13 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRDVersion;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CalidadOrganigrama extends Model
 {
@@ -21,20 +25,18 @@ class CalidadOrganigrama extends Model
         'nom_organico',
         'cod_organico',
         'observaciones',
-        'parent'
+        'parent',
     ];
-
-
 
     protected $casts = [
         'created_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'updated_at' => 'datetime',
     ];
 
     /**
      * Relación recursiva: Un nodo puede tener varios hijos.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function children()
     {
@@ -44,7 +46,7 @@ class CalidadOrganigrama extends Model
     /**
      * Relación con el nodo padre.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * @return BelongsTo
      */
     public function parent()
     {
@@ -54,7 +56,7 @@ class CalidadOrganigrama extends Model
     /**
      * Obtener SOLO dependencias dentro de una dependencia padre.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function childrenDependencias()
     {
@@ -65,7 +67,7 @@ class CalidadOrganigrama extends Model
     /**
      * Obtener SOLO oficinas dentro de una dependencia.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function childrenOficinas()
     {
@@ -76,7 +78,7 @@ class CalidadOrganigrama extends Model
     /**
      * Obtener SOLO cargos dentro de una dependencia o una oficina.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function childrenCargos()
     {
@@ -86,9 +88,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Obtener SOLO las dependencias principales (sin padres).
-     *
-     * @param Builder $query
-     * @return Builder
      */
     public function scopeDependenciasRaiz(Builder $query): Builder
     {
@@ -97,10 +96,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Filtrar por tipo específico.
-     *
-     * @param Builder $query
-     * @param string $tipo
-     * @return Builder
      */
     public function scopePorTipo(Builder $query, string $tipo): Builder
     {
@@ -109,9 +104,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Filtrar elementos sin padre (nivel raíz).
-     *
-     * @param Builder $query
-     * @return Builder
      */
     public function scopeNivelRaiz(Builder $query): Builder
     {
@@ -120,9 +112,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Filtrar elementos con padre (niveles inferiores).
-     *
-     * @param Builder $query
-     * @return Builder
      */
     public function scopeConPadre(Builder $query): Builder
     {
@@ -131,10 +120,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Buscar por nombre o código orgánico.
-     *
-     * @param Builder $query
-     * @param string $search
-     * @return Builder
      */
     public function scopeBuscar(Builder $query, string $search): Builder
     {
@@ -146,9 +131,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Encontrar una dependencia por ID.
-     *
-     * @param int $id
-     * @return CalidadOrganigrama|null
      */
     public static function findDependenciaById(int $id): ?CalidadOrganigrama
     {
@@ -159,9 +141,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Encontrar una dependencia por código orgánico.
-     *
-     * @param string $codigo
-     * @return CalidadOrganigrama|null
      */
     public static function findDependenciaByCodOrganico(string $codigo): ?CalidadOrganigrama
     {
@@ -172,8 +151,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Obtener la jerarquía completa de un nodo.
-     *
-     * @return array
      */
     public function getJerarquiaCompleta(): array
     {
@@ -186,7 +163,7 @@ class CalidadOrganigrama extends Model
                 'id' => $nodoActual->id,
                 'tipo' => $nodoActual->tipo,
                 'nom_organico' => $nodoActual->nom_organico,
-                'cod_organico' => $nodoActual->cod_organico
+                'cod_organico' => $nodoActual->cod_organico,
             ]);
 
             if ($parentId) {
@@ -206,8 +183,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Verificar si el nodo es una dependencia raíz.
-     *
-     * @return bool
      */
     public function isDependenciaRaiz(): bool
     {
@@ -216,8 +191,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Verificar si el nodo es una oficina.
-     *
-     * @return bool
      */
     public function isOficina(): bool
     {
@@ -226,8 +199,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Verificar si el nodo es un cargo.
-     *
-     * @return bool
      */
     public function isCargo(): bool
     {
@@ -236,8 +207,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Verificar si el nodo puede tener hijos.
-     *
-     * @return bool
      */
     public function puedeTenerHijos(): bool
     {
@@ -246,8 +215,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Obtener el nivel jerárquico del nodo.
-     *
-     * @return int
      */
     public function getNivel(): int
     {
@@ -257,7 +224,7 @@ class CalidadOrganigrama extends Model
         while ($parentId) {
             $nivel++;
             $parent = self::find($parentId);
-            if (!$parent) {
+            if (! $parent) {
                 break;
             }
             $parentId = $parent->attributes['parent'] ?? null;
@@ -269,7 +236,7 @@ class CalidadOrganigrama extends Model
     /**
      * Relación con las TRDs asociadas a esta dependencia.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function trds()
     {
@@ -279,7 +246,7 @@ class CalidadOrganigrama extends Model
     /**
      * Relación con las versiones TRD de esta dependencia.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function trdVersiones()
     {
@@ -289,7 +256,7 @@ class CalidadOrganigrama extends Model
     /**
      * Relación con las asignaciones de usuarios a este cargo.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function asignaciones()
     {
@@ -301,7 +268,7 @@ class CalidadOrganigrama extends Model
     /**
      * Relación con los usuarios actualmente asignados a este cargo.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return HasMany
      */
     public function usuariosActivos()
     {
@@ -314,7 +281,7 @@ class CalidadOrganigrama extends Model
     /**
      * Relación many-to-many con usuarios (para compatibilidad).
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     * @return BelongsToMany
      */
     public function usuarios()
     {
@@ -326,7 +293,7 @@ class CalidadOrganigrama extends Model
     /**
      * Obtiene solo los usuarios activos en este cargo.
      *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     * @return BelongsToMany
      */
     public function usuariosActivosRelacion()
     {
@@ -339,8 +306,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Verifica si este nodo es un cargo y puede tener usuarios asignados.
-     *
-     * @return bool
      */
     public function puedeAsignarUsuarios(): bool
     {
@@ -349,8 +314,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Obtiene el usuario actualmente asignado a este cargo (si es que hay uno).
-     *
-     * @return UserCargo|null
      */
     public function getUsuarioActivo(): ?UserCargo
     {
@@ -359,8 +322,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Verifica si el cargo tiene usuarios asignados actualmente.
-     *
-     * @return bool
      */
     public function tieneUsuariosAsignados(): bool
     {
@@ -369,8 +330,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Obtiene estadísticas de asignaciones para este cargo.
-     *
-     * @return array
      */
     public function getEstadisticasAsignaciones(): array
     {
@@ -383,14 +342,14 @@ class CalidadOrganigrama extends Model
             'asignaciones_activas' => $asignacionesActivas,
             'asignaciones_finalizadas' => $asignacionesFinalizadas,
             'tiene_usuario_activo' => $asignacionesActivas > 0,
-            'cargo_disponible' => $asignacionesActivas === 0
+            'cargo_disponible' => $asignacionesActivas === 0,
         ];
     }
 
     /**
      * Obtiene el historial completo de usuarios que han ocupado este cargo.
      *
-     * @return \Illuminate\Database\Eloquent\Collection
+     * @return Collection
      */
     public function getHistorialUsuarios()
     {
@@ -405,16 +364,13 @@ class CalidadOrganigrama extends Model
                     'fecha_fin' => $asignacion->fecha_fin,
                     'duracion_dias' => $asignacion->getDuracionEnDias(),
                     'esta_activo' => $asignacion->estaActivo(),
-                    'observaciones' => $asignacion->observaciones
+                    'observaciones' => $asignacion->observaciones,
                 ];
             });
     }
 
     /**
      * Scope para filtrar solo cargos que pueden tener usuarios asignados.
-     *
-     * @param Builder $query
-     * @return Builder
      */
     public function scopeCargosAsignables(Builder $query): Builder
     {
@@ -423,9 +379,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Scope para filtrar cargos con usuarios activos.
-     *
-     * @param Builder $query
-     * @return Builder
      */
     public function scopeConUsuariosActivos(Builder $query): Builder
     {
@@ -434,9 +387,6 @@ class CalidadOrganigrama extends Model
 
     /**
      * Scope para filtrar cargos disponibles (sin usuarios activos).
-     *
-     * @param Builder $query
-     * @return Builder
      */
     public function scopeDisponibles(Builder $query): Builder
     {
@@ -456,18 +406,16 @@ class CalidadOrganigrama extends Model
 
     /**
      * Obtiene todos los códigos orgánicos de los descendientes (hijos, nietos, etc.).
-     * 
-     * @return array
      */
     public function getDescendientesCodigos(): array
     {
         $codigos = [];
-        
+
         foreach ($this->children as $child) {
             $codigos[] = $child->cod_organico;
             $codigos = array_merge($codigos, $child->getDescendientesCodigos());
         }
-        
+
         return array_unique($codigos);
     }
 }

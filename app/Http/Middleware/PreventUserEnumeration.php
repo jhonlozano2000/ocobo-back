@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Lang;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -71,7 +70,7 @@ class PreventUserEnumeration
 
         $content = json_decode($response->getContent(), true);
 
-        if (!$content || !is_array($content)) {
+        if (! $content || ! is_array($content)) {
             return $response;
         }
 
@@ -102,6 +101,7 @@ class PreventUserEnumeration
             if (str_contains($request->path(), 'register')) {
                 return 'Los datos proporcionados no son válidos.';
             }
+
             return 'La validación falló.';
         }
 
@@ -144,7 +144,7 @@ class PreventUserEnumeration
     {
         $email = $request->input('email');
 
-        if (!$email) {
+        if (! $email) {
             return $content;
         }
 

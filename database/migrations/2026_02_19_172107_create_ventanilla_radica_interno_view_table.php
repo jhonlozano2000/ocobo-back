@@ -7,9 +7,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement("DROP VIEW IF EXISTS ventanilla_radica_interno_view");
+        DB::statement('DROP VIEW IF EXISTS ventanilla_radica_interno_view');
 
-        DB::statement("
+        DB::statement('
             CREATE VIEW ventanilla_radica_interno_view AS
             SELECT
                 vri.id,
@@ -24,7 +24,7 @@ return new class extends Migration
                 cd.cod as clasificacion_cod,
                 cd.nom as clasificacion_nom,
                 cd_parent.nom as clasificacion_parent_nom,
-                CONCAT(u_crea.nombres, \" \", u_crea.apellidos) as usuario_crea_nombre,
+                CONCAT(u_crea.nombres, " ", u_crea.apellidos) as usuario_crea_nombre,
 
                 -- Destinatarios
                 (SELECT COUNT(*) FROM ventanilla_radica_internos_destina WHERE radica_interno_id = vri.id) as total_destinatarios,
@@ -52,7 +52,7 @@ return new class extends Migration
 
             -- Destinatarios Join
             LEFT JOIN (
-                SELECT d.radica_interno_id, GROUP_CONCAT(CONCAT(u.nombres, \" \", u.apellidos) SEPARATOR \", \") as nombres
+                SELECT d.radica_interno_id, GROUP_CONCAT(CONCAT(u.nombres, " ", u.apellidos) SEPARATOR ", ") as nombres
                 FROM ventanilla_radica_internos_destina d
                 JOIN users_cargos uc ON d.users_cargos_id = uc.id
                 JOIN users u ON uc.user_id = u.id
@@ -61,7 +61,7 @@ return new class extends Migration
 
             -- Responsables Join
             LEFT JOIN (
-                SELECT r.radica_interno_id, GROUP_CONCAT(CONCAT(u.nombres, \" \", u.apellidos) SEPARATOR \", \") as nombres
+                SELECT r.radica_interno_id, GROUP_CONCAT(CONCAT(u.nombres, " ", u.apellidos) SEPARATOR ", ") as nombres
                 FROM ventanilla_radica_interno_responsa r
                 JOIN users_cargos uc ON r.users_cargos_id = uc.id
                 JOIN users u ON uc.user_id = u.id
@@ -70,7 +70,7 @@ return new class extends Migration
 
             -- Proyectores Join
             LEFT JOIN (
-                SELECT p.radica_interno_id, GROUP_CONCAT(CONCAT(u.nombres, \" \", u.apellidos) SEPARATOR \", \") as nombres
+                SELECT p.radica_interno_id, GROUP_CONCAT(CONCAT(u.nombres, " ", u.apellidos) SEPARATOR ", ") as nombres
                 FROM ventanilla_radica_interno_proyectores p
                 JOIN users_cargos uc ON p.users_cargos_id = uc.id
                 JOIN users u ON uc.user_id = u.id
@@ -79,16 +79,16 @@ return new class extends Migration
 
             -- Firmantes Join
             LEFT JOIN (
-                SELECT f.radica_interno_id, GROUP_CONCAT(CONCAT(u.nombres, \" \", u.apellidos) SEPARATOR \", \") as nombres
+                SELECT f.radica_interno_id, GROUP_CONCAT(CONCAT(u.nombres, " ", u.apellidos) SEPARATOR ", ") as nombres
                 FROM ventanilla_radica_internos_firmantes f
                 JOIN users u ON f.users_id = u.id
                 GROUP BY f.radica_interno_id
             ) firm ON firm.radica_interno_id = vri.id
-        ");
+        ');
     }
 
     public function down(): void
     {
-        DB::statement("DROP VIEW IF EXISTS ventanilla_radica_interno_view");
+        DB::statement('DROP VIEW IF EXISTS ventanilla_radica_interno_view');
     }
 };

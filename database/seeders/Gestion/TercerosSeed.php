@@ -10,7 +10,8 @@ class TercerosSeed extends Seeder
     /**
      * Run the database seeds.
      */
-    public function run(): void {
+    public function run(): void
+    {
         GestionTercero::create(['num_docu_nit' => '65775883',  'nom_razo_soci' => 'NIDIA ESPERANZA PIÑEROS AGUIRRE',  'direccion' => 'IBAGUE', 'telefono' => '2644999', 'email' => '']);
         GestionTercero::create(['num_docu_nit' => '1110466452',  'nom_razo_soci' => 'ANDRES PEREZ',  'direccion' => 'ESPINAL', 'telefono' => '23359874', 'email' => '']);
         GestionTercero::create(['num_docu_nit' => '1',  'nom_razo_soci' => 'YENNY PAOLA HERNANDEZ',  'direccion' => 'CRA 6  NO 8-07 PALACIO MUNICIPAL', 'telefono' => '2390314', 'email' => '']);

@@ -2,8 +2,8 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\UsersAuthenticationLog;
 use App\Models\ControlAcceso\UsersSession;
+use App\Models\UsersAuthenticationLog;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -12,18 +12,20 @@ use Symfony\Component\HttpFoundation\Response;
 class VerifySession
 {
     protected const MAX_FAILED_ATTEMPTS = 5;
+
     protected const LOCKOUT_MINUTES = 15;
 
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$this->shouldVerifySession($request)) {
+        if (! $this->shouldVerifySession($request)) {
             return $next($request);
         }
 
         // Solo verificar que el usuario esté autenticado via cookie de sesión
         // NO verificamos la tabla users_sessions (eso es para auditoría, no para autenticación)
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             $this->logEvent('session_invalid', null, false, 'No hay usuario autenticado - cookie inválida');
+
             return $this->handleUnauthorized($request);
         }
 
@@ -33,6 +35,7 @@ class VerifySession
         if ($user->estado == 0) {
             $this->logEvent('session_invalid', $user->id, false, 'Cuenta desactivada');
             auth()->logout();
+
             return $this->handleUnauthorized($request);
         }
 
@@ -52,7 +55,7 @@ class VerifySession
         ];
 
         $path = $request->path();
-        
+
         // Rutas explícitas que no requieren verificación
         $publicPaths = ['api/login', 'api/register', 'api/logout', 'sanctum/csrf-cookie'];
         foreach ($publicPaths as $publicPath) {
@@ -62,7 +65,7 @@ class VerifySession
         }
 
         // Solo verificar rutas API que no son públicas
-        return $request->is('api/*') && !str_starts_with($path, 'api/login') && !str_starts_with($path, 'api/register');
+        return $request->is('api/*') && ! str_starts_with($path, 'api/login') && ! str_starts_with($path, 'api/register');
     }
 
     protected function isSessionValid($user): bool
@@ -118,6 +121,7 @@ class VerifySession
 
         if ($lastFailed) {
             $unlockAt = $lastFailed->created_at->addMinutes(self::LOCKOUT_MINUTES);
+
             return $unlockAt->format('Y-m-d H:i:s');
         }
 
@@ -136,7 +140,7 @@ class VerifySession
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => 'Sesión no válida o expirada',
-                'error' => 'unauthenticated'
+                'error' => 'unauthenticated',
             ], 401);
         }
 
@@ -146,16 +150,16 @@ class VerifySession
     protected function logEvent(string $event, ?int $userId, bool $success, ?string $details): void
     {
         UsersAuthenticationLog::logEvent([
-            'user_id'  => $userId,
-            'event'    => $event,
-            'success'  => $success,
-            'details'  => $details,
+            'user_id' => $userId,
+            'event' => $event,
+            'success' => $success,
+            'details' => $details,
         ]);
 
         Log::channel('auth')->info("Auth Event: {$event}", [
             'user_id' => $userId,
             'success' => $success,
-            'details' => $details
+            'details' => $details,
         ]);
     }
 }

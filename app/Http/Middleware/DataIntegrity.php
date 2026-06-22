@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Crypt;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -55,7 +54,7 @@ class DataIntegrity
         ];
 
         foreach ($paths as $path) {
-            if ($request->is($path . '*')) {
+            if ($request->is($path.'*')) {
                 return true;
             }
         }
@@ -70,7 +69,7 @@ class DataIntegrity
     {
         $integrityHeader = $request->header(self::INTEGRITY_HEADER);
 
-        if (!$integrityHeader) {
+        if (! $integrityHeader) {
             return;
         }
 
@@ -78,7 +77,7 @@ class DataIntegrity
         $data = $this->getSignableData($request);
         $calculatedHash = $this->calculateHash($data);
 
-        if (!hash_equals($integrityHeader, $calculatedHash)) {
+        if (! hash_equals($integrityHeader, $calculatedHash)) {
             abort(response()->json([
                 'success' => false,
                 'message' => 'La integridad de los datos no puede ser verificada.',
@@ -110,7 +109,7 @@ class DataIntegrity
     private function calculateHash(string $data): string
     {
         $key = config('app.key', '');
-        
+
         return hash_hmac('sha256', $data, $key);
     }
 
@@ -135,29 +134,22 @@ class DataIntegrity
 
     /**
      * Genera un token de integridad para el request
-     *
-     * @param array $data
-     * @return string
      */
     public static function generateToken(array $data): string
     {
         ksort($data);
         $json = json_encode($data);
-        
+
         return hash_hmac('sha256', $json, config('app.key', ''));
     }
 
     /**
      * Verifica un token de integridad
-     *
-     * @param array $data
-     * @param string $token
-     * @return bool
      */
     public static function verifyToken(array $data, string $token): bool
     {
         $calculated = self::generateToken($data);
-        
+
         return hash_equals($calculated, $token);
     }
 }

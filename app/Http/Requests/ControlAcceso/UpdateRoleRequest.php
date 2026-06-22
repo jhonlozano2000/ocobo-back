@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\ControlAcceso;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Spatie\Permission\Models\Role;
 
 class UpdateRoleRequest extends FormRequest
 {
@@ -21,7 +21,7 @@ class UpdateRoleRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -32,22 +32,20 @@ class UpdateRoleRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('roles', 'name')->ignore($role->id)
+                Rule::unique('roles', 'name')->ignore($role->id),
             ],
             'permissions' => [
                 'required',
-                'array'
+                'array',
             ],
             'permissions.*' => [
-                'exists:permissions,name'
-            ]
+                'exists:permissions,name',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -64,15 +62,13 @@ class UpdateRoleRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
         return [
             'name' => 'nombre del rol',
             'permissions' => 'permisos',
-            'permissions.*' => 'permiso'
+            'permissions.*' => 'permiso',
         ];
     }
 }

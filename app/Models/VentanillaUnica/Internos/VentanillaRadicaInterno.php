@@ -2,6 +2,10 @@
 
 namespace App\Models\VentanillaUnica\Internos;
 
+use App\Helpers\ArchivoHelper;
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Models\User;
+use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -34,6 +38,12 @@ class VentanillaRadicaInterno extends Model
         'observa_soli_anula',
         'usua_aprue_anula_id',
         'observa_aprue_anula',
+        'estado_firma',
+        'fecha_firma',
+    ];
+
+    protected $casts = [
+        'fecha_firma' => 'datetime',
     ];
 
     /**
@@ -42,7 +52,7 @@ class VentanillaRadicaInterno extends Model
      */
     public function clasificacionDocumental()
     {
-        return $this->belongsTo(\App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::class, 'clasifica_documen_id');
+        return $this->belongsTo(ClasificacionDocumentalTRD::class, 'clasifica_documen_id');
     }
 
     /**
@@ -50,22 +60,22 @@ class VentanillaRadicaInterno extends Model
      */
     public function usuarioCrea()
     {
-        return $this->belongsTo(\App\Models\User::class, 'usuario_crea');
+        return $this->belongsTo(User::class, 'usuario_crea');
     }
 
     public function usuarioSubido()
     {
-        return $this->belongsTo(\App\Models\User::class, 'subido_por');
+        return $this->belongsTo(User::class, 'subido_por');
     }
 
     public function usuario_soli_anula()
     {
-        return $this->belongsTo(\App\Models\User::class, 'usua_soli_anula_id');
+        return $this->belongsTo(User::class, 'usua_soli_anula_id');
     }
 
     public function usuario_aprue_anula()
     {
-        return $this->belongsTo(\App\Models\User::class, 'usua_aprue_anula_id');
+        return $this->belongsTo(User::class, 'usua_aprue_anula_id');
     }
 
     /**
@@ -121,6 +131,7 @@ class VentanillaRadicaInterno extends Model
         foreach ($this->archivos as $archivo) {
             $documentos[] = $archivo->getInfoArchivo($incluirMetadatos);
         }
+
         return $documentos;
     }
 
@@ -129,7 +140,7 @@ class VentanillaRadicaInterno extends Model
      */
     public function loadClasificacionConJerarquia()
     {
-        return $this->load(['clasificacionDocumental' => fn($q) => $q->with(['parent' => fn($q) => $q->with('parent')])]);
+        return $this->load(['clasificacionDocumental' => fn ($q) => $q->with(['parent' => fn ($q) => $q->with('parent')])]);
     }
 
     /**
@@ -138,9 +149,10 @@ class VentanillaRadicaInterno extends Model
     public function getClasificacionDocumentalInfo(): ?array
     {
         $clasif = $this->clasificacionDocumental;
-        if (!$clasif) {
+        if (! $clasif) {
             return null;
         }
+
         return [
             'id' => $clasif->id,
             'cod' => $clasif->cod,
@@ -214,6 +226,7 @@ class VentanillaRadicaInterno extends Model
 
         if ($this->estado_trabajo !== $nuevoEstado) {
             $this->update(['estado_trabajo' => $nuevoEstado]);
+
             return true;
         }
 
@@ -223,31 +236,32 @@ class VentanillaRadicaInterno extends Model
     public function calcularEstadoTrabajo(): string
     {
         if ($this->fec_venci && now()->parse($this->fec_venci)->isBefore(now()->startOfDay())) {
-            return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_VENCIDO;
+            return RadicadoEstadoTrabajoService::ESTADO_VENCIDO;
         }
 
         if ($this->fec_venci && now()->parse($this->fec_venci)->lte(now()->addDays(5)->endOfDay())) {
-            return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_POR_VENCER;
+            return RadicadoEstadoTrabajoService::ESTADO_POR_VENCER;
         }
 
         if ($this->responsables()->exists()) {
-            return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_EN_PROCESO;
+            return RadicadoEstadoTrabajoService::ESTADO_EN_PROCESO;
         }
 
-        return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_RECIBIDO;
+        return RadicadoEstadoTrabajoService::ESTADO_RECIBIDO;
     }
 
     public function getEstadoTrabajoInfo(): array
     {
-        $service = new \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService();
-        return $service->getEstadoInfo($this->estado_trabajo ?? \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_RECIBIDO);
+        $service = new RadicadoEstadoTrabajoService;
+
+        return $service->getEstadoInfo($this->estado_trabajo ?? RadicadoEstadoTrabajoService::ESTADO_RECIBIDO);
     }
 
     // ================ ARCHIVOS ================
 
     public function tieneArchivoDigital()
     {
-        return !empty($this->archivo_digital);
+        return ! empty($this->archivo_digital);
     }
 
     public function tieneArchivos()
@@ -257,17 +271,19 @@ class VentanillaRadicaInterno extends Model
 
     public function getDiasParaVencerAttribute()
     {
-        if (!$this->fec_venci) {
+        if (! $this->fec_venci) {
             return null;
         }
+
         return now()->diffInDays($this->fec_venci, false);
     }
 
     public function isVencida()
     {
-        if (!$this->fec_venci) {
+        if (! $this->fec_venci) {
             return false;
         }
+
         return now()->isAfter($this->fec_venci);
     }
 
@@ -278,12 +294,12 @@ class VentanillaRadicaInterno extends Model
 
     public function getArchivoUrl(string $campo, string $disk): ?string
     {
-        return \App\Helpers\ArchivoHelper::obtenerUrl($this->{$campo} ?? null, $disk);
+        return ArchivoHelper::obtenerUrl($this->{$campo} ?? null, $disk);
     }
 
     public function getInfoArchivoDigital()
     {
-        if (!$this->archivo_digital) {
+        if (! $this->archivo_digital) {
             return null;
         }
 
@@ -293,7 +309,7 @@ class VentanillaRadicaInterno extends Model
             'url' => $this->getUrlArchivoDigital(),
             'tamaño' => $this->archivo_peso,
             'tipo' => $this->archivo_tipo,
-            'extension' => pathinfo($this->archivo_digital, PATHINFO_EXTENSION)
+            'extension' => pathinfo($this->archivo_digital, PATHINFO_EXTENSION),
         ];
     }
 
@@ -322,7 +338,7 @@ class VentanillaRadicaInterno extends Model
             $info = $responsable->getInfoResponsable();
             if ($info) {
                 $responsablesInfo->push($info);
-                if (!empty($info['custodio']) && $info['custodio']) {
+                if (! empty($info['custodio']) && $info['custodio']) {
                     $totalCustodios++;
                 }
             }

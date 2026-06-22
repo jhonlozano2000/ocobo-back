@@ -2,6 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Recibidos;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -50,26 +51,27 @@ class RadicadoRespuesta extends Model
 
     public function usuarioCrea(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'user_crea_id');
+        return $this->belongsTo(User::class, 'user_crea_id');
     }
 
     public function usuarioEditando(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'user_editando_id');
+        return $this->belongsTo(User::class, 'user_editando_id');
     }
 
     public function usuarioActualiza(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'user_actualiza_id');
+        return $this->belongsTo(User::class, 'user_actualiza_id');
     }
 
     public function estaBloqueada(): bool
     {
-        if (!$this->user_editando_id) {
+        if (! $this->user_editando_id) {
             return false;
         }
-        
+
         $TiempoTranscurrido = now()->diffInSeconds($this->fecha_inicio_edicion);
+
         return $TiempoTranscurrido < $this->lock_tiempo;
     }
 
@@ -78,30 +80,30 @@ class RadicadoRespuesta extends Model
         if ($this->estado === 'finalizado' || $this->estado === 'enviado') {
             return false;
         }
-        
+
         $userId = Auth::id();
-        
+
         if ($this->user_editando_id && $this->user_editando_id !== $userId) {
             if ($this->estaBloqueada()) {
                 return false;
             }
         }
-        
+
         return true;
     }
 
     public function adquirirLock(): bool
     {
-        if (!$this->puedeEditar()) {
+        if (! $this->puedeEditar()) {
             return false;
         }
-        
+
         $this->update([
             'user_editando_id' => Auth::id(),
             'fecha_inicio_edicion' => now(),
             'estado' => 'en_edicion',
         ]);
-        
+
         return true;
     }
 
@@ -114,7 +116,7 @@ class RadicadoRespuesta extends Model
         ]);
     }
 
-    public function guardarVersion(string $resumen = null): RadicadoRespuestaVersion
+    public function guardarVersion(?string $resumen = null): RadicadoRespuestaVersion
     {
         return RadicadoRespuestaVersion::create([
             'respuesta_id' => $this->id,

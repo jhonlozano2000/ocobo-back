@@ -7,8 +7,8 @@ use App\Http\Requests\Calidad\CalidadOrganigramaRequest;
 use App\Http\Requests\Calidad\ListCalidadOrganigramaRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Calidad\CalidadOrganigrama;
-use Illuminate\Http\Request;
 use App\Services\Calidad\CalidadOrganigramaService;
+use Illuminate\Http\Request;
 
 class CalidadOrganigramaController extends Controller
 {
@@ -26,14 +26,15 @@ class CalidadOrganigramaController extends Controller
         try {
             $filters = $request->all();
             \Log::info('Organigrama index called', ['filters' => $filters]);
-            
+
             $organigrama = $this->service->getAll($filters);
             \Log::info('Organigrama data count', ['count' => is_array($organigrama) ? count($organigrama) : 'collection']);
             \Log::info('Organigrama tipos:', ['tipos' => is_array($organigrama) ? array_count_values(array_column($organigrama, 'tipo')) : 'N/A']);
 
             return $this->successResponse($organigrama, 'Organigrama obtenido correctamente');
         } catch (\Exception $e) {
-            \Log::error('Organigrama index error: ' . $e->getMessage());
+            \Log::error('Organigrama index error: '.$e->getMessage());
+
             return $this->errorResponse('Error al obtener el organigrama', $e->getMessage(), 500);
         }
     }
@@ -86,7 +87,7 @@ class CalidadOrganigramaController extends Controller
     public function destroy(int $id)
     {
         try {
-            if (!$this->service->delete($id)) {
+            if (! $this->service->delete($id)) {
                 return $this->errorResponse('No se puede eliminar el nodo porque tiene subelementos', null, 400);
             }
 
@@ -96,7 +97,7 @@ class CalidadOrganigramaController extends Controller
         }
     }
 
-     /**
+    /**
      * Lista de dependencias.
      */
     public function listDependencias(Request $request)

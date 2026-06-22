@@ -25,12 +25,12 @@ class OrganigramaDTO
             cod_organico: $organigrama->cod_organico,
             parent: $organigrama->parent,
             observaciones: $organigrama->observaciones,
-            children: $organigrama->children->map(fn($c) => self::fromModel($c))->toArray(),
+            children: $organigrama->children->map(fn ($c) => self::fromModel($c))->toArray(),
         );
     }
 
     public static function collection($organigramas): array
     {
-        return $organigramas->map(fn($o) => self::fromModel($o))->toArray();
+        return $organigramas->map(fn ($o) => self::fromModel($o))->toArray();
     }
 }

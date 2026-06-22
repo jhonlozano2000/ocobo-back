@@ -15,8 +15,6 @@ class DocumentoRequest extends FormRequest
 {
     /**
      * Determina si el usuario está autorizado.
-     *
-     * @return bool
      */
     public function authorize(): bool
     {
@@ -26,7 +24,7 @@ class DocumentoRequest extends FormRequest
     /**
      * Reglas de validación.
      *
-     * @return array<string, \Illuminate\Validation\Rule|array|string>
+     * @return array<string, Rule|array|string>
      */
     public function rules(): array
     {

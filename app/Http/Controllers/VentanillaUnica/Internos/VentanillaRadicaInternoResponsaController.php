@@ -4,14 +4,16 @@ namespace App\Http\Controllers\VentanillaUnica\Internos;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoResponsa;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoResponsa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class VentanillaRadicaInternoResponsaController extends Controller
 {
     use ApiResponseTrait;
+
     /**
      * Obtiene un listado de todos los responsables.
      *
@@ -32,12 +34,10 @@ class VentanillaRadicaInternoResponsaController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "No hay responsables asignados"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el listado de responsables",
@@ -58,7 +58,7 @@ class VentanillaRadicaInternoResponsaController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param Request $request La solicitud HTTP validada
+     * @param  Request  $request  La solicitud HTTP validada
      * @return JsonResponse Respuesta JSON con el responsable creado
      *
      * @response 201 {
@@ -74,7 +74,6 @@ class VentanillaRadicaInternoResponsaController extends Controller
      *     "updated_at": "2024-01-01T10:00:00.000000Z"
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -83,7 +82,6 @@ class VentanillaRadicaInternoResponsaController extends Controller
      *     "users_cargos_id": ["El responsable es obligatorio."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al crear el responsable",
@@ -102,6 +100,7 @@ class VentanillaRadicaInternoResponsaController extends Controller
             return $this->successResponse($responsable, 'Responsable creado exitosamente', 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al crear el responsable', $e->getMessage(), 500);
         }
     }
@@ -109,7 +108,7 @@ class VentanillaRadicaInternoResponsaController extends Controller
     /**
      * Obtiene un responsable específico por su ID.
      *
-     * @param int $id ID del responsable
+     * @param  int  $id  ID del responsable
      * @return JsonResponse Respuesta JSON con el responsable
      *
      * @urlParam id integer required El ID del responsable. Example: 1
@@ -127,12 +126,10 @@ class VentanillaRadicaInternoResponsaController extends Controller
      *     "updated_at": "2024-01-01T10:00:00.000000Z"
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Responsable no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el responsable",
@@ -144,7 +141,7 @@ class VentanillaRadicaInternoResponsaController extends Controller
         try {
             $responsable = VentanillaRadicaInternoResponsa::find($id);
 
-            if (!$responsable) {
+            if (! $responsable) {
                 return $this->errorResponse('Responsable no encontrado', null, 404);
             }
 
@@ -157,8 +154,8 @@ class VentanillaRadicaInternoResponsaController extends Controller
     /**
      * Actualiza un responsable específico por su ID con los datos enviados.
      *
-     * @param int $id ID del responsable
-     * @param Request $request La solicitud HTTP validada
+     * @param  int  $id  ID del responsable
+     * @param  Request  $request  La solicitud HTTP validada
      * @return JsonResponse Respuesta JSON con el responsable actualizado
      *
      * @urlParam id integer required El ID del responsable. Example: 1
@@ -176,7 +173,6 @@ class VentanillaRadicaInternoResponsaController extends Controller
      *     "updated_at": "2024-01-01T10:00:00.000000Z"
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -185,7 +181,6 @@ class VentanillaRadicaInternoResponsaController extends Controller
      *     "users_cargos_id": ["El responsable es obligatorio."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al actualizar el responsable",
@@ -199,7 +194,7 @@ class VentanillaRadicaInternoResponsaController extends Controller
 
             $responsable = VentanillaRadicaInternoResponsa::find($id);
 
-            if (!$responsable) {
+            if (! $responsable) {
                 return $this->errorResponse('Responsable no encontrado', null, 404);
             }
 
@@ -210,6 +205,7 @@ class VentanillaRadicaInternoResponsaController extends Controller
             return $this->successResponse($responsable, 'Responsable actualizado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar el responsable', $e->getMessage(), 500);
         }
     }
@@ -217,7 +213,7 @@ class VentanillaRadicaInternoResponsaController extends Controller
     /**
      * Obtiene los responsables de una radicación interna específica.
      *
-     * @param int $radica_interno_id ID de la radicación interna
+     * @param  int  $radica_interno_id  ID de la radicación interna
      * @return JsonResponse Respuesta JSON con los responsables
      *
      * @urlParam radica_interno_id integer required El ID de la radicación interna. Example: 1
@@ -237,12 +233,10 @@ class VentanillaRadicaInternoResponsaController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "No hay responsables asignados para esta radicación interna"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el listado de responsables",
@@ -260,6 +254,7 @@ class VentanillaRadicaInternoResponsaController extends Controller
             $data = $responsables->map(function ($r) {
                 $user = $r->userCargo?->user;
                 $cargo = $r->userCargo?->cargo;
+
                 return [
                     'id' => $r->id,
                     'radica_interno_id' => $r->radica_interno_id,
@@ -268,13 +263,13 @@ class VentanillaRadicaInternoResponsaController extends Controller
                     'usuario' => $user ? [
                         'nombres' => $user->nombres,
                         'apellidos' => $user->apellidos,
-                        'nombre_completo' => trim($user->nombres . ' ' . $user->apellidos)
+                        'nombre_completo' => trim($user->nombres.' '.$user->apellidos),
                     ] : null,
                     'cargo' => $cargo ? [
                         'id' => $cargo->id,
                         'nombre' => $cargo->nom_organico,
                         'nom_organico' => $cargo->nom_organico,
-                        'codigo' => $cargo->cod_organico
+                        'codigo' => $cargo->cod_organico,
                     ] : null,
                     'created_at' => $r->created_at,
                 ];
@@ -289,7 +284,7 @@ class VentanillaRadicaInternoResponsaController extends Controller
     /**
      * Elimina un responsable específico por su ID.
      *
-     * @param int $id ID del responsable
+     * @param  int  $id  ID del responsable
      * @return JsonResponse Respuesta JSON confirmando la eliminación
      *
      * @urlParam id integer required El ID del responsable. Example: 1
@@ -298,12 +293,10 @@ class VentanillaRadicaInternoResponsaController extends Controller
      *   "status": true,
      *   "message": "Responsable eliminado exitosamente"
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Responsable no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al eliminar el responsable",
@@ -315,7 +308,7 @@ class VentanillaRadicaInternoResponsaController extends Controller
         try {
             $responsable = VentanillaRadicaInternoResponsa::find($id);
 
-            if (!$responsable) {
+            if (! $responsable) {
                 return $this->errorResponse('Responsable no encontrado', null, 404);
             }
 
@@ -326,6 +319,7 @@ class VentanillaRadicaInternoResponsaController extends Controller
             return $this->successResponse(null, 'Responsable eliminado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar el responsable', $e->getMessage(), 500);
         }
     }
@@ -337,7 +331,7 @@ class VentanillaRadicaInternoResponsaController extends Controller
 
             $radicado = VentanillaRadicaInterno::find($radica_interno_id);
 
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicado interno no encontrado', null, 404);
             }
 
@@ -361,11 +355,13 @@ class VentanillaRadicaInternoResponsaController extends Controller
             DB::commit();
 
             return $this->successResponse($responsablesCreados, 'Responsables asignados exitosamente', 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al asignar responsables', $e->getMessage(), 500);
         }
     }

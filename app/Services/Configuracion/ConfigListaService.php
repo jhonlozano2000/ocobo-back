@@ -16,12 +16,12 @@ class ConfigListaService
      */
     public function getAll(array $filters = []): LengthAwarePaginator|Collection
     {
-        $cacheKey = 'config_listas:all:' . md5(json_encode($filters ?? []));
+        $cacheKey = 'config_listas:all:'.md5(json_encode($filters ?? []));
 
         return Cache::remember($cacheKey, now()->addMinutes(self::CACHE_TTL), function () use ($filters) {
             $query = ConfigLista::with('detalles');
 
-            if (!empty($filters['search'])) {
+            if (! empty($filters['search'])) {
                 $query->where(function ($q) use ($filters) {
                     $q->where('cod', 'like', "%{$filters['search']}%")
                         ->orWhere('nombre', 'like', "%{$filters['search']}%");
@@ -41,7 +41,7 @@ class ConfigListaService
     {
         $query = ConfigLista::query();
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $query->where(function ($q) use ($filters) {
                 $q->where('cod', 'like', "%{$filters['search']}%")
                     ->orWhere('nombre', 'like', "%{$filters['search']}%");
@@ -58,7 +58,7 @@ class ConfigListaService
      */
     public function getWithActiveDetails(int $id): ?ConfigLista
     {
-        return ConfigLista::with(['detalles' => fn($q) => $q->where('estado', true)])
+        return ConfigLista::with(['detalles' => fn ($q) => $q->where('estado', true)])
             ->where('id', $id)
             ->where('estado', true)
             ->first();
@@ -71,6 +71,7 @@ class ConfigListaService
     {
         $lista = ConfigLista::create($data);
         $this->clearCache();
+
         return $lista;
     }
 
@@ -80,13 +81,14 @@ class ConfigListaService
     public function update(int $id, array $data): ?ConfigLista
     {
         $lista = ConfigLista::find($id);
-        
-        if (!$lista) {
+
+        if (! $lista) {
             return null;
         }
 
         $lista->update($data);
         $this->clearCache();
+
         return $lista->fresh(['detalles']);
     }
 
@@ -96,8 +98,8 @@ class ConfigListaService
     public function delete(int $id): bool
     {
         $lista = ConfigLista::find($id);
-        
-        if (!$lista) {
+
+        if (! $lista) {
             return false;
         }
 
@@ -107,6 +109,7 @@ class ConfigListaService
 
         $deleted = $lista->delete();
         $this->clearCache();
+
         return $deleted;
     }
 
@@ -115,8 +118,8 @@ class ConfigListaService
      */
     private function clearCache(): void
     {
-        Cache::forget('config_listas:all:' . md5(json_encode([])));
-        Cache::forget('config_listas:heads:' . md5(json_encode([])));
+        Cache::forget('config_listas:all:'.md5(json_encode([])));
+        Cache::forget('config_listas:heads:'.md5(json_encode([])));
     }
 
     /**

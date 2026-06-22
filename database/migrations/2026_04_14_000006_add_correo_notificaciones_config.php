@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -48,7 +46,7 @@ return new class extends Migration
 
         foreach ($configuraciones as $config) {
             $existe = DB::table('config_varias')->where('clave', $config['clave'])->exists();
-            if (!$existe) {
+            if (! $existe) {
                 DB::table('config_varias')->insert($config);
             }
         }

@@ -27,9 +27,9 @@ class AcuseReciboHelper
      *  - El error en el envío NO interrumpe el flujo principal
      *  - Registra en log éxito y error
      *
-     * @param  mixed  $radicado   Modelo de radicado (recibida, enviada o interna)
-     * @param  string $tipo       Tipo de correspondencia: recibida | enviada | interna
-     * @return bool               true si se envió, false si no aplica o hubo error
+     * @param  mixed  $radicado  Modelo de radicado (recibida, enviada o interna)
+     * @param  string  $tipo  Tipo de correspondencia: recibida | enviada | interna
+     * @return bool true si se envió, false si no aplica o hubo error
      */
     public static function enviar(mixed $radicado, string $tipo = 'recibida'): bool
     {
@@ -41,7 +41,7 @@ class AcuseReciboHelper
             $tercero = static::obtenerTercero($radicado, $tipo);
 
             // Verificar que tiene email y acepta notificaciones
-            if (!$tercero || empty($tercero->email) || !$tercero->notifica_email) {
+            if (! $tercero || empty($tercero->email) || ! $tercero->notifica_email) {
                 return false;
             }
 
@@ -49,10 +49,10 @@ class AcuseReciboHelper
                 ->send(new AcuseReciboRadicado($radicado, $tipo));
 
             Log::info('Acuse de recibo enviado', [
-                'tipo'         => $tipo,
-                'radicado_id'  => $radicado->id,
+                'tipo' => $tipo,
+                'radicado_id' => $radicado->id,
                 'num_radicado' => $radicado->num_radicado ?? $radicado->id,
-                'email'        => $tercero->email,
+                'email' => $tercero->email,
             ]);
 
             return true;
@@ -60,9 +60,9 @@ class AcuseReciboHelper
         } catch (\Exception $e) {
             // El error NO falla la creación del radicado
             Log::error('Error al enviar acuse de recibo', [
-                'tipo'        => $tipo,
+                'tipo' => $tipo,
                 'radicado_id' => $radicado->id ?? null,
-                'error'       => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             return false;
@@ -73,18 +73,19 @@ class AcuseReciboHelper
      * Envía notificación al tercero con archivos adjuntos al radicar.
      * Solo envía si la configuración 'notificar_radicado_al_tercero' está habilitada (solo en radicación).
      *
-     * @param  mixed  $radicado   Modelo de radicado recibida
+     * @param  mixed  $radicado  Modelo de radicado recibida
      * @param  bool  $skipConfigCheck  Si es true, omite la verificación de configuración (para botón manual)
-     * @return bool               true si se envió, false si no aplica o hubo error
+     * @return bool true si se envió, false si no aplica o hubo error
      */
     public static function enviarNotificacionConAdjuntos(mixed $radicado, bool $skipConfigCheck = false): bool
     {
         try {
             // Verificar si la configuración está habilitada (solo si no es llamada manual)
-            if (!$skipConfigCheck) {
+            if (! $skipConfigCheck) {
                 $configurado = ConfigVarias::getValor('notificar_radicado_al_tercero', 'false');
                 if ($configurado !== 'true') {
                     Log::debug('Notificación al tercero deshabilitada por configuración');
+
                     return false;
                 }
             }
@@ -98,8 +99,9 @@ class AcuseReciboHelper
                 : $radicado->load('tercero')->tercero;
 
             // Verificar que tiene email y acepta notificaciones
-            if (!$tercero || empty($tercero->email) || !$tercero->notifica_email) {
+            if (! $tercero || empty($tercero->email) || ! $tercero->notifica_email) {
                 Log::debug('Tercero no tiene email o no acepta notificaciones');
+
                 return false;
             }
 
@@ -107,9 +109,9 @@ class AcuseReciboHelper
                 ->send(new RadicadoRecibidoNotificacionTercero($radicado));
 
             Log::info('Notificación con adjuntos enviada al tercero', [
-                'radicado_id'  => $radicado->id,
+                'radicado_id' => $radicado->id,
                 'num_radicado' => $radicado->num_radicado ?? $radicado->id,
-                'email'        => $tercero->email,
+                'email' => $tercero->email,
             ]);
 
             return true;
@@ -117,7 +119,7 @@ class AcuseReciboHelper
         } catch (\Exception $e) {
             Log::error('Error al enviar notificación con adjuntos', [
                 'radicado_id' => $radicado->id ?? null,
-                'error'       => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             return false;
@@ -130,7 +132,7 @@ class AcuseReciboHelper
      */
     private static function obtenerTercero(mixed $radicado, string $tipo): mixed
     {
-        return match($tipo) {
+        return match ($tipo) {
             // Recibida: el tercero es quien envía el documento a la entidad
             'recibida' => $radicado->relationLoaded('tercero')
                 ? $radicado->tercero

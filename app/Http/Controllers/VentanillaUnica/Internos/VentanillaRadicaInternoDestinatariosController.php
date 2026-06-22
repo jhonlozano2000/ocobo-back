@@ -4,14 +4,16 @@ namespace App\Http\Controllers\VentanillaUnica\Internos;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoDestinatarios;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoDestinatarios;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class VentanillaRadicaInternoDestinatariosController extends Controller
 {
     use ApiResponseTrait;
+
     /**
      * Obtiene un listado de todos los destinatarios.
      *
@@ -31,12 +33,10 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "No hay destinatarios asignados"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el listado de destinatarios",
@@ -57,7 +57,7 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param Request $request La solicitud HTTP validada
+     * @param  Request  $request  La solicitud HTTP validada
      * @return JsonResponse Respuesta JSON con el destinatario creado
      *
      * @response 201 {
@@ -72,7 +72,6 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
      *     "updated_at": "2024-01-01T10:00:00.000000Z"
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -94,6 +93,7 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
             return $this->successResponse($destinatario, 'Destinatario creado exitosamente', 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al crear el destinatario', $e->getMessage(), 500);
         }
     }
@@ -101,7 +101,7 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
     /**
      * Obtiene un destinatario específico por su ID.
      *
-     * @param int $id ID del destinatario
+     * @param  int  $id  ID del destinatario
      * @return JsonResponse Respuesta JSON con el destinatario
      *
      * @urlParam id integer required El ID del destinatario. Example: 1
@@ -118,12 +118,10 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
      *     "updated_at": "2024-01-01T10:00:00.000000Z"
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Destinatario no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el destinatario",
@@ -135,7 +133,7 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
         try {
             $destinatario = VentanillaRadicaInternoDestinatarios::find($id);
 
-            if (!$destinatario) {
+            if (! $destinatario) {
                 return $this->errorResponse('Destinatario no encontrado', null, 404);
             }
 
@@ -145,11 +143,10 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
         }
     }
 
-
     /**
      * Obtiene los destinatarios de una radicación interna específica.
      *
-     * @param int $radica_interno_id ID de la radicación interna
+     * @param  int  $radica_interno_id  ID de la radicación interna
      * @return JsonResponse Respuesta JSON con los destinatarios
      *
      * @urlParam radica_interno_id integer required El ID de la radicación interna. Example: 1
@@ -168,12 +165,10 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "No hay destinatarios asignados para esta radicación interna"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el listado de destinatarios",
@@ -188,7 +183,7 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            $data = $destinatarios->map(fn($d) => $d->getInfoDestinatario())->filter()->values();
+            $data = $destinatarios->map(fn ($d) => $d->getInfoDestinatario())->filter()->values();
 
             return $this->successResponse($data, 'Listado de destinatarios obtenido exitosamente');
         } catch (\Exception $e) {
@@ -196,12 +191,11 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
         }
     }
 
-
     /**
      * Actualiza un destinatario específico por su ID con los datos enviados.
      *
-     * @param int $id ID del destinatario
-     * @param Request $request La solicitud HTTP validada
+     * @param  int  $id  ID del destinatario
+     * @param  Request  $request  La solicitud HTTP validada
      * @return JsonResponse Respuesta JSON con el destinatario actualizado
      *
      * @urlParam id integer required El ID del destinatario. Example: 1
@@ -217,7 +211,6 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
      *     "updated_at": "2024-01-01T10:00:00.000000Z"
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -226,7 +219,6 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
      *     "users_cargos_id": ["El destinatario es obligatorio."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al actualizar el destinatario",
@@ -240,7 +232,7 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             $destinatario = VentanillaRadicaInternoDestinatarios::find($id);
 
-            if (!$destinatario) {
+            if (! $destinatario) {
                 return $this->errorResponse('Destinatario no encontrado', null, 404);
             }
 
@@ -251,6 +243,7 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
             return $this->successResponse($destinatario, 'Destinatario actualizado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar el destinatario', $e->getMessage(), 500);
         }
     }
@@ -258,7 +251,7 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
     /**
      * Elimina un destinatario específico por su ID.
      *
-     * @param int $id ID del destinatario
+     * @param  int  $id  ID del destinatario
      * @return JsonResponse Respuesta JSON confirmando la eliminación
      *
      * @urlParam id integer required El ID del destinatario. Example: 1
@@ -267,12 +260,10 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
      *   "status": true,
      *   "message": "Destinatario eliminado exitosamente"
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Destinatario no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al eliminar el destinatario",
@@ -286,7 +277,7 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             $destinatario = VentanillaRadicaInternoDestinatarios::find($id);
 
-            if (!$destinatario) {
+            if (! $destinatario) {
                 return $this->errorResponse('Destinatario no encontrado', null, 404);
             }
 
@@ -297,6 +288,7 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
             return $this->successResponse(null, 'Destinatario eliminado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar el destinatario', $e->getMessage(), 500);
         }
     }
@@ -306,9 +298,9 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
         try {
             DB::beginTransaction();
 
-            $radicado = \App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno::find($radica_interno_id);
+            $radicado = VentanillaRadicaInterno::find($radica_interno_id);
 
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicado interno no encontrado', null, 404);
             }
 
@@ -330,11 +322,13 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
             DB::commit();
 
             return $this->successResponse($destinatariosCreados, 'Destinatarios asignados exitosamente', 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al asignar destinatarios', $e->getMessage(), 500);
         }
     }

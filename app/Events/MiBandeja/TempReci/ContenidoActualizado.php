@@ -33,11 +33,6 @@ class ContenidoActualizado implements ShouldBroadcast
 
     /**
      * Crea una nueva instancia del evento.
-     *
-     * @param int $documentoId
-     * @param array $contenido
-     * @param string $hash
-     * @param int $userId
      */
     public function __construct(int $documentoId, array $contenido, string $hash, int $userId)
     {
@@ -50,7 +45,7 @@ class ContenidoActualizado implements ShouldBroadcast
     /**
      * Canales donde broadcastear.
      *
-     * @return array<int, \Illuminate\Broadcasting\Channel>
+     * @return array<int, Channel>
      */
     public function broadcastOn(): array
     {
@@ -61,8 +56,6 @@ class ContenidoActualizado implements ShouldBroadcast
 
     /**
      * Datos a enviar con el evento.
-     *
-     * @return array
      */
     public function broadcastWith(): array
     {

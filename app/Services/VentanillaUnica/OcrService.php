@@ -2,8 +2,6 @@
 
 namespace App\Services\VentanillaUnica;
 
-use App\Helpers\ArchivoHelper;
-use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -17,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 class OcrService
 {
     private const SUPPORTED_TYPES = ['pdf', 'png', 'jpg', 'jpeg', 'tiff', 'tif', 'bmp', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'odt', 'ods', 'odp'];
+
     private const PSM_MODES = [
         'auto' => '--psm 3',
         'single_block' => '--psm 6',
@@ -47,35 +46,40 @@ class OcrService
     {
         try {
             // Validar que el disco sea seguro (OWASP A01)
-            if (!in_array($disk, self::ALLOWED_DISKS)) {
+            if (! in_array($disk, self::ALLOWED_DISKS)) {
                 Log::warning("OCR: Disco no permitido ({$disk})");
+
                 return null;
             }
 
             // Validar que el path sea seguro (OWASP A01 - Path Traversal)
-            if (!$this->esPathSeguro($filePath)) {
+            if (! $this->esPathSeguro($filePath)) {
                 Log::warning("OCR: Path no seguro ({$filePath})");
+
                 return null;
             }
 
             $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
-            if (!in_array($extension, self::SUPPORTED_TYPES)) {
+            if (! in_array($extension, self::SUPPORTED_TYPES)) {
                 Log::warning("OCR: Tipo de archivo no soportado ({$extension})");
+
                 return null;
             }
 
             $fullPath = Storage::disk($disk)->path($filePath);
 
-            if (!file_exists($fullPath)) {
+            if (! file_exists($fullPath)) {
                 Log::error("OCR: Archivo no encontrado: {$fullPath}");
+
                 return null;
             }
 
             // Verificar que el archivo real tenga la extensión correcta (no spoofing)
             $realExtension = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
-            if (!in_array($realExtension, self::ALLOWED_EXTENSIONS)) {
+            if (! in_array($realExtension, self::ALLOWED_EXTENSIONS)) {
                 Log::warning("OCR: Extensión real del archivo no es permitida ({$realExtension})");
+
                 return null;
             }
 
@@ -85,19 +89,17 @@ class OcrService
 
             return $this->applyOcr($fullPath);
         } catch (\Exception $e) {
-            Log::error('OCR Error: ' . $e->getMessage(), [
+            Log::error('OCR Error: '.$e->getMessage(), [
                 'file' => $filePath,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
+
             return null;
         }
     }
 
     /**
      * Valida que un path sea seguro (sin path traversal, sin null bytes)
-     *
-     * @param string $path
-     * @return bool
      */
     private function esPathSeguro(string $path): bool
     {
@@ -133,15 +135,16 @@ class OcrService
     private function applyOcr(string $imagePath, string $psmMode = 'auto'): ?string
     {
         // Validar que el path sea seguro antes de procesar
-        if (!$this->esPathSeguro($imagePath)) {
-            Log::error("OCR: Path no seguro para applyOcr");
+        if (! $this->esPathSeguro($imagePath)) {
+            Log::error('OCR: Path no seguro para applyOcr');
+
             return null;
         }
 
         $command = $this->buildTesseractCommand($imagePath, $psmMode);
 
         // NO loguear el comando completo por seguridad (podría contener paths sensibles)
-        Log::info("OCR: Ejecutando Tesseract", ['psm_mode' => $psmMode]);
+        Log::info('OCR: Ejecutando Tesseract', ['psm_mode' => $psmMode]);
 
         $output = [];
         $returnCode = 0;
@@ -151,10 +154,12 @@ class OcrService
 
         if ($returnCode !== 0) {
             Log::error("OCR: Tesseract falló con código {$returnCode}", ['output' => $output]);
+
             return null;
         }
 
         $text = implode("\n", $output);
+
         return $this->cleanText($text);
     }
 
@@ -164,19 +169,19 @@ class OcrService
     private function buildTesseractCommand(string $imagePath, string $psmMode): string
     {
         // Validar path
-        if (!$this->esPathSeguro($imagePath)) {
+        if (! $this->esPathSeguro($imagePath)) {
             throw new \InvalidArgumentException('Path no seguro para Tesseract');
         }
 
         // Validar que el archivo existe
-        if (!file_exists($imagePath)) {
+        if (! file_exists($imagePath)) {
             throw new \InvalidArgumentException('Archivo no existe');
         }
 
         $tesseract = config('services.tesseract.path', 'tesseract');
 
         // Validar que tesseract sea una ruta interna (whitelist)
-        if (!$this->esBinarioPermitido($tesseract)) {
+        if (! $this->esBinarioPermitido($tesseract)) {
             Log::error("OCR: Tesseract path no permitido: {$tesseract}");
             throw new \InvalidArgumentException('Tesseract path no permitido');
         }
@@ -238,7 +243,7 @@ class OcrService
             2 => ['pipe', 'w'],
         ];
 
-        $process = proc_open($command . ' 2>&1', $descriptorSpec, $pipes);
+        $process = proc_open($command.' 2>&1', $descriptorSpec, $pipes);
 
         if (is_resource($process)) {
             // Configurar timeout en segundos
@@ -255,7 +260,7 @@ class OcrService
 
             $startTime = microtime(true);
 
-            while (!feof($pipes[1]) || !feof($pipes[2])) {
+            while (! feof($pipes[1]) || ! feof($pipes[2])) {
                 $read = [$pipes[1], $pipes[2]];
                 $write = null;
                 $except = null;
@@ -265,14 +270,14 @@ class OcrService
                     break;
                 }
 
-                $tvSec = (int)($remaining / 1000000);
-                $tvUsec = (int)($remaining % 1000000);
+                $tvSec = (int) ($remaining / 1000000);
+                $tvUsec = (int) ($remaining % 1000000);
 
                 if (stream_select($read, $write, $except, $tvSec, $tvUsec) === false) {
                     break;
                 }
 
-                if (!empty($read)) {
+                if (! empty($read)) {
                     foreach ($read as $pipe) {
                         if ($pipe === $pipes[1]) {
                             $stdout .= fread($pipe, 8192);
@@ -321,10 +326,12 @@ class OcrService
                 return $text;
             }
 
-            Log::warning("OCR: No se pudo convertir el PDF. Instale Ghostscript o pdftoppm.");
+            Log::warning('OCR: No se pudo convertir el PDF. Instale Ghostscript o pdftoppm.');
+
             return null;
         } catch (\Exception $e) {
-            Log::error("OCR: Error al procesar PDF: " . $e->getMessage());
+            Log::error('OCR: Error al procesar PDF: '.$e->getMessage());
+
             return null;
         }
     }
@@ -334,18 +341,19 @@ class OcrService
      */
     private function safeRemoveDir(string $dir): void
     {
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             return;
         }
 
         // Verificar que el directorio esté dentro de storage (path traversal prevention)
         $baseDir = storage_path('app/ocr_temp');
         if (strpos(realpath($dir), realpath($baseDir)) !== 0) {
-            Log::warning("OCR: Intento de eliminar directorio fuera del área permitida");
+            Log::warning('OCR: Intento de eliminar directorio fuera del área permitida');
+
             return;
         }
 
-        $files = glob($dir . '/*');
+        $files = glob($dir.'/*');
         foreach ($files as $file) {
             if (is_file($file)) {
                 @unlink($file);
@@ -361,19 +369,20 @@ class OcrService
     private function extractFromPdfWithImageMagick(string $pdfPath, string $tempDir): ?string
     {
         // Validar path seguro
-        if (!$this->esPathSeguro($pdfPath)) {
-            Log::warning("OCR: Path PDF no seguro");
+        if (! $this->esPathSeguro($pdfPath)) {
+            Log::warning('OCR: Path PDF no seguro');
+
             return null;
         }
 
         // Crear directorio temporal dentro de storage/app (área controlada)
         $baseDir = storage_path('app/ocr_temp');
-        if (!is_dir($baseDir)) {
+        if (! is_dir($baseDir)) {
             mkdir($baseDir, 0755, true);
         }
 
-        $ocrTempDir = $baseDir . '/' . uniqid('ocr_');
-        if (!is_dir($ocrTempDir)) {
+        $ocrTempDir = $baseDir.'/'.uniqid('ocr_');
+        if (! is_dir($ocrTempDir)) {
             mkdir($ocrTempDir, 0755, true);
         }
 
@@ -392,44 +401,48 @@ class OcrService
             }
         }
 
-        if (!$gsExe) {
-            Log::warning("OCR: Ghostscript no encontrado");
+        if (! $gsExe) {
+            Log::warning('OCR: Ghostscript no encontrado');
             $this->safeRemoveDir($ocrTempDir);
+
             return null;
         }
 
         // Validar que Ghostscript sea un ejecutable válido
-        if (!$this->esBinarioPermitido($gsExe)) {
-            Log::error("OCR: Ghostscript path no permitido");
+        if (! $this->esBinarioPermitido($gsExe)) {
+            Log::error('OCR: Ghostscript path no permitido');
             $this->safeRemoveDir($ocrTempDir);
+
             return null;
         }
 
         // Sanitizar todos los paths
         $safeGsExe = escapeshellarg($gsExe);
         $safePdfPath = escapeshellarg($pdfPath);
-        $outputFile = $ocrTempDir . '/page_%03d.png';
+        $outputFile = $ocrTempDir.'/page_%03d.png';
 
         $command = "{$safeGsExe} -dNOPAUSE -dBATCH -dSAFER -sDEVICE=png16m -r150 -sOutputFile=\"{$outputFile}\" -f {$safePdfPath}";
 
-        Log::info("OCR: Ejecutando Ghostscript");
+        Log::info('OCR: Ejecutando Ghostscript');
 
         $output = [];
         $returnCode = 0;
         $this->ejecutarComandoSeguro($command, $output, $returnCode, self::PDF_TIMEOUT);
 
         if ($returnCode !== 0) {
-            Log::warning("OCR: Ghostscript falló", ['returnCode' => $returnCode]);
+            Log::warning('OCR: Ghostscript falló', ['returnCode' => $returnCode]);
             $this->safeRemoveDir($ocrTempDir);
+
             return null;
         }
 
         // Verificar si se crearon las páginas
-        $pages = glob($ocrTempDir . '/page_*.png');
+        $pages = glob($ocrTempDir.'/page_*.png');
 
         if (empty($pages)) {
-            Log::warning("OCR: Ghostscript no generó páginas");
+            Log::warning('OCR: Ghostscript no generó páginas');
             $this->safeRemoveDir($ocrTempDir);
+
             return null;
         }
 
@@ -450,23 +463,24 @@ class OcrService
         // Validar que el directorio esté dentro del área permitida
         $baseDir = storage_path('app/ocr_temp');
         if (strpos(realpath($dir), realpath($baseDir)) !== 0) {
-            Log::warning("OCR: Directorio fuera del área permitida");
+            Log::warning('OCR: Directorio fuera del área permitida');
+
             return null;
         }
 
-        $pages = glob($dir . '/page_*.png');
+        $pages = glob($dir.'/page_*.png');
 
         if (empty($pages)) {
             return null;
         }
 
-        Log::info("OCR: Procesando páginas", ['count' => count($pages)]);
+        Log::info('OCR: Procesando páginas', ['count' => count($pages)]);
 
         $allText = [];
         foreach ($pages as $pageNum => $pagePath) {
             $pageText = $this->applyOcr($pagePath);
             if ($pageText) {
-                $allText[] = "--- Página " . ($pageNum + 1) . " ---";
+                $allText[] = '--- Página '.($pageNum + 1).' ---';
                 $allText[] = $pageText;
             }
         }
@@ -480,7 +494,7 @@ class OcrService
     private function extractFromPdfWithPoppler(string $pdfPath, ?string $tempDir): ?string
     {
         // Validar path seguro
-        if (!$this->esPathSeguro($pdfPath)) {
+        if (! $this->esPathSeguro($pdfPath)) {
             return null;
         }
 
@@ -499,25 +513,27 @@ class OcrService
             }
         }
 
-        if (!$pdftoppm) {
-            Log::warning("OCR: pdftoppm no encontrado");
+        if (! $pdftoppm) {
+            Log::warning('OCR: pdftoppm no encontrado');
+
             return null;
         }
 
         // Validar que pdftoppm sea un binario permitido
-        if (!$this->esBinarioPermitido($pdftoppm)) {
-            Log::error("OCR: pdftoppm path no permitido");
+        if (! $this->esBinarioPermitido($pdftoppm)) {
+            Log::error('OCR: pdftoppm path no permitido');
+
             return null;
         }
 
         // Crear directorio temporal en área controlada
         $baseDir = storage_path('app/ocr_temp');
-        if (!is_dir($baseDir)) {
+        if (! is_dir($baseDir)) {
             mkdir($baseDir, 0755, true);
         }
 
-        $ocrTempDir = $baseDir . '/' . uniqid('ocr_');
-        if (!is_dir($ocrTempDir)) {
+        $ocrTempDir = $baseDir.'/'.uniqid('ocr_');
+        if (! is_dir($ocrTempDir)) {
             mkdir($ocrTempDir, 0755, true);
         }
 
@@ -528,15 +544,16 @@ class OcrService
 
         $convertCmd = "{$safePdftoppm} -png -r 150 {$safePdfPath} {$safeOutputDir}/page";
 
-        Log::info("OCR: Intentando con Poppler (pdftoppm)...");
+        Log::info('OCR: Intentando con Poppler (pdftoppm)...');
 
         $output = [];
         $returnCode = 0;
         $this->ejecutarComandoSeguro($convertCmd, $output, $returnCode, self::PDF_TIMEOUT);
 
         if ($returnCode !== 0) {
-            Log::warning("OCR: Poppler falló");
+            Log::warning('OCR: Poppler falló');
             $this->safeRemoveDir($ocrTempDir);
+
             return null;
         }
 
@@ -643,7 +660,7 @@ class OcrService
 
         foreach ($patterns as $key => $pattern) {
             preg_match_all($pattern, $text, $matches);
-            if (!empty($matches[1])) {
+            if (! empty($matches[1])) {
                 $results[$key] = array_unique($matches[1]);
             }
         }
@@ -659,7 +676,7 @@ class OcrService
         $tesseract = config('services.tesseract.path', 'tesseract');
 
         // Validar que sea un binario permitido
-        if (!$this->esBinarioPermitido($tesseract)) {
+        if (! $this->esBinarioPermitido($tesseract)) {
             return false;
         }
 

@@ -4,6 +4,7 @@ namespace App\Services\Configuracion;
 
 use App\Models\Configuracion\ConfigVarias;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class ConfigVariasService
@@ -15,14 +16,14 @@ class ConfigVariasService
     {
         $query = ConfigVarias::query();
 
-        if (!empty($filters['search'])) {
-            $query->where(fn($q) => $q
+        if (! empty($filters['search'])) {
+            $query->where(fn ($q) => $q
                 ->where('clave', 'like', "%{$filters['search']}%")
                 ->orWhere('valor', 'like', "%{$filters['search']}%")
             );
         }
 
-        if (!empty($filters['tipo'])) {
+        if (! empty($filters['tipo'])) {
             $query->where('tipo', $filters['tipo']);
         }
 
@@ -32,8 +33,8 @@ class ConfigVariasService
 
         $query->orderBy('clave', 'asc');
 
-        $result = !empty($filters['per_page']) 
-            ? $query->paginate($filters['per_page']) 
+        $result = ! empty($filters['per_page'])
+            ? $query->paginate($filters['per_page'])
             : $query->get();
 
         return $this->injectLogoUrl($result);
@@ -62,11 +63,12 @@ class ConfigVariasService
     {
         $config = ConfigVarias::where('clave', $clave)->first();
 
-        if (!$config) {
+        if (! $config) {
             return null;
         }
 
         $config->fill($data)->save();
+
         return $config;
     }
 
@@ -122,11 +124,11 @@ class ConfigVariasService
      */
     private function injectLogoUrl($configs)
     {
-        $callback = fn(ConfigVarias $config) => $config->clave === 'logo_empresa'
+        $callback = fn (ConfigVarias $config) => $config->clave === 'logo_empresa'
             ? $config->setAttribute('logo_url', $config->getArchivoUrl('valor', 'otros_archivos'))
             : $config;
 
-        if ($configs instanceof \Illuminate\Pagination\AbstractPaginator) {
+        if ($configs instanceof AbstractPaginator) {
             $configs->getCollection()->transform($callback);
         } else {
             $configs->transform($callback);

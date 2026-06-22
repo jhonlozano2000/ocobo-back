@@ -2,10 +2,14 @@
 
 namespace App\Helpers;
 
+use finfo;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use finfo;
+use setasign\Fpdi\Fpdi;
 
 class ArchivoHelper
 {
@@ -72,14 +76,14 @@ class ArchivoHelper
     /**
      * Obtiene una instancia de Storage del disco especificado (cacheada).
      *
-     * @param string $disk
-     * @return \Illuminate\Contracts\Filesystem\Filesystem
+     * @return Filesystem
      */
     private static function getStorage(string $disk)
     {
-        if (!isset(self::$storageCache[$disk])) {
+        if (! isset(self::$storageCache[$disk])) {
             self::$storageCache[$disk] = Storage::disk($disk);
         }
+
         return self::$storageCache[$disk];
     }
 
@@ -87,15 +91,15 @@ class ArchivoHelper
      * Valida los magic bytes de un archivo para verificar su tipo real.
      * OWASP A03:2021 - Injection, ISO 27001 A.12.2.1
      *
-     * @param \Illuminate\Http\UploadedFile|string $fileOrPath Ruta o archivo uploaded
-     * @param string|null $expectedMime Mime type esperado (opcional)
+     * @param  UploadedFile|string  $fileOrPath  Ruta o archivo uploaded
+     * @param  string|null  $expectedMime  Mime type esperado (opcional)
      * @return bool True si los magic bytes coinciden con el tipo esperado
      */
     public static function validarMagicBytes($fileOrPath, ?string $expectedMime = null): bool
     {
         try {
             // Obtener el contenido del archivo
-            if ($fileOrPath instanceof \Illuminate\Http\UploadedFile) {
+            if ($fileOrPath instanceof UploadedFile) {
                 $path = $fileOrPath->getRealPath();
                 $content = file_get_contents($path, false, null, 0, 16);
             } else {
@@ -120,6 +124,7 @@ class ArchivoHelper
                         return true;
                     }
                 }
+
                 return false;
             }
 
@@ -135,16 +140,13 @@ class ArchivoHelper
             return false;
         } catch (\Exception $e) {
             Log::error('Error validando magic bytes', ['error' => $e->getMessage()]);
+
             return false;
         }
     }
 
     /**
      * Compara los primeros bytes del archivo con una firma esperada.
-     *
-     * @param string $content
-     * @param array $signature
-     * @return bool
      */
     private static function coincideSignature(string $content, array $signature): bool
     {
@@ -152,11 +154,16 @@ class ArchivoHelper
             return false;
         }
 
+        if (strlen($content) < count($signature)) {
+            return false;
+        }
+
         for ($i = 0; $i < count($signature); $i++) {
-            if (isset($content[$i]) && ord($content[$i]) !== $signature[$i]) {
+            if (ord($content[$i]) !== $signature[$i]) {
                 return false;
             }
         }
+
         return true;
     }
 
@@ -164,8 +171,8 @@ class ArchivoHelper
      * Valida que el archivo sea seguro para upload.
      * Combina validación MIME + Magic Bytes + Nombre seguro.
      *
-     * @param \Illuminate\Http\UploadedFile $file
-     * @param array|null $allowedMimes Lista de MIME types permitidos (null = usar defaults)
+     * @param  UploadedFile  $file
+     * @param  array|null  $allowedMimes  Lista de MIME types permitidos (null = usar defaults)
      * @return array ['valido' => bool, 'error' => string|null, 'mime_real' => string|null]
      */
     public static function validarArchivoSeguro($file, ?array $allowedMimes = null): array
@@ -173,7 +180,7 @@ class ArchivoHelper
         $allowedMimes = $allowedMimes ?? self::$ALLOWED_MIMES;
 
         // 1. Validar que el archivo existe y es válido
-        if (!$file || !$file->isValid()) {
+        if (! $file || ! $file->isValid()) {
             return ['valido' => false, 'error' => 'Archivo inválido o corrupto', 'mime_real' => null];
         }
 
@@ -181,22 +188,23 @@ class ArchivoHelper
         $clientMime = $file->getMimeType();
 
         // 3. Verificar que el MIME está en la lista de permitidos
-        if (!in_array($clientMime, $allowedMimes)) {
+        if (! in_array($clientMime, $allowedMimes)) {
             return ['valido' => false, 'error' => "Tipo MIME no permitido: {$clientMime}", 'mime_real' => null];
         }
 
         // 4. Validar magic bytes (protección contra spoofing)
-        if (!self::validarMagicBytes($file, $clientMime)) {
+        if (! self::validarMagicBytes($file, $clientMime)) {
             Log::warning('Archivo rechazado por validación de magic bytes', [
                 'nombre' => $file->getClientOriginalName(),
-                'mime_cliente' => $clientMime
+                'mime_cliente' => $clientMime,
             ]);
+
             return ['valido' => false, 'error' => 'El contenido del archivo no corresponde con su extensión', 'mime_real' => null];
         }
 
         // 5. Validar nombre de archivo seguro
         $nombreOriginal = $file->getClientOriginalName();
-        if (!self::esNombreSeguro($nombreOriginal)) {
+        if (! self::esNombreSeguro($nombreOriginal)) {
             return ['valido' => false, 'error' => 'Nombre de archivo no seguro', 'mime_real' => null];
         }
 
@@ -209,7 +217,7 @@ class ArchivoHelper
         // 7. Usar finfo para validación adicional
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $realMime = $finfo->file($file->getRealPath());
-        if (!in_array($realMime, $allowedMimes)) {
+        if (! in_array($realMime, $allowedMimes)) {
             return ['valido' => false, 'error' => "Tipo MIME real no permitido: {$realMime}", 'mime_real' => $realMime];
         }
 
@@ -218,9 +226,6 @@ class ArchivoHelper
 
     /**
      * Verifica si el nombre de archivo es seguro (sin path traversal).
-     *
-     * @param string $nombre
-     * @return bool
      */
     private static function esNombreSeguro(string $nombre): bool
     {
@@ -249,15 +254,13 @@ class ArchivoHelper
     /**
      * Guarda un archivo en el disco especificado y elimina el archivo actual si existe.
      *
-     * @param Request $request
-     * @param string $campo Nombre del campo del $request en donde se encuentra el archivo
-     * @param string $disk Nombre del disco de almacenamiento
-     * @param string|null $archivoActual Archivo actual a eliminar (si existe)
-     * @return string|null
+     * @param  string  $campo  Nombre del campo del $request en donde se encuentra el archivo
+     * @param  string  $disk  Nombre del disco de almacenamiento
+     * @param  string|null  $archivoActual  Archivo actual a eliminar (si existe)
      */
     public static function guardarArchivo(Request $request, string $campo, string $disk, ?string $archivoActual = null): ?string
     {
-        if (!$request->hasFile($campo)) {
+        if (! $request->hasFile($campo)) {
             return $archivoActual;
         }
 
@@ -265,7 +268,7 @@ class ArchivoHelper
 
         // Validación defensiva: si el FormRequest ya validó, esto normalmente no debería fallar
         // pero mantenemos la validación como medida de seguridad
-        if (!$file || !$file->isValid()) {
+        if (! $file || ! $file->isValid()) {
             return $archivoActual;
         }
 
@@ -275,7 +278,7 @@ class ArchivoHelper
             $storage->delete($archivoActual);
         }
 
-        $nombreArchivo = Str::random(50) . '.' . $file->getClientOriginalExtension();
+        $nombreArchivo = Str::random(50).'.'.$file->getClientOriginalExtension();
 
         // Usar el contenido del archivo directamente
         $contenido = $file->getContent();
@@ -290,6 +293,7 @@ class ArchivoHelper
         }
 
         $storage->put($nombreArchivo, $contenido);
+
         return $nombreArchivo;
     }
 
@@ -297,25 +301,22 @@ class ArchivoHelper
      * Guarda un archivo con hash SHA-256 sin eliminar archivo actual.
      * Retorna path y hash para integridad.
      *
-     * @param Request $request
-     * @param string $campo
-     * @param string $disk
      * @return array|null [path => string, hash => string]
      */
     public static function guardarArchivoConHash(Request $request, string $campo, string $disk): ?array
     {
-        if (!$request->hasFile($campo)) {
+        if (! $request->hasFile($campo)) {
             return null;
         }
 
         $file = $request->file($campo);
-        if (!$file || !$file->isValid()) {
+        if (! $file || ! $file->isValid()) {
             return null;
         }
 
         $storage = self::getStorage($disk);
 
-        $nombreArchivo = Str::random(50) . '.' . $file->getClientOriginalExtension();
+        $nombreArchivo = Str::random(50).'.'.$file->getClientOriginalExtension();
 
         // Obtener contenido del archivo
         $contenido = $file->getContent();
@@ -336,7 +337,7 @@ class ArchivoHelper
 
         return [
             'path' => $nombreArchivo,
-            'hash' => $hash
+            'hash' => $hash,
         ];
     }
 
@@ -344,22 +345,19 @@ class ArchivoHelper
      * Guarda un archivo en el disco especificado y retorna el path junto con su hash SHA-256 y metadatos tecnicos.
      * Inyecta metadatos internos (Título, Autor, Asunto) en el binario si es un PDF.
      *
-     * @param Request $request
-     * @param string $campo
-     * @param string $disk
-     * @param array $metadatos [titulo => string, autor => string, asunto => string]
-     * @param string|null $archivoActual
+     * @param  array  $metadatos  [titulo => string, autor => string, asunto => string]
      * @return array|null [path => string, hash => string, mime => string, size => int]
      */
-    public static function guardarArchivoConMetadatos(Request $request, string $campo, string $disk, array $metadatos = [], ?string $archivoActual = null): ?array
+    public static function guardarArchivoConMetadatos(Request $request, string $campo, string $disk, array $metadatos = [], ?string $archivoActual = null, ?string $directorio = null): ?array
     {
-        if (!$request->hasFile($campo)) {
+        if (! $request->hasFile($campo)) {
             return null;
         }
 
         $file = $request->file($campo);
-        if (!$file || !$file->isValid()) {
+        if (! $file || ! $file->isValid()) {
             Log::warning('guardarArchivoConMetadatos: Archivo inválido', ['campo' => $campo]);
+
             return null;
         }
 
@@ -367,9 +365,9 @@ class ArchivoHelper
         $contenido = $file->getContent();
 
         // Si es un PDF, inyectamos los metadatos de contexto (ISO 27001 - Integridad)
-        if ($mime === 'application/pdf' && !empty($metadatos)) {
+        if ($mime === 'application/pdf' && ! empty($metadatos)) {
             $realPath = $file->getRealPath();
-            if (!empty($realPath) && file_exists($realPath)) {
+            if (! empty($realPath) && file_exists($realPath)) {
                 $contenido = self::inyectarMetadatosPDF($realPath, $metadatos);
             }
         }
@@ -384,7 +382,16 @@ class ArchivoHelper
             $storage->delete($archivoActual);
         }
 
-        $nombreArchivo = Str::random(50) . '.' . $file->getClientOriginalExtension();
+        $nombreArchivo = Str::random(50).'.'.$file->getClientOriginalExtension();
+
+        // Si se provee un subdirectorio, guardarlo ahí
+        if ($directorio) {
+            $nombreArchivo = $directorio.'/'.$nombreArchivo;
+            $directorioPath = $storage->path($directorio);
+            if (! is_dir($directorioPath)) {
+                $storage->makeDirectory($directorio);
+            }
+        }
 
         $storage->put($nombreArchivo, $contenido);
 
@@ -392,28 +399,27 @@ class ArchivoHelper
             'path' => $nombreArchivo,
             'hash' => $hash,
             'mime' => $mime,
-            'size' => $size
+            'size' => $size,
         ];
     }
 
     /**
      * Inyecta metadatos internos en un binario PDF usando FPDI.
      *
-     * @param string $realPath
-     * @param array $metadatos
      * @return string Binario del PDF sellado
      */
     private static function inyectarMetadatosPDF(string $realPath, array $metadatos): string
     {
         try {
             // Verificar que el archivo existe y no está vacío
-            if (empty($realPath) || !file_exists($realPath)) {
+            if (empty($realPath) || ! file_exists($realPath)) {
                 Log::warning('inyectarMetadatosPDF: Path vacío o archivo no existe', ['path' => $realPath]);
+
                 return file_get_contents($realPath);
             }
 
-            $pdf = new \setasign\Fpdi\Fpdi();
-            
+            $pdf = new Fpdi;
+
             // Configurar metadatos
             $pdf->SetTitle($metadatos['titulo'] ?? 'Radicado OCOBO', true);
             $pdf->SetAuthor($metadatos['autor'] ?? 'Sistema OCOBO', true);
@@ -435,22 +441,19 @@ class ArchivoHelper
             // Si falla la inyección (ej: PDF encriptado), retornamos el contenido original
             Log::warning('inyectarMetadatosPDF falló, usando original', [
                 'path' => $realPath,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
+
             return file_get_contents($realPath);
         }
     }
 
     /**
      * Elimina un archivo del disco especificado.
-     *
-     * @param string|null $path
-     * @param string $disk
-     * @return void
      */
     public static function eliminarArchivo(?string $path, string $disk): void
     {
-        if (!$path) {
+        if (! $path) {
             return;
         }
 
@@ -463,45 +466,38 @@ class ArchivoHelper
     /**
      * Obtiene la URL SEGURA de un archivo almacenado en el disco especificado.
      * Genera un enlace hacia DocumentoController en lugar de una URL pública.
-     *
-     * @param string|null $path
-     * @param string $disk
-     * @return string|null
      */
     public static function obtenerUrl(?string $path, string $disk): ?string
     {
-        if (!$path) {
+        if (! $path) {
             return null;
         }
 
         // Generar URL apuntando al endpoint seguro protegido por Sanctum
-        return url('/api/documentos/ver?disk=' . urlencode($disk) . '&path=' . urlencode($path));
+        return url('/api/documentos/ver?disk='.urlencode($disk).'&path='.urlencode($path));
     }
 
     /**
      * Guarda múltiples archivos en el disco especificado y retorna sus paths y hashes.
      *
-     * @param Request $request
-     * @param string $campo
-     * @param string $disk
      * @return array Array de arrays: [['path' => string, 'hash' => string], ...]
      */
     public static function guardarMultiplesConHash(Request $request, string $campo, string $disk): array
     {
         $resultados = [];
-        if (!$request->hasFile($campo)) {
+        if (! $request->hasFile($campo)) {
             return $resultados;
         }
 
         $files = $request->file($campo);
         $storage = self::getStorage($disk);
 
-        foreach ((array)$files as $file) {
+        foreach ((array) $files as $file) {
             if ($file && $file->isValid()) {
                 // Generar Hash SHA-256 ANTES de mover el archivo
                 $hash = hash_file('sha256', $file->getRealPath());
 
-                $nombreArchivo = Str::random(50) . '.' . $file->getClientOriginalExtension();
+                $nombreArchivo = Str::random(50).'.'.$file->getClientOriginalExtension();
 
                 $contenido = $file->getContent();
                 if (empty($contenido)) {
@@ -509,15 +505,15 @@ class ArchivoHelper
                     if ($realPath && file_exists($realPath)) {
                         $contenido = file_get_contents($realPath);
                     } else {
-                        continue; 
+                        continue;
                     }
                 }
 
                 $storage->put($nombreArchivo, $contenido);
-                
+
                 $resultados[] = [
                     'path' => $nombreArchivo,
-                    'hash' => $hash
+                    'hash' => $hash,
                 ];
             }
         }
@@ -527,10 +523,6 @@ class ArchivoHelper
 
     /**
      * Elimina múltiples archivos del disco especificado.
-     *
-     * @param array $paths
-     * @param string $disk
-     * @return void
      */
     public static function eliminarMultiples(array $paths, string $disk): void
     {

@@ -5,9 +5,9 @@ namespace App\Mail;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Storage;
 
@@ -16,6 +16,7 @@ class RadicadoRecibidoNotificacionTercero extends Mailable
     use Queueable, SerializesModels;
 
     public VentanillaRadicaReci $radicado;
+
     public string $nombreEntidad;
 
     public function __construct(VentanillaRadicaReci $radicado)
@@ -54,7 +55,7 @@ class RadicadoRecibidoNotificacionTercero extends Mailable
         // Archivo digital principal
         if ($this->radicado->archivo_digital && Storage::disk('radicados_recibidos')->exists($this->radicado->archivo_digital)) {
             $nombreArchivo = $this->radicado->nom_origi ?: basename($this->radicado->archivo_digital);
-            $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromStorageDisk(
+            $attachments[] = Attachment::fromStorageDisk(
                 'radicados_recibidos',
                 $this->radicado->archivo_digital
             )->as($nombreArchivo);
@@ -65,7 +66,7 @@ class RadicadoRecibidoNotificacionTercero extends Mailable
             foreach ($this->radicado->archivos as $archivo) {
                 if (Storage::disk('radicados_recibidos')->exists($archivo->archivo)) {
                     $nombreArchivo = $archivo->nom_origi ?: basename($archivo->archivo);
-                    $attachments[] = \Illuminate\Mail\Mailables\Attachment::fromStorageDisk(
+                    $attachments[] = Attachment::fromStorageDisk(
                         'radicados_recibidos',
                         $archivo->archivo
                     )->as($nombreArchivo);

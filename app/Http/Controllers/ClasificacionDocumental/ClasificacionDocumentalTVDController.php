@@ -5,8 +5,8 @@ namespace App\Http\Controllers\ClasificacionDocumental;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTVD;
-use Illuminate\Http\Request;
 use App\Services\ClasificacionDocumental\TVDService;
+use Illuminate\Http\Request;
 
 class ClasificacionDocumentalTVDController extends Controller
 {
@@ -44,7 +44,7 @@ class ClasificacionDocumentalTVDController extends Controller
         try {
             $tvd = ClasificacionDocumentalTVD::with(['children', 'dependencia', 'parent'])->find($id);
 
-            if (!$tvd) {
+            if (! $tvd) {
                 return $this->errorResponse('Elemento TVD no encontrado', null, 404);
             }
 
@@ -59,7 +59,7 @@ class ClasificacionDocumentalTVDController extends Controller
         try {
             $tvd = $this->service->update($id, $request->all());
 
-            if (!$tvd) {
+            if (! $tvd) {
                 return $this->errorResponse('Elemento TVD no encontrado', null, 404);
             }
 
@@ -72,7 +72,7 @@ class ClasificacionDocumentalTVDController extends Controller
     public function destroy($id)
     {
         try {
-            if (!$this->service->delete($id)) {
+            if (! $this->service->delete($id)) {
                 return $this->errorResponse('No se puede eliminar el elemento TVD porque tiene hijos o no existe', null, 422);
             }
 

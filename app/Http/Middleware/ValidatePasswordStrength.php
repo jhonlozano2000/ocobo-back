@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -46,7 +45,7 @@ class ValidatePasswordStrength
         $passwordFields = ['password', 'password_confirmation', 'current_password', 'new_password'];
 
         foreach ($passwordFields as $field) {
-            if ($request->has($field) && !empty($request->input($field))) {
+            if ($request->has($field) && ! empty($request->input($field))) {
                 return true;
             }
         }
@@ -69,51 +68,51 @@ class ValidatePasswordStrength
 
         // Validar longitud mínima
         if (strlen($password) < self::MIN_LENGTH) {
-            $errors['password'][] = "La contraseña debe tener al menos " . self::MIN_LENGTH . " caracteres.";
+            $errors['password'][] = 'La contraseña debe tener al menos '.self::MIN_LENGTH.' caracteres.';
         }
 
         // Validar longitud máxima
         if (strlen($password) > self::MAX_LENGTH) {
-            $errors['password'][] = "La contraseña no debe exceder " . self::MAX_LENGTH . " caracteres.";
+            $errors['password'][] = 'La contraseña no debe exceder '.self::MAX_LENGTH.' caracteres.';
         }
 
         // Validar al menos una mayúscula
-        if (!preg_match('/[A-Z]/', $password)) {
-            $errors['password'][] = "La contraseña debe contener al menos una letra mayúscula.";
+        if (! preg_match('/[A-Z]/', $password)) {
+            $errors['password'][] = 'La contraseña debe contener al menos una letra mayúscula.';
         }
 
         // Validar al menos una minúscula
-        if (!preg_match('/[a-z]/', $password)) {
-            $errors['password'][] = "La contraseña debe contener al menos una letra minúscula.";
+        if (! preg_match('/[a-z]/', $password)) {
+            $errors['password'][] = 'La contraseña debe contener al menos una letra minúscula.';
         }
 
         // Validar al menos un número
-        if (!preg_match('/[0-9]/', $password)) {
-            $errors['password'][] = "La contraseña debe contener al menos un número.";
+        if (! preg_match('/[0-9]/', $password)) {
+            $errors['password'][] = 'La contraseña debe contener al menos un número.';
         }
 
         // Validar al menos un carácter especial
-        if (!preg_match('/[!@#$%^&*(),.?":{}|<>_\-\[\]\'\\\+\=\/\*]/', $password)) {
-            $errors['password'][] = "La contraseña debe contener al menos un carácter especial.";
+        if (! preg_match('/[!@#$%^&*(),.?":{}|<>_\-\[\]\'\\\+\=\/\*]/', $password)) {
+            $errors['password'][] = 'La contraseña debe contener al menos un carácter especial.';
         }
 
         // Validar que no contenga el email del usuario
         $email = $request->input('email') ?? $request->user()?->email;
         if ($email && stripos($password, explode('@', $email)[0]) !== false) {
-            $errors['password'][] = "La contraseña no debe contener parte del correo electrónico.";
+            $errors['password'][] = 'La contraseña no debe contener parte del correo electrónico.';
         }
 
         // Validar que no sea una contraseña común
         if ($this->isCommonPassword($password)) {
-            $errors['password'][] = "Esta contraseña es demasiado común. Elija una más segura.";
+            $errors['password'][] = 'Esta contraseña es demasiado común. Elija una más segura.';
         }
 
-        if (!empty($errors)) {
+        if (! empty($errors)) {
             abort(response()->json([
                 'success' => false,
                 'message' => 'La contraseña no cumple con los requisitos de seguridad.',
                 'errors' => $errors,
-                'error' => 'PASSWORD_TOO_WEAK'
+                'error' => 'PASSWORD_TOO_WEAK',
             ], 422));
         }
     }

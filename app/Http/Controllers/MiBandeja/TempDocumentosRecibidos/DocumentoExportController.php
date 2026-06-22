@@ -16,7 +16,7 @@ class DocumentoExportController extends Controller
 
     public function exportar(Request $request, Documento $documento, string $formato): Response
     {
-        if (!$documento->tieneAcceso($request->user())) {
+        if (! $documento->tieneAcceso($request->user())) {
             return response()->json(['message' => 'No tienes acceso a este documento'], 403);
         }
 
@@ -27,15 +27,15 @@ class DocumentoExportController extends Controller
             'txt' => 'exportarTxt',
         ];
 
-        if (!isset($metodos[$formato])) {
+        if (! isset($metodos[$formato])) {
             return response()->json([
-                'message' => 'Formato no soportado. Use: pdf, docx, html, txt'
+                'message' => 'Formato no soportado. Use: pdf, docx, html, txt',
             ], 400);
         }
 
         try {
             $rutaArchivo = $this->exportService->{$metodos[$formato]}($documento);
-            $nombreArchivo = $documento->titulo . '.' . $formato;
+            $nombreArchivo = $documento->titulo.'.'.$formato;
 
             return response()->download($rutaArchivo, $nombreArchivo, [
                 'Content-Type' => $this->getMimeType($formato),
@@ -44,14 +44,14 @@ class DocumentoExportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error al exportar el documento',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
     private function getMimeType(string $formato): string
     {
-        return match($formato) {
+        return match ($formato) {
             'pdf' => 'application/pdf',
             'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'html' => 'text/html',

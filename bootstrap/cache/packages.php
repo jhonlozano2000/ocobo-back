@@ -11,6 +11,24 @@
       0 => 'Barryvdh\\DomPDF\\ServiceProvider',
     ),
   ),
+  'directorytree/imapengine-laravel' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'DirectoryTree\\ImapEngine\\Laravel\\ImapServiceProvider',
+    ),
+  ),
+  'intervention/image-laravel' => 
+  array (
+    'aliases' => 
+    array (
+      'Image' => 'Intervention\\Image\\Laravel\\Facades\\Image',
+    ),
+    'providers' => 
+    array (
+      0 => 'Intervention\\Image\\Laravel\\ServiceProvider',
+    ),
+  ),
   'jenssegers/agent' => 
   array (
     'aliases' => 

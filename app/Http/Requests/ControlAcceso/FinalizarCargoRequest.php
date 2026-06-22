@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\ControlAcceso;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class FinalizarCargoRequest extends FormRequest
@@ -17,7 +18,7 @@ class FinalizarCargoRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -25,14 +26,14 @@ class FinalizarCargoRequest extends FormRequest
             'fecha_fin' => [
                 'nullable',
                 'date',
-                'after_or_equal:' . now()->subYears(2)->format('Y-m-d'),
-                'before_or_equal:' . now()->format('Y-m-d')
+                'after_or_equal:'.now()->subYears(2)->format('Y-m-d'),
+                'before_or_equal:'.now()->format('Y-m-d'),
             ],
             'observaciones' => [
                 'nullable',
                 'string',
-                'max:500'
-            ]
+                'max:500',
+            ],
         ];
     }
 
@@ -47,7 +48,7 @@ class FinalizarCargoRequest extends FormRequest
             'fecha_fin.before_or_equal' => 'La fecha de finalización no puede ser posterior a hoy.',
 
             'observaciones.string' => 'Las observaciones deben ser texto.',
-            'observaciones.max' => 'Las observaciones no pueden tener más de 500 caracteres.'
+            'observaciones.max' => 'Las observaciones no pueden tener más de 500 caracteres.',
         ];
     }
 
@@ -57,9 +58,9 @@ class FinalizarCargoRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         // Establecer fecha de fin por defecto si no se proporciona
-        if (!$this->has('fecha_fin') || empty($this->fecha_fin)) {
+        if (! $this->has('fecha_fin') || empty($this->fecha_fin)) {
             $this->merge([
-                'fecha_fin' => now()->format('Y-m-d')
+                'fecha_fin' => now()->format('Y-m-d'),
             ]);
         }
     }
@@ -71,7 +72,7 @@ class FinalizarCargoRequest extends FormRequest
     {
         return [
             'fecha_fin' => 'fecha de finalización',
-            'observaciones' => 'observaciones'
+            'observaciones' => 'observaciones',
         ];
     }
 }

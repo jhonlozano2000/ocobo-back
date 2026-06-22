@@ -2,26 +2,32 @@
 
 namespace App\Http\Controllers\VentanillaUnica\Recibidos;
 
-use App\Http\Controllers\Controller;
+use App\Helpers\AcuseReciboHelper;
 use App\Helpers\ArchivoHelper;
-use App\Http\Traits\ApiResponseTrait;
-use App\Http\Requests\Ventanilla\Recibidos\StoreRadicadoReciboRequest;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Recibidos\ListRadicadosRecibidosRequest;
+use App\Http\Requests\Ventanilla\Recibidos\StoreRadicadoReciboRequest;
+use App\Http\Resources\VentanillaUnica\PqrsResource;
+use App\Http\Traits\ApiResponseTrait;
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
-use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsa;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciOptimizedView;
-use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
-use Carbon\Carbon;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsa;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
+use App\Services\VentanillaUnica\PqrsService;
+use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use App\Traits\AuditViewTrait;
 use App\Traits\VentanillaAuditTrait;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class VentanillaRadicaReciController extends Controller
 {
@@ -31,15 +37,15 @@ class VentanillaRadicaReciController extends Controller
 
     public function __construct()
     {
-        $this->middleware('can:' . self::PERM . 'Listar')->only(['index', 'listarRadicados', 'estadisticas']);
-        $this->middleware('can:' . self::PERM . 'Crear')->only(['store']);
-        $this->middleware('can:' . self::PERM . 'Mostrar')->only(['show', 'lineaTiempo']);
-        $this->middleware('can:' . self::PERM . 'Editar')->only(['update']);
-        $this->middleware('can:' . self::PERM . 'Actualizar asunto')->only(['updateAsunto']);
-        $this->middleware('can:' . self::PERM . 'Atualizar fechas de radicados')->only(['updateFechas']);
-        $this->middleware('can:' . self::PERM . 'Actualizar clasificacion de radicados')->only(['updateClasificacionDocumental']);
-        $this->middleware('can:' . self::PERM . 'Eliminar')->only(['destroy']);
-        $this->middleware('can:' . self::PERM . 'Notificar Email')->only(['enviarNotificacion']);
+        $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'listarRadicados', 'estadisticas']);
+        $this->middleware('can:'.self::PERM.'Crear')->only(['store']);
+        $this->middleware('can:'.self::PERM.'Mostrar')->only(['show', 'lineaTiempo']);
+        $this->middleware('can:'.self::PERM.'Editar')->only(['update']);
+        $this->middleware('can:'.self::PERM.'Actualizar asunto')->only(['updateAsunto']);
+        $this->middleware('can:'.self::PERM.'Atualizar fechas de radicados')->only(['updateFechas']);
+        $this->middleware('can:'.self::PERM.'Actualizar clasificacion de radicados')->only(['updateClasificacionDocumental']);
+        $this->middleware('can:'.self::PERM.'Eliminar')->only(['destroy']);
+        $this->middleware('can:'.self::PERM.'Notificar Email')->only(['enviarNotificacion']);
     }
 
     /**
@@ -49,8 +55,8 @@ class VentanillaRadicaReciController extends Controller
      * relacionada como clasificación documental, terceros, medios de recepción
      * y servidores de archivos.
      *
-     * @param ListRadicadosRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de radicaciones
+     * @param  ListRadicadosRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con el listado de radicaciones
      *
      * @queryParam search string Buscar por número de radicado o asunto. Example: "2024-001"
      * @queryParam fecha_desde string Filtrar desde fecha (YYYY-MM-DD). Example: "2024-01-01"
@@ -86,7 +92,6 @@ class VentanillaRadicaReciController extends Controller
      *     "total": 100
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el listado de radicaciones",
@@ -128,7 +133,7 @@ class VentanillaRadicaReciController extends Controller
                         'responsables:id,radica_reci_id,users_cargos_id,custodio,fechor_visto,created_at',
                         'responsables.userCargo:id,user_id,cargo_id',
                         'responsables.userCargo.user:id,nombres,apellidos,email',
-                        'responsables.userCargo.cargo:id,nom_organico,cod_organico,tipo'
+                        'responsables.userCargo.cargo:id,nom_organico,cod_organico,tipo',
                     ])
                     ->get()
                     ->keyBy('id');
@@ -145,7 +150,7 @@ class VentanillaRadicaReciController extends Controller
                         $totalCustodiosVista = $radicado->total_custodios ?? null;
 
                         // Obtener información completa usando métodos del modelo (con totales de la vista)
-                        $informacionCompleta = $radicadoCompleto->getInformacionCompleta($totalResponsablesVista, $totalCustodiosVista);
+                        $informacionCompleta = $radicadoCompleto->getInformacionCompleta(false, $totalResponsablesVista, $totalCustodiosVista);
 
                         // Asignar información al radicado directamente
                         $radicado->documentos = $informacionCompleta['documentos'];
@@ -188,8 +193,8 @@ class VentanillaRadicaReciController extends Controller
      * Este método permite crear una nueva radicación con validación de datos
      * y generación automática del número de radicado.
      *
-     * @param VentanillaRadicaReciRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la radicación creada
+     * @param  VentanillaRadicaReciRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con la radicación creada
      *
      * @bodyParam clasifica_documen_id integer required ID de la clasificación documental. Example: 1
      * @bodyParam tercero_id integer required ID del tercero. Example: 1
@@ -215,7 +220,6 @@ class VentanillaRadicaReciController extends Controller
      *     "created_at": "2024-01-01T10:00:00.000000Z"
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -223,7 +227,6 @@ class VentanillaRadicaReciController extends Controller
      *     "clasifica_documen_id": ["La clasificación documental es obligatoria."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al crear la radicación",
@@ -246,8 +249,8 @@ class VentanillaRadicaReciController extends Controller
 
             if (isset($validatedData['dias_vencimiento']) && $validatedData['dias_vencimiento'] !== null) {
                 $radicado->dias_vencimiento = $validatedData['dias_vencimiento'];
-            } elseif (!empty($validatedData['clasifica_documen_id'])) {
-                $clasificacion = \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::find($validatedData['clasifica_documen_id']);
+            } elseif (! empty($validatedData['clasifica_documen_id'])) {
+                $clasificacion = ClasificacionDocumentalTRD::find($validatedData['clasifica_documen_id']);
                 if ($clasificacion) {
                     $radicado->dias_vencimiento = $clasificacion->getDiasVencimiento();
                 }
@@ -260,8 +263,17 @@ class VentanillaRadicaReciController extends Controller
             // Si falla la creación de PQRS, se hace rollback del radicado
             // ============================================================
             $pqrsCreada = null;
-            if (!empty($validatedData['crear_pqrs']) && $validatedData['crear_pqrs']) {
-                $pqrsService = new \App\Services\VentanillaUnica\PqrsService();
+
+            \Log::info('DEBUG PQRS - valores recibidos', [
+                'crear_pqrs' => $validatedData['crear_pqrs'] ?? 'NOT_SET',
+                'crear_pqrs_type' => gettype($validatedData['crear_pqrs'] ?? null),
+                'tipo_pqrs_id' => $validatedData['tipo_pqrs_id'] ?? 'NOT_SET',
+                'prioridad' => $validatedData['prioridad'] ?? 'NOT_SET',
+                'radicado_id' => $radicado->id,
+            ]);
+
+            if (! empty($validatedData['crear_pqrs']) && $validatedData['crear_pqrs']) {
+                $pqrsService = new PqrsService;
                 $datosPqrs = [
                     'tipo_pqrs_id' => $validatedData['tipo_pqrs_id'],
                     'prioridad' => $validatedData['prioridad'] ?? 'Normal',
@@ -270,6 +282,15 @@ class VentanillaRadicaReciController extends Controller
                     'clasificacion_documental_trd_id' => $validatedData['clasifica_documen_id'],
                 ];
                 $pqrsCreada = $pqrsService->crearDesdeRadicado($radicado->id, $datosPqrs);
+
+                \Log::info('DEBUG PQRS - creación exitosa', [
+                    'pqrs_id' => $pqrsCreada->id ?? 'NULL',
+                    'radicado_id' => $radicado->id,
+                ]);
+            } else {
+                \Log::info('DEBUG PQRS - creación omitida (crear_pqrs es false/null)', [
+                    'crear_pqrs_value' => $validatedData['crear_pqrs'] ?? 'NOT_SET',
+                ]);
             }
             // ============================================================
 
@@ -280,26 +301,39 @@ class VentanillaRadicaReciController extends Controller
 
             $radicado->load(['archivos', 'tercero']);
 
-            \App\Helpers\AcuseReciboHelper::enviar($radicado, 'recibida');
-            \App\Helpers\AcuseReciboHelper::enviarNotificacionConAdjuntos($radicado);
+            AcuseReciboHelper::enviar($radicado, 'recibida');
+            AcuseReciboHelper::enviarNotificacionConAdjuntos($radicado);
 
             $this->auditVentanilla($radicado, 'created', $radicado->num_radicado);
 
             $response = $radicado->load(['clasificacionDocumental', 'tercero', 'medioRecepcion']);
-            
+
             $responseData = [
                 'radicado' => $response,
-                'pqrs' => $pqrsCreada ? new \App\Http\Resources\VentanillaUnica\PqrsResource($pqrsCreada) : null,
+                'pqrs' => $pqrsCreada ? new PqrsResource($pqrsCreada) : null,
             ];
-            
+
             return $this->successResponse(
                 $responseData,
-                'Radicación creada exitosamente' . ($pqrsCreada ? ' con PQRS asociada' : ''),
+                'Radicación creada exitosamente'.($pqrsCreada ? ' con PQRS asociada' : ''),
                 201
             );
         } catch (\Exception $e) {
             DB::rollBack();
-            return $this->errorResponse('Error al crear la radicación', $e->getMessage(), 500);
+            \Log::error('Error al crear radicado PQRS', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->except(['password', 'token']),
+                'user_id' => auth()->id(),
+            ]);
+
+            return $this->errorResponse(
+                'Error al crear la radicación: '.$e->getMessage(),
+                $e->getMessage(),
+                500
+            );
         }
     }
 
@@ -310,7 +344,7 @@ class VentanillaRadicaReciController extends Controller
      * servidor de archivos, usuario que creó, documentos (principal y adjuntos con metadatos y URL),
      * responsables completos e historial de archivos eliminados.
      *
-     * @param int $id ID de la radicación
+     * @param  int  $id  ID de la radicación
      * @return JsonResponse Respuesta JSON con la radicación completa
      *
      * @urlParam id integer required El ID de la radicación. Example: 1
@@ -331,7 +365,7 @@ class VentanillaRadicaReciController extends Controller
                 'archivosEliminados.usuario',
             ])->find($id);
 
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
 
@@ -364,14 +398,14 @@ class VentanillaRadicaReciController extends Controller
                 if (is_object($subserieModel)) {
                     // La relación fue cargada con eager loading
                     $serieModel = $subserieModel->getAttribute('parent');
-                } else if (is_int($subserieModel) || is_numeric($subserieModel)) {
+                } elseif (is_int($subserieModel) || is_numeric($subserieModel)) {
                     // Es un ID, cargar manualmente
-                    $subserieModel = \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::find($subserieModel);
+                    $subserieModel = ClasificacionDocumentalTRD::find($subserieModel);
                     if ($subserieModel) {
                         $padreId = $subserieModel->getAttribute('parent');
                         if (is_int($padreId) || is_numeric($padreId)) {
-                            $serieModel = \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::find($padreId);
-                        } else if (is_object($padreId)) {
+                            $serieModel = ClasificacionDocumentalTRD::find($padreId);
+                        } elseif (is_object($padreId)) {
                             $serieModel = $padreId;
                         }
                     }
@@ -382,7 +416,7 @@ class VentanillaRadicaReciController extends Controller
                         'id' => $subserieModel->id,
                         'nom' => $subserieModel->nom,
                         'cod' => $subserieModel->cod,
-                        'tipo' => $subserieModel->tipo
+                        'tipo' => $subserieModel->tipo,
                     ];
                 }
 
@@ -391,7 +425,7 @@ class VentanillaRadicaReciController extends Controller
                         'id' => $serieModel->id,
                         'nom' => $serieModel->nom,
                         'cod' => $serieModel->cod,
-                        'tipo' => $serieModel->tipo
+                        'tipo' => $serieModel->tipo,
                     ];
                 }
 
@@ -401,7 +435,7 @@ class VentanillaRadicaReciController extends Controller
                     'cod' => $clasificacion->cod,
                     'tipo' => $clasificacion->tipo,
                     'serie' => $serie,
-                    'subserie' => $subserie
+                    'subserie' => $subserie,
                 ];
             }
 
@@ -419,7 +453,7 @@ class VentanillaRadicaReciController extends Controller
                 'id' => $clasificacion->id,
                 'nom' => $clasificacion->nom,
                 'cod' => $clasificacion->cod,
-                'tipo' => $clasificacion->tipo
+                'tipo' => $clasificacion->tipo,
             ] : null;
 
             return $this->successResponse($data, 'Radicación encontrada exitosamente');
@@ -434,7 +468,7 @@ class VentanillaRadicaReciController extends Controller
      * Incluye: creación del radicado, asignación de responsables, visualización por responsables,
      * subida de archivos adjuntos y eliminación de archivos.
      *
-     * @param int $id ID de la radicación
+     * @param  int  $id  ID de la radicación
      * @return JsonResponse Respuesta JSON con la línea de tiempo
      *
      * @urlParam id integer required El ID de la radicación. Example: 1
@@ -451,7 +485,7 @@ class VentanillaRadicaReciController extends Controller
                 'archivosEliminados.usuario',
             ])->find($id);
 
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
 
@@ -462,7 +496,7 @@ class VentanillaRadicaReciController extends Controller
                 'fecha' => $radicado->created_at,
                 'tipo' => 'radicado_creado',
                 'titulo' => 'Radicado creado',
-                'descripcion' => 'Se creó el radicado ' . $radicado->num_radicado,
+                'descripcion' => 'Se creó el radicado '.$radicado->num_radicado,
                 'usuario' => $radicado->usuarioCreaRadicado ? $radicado->usuarioCreaRadicado->getInfoUsuario() : null,
                 'datos' => [
                     'num_radicado' => $radicado->num_radicado,
@@ -480,20 +514,20 @@ class VentanillaRadicaReciController extends Controller
                     'usuario' => null,
                     'datos' => [
                         'asunto' => $radicado->asunto,
-                        'fec_venci' => $radicado->fec_venci ? (\Carbon\Carbon::parse($radicado->fec_venci)->toDateString()) : null,
-                        'fec_docu' => $radicado->fec_docu ? (\Carbon\Carbon::parse($radicado->fec_docu)->toDateString()) : null,
+                        'fec_venci' => $radicado->fec_venci ? (Carbon::parse($radicado->fec_venci)->toDateString()) : null,
+                        'fec_docu' => $radicado->fec_docu ? (Carbon::parse($radicado->fec_docu)->toDateString()) : null,
                         'clasifica_documen_id' => $radicado->clasifica_documen_id,
                     ],
                 ];
             }
 
             // 3. Archivo digital subido (cuando existe archivo digital principal)
-            if (!empty($radicado->archivo_digital)) {
+            if (! empty($radicado->archivo_digital)) {
                 $eventos[] = [
                     'fecha' => $radicado->updated_at,
                     'tipo' => 'archivo_digital_subido',
                     'titulo' => 'Archivo digital subido',
-                    'descripcion' => 'Se cargó el archivo digital principal: ' . basename($radicado->archivo_digital),
+                    'descripcion' => 'Se cargó el archivo digital principal: '.basename($radicado->archivo_digital),
                     'usuario' => $radicado->usuarioSubio ? $radicado->usuarioSubio->getInfoUsuario() : null,
                     'datos' => [
                         'archivo_nombre' => basename($radicado->archivo_digital),
@@ -515,7 +549,7 @@ class VentanillaRadicaReciController extends Controller
                     'tipo' => 'responsable_asignado',
                     'titulo' => 'Responsable asignado',
                     'descripcion' => $cargo
-                        ? 'Se asignó como responsable' . ($responsable->custodio ? ' (custodio)' : '') . ': ' . $cargo->nom_organico
+                        ? 'Se asignó como responsable'.($responsable->custodio ? ' (custodio)' : '').': '.$cargo->nom_organico
                         : 'Se asignó un responsable',
                     'usuario' => $user,
                     'custodio' => $responsable->custodio,
@@ -543,7 +577,7 @@ class VentanillaRadicaReciController extends Controller
                         'tipo' => 'documento_visto',
                         'titulo' => 'Documento visualizado',
                         'descripcion' => $cargo
-                            ? 'Visualizado por responsable: ' . $cargo->nom_organico
+                            ? 'Visualizado por responsable: '.$cargo->nom_organico
                             : 'Un responsable visualizó el documento',
                         'usuario' => $user,
                         'datos' => [
@@ -560,7 +594,7 @@ class VentanillaRadicaReciController extends Controller
                     'fecha' => $archivo->created_at,
                     'tipo' => 'archivo_adjunto_subido',
                     'titulo' => 'Archivo adjunto subido',
-                    'descripcion' => 'Se subió el archivo adjunto: ' . basename($archivo->archivo),
+                    'descripcion' => 'Se subió el archivo adjunto: '.basename($archivo->archivo),
                     'usuario' => $archivo->usuarioSubido ? $archivo->usuarioSubido->getInfoUsuario() : null,
                     'datos' => [
                         'archivo_id' => $archivo->id,
@@ -578,7 +612,7 @@ class VentanillaRadicaReciController extends Controller
                     'fecha' => $eliminado->deleted_at,
                     'tipo' => 'archivo_eliminado',
                     'titulo' => 'Archivo eliminado',
-                    'descripcion' => 'Se eliminó el archivo: ' . basename($eliminado->archivo),
+                    'descripcion' => 'Se eliminó el archivo: '.basename($eliminado->archivo),
                     'usuario' => $eliminado->usuario ? $eliminado->usuario->getInfoUsuario() : null,
                     'datos' => [
                         'archivo_nombre' => basename($eliminado->archivo),
@@ -596,18 +630,19 @@ class VentanillaRadicaReciController extends Controller
             // Formatear fechas para la respuesta
             $lineaTiempo = array_map(function ($e) {
                 $e['fecha'] = $e['fecha']->toIso8601String();
-                if (!empty($e['datos']['fecha_subida']) && $e['datos']['fecha_subida'] instanceof \Carbon\Carbon) {
+                if (! empty($e['datos']['fecha_subida']) && $e['datos']['fecha_subida'] instanceof Carbon) {
                     $e['datos']['fecha_subida'] = $e['datos']['fecha_subida']->toIso8601String();
                 }
-                if (!empty($e['datos']['eliminado_at']) && $e['datos']['eliminado_at'] instanceof \Carbon\Carbon) {
+                if (! empty($e['datos']['eliminado_at']) && $e['datos']['eliminado_at'] instanceof Carbon) {
                     $e['datos']['eliminado_at'] = $e['datos']['eliminado_at']->toIso8601String();
                 }
-                if (!empty($e['datos']['fec_venci']) && $e['datos']['fec_venci'] instanceof \Carbon\Carbon) {
+                if (! empty($e['datos']['fec_venci']) && $e['datos']['fec_venci'] instanceof Carbon) {
                     $e['datos']['fec_venci'] = $e['datos']['fec_venci']->toDateString();
                 }
-                if (!empty($e['datos']['fec_docu']) && $e['datos']['fec_docu'] instanceof \Carbon\Carbon) {
+                if (! empty($e['datos']['fec_docu']) && $e['datos']['fec_docu'] instanceof Carbon) {
                     $e['datos']['fec_docu'] = $e['datos']['fec_docu']->toDateString();
                 }
+
                 return $e;
             }, $eventos);
 
@@ -625,9 +660,9 @@ class VentanillaRadicaReciController extends Controller
                     'asunto' => $radicado->asunto,
                     'created_at' => $radicado->created_at->toIso8601String(),
                     'updated_at' => $radicado->updated_at->toIso8601String(),
-                    'fec_venci' => $radicado->fec_venci ? (\Carbon\Carbon::parse($radicado->fec_venci)->toDateString()) : null,
-                    'fec_docu' => $radicado->fec_docu ? (\Carbon\Carbon::parse($radicado->fec_docu)->toDateString()) : null,
-                    'tiene_archivo_digital' => !empty($radicado->archivo_digital),
+                    'fec_venci' => $radicado->fec_venci ? (Carbon::parse($radicado->fec_venci)->toDateString()) : null,
+                    'fec_docu' => $radicado->fec_docu ? (Carbon::parse($radicado->fec_docu)->toDateString()) : null,
+                    'tiene_archivo_digital' => ! empty($radicado->archivo_digital),
                     'total_adjuntos' => $radicado->archivos->count(),
                     'total_responsables' => $radicado->responsables->count(),
                     'total_archivos_eliminados' => $radicado->archivosEliminados->count(),
@@ -649,11 +684,12 @@ class VentanillaRadicaReciController extends Controller
      * Este método permite modificar los datos de una radicación existente
      * manteniendo el número de radicado original.
      *
-     * @param int $id ID de la radicación
-     * @param VentanillaRadicaReciRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la radicación actualizada
+     * @param  int  $id  ID de la radicación
+     * @param  VentanillaRadicaReciRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con la radicación actualizada
      *
      * @urlParam id integer required El ID de la radicación. Example: 1
+     *
      * @bodyParam clasifica_documen_id integer ID de la clasificación documental. Example: 1
      * @bodyParam tercero_id integer ID del tercero. Example: 1
      * @bodyParam medio_recep_id integer ID del medio de recepción. Example: 1
@@ -673,12 +709,10 @@ class VentanillaRadicaReciController extends Controller
      *     "updated_at": "2024-01-01T10:00:00.000000Z"
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Radicación no encontrada"
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -686,7 +720,6 @@ class VentanillaRadicaReciController extends Controller
      *     "clasifica_documen_id": ["La clasificación documental es obligatoria."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al actualizar la radicación",
@@ -700,14 +733,14 @@ class VentanillaRadicaReciController extends Controller
 
             $radicado = VentanillaRadicaReci::find($id);
 
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
 
             $radicado->update($request->validated());
 
             $this->auditVentanilla($radicado, 'updated', $radicado->num_radicado, [
-                'campos' => array_keys($request->validated())
+                'campos' => array_keys($request->validated()),
             ]);
 
             DB::commit();
@@ -718,6 +751,7 @@ class VentanillaRadicaReciController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar la radicación', $e->getMessage(), 500);
         }
     }
@@ -728,8 +762,8 @@ class VentanillaRadicaReciController extends Controller
      * Este método permite eliminar una radicación específica del sistema.
      * Se recomienda verificar que no tenga dependencias antes de eliminar.
      *
-     * @param int $id ID de la radicación
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la eliminación
+     * @param  int  $id  ID de la radicación
+     * @return JsonResponse Respuesta JSON confirmando la eliminación
      *
      * @urlParam id integer required El ID de la radicación a eliminar. Example: 1
      *
@@ -737,12 +771,10 @@ class VentanillaRadicaReciController extends Controller
      *   "status": true,
      *   "message": "Radicación eliminada exitosamente"
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Radicación no encontrada"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al eliminar la radicación",
@@ -756,13 +788,13 @@ class VentanillaRadicaReciController extends Controller
 
             $radicado = VentanillaRadicaReci::find($id);
 
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
 
             $archivosAdicionales = $radicado->archivos()->get();
             foreach ($archivosAdicionales as $archivo) {
-                if (!empty($archivo->archivo)) {
+                if (! empty($archivo->archivo)) {
                     ArchivoHelper::eliminarArchivo($archivo->archivo, 'radicados_recibidos');
                 }
             }
@@ -781,6 +813,7 @@ class VentanillaRadicaReciController extends Controller
             return $this->successResponse(null, 'Radicación eliminada exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar la radicación', $e->getMessage(), 500);
         }
     }
@@ -788,8 +821,8 @@ class VentanillaRadicaReciController extends Controller
     /**
      * Elimina múltiples radicaciones en una sola operación.
      *
-     * @param Request $request La solicitud HTTP con el array de IDs
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el resultado
+     * @param  Request  $request  La solicitud HTTP con el array de IDs
+     * @return JsonResponse Respuesta JSON con el resultado
      *
      * @bodyParam ids array required Array de IDs de radicaciones a eliminar. Example: [1, 2, 3]
      *
@@ -801,12 +834,10 @@ class VentanillaRadicaReciController extends Controller
      *     "fallidos": 0
      *   }
      * }
-     *
      * @response 400 {
      *   "status": false,
      *   "message": "Se debe enviar un array de IDs no vacío"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al eliminar las radicaciones",
@@ -818,11 +849,11 @@ class VentanillaRadicaReciController extends Controller
         try {
             $request->validate([
                 'ids' => 'required|array|min:1',
-                'ids.*' => 'required|integer|exists:ventanilla_radica_reci,id'
+                'ids.*' => 'required|integer|exists:ventanilla_radica_reci,id',
             ], [
                 'ids.required' => 'Se debe enviar un array de IDs no vacío',
                 'ids.array' => 'Los IDs deben ser un array',
-                'ids.*.exists' => 'Uno o más IDs no existen'
+                'ids.*.exists' => 'Uno o más IDs no existen',
             ]);
 
             $ids = $request->ids;
@@ -836,14 +867,15 @@ class VentanillaRadicaReciController extends Controller
                 try {
                     $radicado = VentanillaRadicaReci::find($id);
 
-                    if (!$radicado) {
+                    if (! $radicado) {
                         $fallidos++;
+
                         continue;
                     }
 
                     $archivosAdicionales = $radicado->archivos()->get();
                     foreach ($archivosAdicionales as $archivo) {
-                        if (!empty($archivo->archivo)) {
+                        if (! empty($archivo->archivo)) {
                             ArchivoHelper::eliminarArchivo($archivo->archivo, 'radicados_recibidos');
                         }
                     }
@@ -870,12 +902,13 @@ class VentanillaRadicaReciController extends Controller
             return $this->successResponse([
                 'eliminados' => $eliminados,
                 'fallidos' => $fallidos,
-                'errores' => $errores
+                'errores' => $errores,
             ], $mensaje);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar las radicaciones', $e->getMessage(), 500);
         }
     }
@@ -883,7 +916,7 @@ class VentanillaRadicaReciController extends Controller
     /**
      * Genera un número de radicado único basado en la configuración del sistema.
      *
-     * @param string|null $cod_dependencia Código de la dependencia (opcional)
+     * @param  string|null  $cod_dependencia  Código de la dependencia (opcional)
      * @return string Número de radicado generado
      */
     private function generarNumeroRadicado($cod_dependencia = null)
@@ -917,7 +950,7 @@ class VentanillaRadicaReciController extends Controller
             'MM' => $mm,
             'DD' => $dd,
             'COD_DEPEN' => $cod_dependencia,
-            str_repeat('#', $longitudConsecutivo) => $consecutivo
+            str_repeat('#', $longitudConsecutivo) => $consecutivo,
         ];
 
         foreach ($variables as $key => $value) {
@@ -946,13 +979,13 @@ class VentanillaRadicaReciController extends Controller
     /**
      * Obtiene la dependencia del custodio desde los responsables.
      *
-     * @param array $responsables Array de responsables
+     * @param  array  $responsables  Array de responsables
      * @return string|null Código de la dependencia
      */
     private function obtenerDependenciaCustodio($responsables)
     {
         foreach ($responsables as $responsable) {
-            if (!empty($responsable['custodio']) && $responsable['custodio'] == true) {
+            if (! empty($responsable['custodio']) && $responsable['custodio'] == true) {
                 $usuario = User::find($responsable['user_id']);
 
                 if ($usuario && $usuario->cargoActivo()->exists()) {
@@ -960,14 +993,15 @@ class VentanillaRadicaReciController extends Controller
                 }
             }
         }
+
         return null;
     }
 
     /**
      * Lista radicaciones con filtros avanzados para administración.
      *
-     * @param ListRadicadosRecibidosRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las radicaciones
+     * @param  ListRadicadosRecibidosRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con las radicaciones
      */
     public function listarRadicados(ListRadicadosRecibidosRequest $request)
     {
@@ -975,7 +1009,7 @@ class VentanillaRadicaReciController extends Controller
             $query = VentanillaRadicaReci::with([
                 'clasificacionDocumental',
                 'tercero',
-                'medioRecepcion'
+                'medioRecepcion',
             ]);
 
             if ($request->filled('estado')) {
@@ -1008,7 +1042,7 @@ class VentanillaRadicaReciController extends Controller
      * incluyendo totales por estado (pendientes, en proceso, finalizados),
      * radicaciones con archivos, radicaciones faltantes, y radicaciones próximas a vencer.
      *
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las estadísticas
+     * @return JsonResponse Respuesta JSON con las estadísticas
      *
      * @response 200 {
      *   "status": true,
@@ -1034,7 +1068,6 @@ class VentanillaRadicaReciController extends Controller
      *     "porcentaje_rotulos_impresos": 80.0
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener las estadísticas",
@@ -1051,7 +1084,7 @@ class VentanillaRadicaReciController extends Controller
                 return $this->successResponse($cached, 'Estadísticas obtenidas exitosamente');
             }
 
-            $estadoService = new \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService();
+            $estadoService = new RadicadoEstadoTrabajoService;
             $fechaActual = Carbon::now()->format('Y-m-d');
 
             $totalRadicados = VentanillaRadicaReci::count();
@@ -1069,7 +1102,7 @@ class VentanillaRadicaReciController extends Controller
 
             $radicadosEstaSemana = VentanillaRadicaReci::whereBetween('created_at', [
                 Carbon::now()->startOfWeek()->format('Y-m-d'),
-                Carbon::now()->endOfWeek()->format('Y-m-d')
+                Carbon::now()->endOfWeek()->format('Y-m-d'),
             ])->count();
 
             $radicadosEsteMes = VentanillaRadicaReci::whereMonth('created_at', Carbon::now()->month)
@@ -1117,11 +1150,12 @@ class VentanillaRadicaReciController extends Controller
      * Este método permite modificar el asunto de una radicación solo si
      * ningún responsable ha visto el documento (fechor_visto es null).
      *
-     * @param int $id ID de la radicación
-     * @param Request $request La solicitud HTTP con el nuevo asunto
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el resultado
+     * @param  int  $id  ID de la radicación
+     * @param  Request  $request  La solicitud HTTP con el nuevo asunto
+     * @return JsonResponse Respuesta JSON con el resultado
      *
      * @urlParam id integer required El ID de la radicación. Example: 1
+     *
      * @bodyParam asunto string required El nuevo asunto del documento. Example: "Nuevo asunto actualizado"
      *
      * @response 200 {
@@ -1133,17 +1167,14 @@ class VentanillaRadicaReciController extends Controller
      *     "updated_at": "2024-01-01T10:00:00.000000Z"
      *   }
      * }
-     *
      * @response 400 {
      *   "status": false,
      *   "message": "No se puede editar el asunto porque al menos un responsable ya ha visto el documento"
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Radicación no encontrada"
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -1151,7 +1182,6 @@ class VentanillaRadicaReciController extends Controller
      *     "asunto": ["El asunto es obligatorio."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al actualizar el asunto",
@@ -1165,12 +1195,12 @@ class VentanillaRadicaReciController extends Controller
 
             // Validar la entrada
             $request->validate([
-                'asunto' => 'required|string|max:300'
+                'asunto' => 'required|string|max:300',
             ]);
 
             $radicado = VentanillaRadicaReci::find($id);
 
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
 
@@ -1194,15 +1224,17 @@ class VentanillaRadicaReciController extends Controller
                 [
                     'id' => $radicado->id,
                     'asunto' => $radicado->asunto,
-                    'updated_at' => $radicado->updated_at
+                    'updated_at' => $radicado->updated_at,
                 ],
                 'Asunto actualizado exitosamente'
             );
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar el asunto', $e->getMessage(), 500);
         }
     }
@@ -1211,9 +1243,8 @@ class VentanillaRadicaReciController extends Controller
      * Actualiza las fechas de un radicado (fecha de vencimiento y fecha del documento)
      * Solo permite la actualización si ningún responsable ha visto el documento
      *
-     * @param int $id ID del radicado
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @param  int  $id  ID del radicado
+     * @return JsonResponse
      */
     public function updateFechas($id, Request $request)
     {
@@ -1223,7 +1254,7 @@ class VentanillaRadicaReciController extends Controller
             // Buscar el radicado
             $radicado = VentanillaRadicaReci::find($id);
 
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicado no encontrado', null, 404);
             }
 
@@ -1234,6 +1265,7 @@ class VentanillaRadicaReciController extends Controller
 
             if ($responsableVisto) {
                 DB::rollBack();
+
                 return $this->errorResponse(
                     'No se pueden actualizar las fechas porque al menos un responsable ya ha visto el documento',
                     null,
@@ -1244,10 +1276,10 @@ class VentanillaRadicaReciController extends Controller
             // Validar los datos de entrada
             $request->validate([
                 'fec_venci' => 'nullable|date',
-                'fec_docu' => 'nullable|date'
+                'fec_docu' => 'nullable|date',
             ], [
                 'fec_venci.date' => 'La fecha de vencimiento debe ser una fecha válida',
-                'fec_docu.date' => 'La fecha del documento debe ser una fecha válida'
+                'fec_docu.date' => 'La fecha del documento debe ser una fecha válida',
             ]);
 
             // Actualizar solo los campos proporcionados
@@ -1261,6 +1293,7 @@ class VentanillaRadicaReciController extends Controller
 
             if (empty($updateData)) {
                 DB::rollBack();
+
                 return $this->errorResponse('No se proporcionaron fechas para actualizar', null, 422);
             }
 
@@ -1272,13 +1305,15 @@ class VentanillaRadicaReciController extends Controller
                 'id' => $radicado->id,
                 'fec_venci' => $radicado->fec_venci,
                 'fec_docu' => $radicado->fec_docu,
-                'updated_at' => $radicado->updated_at
+                'updated_at' => $radicado->updated_at,
             ], 'Fechas actualizadas exitosamente');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar las fechas', $e->getMessage(), 500);
         }
     }
@@ -1287,26 +1322,26 @@ class VentanillaRadicaReciController extends Controller
      * Actualiza la clasificación documental de una radicación recibida.
      * Solo permite la actualización si ningún responsable ha visto el documento.
      *
-     * @param int $id ID de la radicación
-     * @param Request $request La solicitud HTTP
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON
+     * @param  int  $id  ID de la radicación
+     * @param  Request  $request  La solicitud HTTP
+     * @return JsonResponse Respuesta JSON
      */
     public function updateClasificacionDocumental($id, Request $request)
     {
         try {
             // Validar los datos de entrada
             $request->validate([
-                'clasifica_documen_id' => 'required|integer|exists:clasificacion_documental_trd,id'
+                'clasifica_documen_id' => 'required|integer|exists:clasificacion_documental_trd,id',
             ], [
                 'clasifica_documen_id.required' => 'La clasificación documental es obligatoria.',
                 'clasifica_documen_id.integer' => 'La clasificación documental debe ser un número entero.',
-                'clasifica_documen_id.exists' => 'La clasificación documental no es válida.'
+                'clasifica_documen_id.exists' => 'La clasificación documental no es válida.',
             ]);
 
             // Buscar la radicación
             $radicacion = VentanillaRadicaReci::find($id);
 
-            if (!$radicacion) {
+            if (! $radicacion) {
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
 
@@ -1331,7 +1366,7 @@ class VentanillaRadicaReciController extends Controller
                 $radicacion->fresh(['clasificacionDocumental']),
                 'Clasificación documental actualizada exitosamente'
             );
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
             return $this->errorResponse('Error al actualizar la clasificación documental', $e->getMessage(), 500);
@@ -1341,17 +1376,15 @@ class VentanillaRadicaReciController extends Controller
     /**
      * Alias de notificación para compatibilidad.
      *
-     * @param int $id ID del radicado
-     * @param Request $request La solicitud HTTP
-     * @return JsonResponse
+     * @param  int  $id  ID del radicado
+     * @param  Request  $request  La solicitud HTTP
      *
      * @urlParam id integer required El ID del radicado. Example: 1
      */
     /**
      * Envía notificación de radicado a responsables con adjuntos.
      *
-     * @param int $id ID del radicado
-     * @return JsonResponse
+     * @param  int  $id  ID del radicado
      *
      * @urlParam id integer required El ID del radicado. Example: 1
      *
@@ -1365,12 +1398,10 @@ class VentanillaRadicaReciController extends Controller
      *     "tipo_notificacion": "asignacion"
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Radicado no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al enviar las notificaciones",
@@ -1398,7 +1429,7 @@ class VentanillaRadicaReciController extends Controller
                 'radicado_id' => $radicado->id,
                 ...$resultado,
             ], 'Notificaciones enviadas exitosamente');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Radicado no encontrado', null, 404);
         } catch (\Exception $e) {
             return $this->errorResponse('Error al enviar las notificaciones', $e->getMessage(), 500);
@@ -1408,8 +1439,7 @@ class VentanillaRadicaReciController extends Controller
     /**
      * Envía notificación al tercero con archivos adjuntos.
      *
-     * @param int $id ID del radicado
-     * @return JsonResponse
+     * @param  int  $id  ID del radicado
      *
      * @urlParam id integer required El ID del radicado. Example: 1
      *
@@ -1421,12 +1451,10 @@ class VentanillaRadicaReciController extends Controller
      *     "email_enviado": "correo@ejemplo.com"
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Radicado no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al enviar la notificación",
@@ -1441,7 +1469,7 @@ class VentanillaRadicaReciController extends Controller
                 'archivos',
             ])->findOrFail($id);
 
-            $enviado = \App\Helpers\AcuseReciboHelper::enviarNotificacionConAdjuntos($radicado, true);
+            $enviado = AcuseReciboHelper::enviarNotificacionConAdjuntos($radicado, true);
 
             if ($enviado) {
                 return $this->successResponse([
@@ -1455,7 +1483,7 @@ class VentanillaRadicaReciController extends Controller
                 null,
                 422
             );
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Radicado no encontrado', null, 404);
         } catch (\Exception $e) {
             return $this->errorResponse('Error al enviar la notificación', $e->getMessage(), 500);
@@ -1468,8 +1496,6 @@ class VentanillaRadicaReciController extends Controller
      * Usa el índice FULLTEXT para buscar texto en el contenido extraído por OCR.
      * Solo busca en radicados que tengan OCR aplicado.
      *
-     * @param Request $request
-     * @return JsonResponse
      *
      * @bodyParam q string required Término de búsqueda (mínimo 3 caracteres)
      * @bodyParam page integer Página actual (default: 1)
@@ -1504,7 +1530,7 @@ class VentanillaRadicaReciController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Mínimo 3 caracteres',
-                'data' => []
+                'data' => [],
             ], 422);
         }
 
@@ -1525,7 +1551,7 @@ class VentanillaRadicaReciController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Búsqueda exitosa',
-            'data' => $radicados
+            'data' => $radicados,
         ]);
     }
 
@@ -1539,7 +1565,8 @@ class VentanillaRadicaReciController extends Controller
         $prepared = array_map(function ($word) {
             // Remover caracteres especiales de MySQL
             $word = preg_replace('/[+\-><()~*\"@]/', '', $word);
-            return '+' . $word . '*';
+
+            return '+'.$word.'*';
         }, $words);
 
         return implode(' ', $prepared);
@@ -1550,14 +1577,14 @@ class VentanillaRadicaReciController extends Controller
      */
     private function extractOcrContext(?string $ocr, string $query, int $contextLength = 200): ?string
     {
-        if (!$ocr) {
+        if (! $ocr) {
             return null;
         }
 
         $position = stripos($ocr, $query);
         if ($position === false) {
             // Si no encontró coincidencia exacta, devolver el inicio
-            return mb_substr($ocr, 0, $contextLength) . '...';
+            return mb_substr($ocr, 0, $contextLength).'...';
         }
 
         // Calcular el inicio del fragmento
@@ -1585,16 +1612,17 @@ class VentanillaRadicaReciController extends Controller
         $prefix = $start > 0 ? '...' : '';
         $suffix = $end < mb_strlen($ocr) ? '...' : '';
 
-        return $prefix . trim($fragment) . $suffix;
+        return $prefix.trim($fragment).$suffix;
     }
 
     public function estadosDisponibles()
     {
-        $service = new RadicadoEstadoTrabajoService();
+        $service = new RadicadoEstadoTrabajoService;
         $estados = RadicadoEstadoTrabajoService::getEstados();
 
         $estadosInfo = array_map(function ($estado) use ($service) {
             $info = $service->getEstadoInfo($estado);
+
             return [
                 'key' => $estado,
                 'label' => $info['label'],
@@ -1620,7 +1648,7 @@ class VentanillaRadicaReciController extends Controller
 
             $radicado = VentanillaRadicaReci::find($id);
 
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicado no encontrado', null, 404);
             }
 
@@ -1631,9 +1659,9 @@ class VentanillaRadicaReciController extends Controller
                 'id' => $radicado->id,
                 'estado_anterior' => $estadoAnterior,
                 'estado_nuevo' => $radicado->estado_trabajo,
-                'estado_info' => (new RadicadoEstadoTrabajoService())->getEstadoInfo($radicado->estado_trabajo),
+                'estado_info' => (new RadicadoEstadoTrabajoService)->getEstadoInfo($radicado->estado_trabajo),
             ], 'Estado actualizado exitosamente');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
             return $this->errorResponse('Error al cambiar el estado', $e->getMessage(), 500);
@@ -1645,11 +1673,11 @@ class VentanillaRadicaReciController extends Controller
         try {
             $radicado = VentanillaRadicaReci::find($id);
 
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicado no encontrado', null, 404);
             }
 
-            $service = new RadicadoEstadoTrabajoService();
+            $service = new RadicadoEstadoTrabajoService;
             $estadoActual = $service->getEstadoInfo($radicado->estado_trabajo);
 
             $eventos = [
@@ -1670,7 +1698,7 @@ class VentanillaRadicaReciController extends Controller
                 ];
             }
 
-            usort($eventos, fn($a, $b) => strcmp($b['fecha'], $a['fecha']));
+            usort($eventos, fn ($a, $b) => strcmp($b['fecha'], $a['fecha']));
 
             return $this->successResponse([
                 'estado_actual' => [
@@ -1686,10 +1714,10 @@ class VentanillaRadicaReciController extends Controller
 
     public function transicionesEstado($estadoId)
     {
-        $service = new RadicadoEstadoTrabajoService();
+        $service = new RadicadoEstadoTrabajoService;
         $estados = RadicadoEstadoTrabajoService::getEstados();
 
-        if (!in_array($estadoId, $estados)) {
+        if (! in_array($estadoId, $estados)) {
             return $this->errorResponse('Estado no válido', null, 422);
         }
 
@@ -1704,6 +1732,7 @@ class VentanillaRadicaReciController extends Controller
 
         $transicionesInfo = array_map(function ($estado) use ($service) {
             $info = $service->getEstadoInfo($estado);
+
             return [
                 'key' => $estado,
                 'label' => $info['label'],
@@ -1721,13 +1750,13 @@ class VentanillaRadicaReciController extends Controller
     {
         try {
             $request->validate([
-                'observa_soli_anula' => 'required|string'
+                'observa_soli_anula' => 'required|string',
             ], [
-                'observa_soli_anula.required' => 'Las observaciones de la solicitud son obligatorias.'
+                'observa_soli_anula.required' => 'Las observaciones de la solicitud son obligatorias.',
             ]);
 
             $radicado = VentanillaRadicaReci::find($id);
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicado no encontrado', null, 404);
             }
 
@@ -1735,13 +1764,13 @@ class VentanillaRadicaReciController extends Controller
                 return $this->errorResponse('El radicado ya está anulado', null, 400);
             }
 
-            if ($radicado->usua_soli_anula_id && !$radicado->usua_aprue_anula_id) {
+            if ($radicado->usua_soli_anula_id && ! $radicado->usua_aprue_anula_id) {
                 return $this->errorResponse('Ya existe una solicitud de anulación pendiente para este radicado', null, 400);
             }
 
             $radicado->update([
                 'usua_soli_anula_id' => Auth::id(),
-                'observa_soli_anula' => $request->observa_soli_anula
+                'observa_soli_anula' => $request->observa_soli_anula,
             ]);
 
             return $this->successResponse($radicado, 'Solicitud de anulación creada exitosamente');
@@ -1758,17 +1787,17 @@ class VentanillaRadicaReciController extends Controller
         try {
             $request->validate([
                 'accion' => 'required|in:aprobar,rechazar',
-                'observa_aprue_anula' => 'required|string'
+                'observa_aprue_anula' => 'required|string',
             ], [
-                'observa_aprue_anula.required' => 'Las observaciones son obligatorias.'
+                'observa_aprue_anula.required' => 'Las observaciones son obligatorias.',
             ]);
 
             $radicado = VentanillaRadicaReci::find($id);
-            if (!$radicado) {
+            if (! $radicado) {
                 return $this->errorResponse('Radicado no encontrado', null, 404);
             }
 
-            if (!$radicado->usua_soli_anula_id) {
+            if (! $radicado->usua_soli_anula_id) {
                 return $this->errorResponse('No existe solicitud de anulación para este radicado', null, 400);
             }
 
@@ -1779,14 +1808,15 @@ class VentanillaRadicaReciController extends Controller
             if ($request->accion === 'rechazar') {
                 $radicado->update([
                     'usua_aprue_anula_id' => Auth::id(),
-                    'observa_aprue_anula' => $request->observa_aprue_anula
+                    'observa_aprue_anula' => $request->observa_aprue_anula,
                 ]);
+
                 return $this->successResponse($radicado, 'Anulación rechazada');
             }
 
             $radicado->update([
                 'usua_aprue_anula_id' => Auth::id(),
-                'observa_aprue_anula' => $request->observa_aprue_anula
+                'observa_aprue_anula' => $request->observa_aprue_anula,
             ]);
 
             return $this->successResponse($radicado, 'Anulación aprobada exitosamente');

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\ControlAcceso\UsersSession;
 use Illuminate\Database\Eloquent\Model;
 
 class UsersActivityLog extends Model
@@ -20,14 +21,14 @@ class UsersActivityLog extends Model
         'new_values',
         'ip_address',
         'user_agent',
-        'is_critical'
+        'is_critical',
     ];
 
     protected $casts = [
-        'old_values'   => 'array',
-        'new_values'   => 'array',
-        'is_critical'  => 'boolean',
-        'created_at'   => 'datetime',
+        'old_values' => 'array',
+        'new_values' => 'array',
+        'is_critical' => 'boolean',
+        'created_at' => 'datetime',
     ];
 
     public function user()
@@ -42,7 +43,7 @@ class UsersActivityLog extends Model
 
     public function session()
     {
-        return $this->belongsTo(\App\Models\ControlAcceso\UsersSession::class, 'users_session_id');
+        return $this->belongsTo(UsersSession::class, 'users_session_id');
     }
 
     public static function log(array $data): self
@@ -51,24 +52,24 @@ class UsersActivityLog extends Model
         $request = request();
 
         return self::create([
-            'user_id'         => $user?->id,
-            'users_session_id'=> self::getActiveSessionId(),
-            'module'          => $data['module'] ?? 'Unknown',
-            'action'          => $data['action'] ?? 'unknown',
-            'description'     => $data['description'] ?? null,
-            'entity_id'       => $data['entity_id'] ?? null,
-            'entity_type'     => $data['entity_type'] ?? null,
-            'old_values'      => $data['old_values'] ?? null,
-            'new_values'      => $data['new_values'] ?? null,
-            'ip_address'      => $request?->ip(),
-            'user_agent'      => $request?->userAgent(),
-            'is_critical'     => $data['is_critical'] ?? false,
+            'user_id' => $user?->id,
+            'users_session_id' => self::getActiveSessionId(),
+            'module' => $data['module'] ?? 'Unknown',
+            'action' => $data['action'] ?? 'unknown',
+            'description' => $data['description'] ?? null,
+            'entity_id' => $data['entity_id'] ?? null,
+            'entity_type' => $data['entity_type'] ?? null,
+            'old_values' => $data['old_values'] ?? null,
+            'new_values' => $data['new_values'] ?? null,
+            'ip_address' => $request?->ip(),
+            'user_agent' => $request?->userAgent(),
+            'is_critical' => $data['is_critical'] ?? false,
         ]);
     }
 
     private static function getActiveSessionId(): ?int
     {
-        return \App\Models\ControlAcceso\UsersSession::where('user_id', auth()->id())
+        return UsersSession::where('user_id', auth()->id())
             ->where('is_active', true)
             ->orderBy('last_login_at', 'desc')
             ->value('id');
@@ -77,16 +78,16 @@ class UsersActivityLog extends Model
     public static function actions(string $module): array
     {
         return [
-            'create'   => 'Crear',
-            'update'   => 'Actualizar',
-            'delete'   => 'Eliminar',
-            'view'     => 'Ver',
-            'export'   => 'Exportar',
+            'create' => 'Crear',
+            'update' => 'Actualizar',
+            'delete' => 'Eliminar',
+            'view' => 'Ver',
+            'export' => 'Exportar',
             'download' => 'Descargar',
-            'assign'   => 'Asignar',
+            'assign' => 'Asignar',
             'change_status' => 'Cambiar estado',
-            'login'    => 'Iniciar sesión',
-            'logout'   => 'Cerrar sesión',
+            'login' => 'Iniciar sesión',
+            'logout' => 'Cerrar sesión',
         ];
     }
 }

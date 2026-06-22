@@ -2,6 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Recibidos;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -15,13 +16,13 @@ class VentanillaRadicaReciArchivoEliminado extends Model
         'radicado_id',
         'archivo',
         'deleted_by',
-        'deleted_at'
+        'deleted_at',
     ];
 
     protected $casts = [
         'deleted_at' => 'datetime',
         'created_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'updated_at' => 'datetime',
     ];
 
     /**
@@ -29,7 +30,7 @@ class VentanillaRadicaReciArchivoEliminado extends Model
      */
     public function usuario()
     {
-        return $this->belongsTo(\App\Models\User::class, 'deleted_by');
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 
     /**

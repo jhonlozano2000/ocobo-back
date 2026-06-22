@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\VentanillaUnica\Enviados;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
-use App\Http\Requests\Ventanilla\Enviados\UpdateProyectorEnviadoRequest;
 use App\Http\Requests\Ventanilla\Enviados\StoreProyectorEnviadoRequest;
+use App\Http\Requests\Ventanilla\Enviados\UpdateProyectorEnviadoRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosProyectores;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class VentanillaRadicaEnviadosProyectoresController extends Controller
 {
@@ -58,7 +59,7 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
 
             foreach ($proyectoresData as $item) {
                 $radicaEnviadoId = $item['radica_enviado_id'] ?? $request->route('radica_enviado_id');
-                if (!$radicaEnviadoId) {
+                if (! $radicaEnviadoId) {
                     return $this->errorResponse('Cada proyector debe incluir radica_enviado_id', null, 400);
                 }
 
@@ -74,6 +75,7 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
             return $this->successResponse($proyectoresCreados, 'Proyectores asignados exitosamente', 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al asignar proyectores', $e->getMessage(), 500);
         }
     }
@@ -102,11 +104,13 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
             DB::commit();
 
             return $this->successResponse($proyectoresCreados, 'Proyectores asignados exitosamente', 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al asignar proyectores', $e->getMessage(), 500);
         }
     }
@@ -116,7 +120,7 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
         try {
             $proyector = VentanillaRadicaEnviadosProyectores::with(['userCargo.user', 'userCargo.cargo', 'radicado'])->find($id);
 
-            if (!$proyector) {
+            if (! $proyector) {
                 return $this->errorResponse('Proyector no encontrado', null, 404);
             }
 
@@ -133,14 +137,14 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
 
             $proyector = VentanillaRadicaEnviadosProyectores::find($id);
 
-            if (!$proyector) {
+            if (! $proyector) {
                 return $this->errorResponse('Proyector no encontrado', null, 404);
             }
 
             $updateData = $request->only(['radica_enviado_id', 'users_cargos_id']);
             $updateData = array_filter($updateData, fn ($v) => $v !== null && $v !== '');
 
-            if (!empty($updateData)) {
+            if (! empty($updateData)) {
                 $proyector->update($updateData);
             }
 
@@ -152,6 +156,7 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar el proyector', $e->getMessage(), 500);
         }
     }
@@ -163,7 +168,7 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
 
             $proyector = VentanillaRadicaEnviadosProyectores::find($id);
 
-            if (!$proyector) {
+            if (! $proyector) {
                 return $this->errorResponse('Proyector no encontrado', null, 404);
             }
 
@@ -174,6 +179,7 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
             return $this->successResponse(null, 'Proyector eliminado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar el proyector', $e->getMessage(), 500);
         }
     }
@@ -189,6 +195,7 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
             $proyectoresData = $proyectores->map(function ($p) {
                 $user = $p->userCargo?->user;
                 $cargo = $p->userCargo?->cargo;
+
                 return [
                     'id' => $p->id,
                     'usuario' => $user ? ['id' => $user->id, 'nombres' => $user->nombres, 'apellidos' => $user->apellidos] : null,

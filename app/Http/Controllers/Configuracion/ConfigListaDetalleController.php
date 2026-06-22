@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\Configuracion\StoreConfigListaDetalleRequest;
 use App\Http\Requests\Configuracion\UpdateConfigListaDetalleRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\Configuracion\ConfigListaDetalle;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -21,8 +22,8 @@ class ConfigListaDetalleController extends Controller
      * de lista asociadas. Es útil para interfaces de administración donde
      * se necesita mostrar la estructura completa de las listas maestras.
      *
-     * @param Request $request La solicitud HTTP que puede contener parámetros de filtrado
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de detalles
+     * @param  Request  $request  La solicitud HTTP que puede contener parámetros de filtrado
+     * @return JsonResponse Respuesta JSON con el listado de detalles
      *
      * @queryParam lista_id integer Filtrar por ID de lista. Example: 1
      * @queryParam search string Buscar por código o nombre. Example: "CC"
@@ -47,7 +48,6 @@ class ConfigListaDetalleController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el listado de detalles",
@@ -95,8 +95,8 @@ class ConfigListaDetalleController extends Controller
      * Este método permite crear un nuevo detalle de lista con validación
      * de datos.
      *
-     * @param StoreConfigListaDetalleRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el detalle creado
+     * @param  StoreConfigListaDetalleRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con el detalle creado
      *
      * @bodyParam lista_id integer required ID de la lista asociada. Example: 1
      * @bodyParam codigo string Código del detalle. Example: "CC"
@@ -119,7 +119,6 @@ class ConfigListaDetalleController extends Controller
      *     }
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Datos de validación incorrectos",
@@ -127,7 +126,6 @@ class ConfigListaDetalleController extends Controller
      *     "lista_id": ["La lista seleccionada no existe."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al crear el detalle",
@@ -143,7 +141,7 @@ class ConfigListaDetalleController extends Controller
             $validatedData = $request->validated();
 
             // Asegurar que el estado tenga un valor por defecto si no se proporciona
-            if (!isset($validatedData['estado'])) {
+            if (! isset($validatedData['estado'])) {
                 $validatedData['estado'] = true;
             }
 
@@ -158,6 +156,7 @@ class ConfigListaDetalleController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al crear el detalle', $e->getMessage(), 500);
         }
     }
@@ -168,8 +167,8 @@ class ConfigListaDetalleController extends Controller
      * Este método permite obtener los detalles de un elemento específico
      * de una lista maestra, incluyendo su lista asociada.
      *
-     * @param ConfigListaDetalle $listaDetalle El detalle a obtener (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el detalle
+     * @param  ConfigListaDetalle  $listaDetalle  El detalle a obtener (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON con el detalle
      *
      * @urlParam listaDetalle integer required El ID del detalle. Example: 1
      *
@@ -190,12 +189,10 @@ class ConfigListaDetalleController extends Controller
      *     }
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Detalle de lista no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el detalle",
@@ -219,9 +216,9 @@ class ConfigListaDetalleController extends Controller
      *
      * Este método permite modificar los datos de un detalle de lista existente.
      *
-     * @param UpdateConfigListaDetalleRequest $request La solicitud HTTP validada
-     * @param ConfigListaDetalle $listaDetalle El detalle a actualizar (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el detalle actualizado
+     * @param  UpdateConfigListaDetalleRequest  $request  La solicitud HTTP validada
+     * @param  ConfigListaDetalle  $listaDetalle  El detalle a actualizar (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON con el detalle actualizado
      *
      * @bodyParam lista_id integer ID de la lista asociada. Example: 1
      * @bodyParam codigo string Código del detalle. Example: "CC"
@@ -239,7 +236,6 @@ class ConfigListaDetalleController extends Controller
      *     "updated_at": "2024-01-15T10:30:00.000000Z"
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Datos de validación incorrectos",
@@ -247,7 +243,6 @@ class ConfigListaDetalleController extends Controller
      *     "nombre": ["El campo nombre es obligatorio."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al actualizar el detalle",
@@ -270,7 +265,7 @@ class ConfigListaDetalleController extends Controller
             }
 
             // Actualizar el modelo con los datos
-            if (!empty($dataToUpdate)) {
+            if (! empty($dataToUpdate)) {
                 $listaDetalle->fill($dataToUpdate);
                 $listaDetalle->save();
             }
@@ -286,17 +281,17 @@ class ConfigListaDetalleController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar el detalle', $e->getMessage(), 500);
         }
     }
-
 
     /**
      * Obtiene todos los detalles de lista activos.
      *
      * Este método retorna todos los detalles de lista activos.
      *
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con los detalles de lista activos
+     * @return JsonResponse Respuesta JSON con los detalles de lista activos
      */
     public function DetallesActivos($id)
     {
@@ -312,8 +307,8 @@ class ConfigListaDetalleController extends Controller
      * Este método permite eliminar un detalle de lista específico del sistema.
      * Se recomienda verificar que no tenga dependencias antes de eliminar.
      *
-     * @param ConfigListaDetalle $listaDetalle El detalle a eliminar (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la eliminación
+     * @param  ConfigListaDetalle  $listaDetalle  El detalle a eliminar (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON confirmando la eliminación
      *
      * @urlParam listaDetalle integer required El ID del detalle a eliminar. Example: 1
      *
@@ -321,7 +316,6 @@ class ConfigListaDetalleController extends Controller
      *   "status": true,
      *   "message": "Detalle de lista eliminado exitosamente"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al eliminar el detalle",
@@ -340,6 +334,7 @@ class ConfigListaDetalleController extends Controller
             return $this->successResponse(null, 'Detalle de lista eliminado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar el detalle', $e->getMessage(), 500);
         }
     }
@@ -350,8 +345,8 @@ class ConfigListaDetalleController extends Controller
      * Este método proporciona información estadística simple sobre el total
      * de listas y el total de detalles de listas en el sistema.
      *
-     * @param Request $request La solicitud HTTP
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las estadísticas
+     * @param  Request  $request  La solicitud HTTP
+     * @return JsonResponse Respuesta JSON con las estadísticas
      *
      * @response 200 {
      *   "status": true,
@@ -361,7 +356,6 @@ class ConfigListaDetalleController extends Controller
      *     "total_detalles": 150
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener las estadísticas",
@@ -379,7 +373,7 @@ class ConfigListaDetalleController extends Controller
 
             $estadisticas = [
                 'total_listas' => $totalListas,
-                'total_detalles' => $totalDetalles
+                'total_detalles' => $totalDetalles,
             ];
 
             return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');

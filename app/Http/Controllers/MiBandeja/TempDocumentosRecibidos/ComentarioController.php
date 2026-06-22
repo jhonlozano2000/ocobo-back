@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\MiBandeja\TempDocumentosRecibidos;
 
-use App\Http\Controllers\Controller;
 use App\Helpers\OutputSanitizer;
+use App\Http\Controllers\Controller;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Comentario;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use Illuminate\Http\JsonResponse;
@@ -23,7 +23,7 @@ class ComentarioController extends Controller
      * Retorna comentarios principales (sin parent_id) con sus respuestas.
      * Ordenados por fecha descendente.
      *
-     * @param Documento $documento Documento
+     * @param  Documento  $documento  Documento
      * @return JsonResponse Lista de comentarios
      *
      * @response 200 {
@@ -54,8 +54,8 @@ class ComentarioController extends Controller
      * Puede ser comentario principal o respuesta a otro.
      * Incluye opcionalmente selección de texto para contexto.
      *
-     * @param Request $request Solicitud
-     * @param Documento $documento Documento
+     * @param  Request  $request  Solicitud
+     * @param  Documento  $documento  Documento
      * @return JsonResponse Comentario creado
      *
      * @bodyParam contenido string required Texto del comentario (1-2000 caracteres). Example: "Revisar este párrafo"
@@ -66,15 +66,12 @@ class ComentarioController extends Controller
      *   "message": "Comentario creado correctamente",
      *   "comentario": {"id": 1, "contenido": "Revisar este párrafo"}
      * }
-     *
      * @response 400 {
      *   "message": "El comentario padre no pertenece a este documento"
      * }
-     *
      * @response 403 {
      *   "message": "No tienes acceso"
      * }
-     *
      * @response 422 {
      *   "errors": {"contenido": ["El contenido es obligatorio"]}
      * }
@@ -87,7 +84,7 @@ class ComentarioController extends Controller
             'parent_id' => 'nullable|exists:mi_bandeja_temp_reci_comentarios,id',
         ]);
 
-        if (!$documento->tieneAcceso($request->user())) {
+        if (! $documento->tieneAcceso($request->user())) {
             return response()->json(['message' => 'No tienes acceso'], 403);
         }
 
@@ -118,8 +115,8 @@ class ComentarioController extends Controller
      *
      * Solo el autor puede editar su comentario.
      *
-     * @param Request $request Solicitud
-     * @param Comentario $comentario Comentario
+     * @param  Request  $request  Solicitud
+     * @param  Comentario  $comentario  Comentario
      * @return JsonResponse Comentario actualizado
      *
      * @bodyParam contenido string required Nuevo texto. Example: "Contenido modificado"
@@ -128,7 +125,6 @@ class ComentarioController extends Controller
      *   "message": "Comentario actualizado",
      *   "comentario": {"id": 1, "contenido": "Contenido modificado"}
      * }
-     *
      * @response 403 {
      *   "message": "Solo el autor puede editar el comentario"
      * }
@@ -157,14 +153,13 @@ class ComentarioController extends Controller
      * Solo el autor puede eliminar su comentario.
      * Las respuestas también se eliminan en cascada.
      *
-     * @param Request $request Solicitud
-     * @param Comentario $comentario Comentario
+     * @param  Request  $request  Solicitud
+     * @param  Comentario  $comentario  Comentario
      * @return JsonResponse Confirmación
      *
      * @response 200 {
      *   "message": "Comentario eliminado"
      * }
-     *
      * @response 403 {
      *   "message": "Solo el autor puede eliminar el comentario"
      * }
@@ -186,21 +181,20 @@ class ComentarioController extends Controller
      * Marca como resuelto un comentario y todas sus respuestas.
      * Requiere permiso 'gestionar-comentarios'.
      *
-     * @param Request $request Solicitud
-     * @param Comentario $comentario Comentario
+     * @param  Request  $request  Solicitud
+     * @param  Comentario  $comentario  Comentario
      * @return JsonResponse Confirmación
      *
      * @response 200 {
      *   "message": "Comentario resuelto"
      * }
-     *
      * @response 403 {
      *   "message": "No tienes permiso para resolver comentarios"
      * }
      */
     public function resolver(Request $request, Comentario $comentario): JsonResponse
     {
-        if (!$request->user()->can('gestionar-comentarios')) {
+        if (! $request->user()->can('gestionar-comentarios')) {
             return response()->json(['message' => 'No tienes permiso para resolver comentarios'], 403);
         }
 
@@ -211,7 +205,7 @@ class ComentarioController extends Controller
 
     public function desresolver(Request $request, Comentario $comentario): JsonResponse
     {
-        if (!$request->user()->can('gestionar-comentarios')) {
+        if (! $request->user()->can('gestionar-comentarios')) {
             return response()->json(['message' => 'No tienes permiso para gestionar comentarios'], 403);
         }
 

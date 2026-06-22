@@ -10,9 +10,10 @@ class ListPqrsRequest extends FormRequest
     public function authorize(): bool
     {
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return false;
         }
+
         return $user->hasPermissionTo('Radicar -> PQRSF -> Listar');
     }
 

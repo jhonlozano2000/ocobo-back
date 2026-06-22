@@ -20,3 +20,15 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('pqrs:marcar-vencidas')->dailyAt('00:05');
+Schedule::command('email:sync-radicados')->everyFiveMinutes()->withoutOverlapping();
+
+// M16: Alertas de vencimiento (Ley 1437/2011)
+// Notifica a responsables 1 y 3 días antes del vencimiento de radicados/PQRS
+Schedule::command('alertas:vencimiento --dias=1,3')->dailyAt('07:00')->withoutOverlapping();
+
+// M17: Depuración de archivos digitales huérfanos (AGN Acuerdo 003/2015, ISO 27001)
+// Corre cada domingo a la 1am — modo cuarentena (nunca borra directamente)
+Schedule::command('archivo:depurar-digital --disco=radicados_recibidos --dias=30')
+    ->weekly()->sundays()->at('01:00')->withoutOverlapping();
+Schedule::command('archivo:depurar-digital --disco=radicados_enviados --dias=30')
+    ->weekly()->sundays()->at('01:30')->withoutOverlapping();

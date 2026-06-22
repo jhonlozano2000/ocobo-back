@@ -10,6 +10,7 @@ class ConfigListaDetalle extends Model
     use HasFactory;
 
     protected $table = 'config_listas_detalles';
+
     protected $fillable = ['lista_id', 'codigo', 'nombre', 'estado'];
 
     public function lista()

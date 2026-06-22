@@ -14,15 +14,15 @@ class ControlAccesoUsersTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Crear rol de administrador si no existe
         $role = Role::firstOrCreate(['name' => 'Administrador', 'guard_name' => 'web']);
-        
+
         // Crear usuario admin para pruebas
         $this->user = User::factory()->create([
             'estado' => 1,
         ]);
-        
+
         // Asignar rol de administrador
         $this->user->assignRole('Administrador');
     }
@@ -45,7 +45,7 @@ class ControlAccesoUsersTest extends TestCase
             ->assertJsonStructure([
                 'status',
                 'message',
-                'data'
+                'data',
             ]);
     }
 
@@ -55,7 +55,7 @@ class ControlAccesoUsersTest extends TestCase
         // Crear usuarios con nombres específicos
         User::factory()->create([
             'nombres' => 'Usuario de Prueba',
-            'estado' => 1
+            'estado' => 1,
         ]);
 
         $response = $this->actingAs($this->user)
@@ -77,8 +77,8 @@ class ControlAccesoUsersTest extends TestCase
                 'data' => [
                     'total_users',
                     'total_users_activos',
-                    'total_users_inactivos'
-                ]
+                    'total_users_inactivos',
+                ],
             ]);
     }
 

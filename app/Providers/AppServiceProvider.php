@@ -2,23 +2,23 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Routing\Router;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Cache\RateLimiting\Limit;
-use App\Contracts\Services\ConfigListaServiceInterface;
-use App\Contracts\Services\ConfigDiviPoliServiceInterface;
 use App\Contracts\Services\CalidadOrganigramaServiceInterface;
-use App\Contracts\Services\UserServiceInterface;
+use App\Contracts\Services\ConfigDiviPoliServiceInterface;
+use App\Contracts\Services\ConfigListaServiceInterface;
 use App\Contracts\Services\RoleServiceInterface;
 use App\Contracts\Services\TRDServiceInterface;
-use App\Services\Configuracion\ConfigListaService;
-use App\Services\Configuracion\ConfigDiviPoliService;
+use App\Contracts\Services\UserServiceInterface;
 use App\Services\Calidad\CalidadOrganigramaService;
-use App\Services\ControlAcceso\UserService;
-use App\Services\ControlAcceso\RoleService;
 use App\Services\ClasificacionDocumental\TRDService;
+use App\Services\Configuracion\ConfigDiviPoliService;
+use App\Services\Configuracion\ConfigListaService;
+use App\Services\ControlAcceso\RoleService;
+use App\Services\ControlAcceso\UserService;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -51,7 +51,7 @@ class AppServiceProvider extends ServiceProvider
                 ->response(function (Request $request, array $headers) {
                     return response()->json([
                         'message' => 'Demasiadas solicitudes. Por favor espere.',
-                        'retry_after' => $headers['Retry-After'] ?? 60
+                        'retry_after' => $headers['Retry-After'] ?? 60,
                     ], 429);
                 });
         });
@@ -59,12 +59,13 @@ class AppServiceProvider extends ServiceProvider
         // Rate limit autenticación: 5 intentos/min por IP (Brute Force Protection)
         RateLimiter::for('login', function (Request $request) {
             $loginId = $request->input('email') ?: $request->ip();
+
             return Limit::perMinute(5)
                 ->by($loginId)
                 ->response(function (Request $request, array $headers) {
                     return response()->json([
                         'message' => 'Demasiados intentos de inicio de sesión. Intente en 1 minuto.',
-                        'retry_after' => $headers['Retry-After'] ?? 60
+                        'retry_after' => $headers['Retry-After'] ?? 60,
                     ], 429);
                 });
         });
@@ -76,7 +77,7 @@ class AppServiceProvider extends ServiceProvider
                 ->response(function (Request $request, array $headers) {
                     return response()->json([
                         'message' => 'Demasiados intentos de registro. Intente más tarde.',
-                        'retry_after' => $headers['Retry-After'] ?? 60
+                        'retry_after' => $headers['Retry-After'] ?? 60,
                     ], 429);
                 });
         });
@@ -88,7 +89,7 @@ class AppServiceProvider extends ServiceProvider
                 ->response(function (Request $request, array $headers) {
                     return response()->json([
                         'message' => 'Límite de radicaciones alcanzado. Intente en unos minutos.',
-                        'retry_after' => $headers['Retry-After'] ?? 60
+                        'retry_after' => $headers['Retry-After'] ?? 60,
                     ], 429);
                 });
         });
@@ -100,7 +101,7 @@ class AppServiceProvider extends ServiceProvider
                 ->response(function (Request $request, array $headers) {
                     return response()->json([
                         'message' => 'Límite de subida de archivos alcanzado.',
-                        'retry_after' => $headers['Retry-After'] ?? 60
+                        'retry_after' => $headers['Retry-After'] ?? 60,
                     ], 429);
                 });
         });
@@ -118,7 +119,7 @@ class AppServiceProvider extends ServiceProvider
                 ->response(function (Request $request, array $headers) {
                     return response()->json([
                         'message' => 'Límite de solicitudes de firma alcanzado.',
-                        'retry_after' => $headers['Retry-After'] ?? 60
+                        'retry_after' => $headers['Retry-After'] ?? 60,
                     ], 429);
                 });
         });
@@ -130,7 +131,7 @@ class AppServiceProvider extends ServiceProvider
                 ->response(function (Request $request, array $headers) {
                     return response()->json([
                         'message' => 'Límite de consultas a terceros alcanzado.',
-                        'retry_after' => $headers['Retry-After'] ?? 60
+                        'retry_after' => $headers['Retry-After'] ?? 60,
                     ], 429);
                 });
         });
@@ -142,7 +143,7 @@ class AppServiceProvider extends ServiceProvider
                 ->response(function (Request $request, array $headers) {
                     return response()->json([
                         'message' => 'Límite de operaciones de configuración alcanzado.',
-                        'retry_after' => $headers['Retry-After'] ?? 60
+                        'retry_after' => $headers['Retry-After'] ?? 60,
                     ], 429);
                 });
         });
@@ -154,7 +155,7 @@ class AppServiceProvider extends ServiceProvider
                 ->response(function (Request $request, array $headers) {
                     return response()->json([
                         'message' => 'Límite de operaciones de documentos alcanzado.',
-                        'retry_after' => $headers['Retry-After'] ?? 60
+                        'retry_after' => $headers['Retry-After'] ?? 60,
                     ], 429);
                 });
         });
@@ -166,7 +167,7 @@ class AppServiceProvider extends ServiceProvider
                 ->response(function (Request $request, array $headers) {
                     return response()->json([
                         'message' => 'Límite de sincronización alcanzado.',
-                        'retry_after' => $headers['Retry-After'] ?? 60
+                        'retry_after' => $headers['Retry-After'] ?? 60,
                     ], 429);
                 });
         });

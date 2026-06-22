@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Ventanilla\Recibidos;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ListResponsablesRequest extends FormRequest
@@ -19,7 +20,7 @@ class ListResponsablesRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -27,26 +28,24 @@ class ListResponsablesRequest extends FormRequest
             'radica_reci_id' => [
                 'nullable',
                 'integer',
-                'exists:ventanilla_radica_reci,id'
+                'exists:ventanilla_radica_reci,id',
             ],
             'user_id' => [
                 'nullable',
                 'integer',
-                'exists:users,id'
+                'exists:users,id',
             ],
             'per_page' => [
                 'nullable',
                 'integer',
                 'min:1',
-                'max:100'
-            ]
+                'max:100',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -57,21 +56,19 @@ class ListResponsablesRequest extends FormRequest
             'user_id.exists' => 'El usuario seleccionado no existe.',
             'per_page.integer' => 'El número de elementos por página debe ser un número entero.',
             'per_page.min' => 'El número de elementos por página debe ser al menos 1.',
-            'per_page.max' => 'El número de elementos por página no puede superar 100.'
+            'per_page.max' => 'El número de elementos por página no puede superar 100.',
         ];
     }
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
         return [
             'radica_reci_id' => 'radicación',
             'user_id' => 'usuario',
-            'per_page' => 'elementos por página'
+            'per_page' => 'elementos por página',
         ];
     }
 }

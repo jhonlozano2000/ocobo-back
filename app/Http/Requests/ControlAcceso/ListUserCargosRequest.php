@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\ControlAcceso;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ListUserCargosRequest extends FormRequest
@@ -17,7 +18,7 @@ class ListUserCargosRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -25,46 +26,46 @@ class ListUserCargosRequest extends FormRequest
             'user_id' => [
                 'nullable',
                 'integer',
-                'exists:users,id'
+                'exists:users,id',
             ],
             'cargo_id' => [
                 'nullable',
                 'integer',
-                'exists:calidad_organigrama,id'
+                'exists:calidad_organigrama,id',
             ],
             'estado' => [
                 'nullable',
-                'boolean'
+                'boolean',
             ],
             'fecha_desde' => [
                 'nullable',
-                'date'
+                'date',
             ],
             'fecha_hasta' => [
                 'nullable',
                 'date',
-                'after_or_equal:fecha_desde'
+                'after_or_equal:fecha_desde',
             ],
             'incluir_finalizados' => [
                 'nullable',
-                'boolean'
+                'boolean',
             ],
             'per_page' => [
                 'nullable',
                 'integer',
                 'min:1',
-                'max:100'
+                'max:100',
             ],
             'sort_by' => [
                 'nullable',
                 'string',
-                'in:fecha_inicio,fecha_fin,created_at'
+                'in:fecha_inicio,fecha_fin,created_at',
             ],
             'sort_order' => [
                 'nullable',
                 'string',
-                'in:asc,desc'
-            ]
+                'in:asc,desc',
+            ],
         ];
     }
 
@@ -93,7 +94,7 @@ class ListUserCargosRequest extends FormRequest
             'per_page.max' => 'El número de elementos por página no puede ser mayor a 100.',
 
             'sort_by.in' => 'El campo de ordenamiento debe ser: fecha_inicio, fecha_fin o created_at.',
-            'sort_order.in' => 'El orden debe ser: asc o desc.'
+            'sort_order.in' => 'El orden debe ser: asc o desc.',
         ];
     }
 
@@ -107,11 +108,11 @@ class ListUserCargosRequest extends FormRequest
             'incluir_finalizados' => false,
             'per_page' => 15,
             'sort_by' => 'fecha_inicio',
-            'sort_order' => 'desc'
+            'sort_order' => 'desc',
         ];
 
         foreach ($defaults as $key => $value) {
-            if (!$this->has($key) || $this->get($key) === null) {
+            if (! $this->has($key) || $this->get($key) === null) {
                 $this->merge([$key => $value]);
             }
         }
@@ -131,7 +132,7 @@ class ListUserCargosRequest extends FormRequest
             'incluir_finalizados' => 'incluir finalizados',
             'per_page' => 'elementos por página',
             'sort_by' => 'ordenar por',
-            'sort_order' => 'orden'
+            'sort_order' => 'orden',
         ];
     }
 }

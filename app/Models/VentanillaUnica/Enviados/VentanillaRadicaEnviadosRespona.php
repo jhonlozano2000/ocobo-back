@@ -2,6 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Enviados;
 
+use App\Models\ControlAcceso\UserCargo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -29,7 +30,7 @@ class VentanillaRadicaEnviadosRespona extends Model
 
     public function userCargo()
     {
-        return $this->belongsTo(\App\Models\ControlAcceso\UserCargo::class, 'users_cargos_id');
+        return $this->belongsTo(UserCargo::class, 'users_cargos_id');
     }
 
     public function scopeCustodios($query)
@@ -49,7 +50,7 @@ class VentanillaRadicaEnviadosRespona extends Model
 
     public function marcarComoVisto(): void
     {
-        if (!$this->fechor_visto) {
+        if (! $this->fechor_visto) {
             $this->update(['fechor_visto' => now()]);
         }
     }
@@ -58,7 +59,7 @@ class VentanillaRadicaEnviadosRespona extends Model
     {
         $userCargo = $this->relationLoaded('userCargo') ? $this->userCargo : $this->userCargo()->with(['user', 'cargo'])->first();
 
-        if (!$userCargo) {
+        if (! $userCargo) {
             return null;
         }
 

@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\Configuracion\UpdateConfigNumRadicadoRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\Configuracion\ConfigVarias;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
 class ConfigNumRadicadoController extends Controller
@@ -19,7 +20,7 @@ class ConfigNumRadicadoController extends Controller
      * de radicados en el sistema. Es útil para mostrar la configuración
      * actual en interfaces de administración.
      *
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la configuración
+     * @return JsonResponse Respuesta JSON con la configuración
      *
      * @response 200 {
      *   "status": true,
@@ -29,7 +30,6 @@ class ConfigNumRadicadoController extends Controller
      *     "descripcion": "Formato de numeración de radicados"
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener la configuración",
@@ -43,7 +43,7 @@ class ConfigNumRadicadoController extends Controller
 
             $configuracion = [
                 'formato' => $formato,
-                'descripcion' => 'Formato de numeración de radicados'
+                'descripcion' => 'Formato de numeración de radicados',
             ];
 
             return $this->successResponse($configuracion, 'Configuración de numeración obtenida exitosamente');
@@ -59,8 +59,8 @@ class ConfigNumRadicadoController extends Controller
      * en el sistema. El formato debe seguir un patrón específico que incluye
      * marcadores de posición para fecha y secuencial.
      *
-     * @param UpdateConfigNumRadicadoRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la actualización
+     * @param  UpdateConfigNumRadicadoRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON confirmando la actualización
      *
      * @bodyParam formato string required Formato de numeración. Example: "YYYYMMDD-#####"
      *
@@ -72,7 +72,6 @@ class ConfigNumRadicadoController extends Controller
      *     "descripcion": "Formato de numeración de radicados"
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Datos de validación incorrectos",
@@ -80,7 +79,6 @@ class ConfigNumRadicadoController extends Controller
      *     "formato": ["El formato solo puede contener letras mayúsculas, números, guiones, guiones bajos y símbolos #."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al actualizar la configuración",
@@ -101,12 +99,13 @@ class ConfigNumRadicadoController extends Controller
 
             $configuracion = [
                 'formato' => $formato,
-                'descripcion' => 'Formato de numeración de radicados'
+                'descripcion' => 'Formato de numeración de radicados',
             ];
 
             return $this->successResponse($configuracion, 'Formato de numeración actualizado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar la configuración', $e->getMessage(), 500);
         }
     }

@@ -44,9 +44,7 @@ class OutputSanitizer
     /**
      * Sanitiza un string para prevenir XSS
      *
-     * @param mixed $value
-     * @param bool $allowHtml
-     * @return string
+     * @param  mixed  $value
      */
     public static function sanitize($value, bool $allowHtml = false): string
     {
@@ -54,7 +52,7 @@ class OutputSanitizer
             return '';
         }
 
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             $value = (string) $value;
         }
 
@@ -69,19 +67,16 @@ class OutputSanitizer
 
     /**
      * Sanitiza HTML permitiendo solo etiquetas seguras
-     *
-     * @param string $html
-     * @return string
      */
     public static function sanitizeHtml(string $html): string
     {
         // Si no hay HTML, solo sanitizar caracteres especiales
-        if (!preg_match('/<[^>]+>/', $html)) {
+        if (! preg_match('/<[^>]+>/', $html)) {
             return htmlspecialchars($html, ENT_QUOTES, 'UTF-8', true);
         }
 
         try {
-            $doc = new DOMDocument();
+            $doc = new DOMDocument;
             $doc->loadHTML(
                 mb_encode_numericentity(
                     $html,
@@ -97,6 +92,7 @@ class OutputSanitizer
             return $doc->saveHTML();
         } catch (\Exception $e) {
             Log::warning('OutputSanitizer: Error sanitizing HTML', ['error' => $e->getMessage()]);
+
             return htmlspecialchars($html, ENT_QUOTES, 'UTF-8', true);
         }
     }
@@ -130,9 +126,7 @@ class OutputSanitizer
     /**
      * Sanitiza un array de datos recursivamente
      *
-     * @param array $data
-     * @param array $fieldsToSkip Campos a omitir (ya sanitizados o seguros)
-     * @return array
+     * @param  array  $fieldsToSkip  Campos a omitir (ya sanitizados o seguros)
      */
     public static function sanitizeArray(array $data, array $fieldsToSkip = []): array
     {
@@ -153,9 +147,6 @@ class OutputSanitizer
 
     /**
      * Sanitiza un objeto (stdClass o similar)
-     *
-     * @param object $obj
-     * @return object
      */
     public static function sanitizeObject(object $obj): object
     {
@@ -173,9 +164,6 @@ class OutputSanitizer
     /**
      * Limpia datos de usuario para mostrar en JSON
      * Aplica sanitización a campos conocidos como sensibles
-     *
-     * @param array $data
-     * @return array
      */
     public static function sanitizeForJson(array $data): array
     {
@@ -192,9 +180,6 @@ class OutputSanitizer
 
     /**
      * Sanitiza un email para mostrar
-     *
-     * @param string $email
-     * @return string
      */
     public static function sanitizeEmail(string $email): string
     {
@@ -203,7 +188,7 @@ class OutputSanitizer
         // Ocultar parte del email si es muy largo
         $parts = explode('@', $sanitized);
         if (count($parts) === 2 && strlen($parts[0]) > 3) {
-            $parts[0] = substr($parts[0], 0, 2) . '***';
+            $parts[0] = substr($parts[0], 0, 2).'***';
         }
 
         return implode('@', $parts);
@@ -211,9 +196,6 @@ class OutputSanitizer
 
     /**
      * Sanitiza un número de documento para mostrar
-     *
-     * @param string $document
-     * @return string
      */
     public static function sanitizeDocument(string $document): string
     {
@@ -224,14 +206,11 @@ class OutputSanitizer
             return str_repeat('*', strlen($clean));
         }
 
-        return str_repeat('*', strlen($clean) - 4) . substr($clean, -4);
+        return str_repeat('*', strlen($clean) - 4).substr($clean, -4);
     }
 
     /**
      * Sanitiza un número de teléfono para mostrar
-     *
-     * @param string $phone
-     * @return string
      */
     public static function sanitizePhone(string $phone): string
     {
@@ -242,14 +221,11 @@ class OutputSanitizer
             return str_repeat('*', strlen($clean));
         }
 
-        return str_repeat('*', strlen($clean) - 4) . substr($clean, -4);
+        return str_repeat('*', strlen($clean) - 4).substr($clean, -4);
     }
 
     /**
      * Protege contra XSS en URLs (validar y sanitizar)
-     *
-     * @param string $url
-     * @return string
      */
     public static function sanitizeUrl(string $url): string
     {
@@ -260,7 +236,7 @@ class OutputSanitizer
             return '';
         }
 
-        if (!in_array(strtolower($parsed['scheme']), self::ALLOWED_PROTOCOLS)) {
+        if (! in_array(strtolower($parsed['scheme']), self::ALLOWED_PROTOCOLS)) {
             return '';
         }
 

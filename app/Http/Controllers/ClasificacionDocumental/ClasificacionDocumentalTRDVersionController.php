@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\ClasificacionDocumental;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\ClasificacionDocumental\AprobarTRDVersionRequest;
 use App\Http\Requests\ClasificacionDocumental\ClasificacionDocumentalTRDVersionRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRDVersion;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -21,8 +22,8 @@ class ClasificacionDocumentalTRDVersionController extends Controller
      * Este método retorna todas las versiones de TRD ordenadas por fecha de creación,
      * incluyendo información de la dependencia y el usuario que aprobó.
      *
-     * @param Request $request La solicitud HTTP
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las versiones
+     * @param  Request  $request  La solicitud HTTP
+     * @return JsonResponse Respuesta JSON con las versiones
      *
      * @queryParam per_page integer Número de elementos por página (por defecto: 10). Example: 15
      * @queryParam dependencia_id integer Filtrar por dependencia específica. Example: 1
@@ -80,8 +81,8 @@ class ClasificacionDocumentalTRDVersionController extends Controller
      * Este método crea una nueva versión temporal que debe ser aprobada
      * antes de ser activada en el sistema.
      *
-     * @param ClasificacionDocumentalTRDVersionRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la versión creada
+     * @param  ClasificacionDocumentalTRDVersionRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con la versión creada
      *
      * @bodyParam dependencia_id integer required ID de la dependencia. Example: 1
      * @bodyParam observaciones string Observaciones sobre la nueva versión. Example: "Actualización de procedimientos"
@@ -96,7 +97,6 @@ class ClasificacionDocumentalTRDVersionController extends Controller
      *     "dependencia_id": 1
      *   }
      * }
-     *
      * @response 400 {
      *   "status": false,
      *   "message": "La dependencia ya tiene una versión pendiente por aprobar"
@@ -133,6 +133,7 @@ class ClasificacionDocumentalTRDVersionController extends Controller
             return $this->successResponse($nuevaVersion->load('dependencia'), 'Versión creada exitosamente', 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al crear la versión', $e->getMessage(), 500);
         }
     }
@@ -140,8 +141,8 @@ class ClasificacionDocumentalTRDVersionController extends Controller
     /**
      * Obtiene una versión TRD específica con sus relaciones.
      *
-     * @param int $id ID de la versión
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la versión
+     * @param  int  $id  ID de la versión
+     * @return JsonResponse Respuesta JSON con la versión
      *
      * @response 200 {
      *   "status": true,
@@ -156,7 +157,6 @@ class ClasificacionDocumentalTRDVersionController extends Controller
      *     }
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Versión no encontrada"
@@ -168,7 +168,7 @@ class ClasificacionDocumentalTRDVersionController extends Controller
             $version = ClasificacionDocumentalTRDVersion::with(['dependencia', 'aprobadoPor'])
                 ->find($id);
 
-            if (!$version) {
+            if (! $version) {
                 return $this->errorResponse('Versión no encontrada', null, 404);
             }
 
@@ -200,9 +200,9 @@ class ClasificacionDocumentalTRDVersionController extends Controller
      * Este método cambia el estado de una versión de TEMP a ACTIVO,
      * marcando las versiones anteriores como HISTORICO.
      *
-     * @param AprobarTRDVersionRequest $request La solicitud HTTP validada
-     * @param int $dependenciaId ID de la dependencia
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON
+     * @param  AprobarTRDVersionRequest  $request  La solicitud HTTP validada
+     * @param  int  $dependenciaId  ID de la dependencia
+     * @return JsonResponse Respuesta JSON
      *
      * @bodyParam observaciones string required Observaciones sobre la aprobación. Example: "Aprobado por cumplir estándares"
      *
@@ -210,12 +210,10 @@ class ClasificacionDocumentalTRDVersionController extends Controller
      *   "status": true,
      *   "message": "Versión aprobada exitosamente"
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "La dependencia no existe"
      * }
-     *
      * @response 400 {
      *   "status": false,
      *   "message": "No hay versiones pendientes por aprobar"
@@ -226,7 +224,7 @@ class ClasificacionDocumentalTRDVersionController extends Controller
         try {
             // Verificar que el usuario tiene el rol de Jefe de Archivo
             $user = auth()->user();
-            if (!$user->hasRole('Jefe de Archivo')) {
+            if (! $user->hasRole('Jefe de Archivo')) {
                 return $this->errorResponse('No tiene permisos para aprobar versiones TRD. Solo el Jefe de Archivo puede realizar esta acción.', null, 403);
             }
 
@@ -235,7 +233,7 @@ class ClasificacionDocumentalTRDVersionController extends Controller
             // Buscar la versión por ID directamente
             $versionPendiente = ClasificacionDocumentalTRDVersion::find($request->versionId);
 
-            if (!$versionPendiente) {
+            if (! $versionPendiente) {
                 return $this->errorResponse('La versión no existe', null, 404);
             }
 
@@ -263,6 +261,7 @@ class ClasificacionDocumentalTRDVersionController extends Controller
             return $this->successResponse(null, 'Versión aprobada exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al aprobar la versión', $e->getMessage(), 500);
         }
     }
@@ -273,7 +272,7 @@ class ClasificacionDocumentalTRDVersionController extends Controller
      * Este método retorna todas las dependencias que tienen versiones TRD
      * en estado TEMP que requieren aprobación.
      *
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con dependencias pendientes
+     * @return JsonResponse Respuesta JSON con dependencias pendientes
      *
      * @response 200 {
      *   "status": true,
@@ -292,7 +291,6 @@ class ClasificacionDocumentalTRDVersionController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "No hay TRD pendientes por aprobar"
@@ -303,7 +301,7 @@ class ClasificacionDocumentalTRDVersionController extends Controller
         try {
             // Verificar que el usuario tiene el rol de Jefe de Archivo
             $user = auth()->user();
-            if (!$user->hasRole('Jefe de Archivo')) {
+            if (! $user->hasRole('Jefe de Archivo')) {
                 return $this->successResponse([], 'No tiene permisos para ver versiones pendientes');
             }
 
@@ -332,8 +330,8 @@ class ClasificacionDocumentalTRDVersionController extends Controller
     /**
      * Obtiene estadísticas de versiones por dependencia.
      *
-     * @param int $dependenciaId ID de la dependencia
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con estadísticas
+     * @param  int  $dependenciaId  ID de la dependencia
+     * @return JsonResponse Respuesta JSON con estadísticas
      *
      * @response 200 {
      *   "status": true,

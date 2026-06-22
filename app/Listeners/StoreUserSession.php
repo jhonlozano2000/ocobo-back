@@ -2,8 +2,8 @@
 
 namespace App\Listeners;
 
-use App\Models\UsersAuthenticationLog;
 use App\Models\ControlAcceso\UsersSession;
+use App\Models\UsersAuthenticationLog;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -23,31 +23,31 @@ class StoreUserSession
         $parsed = $this->parseUserAgent($userAgent);
 
         $session = UsersSession::create([
-            'user_id'         => $event->user->id,
-            'ip_address'      => $this->request->ip(),
-            'ip_address_extra'=> $this->getRealIp(),
-            'user_agent'      => $userAgent,
-            'device_type'     => $parsed['device_type'],
-            'browser'         => $parsed['browser'],
-            'operating_system'=> $parsed['operating_system'],
-            'referer_url'     => $this->request->header('referer'),
-            'last_login_at'   => now(),
-            'is_active'       => true,
-            'metadata'        => json_encode([
+            'user_id' => $event->user->id,
+            'ip_address' => $this->request->ip(),
+            'ip_address_extra' => $this->getRealIp(),
+            'user_agent' => $userAgent,
+            'device_type' => $parsed['device_type'],
+            'browser' => $parsed['browser'],
+            'operating_system' => $parsed['operating_system'],
+            'referer_url' => $this->request->header('referer'),
+            'last_login_at' => now(),
+            'is_active' => true,
+            'metadata' => json_encode([
                 'full_user_agent' => $userAgent,
-                'http_accept'     => $this->request->header('accept'),
-                'languages'       => $this->request->header('accept-language'),
-            ])
+                'http_accept' => $this->request->header('accept'),
+                'languages' => $this->request->header('accept-language'),
+            ]),
         ]);
 
         UsersAuthenticationLog::logEvent([
-            'user_id'  => $event->user->id,
-            'event'    => 'login_success',
-            'success'  => true,
-            'details'  => "Sesión iniciada desde {$parsed['device_type']} - {$parsed['browser']} ({$parsed['operating_system']})",
+            'user_id' => $event->user->id,
+            'event' => 'login_success',
+            'success' => true,
+            'details' => "Sesión iniciada desde {$parsed['device_type']} - {$parsed['browser']} ({$parsed['operating_system']})",
         ]);
 
-        Log::info('Sesión creada para usuario: ' . $event->user->id . ' | IP: ' . $this->request->ip() . ' | Dispositivo: ' . $parsed['device_type'] . ' - ' . $parsed['browser']);
+        Log::info('Sesión creada para usuario: '.$event->user->id.' | IP: '.$this->request->ip().' | Dispositivo: '.$parsed['device_type'].' - '.$parsed['browser']);
     }
 
     private function parseUserAgent(string $userAgent): array
@@ -66,11 +66,11 @@ class StoreUserSession
         }
 
         // Detectar navegador
-        if (preg_match('/Chrome/i', $userAgent) && !preg_match('/Edg/i', $userAgent)) {
+        if (preg_match('/Chrome/i', $userAgent) && ! preg_match('/Edg/i', $userAgent)) {
             $browser = 'Chrome';
         } elseif (preg_match('/Firefox/i', $userAgent)) {
             $browser = 'Firefox';
-        } elseif (preg_match('/Safari/i', $userAgent) && !preg_match('/Chrome/i', $userAgent)) {
+        } elseif (preg_match('/Safari/i', $userAgent) && ! preg_match('/Chrome/i', $userAgent)) {
             $browser = 'Safari';
         } elseif (preg_match('/Edg/i', $userAgent)) {
             $browser = 'Edge';
@@ -97,9 +97,9 @@ class StoreUserSession
         }
 
         return [
-            'device_type'     => $deviceType,
-            'browser'         => $browser,
-            'operating_system'=> $os
+            'device_type' => $deviceType,
+            'browser' => $browser,
+            'operating_system' => $os,
         ];
     }
 
@@ -112,6 +112,7 @@ class StoreUserSession
                 return explode(',', $ip)[0];
             }
         }
+
         return null;
     }
 }

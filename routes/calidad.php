@@ -38,7 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
                 'store' => 'store',
                 'show' => 'show',
                 'update' => 'update',
-                'destroy' => 'destroy'
+                'destroy' => 'destroy',
             ])->except('create', 'edit');
     });
 

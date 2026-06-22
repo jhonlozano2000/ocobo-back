@@ -4,7 +4,6 @@ namespace App\Mail;
 
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
@@ -17,6 +16,7 @@ class RadicadoEnviadoNotification extends Mailable
     use Queueable, SerializesModels;
 
     public VentanillaRadicaEnviados $radicado;
+
     public string $tipo;
 
     public function __construct(VentanillaRadicaEnviados $radicado, string $tipo = 'asignacion')
@@ -28,9 +28,9 @@ class RadicadoEnviadoNotification extends Mailable
     public function envelope(): Envelope
     {
         $subject = match ($this->tipo) {
-            'asignacion' => 'Nuevo radicado enviado asignado - ' . $this->radicado->num_radicado,
-            'actualizacion' => 'Radicado enviado actualizado - ' . $this->radicado->num_radicado,
-            default => 'Notificación de radicado enviado - ' . $this->radicado->num_radicado,
+            'asignacion' => 'Nuevo radicado enviado asignado - '.$this->radicado->num_radicado,
+            'actualizacion' => 'Radicado enviado actualizado - '.$this->radicado->num_radicado,
+            default => 'Notificación de radicado enviado - '.$this->radicado->num_radicado,
         };
 
         return new Envelope(subject: $subject);

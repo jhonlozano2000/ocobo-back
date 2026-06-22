@@ -2,80 +2,93 @@
 
 namespace App\Http\Controllers\Transversal;
 
+use App\Helpers\FirmaElectronicaHelper;
 use App\Http\Controllers\Controller;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\Transversal\FirmaEvento;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
-use App\Helpers\FirmaElectronicaHelper;
-use App\Http\Traits\ApiResponseTrait;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\Firma\FirmaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class FirmaElectronicaController extends Controller
 {
     use ApiResponseTrait;
 
-    public function __construct()
-    {
+    public function __construct(
+        private FirmaService $firmaService
+    ) {
         $this->middleware('auth:sanctum');
     }
 
     /**
-     * Solicita un código OTP para firmar un documento.
-     * En producción esto enviaría un Email/SMS.
+     * Solicita un código OTP para firmar un documento enviado.
+     * Envía el OTP al correo del usuario autenticado.
      */
     public function solicitarOtp(Request $request)
     {
         $user = Auth::user();
-        
-        // Generar OTP de 6 dígitos
-        $otp = (string) random_int(100000, 999999);
-        
-        // Guardar en caché por 5 minutos
-        $cacheKey = "firma_otp_{$user->id}";
-        Cache::put($cacheKey, $otp, now()->addMinutes(5));
 
-        // TODO: Aquí iría la integración con Mail/SMS (Mail::to($user->email)->send(new OtpMail($otp)))
-        Log::info("🔑 OTP de Firma para {$user->email}: {$otp}");
+        try {
+            $this->firmaService->generarYEnviarOtp($user);
 
-        return $this->successResponse(null, 'Código OTP enviado al correo del usuario (Ver Log para testing)');
+            return $this->successResponse(null, 'Código OTP enviado al correo del usuario');
+        } catch (\Exception $e) {
+            Log::error('Error al enviar OTP de firma', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->errorResponse('Error al enviar el código OTP', $e->getMessage(), 500);
+        }
     }
 
     /**
      * Ejecuta la firma electrónica de un documento enviado.
+     * Valida OTP, estampa PDF con sello visual, registra evento legal (ISO 27001).
      */
     public function firmarDocumento(Request $request)
     {
         $request->validate([
             'documentable_id' => 'required|integer',
-            'documentable_type' => 'required|string|in:radicado_enviado',
-            'otp' => 'required|string|size:6'
+            'documentable_type' => 'required|string|in:radicado_enviado,radicado_recibido,radicado_interno',
+            'otp' => 'required|string|size:6',
+            'firmado_en_representacion' => 'nullable|boolean',
+            'nombre_representado' => 'nullable|string|max:255',
         ]);
 
         $user = Auth::user();
-        $cacheKey = "firma_otp_{$user->id}";
 
         // 1. Validar OTP
-        $cachedOtp = Cache::get($cacheKey);
-        if (!$cachedOtp || $cachedOtp !== $request->otp) {
+        $otpValido = $this->firmaService->validarOtp($user, $request->otp);
+        if (! $otpValido) {
             return $this->errorResponse('Código OTP inválido o expirado', null, 403);
         }
 
         try {
             DB::beginTransaction();
 
-            // Mapear modelo (por ahora solo radicados enviados)
             $documento = null;
             $disk = '';
-            
+
             if ($request->documentable_type === 'radicado_enviado') {
                 $documento = VentanillaRadicaEnviados::findOrFail($request->documentable_id);
-                $disk = 'radicados_enviados'; // Suponiendo que este es el disco en config/filesystems
+                $disk = 'radicados_enviados';
+            } elseif ($request->documentable_type === 'radicado_recibido') {
+                $documento = VentanillaRadicaReci::findOrFail($request->documentable_id);
+                $disk = 'radicados_recibidos';
+            } elseif ($request->documentable_type === 'radicado_interno') {
+                $documento = VentanillaRadicaInterno::findOrFail($request->documentable_id);
+                $disk = 'radicados_internos';
             }
 
-            if (!$documento || !$documento->archivo_digital) {
+            if (! $documento || ! $documento->archivo_digital) {
+                DB::rollBack();
+
                 return $this->errorResponse('El documento original no tiene archivo PDF asociado para firmar', null, 422);
             }
 
@@ -90,12 +103,12 @@ class FirmaElectronicaController extends Controller
                 'nombre' => trim("{$user->nombres} {$user->apellidos}"),
                 'cargo' => $nombreCargo,
                 'fecha' => now()->format('Y-m-d H:i:s'),
-                'hash_original' => $hashOriginal
+                'hash_original' => $hashOriginal,
             ];
 
             $resultadoFirma = FirmaElectronicaHelper::estamparFirma(
-                $disk, 
-                $documento->archivo_digital, 
+                $disk,
+                $documento->archivo_digital,
                 $datosFirma
             );
 
@@ -106,18 +119,18 @@ class FirmaElectronicaController extends Controller
                 'user_id' => $user->id,
                 'hash_original' => $hashOriginal,
                 'hash_firmado' => $resultadoFirma['nuevo_hash'],
-                'otp_utilizado' => '***' . substr($request->otp, -3), // Ofuscar por seguridad
+                'otp_utilizado' => '***'.substr($request->otp, -3),
                 'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent()
+                'user_agent' => request()->userAgent(),
+                'fecha_firma' => now(),
             ]);
 
             // 4. Actualizar el documento principal con el nuevo hash
             $documento->update([
                 'hash_sha256' => $resultadoFirma['nuevo_hash'],
-                'estado_firma' => 'Firmado' // Si existe este campo
+                'estado_firma' => 'firmado',
+                'fecha_firma' => now(),
             ]);
-
-            Cache::forget($cacheKey); // Consumir el OTP
 
             DB::commit();
 
@@ -125,6 +138,14 @@ class FirmaElectronicaController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
+            Log::error('Error en proceso de firma electrónica', [
+                'user_id' => $user->id,
+                'documentable_type' => $request->documentable_type,
+                'documentable_id' => $request->documentable_id,
+                'error' => $e->getMessage(),
+            ]);
+
             return $this->errorResponse('Error en el proceso de firma', $e->getMessage(), 500);
         }
     }

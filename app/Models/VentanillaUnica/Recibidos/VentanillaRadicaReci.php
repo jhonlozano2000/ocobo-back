@@ -2,25 +2,28 @@
 
 namespace App\Models\VentanillaUnica\Recibidos;
 
+use App\Helpers\ArchivoHelper;
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Models\Configuracion\ConfigListaDetalle;
+use App\Models\Configuracion\ConfigServerArchivo;
+use App\Models\ControlAcceso\UserCargo;
+use App\Models\Gestion\GestionTercero;
+use App\Models\OfiArchivo\OfiArchivoExpediente;
+use App\Models\User;
+use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
+use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
+use App\Traits\AbacHierarquico;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
-use App\Models\User;
-use App\Models\Gestion\GestionTercero;
-use App\Models\Configuracion\ConfigListaDetalle;
-use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
-use App\Models\OfiArchivo\OfiArchivoExpediente;
-use App\Helpers\ArchivoHelper;
-use App\Traits\AbacHierarquico;
 
 class VentanillaRadicaReci extends Model
 {
-    use HasFactory, AbacHierarquico;
+    use AbacHierarquico, HasFactory;
 
     // Constantes para ABAC
     protected const ABAC_USER_COLUMN = 'usuario_crea';
+
     protected const ABAC_RESPONSABLES_RELATION = 'responsables';
 
     protected $table = 'ventanilla_radica_reci';
@@ -56,6 +59,12 @@ class VentanillaRadicaReci extends Model
         'observa_soli_anula',
         'usua_aprue_anula_id',
         'observa_aprue_anula',
+        'estado_firma',
+        'fecha_firma',
+    ];
+
+    protected $casts = [
+        'fecha_firma' => 'datetime',
     ];
 
     protected static function boot()
@@ -85,7 +94,7 @@ class VentanillaRadicaReci extends Model
      */
     public function clasificacionDocumental()
     {
-        return $this->belongsTo(\App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD::class, 'clasifica_documen_id');
+        return $this->belongsTo(ClasificacionDocumentalTRD::class, 'clasifica_documen_id');
     }
 
     /**
@@ -93,7 +102,7 @@ class VentanillaRadicaReci extends Model
      */
     public function loadClasificacionConJerarquia()
     {
-        return $this->load(['clasificacionDocumental' => fn($q) => $q->with(['parent' => fn($q) => $q->with('parent')])]);
+        return $this->load(['clasificacionDocumental' => fn ($q) => $q->with(['parent' => fn ($q) => $q->with('parent')])]);
     }
 
     /**
@@ -102,9 +111,10 @@ class VentanillaRadicaReci extends Model
     public function getClasificacionDocumentalInfo(): ?array
     {
         $clasif = $this->clasificacionDocumental;
-        if (!$clasif) {
+        if (! $clasif) {
             return null;
         }
+
         return [
             'id' => $clasif->id,
             'cod' => $clasif->cod,
@@ -118,37 +128,37 @@ class VentanillaRadicaReci extends Model
 
     public function usuarioCreaRadicado()
     {
-        return $this->belongsTo(\App\Models\User::class, 'usuario_crea');
+        return $this->belongsTo(User::class, 'usuario_crea');
     }
 
     public function tercero()
     {
-        return $this->belongsTo(\App\Models\Gestion\GestionTercero::class, 'tercero_id');
+        return $this->belongsTo(GestionTercero::class, 'tercero_id');
     }
 
     public function medioRecepcion()
     {
-        return $this->belongsTo(\App\Models\Configuracion\ConfigListaDetalle::class, 'medio_recep_id');
+        return $this->belongsTo(ConfigListaDetalle::class, 'medio_recep_id');
     }
 
     public function servidorArchivos()
     {
-        return $this->belongsTo(\App\Models\Configuracion\ConfigServerArchivo::class, 'config_server_id');
+        return $this->belongsTo(ConfigServerArchivo::class, 'config_server_id');
     }
 
     public function usuarioSubio()
     {
-        return $this->belongsTo(\App\Models\User::class, 'uploaded_by');
+        return $this->belongsTo(User::class, 'uploaded_by');
     }
 
     public function usuario_soli_anula()
     {
-        return $this->belongsTo(\App\Models\User::class, 'usua_soli_anula_id');
+        return $this->belongsTo(User::class, 'usua_soli_anula_id');
     }
 
     public function usuario_aprue_anula()
     {
-        return $this->belongsTo(\App\Models\User::class, 'usua_aprue_anula_id');
+        return $this->belongsTo(User::class, 'usua_aprue_anula_id');
     }
 
     /**
@@ -157,7 +167,7 @@ class VentanillaRadicaReci extends Model
     public function expedientes()
     {
         return $this->morphToMany(
-            \App\Models\OfiArchivo\OfiArchivoExpediente::class,
+            OfiArchivoExpediente::class,
             'documentable',
             'ofi_archivo_expedientes_documentos',
             'documentable_id',
@@ -170,7 +180,7 @@ class VentanillaRadicaReci extends Model
      */
     public function pqrs()
     {
-        return $this->hasOne(\App\Models\VentanillaUnica\Comunes\VentanillaPqrs::class, 'ventanilla_radica_reci_id');
+        return $this->hasOne(VentanillaPqrs::class, 'ventanilla_radica_reci_id');
     }
 
     /**
@@ -186,7 +196,7 @@ class VentanillaRadicaReci extends Model
      */
     public function usuariosResponsables()
     {
-        return $this->belongsToMany(\App\Models\ControlAcceso\UserCargo::class, 'ventanilla_radica_reci_responsa', 'radica_reci_id', 'users_cargos_id')
+        return $this->belongsToMany(UserCargo::class, 'ventanilla_radica_reci_responsa', 'radica_reci_id', 'users_cargos_id')
             ->withPivot('custodio', 'fechor_visto')
             ->withTimestamps();
     }
@@ -222,8 +232,7 @@ class VentanillaRadicaReci extends Model
      * Obtiene información completa de documentos relacionados (archivo principal y adicionales).
      * Optimizado para usar relaciones ya cargadas con eager loading.
      *
-     * @param bool $incluirMetadatos Si es true, incluye tamaño y tipo MIME de cada archivo
-     * @return array
+     * @param  bool  $incluirMetadatos  Si es true, incluye tamaño y tipo MIME de cada archivo
      */
     public function getDocumentosRelacionados(bool $incluirMetadatos = false): array
     {
@@ -275,9 +284,8 @@ class VentanillaRadicaReci extends Model
      * Optimizado para usar relaciones ya cargadas con eager loading.
      * Opcionalmente usa totales de la vista si están disponibles (para evitar recálculo).
      *
-     * @param int|null $totalResponsablesDesdeVista Total desde la vista SQL (opcional, evita recálculo)
-     * @param int|null $totalCustodiosDesdeVista Total desde la vista SQL (opcional, evita recálculo)
-     * @return array
+     * @param  int|null  $totalResponsablesDesdeVista  Total desde la vista SQL (opcional, evita recálculo)
+     * @param  int|null  $totalCustodiosDesdeVista  Total desde la vista SQL (opcional, evita recálculo)
      */
     public function getResponsablesInfo(?int $totalResponsablesDesdeVista = null, ?int $totalCustodiosDesdeVista = null): array
     {
@@ -293,7 +301,7 @@ class VentanillaRadicaReci extends Model
             if ($info) {
                 $responsablesInfo->push($info);
                 // Solo contar si no tenemos el valor de la vista
-                if ($totalCustodiosDesdeVista === null && !empty($info['custodio']) && $info['custodio']) {
+                if ($totalCustodiosDesdeVista === null && ! empty($info['custodio']) && $info['custodio']) {
                     $totalCustodios++;
                 }
             }
@@ -316,10 +324,9 @@ class VentanillaRadicaReci extends Model
      * Obtiene toda la información relacionada del radicado (documentos, responsables, usuarios).
      * Opcionalmente acepta totales desde la vista para evitar recálculos.
      *
-     * @param bool $incluirMetadatosArchivos Si es true, incluye tamaño y tipo en documentos
-     * @param int|null $totalResponsablesDesdeVista Total desde la vista SQL (opcional)
-     * @param int|null $totalCustodiosDesdeVista Total desde la vista SQL (opcional)
-     * @return array
+     * @param  bool  $incluirMetadatosArchivos  Si es true, incluye tamaño y tipo en documentos
+     * @param  int|null  $totalResponsablesDesdeVista  Total desde la vista SQL (opcional)
+     * @param  int|null  $totalCustodiosDesdeVista  Total desde la vista SQL (opcional)
      */
     public function getInformacionCompleta(bool $incluirMetadatosArchivos = false, ?int $totalResponsablesDesdeVista = null, ?int $totalCustodiosDesdeVista = null): array
     {
@@ -383,6 +390,7 @@ class VentanillaRadicaReci extends Model
 
         if ($this->estado_trabajo !== $nuevoEstado) {
             $this->update(['estado_trabajo' => $nuevoEstado]);
+
             return true;
         }
 
@@ -395,18 +403,18 @@ class VentanillaRadicaReci extends Model
     public function calcularEstadoTrabajo(): string
     {
         if ($this->fec_venci && now()->parse($this->fec_venci)->isBefore(now()->startOfDay())) {
-            return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_VENCIDO;
+            return RadicadoEstadoTrabajoService::ESTADO_VENCIDO;
         }
 
         if ($this->fec_venci && now()->parse($this->fec_venci)->lte(now()->addDays(5)->endOfDay())) {
-            return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_POR_VENCER;
+            return RadicadoEstadoTrabajoService::ESTADO_POR_VENCER;
         }
 
         if ($this->responsables()->exists()) {
-            return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_EN_PROCESO;
+            return RadicadoEstadoTrabajoService::ESTADO_EN_PROCESO;
         }
 
-        return \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_RECIBIDO;
+        return RadicadoEstadoTrabajoService::ESTADO_RECIBIDO;
     }
 
     /**
@@ -414,8 +422,9 @@ class VentanillaRadicaReci extends Model
      */
     public function getEstadoTrabajoInfo(): array
     {
-        $service = new \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService();
-        return $service->getEstadoInfo($this->estado_trabajo ?? \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_RECIBIDO);
+        $service = new RadicadoEstadoTrabajoService;
+
+        return $service->getEstadoInfo($this->estado_trabajo ?? RadicadoEstadoTrabajoService::ESTADO_RECIBIDO);
     }
 
     /**
@@ -423,7 +432,7 @@ class VentanillaRadicaReci extends Model
      */
     public function tieneArchivoDigital()
     {
-        return !empty($this->archivo_digital);
+        return ! empty($this->archivo_digital);
     }
 
     /**
@@ -439,9 +448,10 @@ class VentanillaRadicaReci extends Model
      */
     public function getDiasParaVencerAttribute()
     {
-        if (!$this->fec_venci) {
+        if (! $this->fec_venci) {
             return null;
         }
+
         return now()->diffInDays($this->fec_venci, false);
     }
 
@@ -450,9 +460,10 @@ class VentanillaRadicaReci extends Model
      */
     public function isVencida()
     {
-        if (!$this->fec_venci) {
+        if (! $this->fec_venci) {
             return false;
         }
+
         return now()->isAfter($this->fec_venci);
     }
 
@@ -468,9 +479,9 @@ class VentanillaRadicaReci extends Model
 
     /**
      * Obtiene la URL de cualquier archivo usando ArchivoHelper.
-     * @param string $campo Nombre del atributo (ej: 'archivo_digital')
-     * @param string $disk Nombre del disco
-     * @return string|null
+     *
+     * @param  string  $campo  Nombre del atributo (ej: 'archivo_digital')
+     * @param  string  $disk  Nombre del disco
      */
     public function getArchivoUrl(string $campo, string $disk): ?string
     {
@@ -484,7 +495,7 @@ class VentanillaRadicaReci extends Model
      */
     public function getInfoArchivoDigital()
     {
-        if (!$this->archivo_digital) {
+        if (! $this->archivo_digital) {
             return null;
         }
 
@@ -494,33 +505,31 @@ class VentanillaRadicaReci extends Model
             'url' => $this->getUrlArchivoDigital(),
             'tamaño' => $this->archivo_peso ?: Storage::disk('radicados_recibidos')->size($this->archivo_digital),
             'tipo' => $this->archivo_tipo ?: Storage::disk('radicados_recibidos')->mimeType($this->archivo_digital),
-            'extension' => pathinfo($this->archivo_digital, PATHINFO_EXTENSION)
+            'extension' => pathinfo($this->archivo_digital, PATHINFO_EXTENSION),
         ];
     }
 
     /**
      * Obtiene información formateada del usuario que creó el radicado.
-     *
-     * @return array|null
      */
     public function getInfoUsuarioCrea(): ?array
     {
-        if (!$this->usuarioCreaRadicado) {
+        if (! $this->usuarioCreaRadicado) {
             return null;
         }
+
         return $this->usuarioCreaRadicado->getInfoUsuario();
     }
 
     /**
      * Obtiene información formateada del usuario que subió el archivo.
-     *
-     * @return array|null
      */
     public function getInfoUsuarioSubio(): ?array
     {
-        if (!$this->usuarioSubio) {
+        if (! $this->usuarioSubio) {
             return null;
         }
+
         return $this->usuarioSubio->getInfoUsuario();
     }
 
@@ -528,15 +537,14 @@ class VentanillaRadicaReci extends Model
      * Obtiene información básica de un archivo (sin acceder al filesystem).
      * Los metadatos del archivo (tamaño, tipo) se obtienen solo al descargar/ver detalles.
      *
-     * @param string $campo Nombre del atributo del archivo
-     * @param string $disk Nombre del disco
-     * @param bool $incluirMetadatos Si es true, obtiene metadatos del filesystem (por defecto false)
-     * @return array|null
+     * @param  string  $campo  Nombre del atributo del archivo
+     * @param  string  $disk  Nombre del disco
+     * @param  bool  $incluirMetadatos  Si es true, obtiene metadatos del filesystem (por defecto false)
      */
     public function getInfoArchivo(string $campo, string $disk, bool $incluirMetadatos = false): ?array
     {
         $rutaArchivo = $this->{$campo} ?? null;
-        if (!$rutaArchivo) {
+        if (! $rutaArchivo) {
             return null;
         }
 
@@ -548,7 +556,7 @@ class VentanillaRadicaReci extends Model
         ];
 
         // Agregar OCR si existe y es el archivo digital principal
-        if ($campo === 'archivo_digital' && !empty($this->ocr)) {
+        if ($campo === 'archivo_digital' && ! empty($this->ocr)) {
             $info['ocr'] = $this->ocr;
             $info['ocr_aplicado'] = (bool) $this->ocr_aplicado;
         }

@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\Configuracion\StoreConfigVentanillaRequest;
 use App\Http\Requests\Configuracion\UpdateConfigVentanillaRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\Configuracion\configVentanilla;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -21,8 +22,8 @@ class ConfigVentanillasController extends Controller
      * con sus relaciones de sede asociadas. Es útil para interfaces de
      * administración donde se necesita mostrar la configuración de ventanillas.
      *
-     * @param Request $request La solicitud HTTP que puede contener parámetros de filtrado
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de ventanillas
+     * @param  Request  $request  La solicitud HTTP que puede contener parámetros de filtrado
+     * @return JsonResponse Respuesta JSON con el listado de ventanillas
      *
      * @queryParam sede_id integer Filtrar por ID de sede. Example: 1
      * @queryParam search string Buscar por nombre o código. Example: "Ventanilla 1"
@@ -47,7 +48,6 @@ class ConfigVentanillasController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el listado de ventanillas",
@@ -99,8 +99,8 @@ class ConfigVentanillasController extends Controller
      * Este método permite crear una nueva ventanilla con validación
      * de datos y conversión automática del campo estado.
      *
-     * @param StoreConfigVentanillaRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la ventanilla creada
+     * @param  StoreConfigVentanillaRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con la ventanilla creada
      *
      * @bodyParam sede_id integer required ID de la sede asociada. Example: 1
      * @bodyParam nombre string required Nombre de la ventanilla. Example: "Ventanilla Principal"
@@ -124,7 +124,6 @@ class ConfigVentanillasController extends Controller
      *     }
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Datos de validación incorrectos",
@@ -132,7 +131,6 @@ class ConfigVentanillasController extends Controller
      *     "codigo": ["El código ya está en uso, por favor elija otro."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al crear la ventanilla",
@@ -162,6 +160,7 @@ class ConfigVentanillasController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al crear la ventanilla', $e->getMessage(), 500);
         }
     }
@@ -172,8 +171,8 @@ class ConfigVentanillasController extends Controller
      * Este método permite obtener los detalles de una ventanilla específica,
      * incluyendo su sede asociada.
      *
-     * @param configVentanilla $configVentanilla La ventanilla a obtener (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la ventanilla
+     * @param  configVentanilla  $configVentanilla  La ventanilla a obtener (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON con la ventanilla
      *
      * @urlParam configVentanilla integer required El ID de la ventanilla. Example: 1
      *
@@ -193,12 +192,10 @@ class ConfigVentanillasController extends Controller
      *     }
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Ventanilla no encontrada"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener la ventanilla",
@@ -223,9 +220,9 @@ class ConfigVentanillasController extends Controller
      * Este método permite modificar los datos de una ventanilla existente,
      * incluyendo conversión automática del campo estado.
      *
-     * @param UpdateConfigVentanillaRequest $request La solicitud HTTP validada
-     * @param configVentanilla $configVentanilla La ventanilla a actualizar (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la ventanilla actualizada
+     * @param  UpdateConfigVentanillaRequest  $request  La solicitud HTTP validada
+     * @param  configVentanilla  $configVentanilla  La ventanilla a actualizar (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON con la ventanilla actualizada
      *
      * @bodyParam sede_id integer ID de la sede asociada. Example: 1
      * @bodyParam nombre string Nombre de la ventanilla. Example: "Ventanilla Principal"
@@ -245,7 +242,6 @@ class ConfigVentanillasController extends Controller
      *     "estado": 1
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Datos de validación incorrectos",
@@ -253,7 +249,6 @@ class ConfigVentanillasController extends Controller
      *     "sede_id": ["La sede seleccionada no existe."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al actualizar la ventanilla",
@@ -282,6 +277,7 @@ class ConfigVentanillasController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar la ventanilla', $e->getMessage(), 500);
         }
     }
@@ -292,8 +288,8 @@ class ConfigVentanillasController extends Controller
      * Este método permite eliminar una ventanilla específica del sistema.
      * Se recomienda verificar que no tenga dependencias antes de eliminar.
      *
-     * @param configVentanilla $configVentanilla La ventanilla a eliminar (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la eliminación
+     * @param  configVentanilla  $configVentanilla  La ventanilla a eliminar (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON confirmando la eliminación
      *
      * @urlParam configVentanilla integer required El ID de la ventanilla a eliminar. Example: 1
      *
@@ -301,7 +297,6 @@ class ConfigVentanillasController extends Controller
      *   "status": true,
      *   "message": "Ventanilla eliminada exitosamente"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al eliminar la ventanilla",
@@ -320,6 +315,7 @@ class ConfigVentanillasController extends Controller
             return $this->successResponse(null, 'Ventanilla eliminada exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar la ventanilla', $e->getMessage(), 500);
         }
     }
@@ -331,7 +327,7 @@ class ConfigVentanillasController extends Controller
      * de configuración, incluyendo totales, distribución por sede, análisis
      * de actividad reciente y códigos más utilizados.
      *
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las estadísticas
+     * @return JsonResponse Respuesta JSON con las estadísticas
      *
      * @response 200 {
      *   "status": true,
@@ -376,7 +372,6 @@ class ConfigVentanillasController extends Controller
      *     ]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener las estadísticas",
@@ -412,7 +407,7 @@ class ConfigVentanillasController extends Controller
                     return [
                         'sede_id' => $item->sede_id,
                         'nombre' => $item->sede->nombre,
-                        'total_ventanillas' => $item->total_ventanillas
+                        'total_ventanillas' => $item->total_ventanillas,
                     ];
                 });
 
@@ -426,7 +421,7 @@ class ConfigVentanillasController extends Controller
                 ->map(function ($item) {
                     return [
                         'codigo' => $item->codigo,
-                        'total_uso' => $item->total_uso
+                        'total_uso' => $item->total_uso,
                     ];
                 });
 
@@ -440,7 +435,7 @@ class ConfigVentanillasController extends Controller
 
                 $distribucionPorMes[] = [
                     'mes' => $fecha->format('F Y'),
-                    'total' => $total
+                    'total' => $total,
                 ];
             }
 
@@ -458,8 +453,8 @@ class ConfigVentanillasController extends Controller
                         'created_at' => $ventanilla->created_at->format('Y-m-d H:i:s'),
                         'sede' => [
                             'id' => $ventanilla->sede->id,
-                            'nombre' => $ventanilla->sede->nombre
-                        ]
+                            'nombre' => $ventanilla->sede->nombre,
+                        ],
                     ];
                 });
 
@@ -474,7 +469,7 @@ class ConfigVentanillasController extends Controller
                 ->map(function ($item) {
                     return [
                         'prefijo' => $item->prefijo,
-                        'total' => $item->total
+                        'total' => $item->total,
                     ];
                 });
 
@@ -489,7 +484,7 @@ class ConfigVentanillasController extends Controller
                 'codigos_mas_utilizados' => $codigosMasUtilizados,
                 'distribucion_por_mes' => $distribucionPorMes,
                 'ventanillas_recientes' => $ventanillasRecientes,
-                'analisis_codigos' => $analisisCodigos
+                'analisis_codigos' => $analisisCodigos,
             ];
 
             return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');

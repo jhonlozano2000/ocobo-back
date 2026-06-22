@@ -4,7 +4,6 @@ namespace Database\Seeders\Configuracion;
 
 use App\Models\Configuracion\ConfigLista;
 use App\Models\Configuracion\ConfigListaDetalle;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class ListaSeed extends Seeder

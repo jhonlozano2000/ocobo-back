@@ -7,12 +7,13 @@ use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Version;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class VersionController extends Controller
 {
     public function index(Request $request, Documento $documento): JsonResponse
     {
-        if (!$documento->tieneAcceso($request->user())) {
+        if (! $documento->tieneAcceso($request->user())) {
             return response()->json(['message' => 'No tienes acceso'], 403);
         }
 
@@ -26,7 +27,7 @@ class VersionController extends Controller
 
     public function show(Request $request, Documento $documento, int $versionId): JsonResponse
     {
-        if (!$documento->tieneAcceso($request->user())) {
+        if (! $documento->tieneAcceso($request->user())) {
             return response()->json(['message' => 'No tienes acceso'], 403);
         }
 
@@ -34,7 +35,7 @@ class VersionController extends Controller
             ->with('usuario:id,name,email')
             ->first();
 
-        if (!$version) {
+        if (! $version) {
             return response()->json(['message' => 'Versión no encontrada'], 404);
         }
 
@@ -43,17 +44,17 @@ class VersionController extends Controller
 
     public function restaurar(Request $request, Documento $documento, int $versionId): JsonResponse
     {
-        if (!$documento->puedeEditar($request->user())) {
+        if (! $documento->puedeEditar($request->user())) {
             return response()->json(['message' => 'No tienes permisos'], 403);
         }
 
         $version = $documento->versiones()->where('id', $versionId)->first();
 
-        if (!$version) {
+        if (! $version) {
             return response()->json(['message' => 'Versión no encontrada'], 404);
         }
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($version, $documento, $request) {
+        return DB::transaction(function () use ($version, $documento, $request) {
             $contenido = $version->restaurar();
             $documento->contenido->actualizarContenido($contenido, $request->user());
 
@@ -68,14 +69,14 @@ class VersionController extends Controller
 
     public function compararVersiones(Request $request, Documento $documento, int $versionIdA, int $versionIdB): JsonResponse
     {
-        if (!$documento->tieneAcceso($request->user())) {
+        if (! $documento->tieneAcceso($request->user())) {
             return response()->json(['message' => 'No tienes acceso'], 403);
         }
 
         $versionA = $documento->versiones()->where('id', $versionIdA)->first();
         $versionB = $documento->versiones()->where('id', $versionIdB)->first();
 
-        if (!$versionA || !$versionB) {
+        if (! $versionA || ! $versionB) {
             return response()->json(['message' => 'Una o ambas versiones no existen'], 404);
         }
 
@@ -173,17 +174,19 @@ class VersionController extends Controller
         $texto = '';
 
         foreach ($contenido as $bloque) {
-            if (!isset($bloque['type'])) continue;
+            if (! isset($bloque['type'])) {
+                continue;
+            }
 
             match ($bloque['type']) {
                 'doc' => $texto .= $this->extraerTextoPlano($bloque['content'] ?? []),
-                'paragraph' => $texto .= $this->extraerTextoInline($bloque['content'] ?? []) . "\n",
-                'heading' => $texto .= strtoupper($this->extraerTextoInline($bloque['content'] ?? [])) . "\n\n",
-                'bulletList', 'orderedList' => $texto .= $this->extraerTextoLista($bloque) . "\n",
-                'blockquote' => $texto .= "> " . $this->extraerTextoInline($bloque['content'] ?? []) . "\n\n",
-                'codeBlock' => $texto .= $this->extraerTextoInline($bloque['content'] ?? []) . "\n\n",
+                'paragraph' => $texto .= $this->extraerTextoInline($bloque['content'] ?? [])."\n",
+                'heading' => $texto .= strtoupper($this->extraerTextoInline($bloque['content'] ?? []))."\n\n",
+                'bulletList', 'orderedList' => $texto .= $this->extraerTextoLista($bloque)."\n",
+                'blockquote' => $texto .= '> '.$this->extraerTextoInline($bloque['content'] ?? [])."\n\n",
+                'codeBlock' => $texto .= $this->extraerTextoInline($bloque['content'] ?? [])."\n\n",
                 'horizontalRule' => $texto .= "---\n\n",
-                'table' => $texto .= $this->extraerTextoTabla($bloque) . "\n",
+                'table' => $texto .= $this->extraerTextoTabla($bloque)."\n",
                 default => null,
             };
         }
@@ -199,6 +202,7 @@ class VersionController extends Controller
                 $texto .= $inline['text'];
             }
         }
+
         return $texto;
     }
 
@@ -210,9 +214,9 @@ class VersionController extends Controller
 
         foreach ($lista['content'] ?? [] as $item) {
             if ($prefijo) {
-                $texto .= $prefijo . $this->extraerTextoInline($item['content'][0]['content'] ?? []) . "\n";
+                $texto .= $prefijo.$this->extraerTextoInline($item['content'][0]['content'] ?? [])."\n";
             } else {
-                $texto .= $i . ". " . $this->extraerTextoInline($item['content'][0]['content'] ?? []) . "\n";
+                $texto .= $i.'. '.$this->extraerTextoInline($item['content'][0]['content'] ?? [])."\n";
                 $i++;
             }
         }
@@ -228,8 +232,9 @@ class VersionController extends Controller
             foreach ($fila['content'] ?? [] as $celda) {
                 $celdas[] = $this->extraerTextoInline($celda['content'] ?? []);
             }
-            $texto .= implode(' | ', $celdas) . "\n";
+            $texto .= implode(' | ', $celdas)."\n";
         }
+
         return $texto;
     }
 }

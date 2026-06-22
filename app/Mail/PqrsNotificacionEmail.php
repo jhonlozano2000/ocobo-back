@@ -4,7 +4,6 @@ namespace App\Mail;
 
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -15,7 +14,9 @@ class PqrsNotificacionEmail extends Mailable
     use Queueable, SerializesModels;
 
     public $pqrs;
+
     public $mensajePersonalizado;
+
     public $asuntoPersonalizado;
 
     public function __construct(VentanillaPqrs $pqrs, string $mensajePersonalizado = '', ?string $asuntoPersonalizado = null)

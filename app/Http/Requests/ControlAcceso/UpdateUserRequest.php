@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\ControlAcceso;
 
+use App\Models\Calidad\CalidadOrganigrama;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -20,13 +22,13 @@ class UpdateUserRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         // Obtener el ID del usuario desde la ruta (puede ser 'user' o 'id' dependiendo de la configuración)
         $userId = $this->route('user') ?? $this->route('id');
-        
+
         // Si es un modelo, obtener el ID; si es un número, usarlo directamente
         $userId = is_object($userId) ? $userId->id : $userId;
 
@@ -34,44 +36,44 @@ class UpdateUserRequest extends FormRequest
             'divi_poli_id' => [
                 'sometimes',
                 'integer',
-                'exists:config_divi_poli,id'
+                'exists:config_divi_poli,id',
             ],
 
             'num_docu' => [
                 'sometimes',
                 'string',
                 'max:20',
-                Rule::unique('users', 'num_docu')->ignore($userId)
+                Rule::unique('users', 'num_docu')->ignore($userId),
             ],
 
             'nombres' => [
                 'sometimes',
                 'string',
-                'max:70'
+                'max:70',
             ],
 
             'apellidos' => [
                 'sometimes',
                 'string',
-                'max:70'
+                'max:70',
             ],
 
             'tel' => [
                 'nullable',
                 'string',
-                'max:20'
+                'max:20',
             ],
 
             'movil' => [
                 'nullable',
                 'string',
-                'max:20'
+                'max:20',
             ],
 
             'dir' => [
                 'nullable',
                 'string',
-                'max:255'
+                'max:255',
             ],
 
             'email' => [
@@ -79,44 +81,44 @@ class UpdateUserRequest extends FormRequest
                 'string',
                 'email',
                 'max:70',
-                Rule::unique('users', 'email')->ignore($userId)
+                Rule::unique('users', 'email')->ignore($userId),
             ],
 
             'password' => [
                 'nullable',
                 'string',
-                'min:6'
+                'min:6',
             ],
 
             'estado' => [
                 'nullable',
-                'in:0,1,true,false'
+                'in:0,1,true,false',
             ],
 
             'roles' => [
                 'sometimes',
                 'array',
-                'min:1'
+                'min:1',
             ],
 
             'roles.*' => [
                 'required',
                 'string',
-                'exists:roles,name'
+                'exists:roles,name',
             ],
 
             'avatar' => [
                 'nullable',
                 'file',
                 'image',
-                'max:2048' // 2MB máximo
+                'max:2048', // 2MB máximo
             ],
 
             'firma' => [
                 'nullable',
                 'file',
                 'image',
-                'max:2048' // 2MB máximo
+                'max:2048', // 2MB máximo
             ],
 
             // Campos opcionales para manejo de cargo
@@ -126,31 +128,29 @@ class UpdateUserRequest extends FormRequest
                 'exists:calidad_organigrama,id',
                 function ($attribute, $value, $fail) {
                     if ($value) {
-                        $cargo = \App\Models\Calidad\CalidadOrganigrama::find($value);
+                        $cargo = CalidadOrganigrama::find($value);
                         if ($cargo && $cargo->tipo !== 'Cargo') {
                             $fail('El elemento seleccionado no es un cargo válido.');
                         }
                     }
-                }
+                },
             ],
 
             'fecha_inicio_cargo' => [
                 'nullable',
-                'date'
+                'date',
             ],
 
             'observaciones_cargo' => [
                 'nullable',
                 'string',
-                'max:500'
+                'max:500',
             ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -214,8 +214,6 @@ class UpdateUserRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {

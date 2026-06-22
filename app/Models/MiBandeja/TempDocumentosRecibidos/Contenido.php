@@ -3,6 +3,7 @@
 namespace App\Models\MiBandeja\TempDocumentosRecibidos;
 
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -17,9 +18,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property array $contenido_yjs Estado Yjs serializado
  * @property string|null $hash_contenido Hash SHA256 del contenido
  * @property int|null $actualizado_por Usuario que actualizó
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- *
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Documento $documento
  * @property-read User|null $actualizadoPor
  */
@@ -64,9 +64,8 @@ class Contenido extends Model
     /**
      * Actualiza el contenido y regenera el hash.
      *
-     * @param array $contenido Nuevo contenido Yjs
-     * @param User $user Usuario que actualiza
-     * @return void
+     * @param  array  $contenido  Nuevo contenido Yjs
+     * @param  User  $user  Usuario que actualiza
      */
     public function actualizarContenido(array $contenido, User $user): void
     {
@@ -79,7 +78,7 @@ class Contenido extends Model
     /**
      * Verifica si el contenido ha cambiado.
      *
-     * @param array $nuevoContenido Contenido a comparar
+     * @param  array  $nuevoContenido  Contenido a comparar
      * @return bool true si es diferente
      */
     public function haCambiado(array $nuevoContenido): bool

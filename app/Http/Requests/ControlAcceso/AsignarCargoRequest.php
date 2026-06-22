@@ -4,8 +4,10 @@ namespace App\Http\Requests\ControlAcceso;
 
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\User;
+use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AsignarCargoRequest extends FormRequest
 {
@@ -20,7 +22,7 @@ class AsignarCargoRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -28,7 +30,7 @@ class AsignarCargoRequest extends FormRequest
             'user_id' => [
                 'required',
                 'integer',
-                'exists:users,id'
+                'exists:users,id',
             ],
             'cargo_id' => [
                 'required',
@@ -39,23 +41,23 @@ class AsignarCargoRequest extends FormRequest
                     if ($cargo && $cargo->tipo !== 'Cargo') {
                         $fail('El elemento seleccionado no es un cargo válido.');
                     }
-                }
+                },
             ],
             'fecha_inicio' => [
                 'nullable',
                 'date',
-                'after_or_equal:' . now()->subYears(5)->format('Y-m-d'),
-                'before_or_equal:' . now()->addYears(1)->format('Y-m-d')
+                'after_or_equal:'.now()->subYears(5)->format('Y-m-d'),
+                'before_or_equal:'.now()->addYears(1)->format('Y-m-d'),
             ],
             'observaciones' => [
                 'nullable',
                 'string',
-                'max:500'
+                'max:500',
             ],
             'finalizar_cargo_anterior' => [
                 'nullable',
-                'boolean'
-            ]
+                'boolean',
+            ],
         ];
     }
 
@@ -80,7 +82,7 @@ class AsignarCargoRequest extends FormRequest
             'observaciones.string' => 'Las observaciones deben ser texto.',
             'observaciones.max' => 'Las observaciones no pueden tener más de 500 caracteres.',
 
-            'finalizar_cargo_anterior.boolean' => 'El campo finalizar cargo anterior debe ser verdadero o falso.'
+            'finalizar_cargo_anterior.boolean' => 'El campo finalizar cargo anterior debe ser verdadero o falso.',
         ];
     }
 
@@ -91,7 +93,7 @@ class AsignarCargoRequest extends FormRequest
     {
         // Si no hay datos en el input, intentar obtenerlos del contenido JSON
         $input = $this->all();
-        
+
         if (empty($input) && $this->getContent()) {
             $jsonData = json_decode($this->getContent(), true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($jsonData)) {
@@ -103,27 +105,27 @@ class AsignarCargoRequest extends FormRequest
         // Convertir strings a enteros si es necesario
         if (isset($input['user_id'])) {
             $this->merge([
-                'user_id' => is_string($input['user_id']) ? (int) $input['user_id'] : $input['user_id']
+                'user_id' => is_string($input['user_id']) ? (int) $input['user_id'] : $input['user_id'],
             ]);
         }
 
         if (isset($input['cargo_id'])) {
             $this->merge([
-                'cargo_id' => is_string($input['cargo_id']) ? (int) $input['cargo_id'] : $input['cargo_id']
+                'cargo_id' => is_string($input['cargo_id']) ? (int) $input['cargo_id'] : $input['cargo_id'],
             ]);
         }
 
         // Establecer fecha de inicio por defecto si no se proporciona
-        if (!isset($input['fecha_inicio']) || empty($input['fecha_inicio'])) {
+        if (! isset($input['fecha_inicio']) || empty($input['fecha_inicio'])) {
             $this->merge([
-                'fecha_inicio' => now()->format('Y-m-d')
+                'fecha_inicio' => now()->format('Y-m-d'),
             ]);
         }
 
         // Establecer valor por defecto para finalizar cargo anterior
-        if (!isset($input['finalizar_cargo_anterior'])) {
+        if (! isset($input['finalizar_cargo_anterior'])) {
             $this->merge([
-                'finalizar_cargo_anterior' => true
+                'finalizar_cargo_anterior' => true,
             ]);
         }
     }
@@ -138,7 +140,7 @@ class AsignarCargoRequest extends FormRequest
             'cargo_id' => 'cargo',
             'fecha_inicio' => 'fecha de inicio',
             'observaciones' => 'observaciones',
-            'finalizar_cargo_anterior' => 'finalizar cargo anterior'
+            'finalizar_cargo_anterior' => 'finalizar cargo anterior',
         ];
     }
 
@@ -165,19 +167,18 @@ class AsignarCargoRequest extends FormRequest
     /**
      * Handle a failed validation attempt.
      *
-     * @param \Illuminate\Contracts\Validation\Validator $validator
      * @return void
      *
-     * @throws \Illuminate\Validation\ValidationException
+     * @throws ValidationException
      */
-    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
+    protected function failedValidation(Validator $validator)
     {
         $response = response()->json([
-            'status'  => false,
+            'status' => false,
             'message' => 'Errores de validación.',
-            'errors'  => $validator->errors(),
+            'errors' => $validator->errors(),
         ], 422);
 
-        throw new \Illuminate\Validation\ValidationException($validator, $response);
+        throw new ValidationException($validator, $response);
     }
 }

@@ -10,6 +10,7 @@ class ConfigDiviPoli extends Model
     use HasFactory;
 
     protected $table = 'config_divi_poli';
+
     protected $fillable = ['parent', 'codigo', 'nombre', 'tipo'];
 
     // Relación con el padre (División política superior)

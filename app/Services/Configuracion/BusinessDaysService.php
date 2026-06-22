@@ -11,15 +11,14 @@ use Illuminate\Support\Facades\Cache;
 class BusinessDaysService
 {
     private const CACHE_KEY_FESTIVOS = 'festivos_anio_';
+
     private const CACHE_TTL_MINUTES = 60;
 
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 
     public function getFestivos(int $anio): Collection
     {
-        $cacheKey = self::CACHE_KEY_FESTIVOS . $anio;
+        $cacheKey = self::CACHE_KEY_FESTIVOS.$anio;
 
         return Cache::remember($cacheKey, self::CACHE_TTL_MINUTES * 60, function () use ($anio) {
             return ConfigCalendarioFestivo::where('anio', $anio)
@@ -35,7 +34,7 @@ class BusinessDaysService
             self::CACHE_TTL_MINUTES * 60,
             fn () => ConfigCalendarioFestivo::whereBetween('fecha', [
                 $fechaInicio->format('Y-m-d'),
-                $fechaFin->format('Y-m-d')
+                $fechaFin->format('Y-m-d'),
             ])->get()
         );
     }
@@ -48,7 +47,7 @@ class BusinessDaysService
         while ($contador < $diasHabiles) {
             $fecha->addDay();
 
-            if (!$this->esDiaHabil($fecha)) {
+            if (! $this->esDiaHabil($fecha)) {
                 continue;
             }
 
@@ -66,7 +65,7 @@ class BusinessDaysService
 
         $festivos = $this->getFestivosRango($fechaInicio, $fechaFin)
             ->pluck('fecha')
-            ->map(fn($f) => Carbon::parse($f)->format('Y-m-d'))
+            ->map(fn ($f) => Carbon::parse($f)->format('Y-m-d'))
             ->toArray();
 
         $dias = 0;
@@ -101,20 +100,20 @@ class BusinessDaysService
 
         $considerarFestivos = ConfigVarias::getConsiderarDiasHabiles(true);
 
-        if (!$considerarFestivos) {
+        if (! $considerarFestivos) {
             return true;
         }
 
         $festivos = $festivosExtras ?? $this->getFestivosPorFecha($fecha);
 
-        return !in_array($fecha->format('Y-m-d'), $festivos);
+        return ! in_array($fecha->format('Y-m-d'), $festivos);
     }
 
     public function getFestivosPorFecha(Carbon $fecha): array
     {
         return $this->getFestivos($fecha->year)
             ->pluck('fecha')
-            ->map(fn($f) => Carbon::parse($f)->format('Y-m-d'))
+            ->map(fn ($f) => Carbon::parse($f)->format('Y-m-d'))
             ->toArray();
     }
 
@@ -127,7 +126,7 @@ class BusinessDaysService
     {
         $temp = $fecha->copy();
 
-        while (!$this->esDiaHabil($temp)) {
+        while (! $this->esDiaHabil($temp)) {
             $temp->addDay();
         }
 
@@ -138,7 +137,7 @@ class BusinessDaysService
     {
         $temp = $fecha->copy();
 
-        while (!$this->esDiaHabil($temp)) {
+        while (! $this->esDiaHabil($temp)) {
             $temp->subDay();
         }
 
@@ -148,10 +147,10 @@ class BusinessDaysService
     public function clearCache(?int $anio = null): void
     {
         if ($anio) {
-            Cache::forget(self::CACHE_KEY_FESTIVOS . $anio);
+            Cache::forget(self::CACHE_KEY_FESTIVOS.$anio);
         } else {
             for ($y = 2020; $y <= 2030; $y++) {
-                Cache::forget(self::CACHE_KEY_FESTIVOS . $y);
+                Cache::forget(self::CACHE_KEY_FESTIVOS.$y);
             }
         }
     }
@@ -171,6 +170,7 @@ class BusinessDaysService
 
                 if ($existe) {
                     $resultados['omitidos']++;
+
                     continue;
                 }
 
@@ -227,7 +227,7 @@ class BusinessDaysService
         $festivos[] = ['fecha' => $corpusChristi->format('Y-m-d'), 'nombre' => 'Corpus Christi', 'tipo' => 'Nacional'];
         $festivos[] = ['fecha' => $sagradoCorazon->format('Y-m-d'), 'nombre' => 'Sagrado Corazón', 'tipo' => 'Nacional'];
 
-        usort($festivos, fn($a, $b) => strcmp($a['fecha'], $b['fecha']));
+        usort($festivos, fn ($a, $b) => strcmp($a['fecha'], $b['fecha']));
 
         return $festivos;
     }

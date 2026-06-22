@@ -23,10 +23,10 @@ class FirmaController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user->email) {
+        if (! $user->email) {
             return response()->json([
-                "success" => false,
-                "message" => "El usuario no tiene un correo electrónico configurado."
+                'success' => false,
+                'message' => 'El usuario no tiene un correo electrónico configurado.',
             ], 400);
         }
 
@@ -34,13 +34,13 @@ class FirmaController extends Controller
             $this->firmaService->generarYEnviarOtp($user);
 
             return response()->json([
-                "success" => true,
-                "message" => "Código de seguridad enviado a su correo (" . $user->email . ")."
+                'success' => true,
+                'message' => 'Código de seguridad enviado a su correo ('.$user->email.').',
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                "success" => false,
-                "message" => "Error al enviar el correo: " . $e->getMessage()
+                'success' => false,
+                'message' => 'Error al enviar el correo: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -51,57 +51,57 @@ class FirmaController extends Controller
     public function validarYFirmar(Request $request)
     {
         $request->validate([
-            "otp" => "required|digits:6",
-            "documento_id" => "required",
-            "documento_type" => "required|string",
-            "hash_original" => "nullable|string",
+            'otp' => 'required|digits:6',
+            'documento_id' => 'required',
+            'documento_type' => 'required|string',
+            'hash_original' => 'nullable|string',
         ]);
 
         $user = Auth::user();
         $otp = $request->otp;
 
         // 1. Validar OTP
-        if (!$this->firmaService->validarOtp($user, $otp)) {
+        if (! $this->firmaService->validarOtp($user, $otp)) {
             return response()->json([
-                "success" => false,
-                "message" => "Código OTP inválido o expirado."
+                'success' => false,
+                'message' => 'Código OTP inválido o expirado.',
             ], 422);
         }
 
         // 2. Resolver el modelo (Polimórfico)
-        $modelClass = "App\\Models\\" . $request->documento_type;
-        if (!class_exists($modelClass)) {
-             return response()->json([
-                "success" => false,
-                "message" => "Tipo de documento no válido."
+        $modelClass = 'App\\Models\\'.$request->documento_type;
+        if (! class_exists($modelClass)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tipo de documento no válido.',
             ], 400);
         }
 
         $documento = $modelClass::find($request->documento_id);
-        if (!$documento) {
+        if (! $documento) {
             return response()->json([
-                "success" => false,
-                "message" => "Documento no encontrado."
+                'success' => false,
+                'message' => 'Documento no encontrado.',
             ], 404);
         }
 
         // 3. Registrar Firma
         try {
             $this->firmaService->registrarEventoFirma($user, $documento, [
-                "otp" => $otp,
-                "hash_original" => $request->hash_original,
+                'otp' => $otp,
+                'hash_original' => $request->hash_original,
                 // Aqu� se podr�a generar un nuevo hash si se estampara el PDF f�sicamente
-                "hash_firmado" => null 
+                'hash_firmado' => null,
             ]);
 
             return response()->json([
-                "success" => true,
-                "message" => "Documento firmado exitosamente."
+                'success' => true,
+                'message' => 'Documento firmado exitosamente.',
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                "success" => false,
-                "message" => "Error al registrar la firma: " . $e->getMessage()
+                'success' => false,
+                'message' => 'Error al registrar la firma: '.$e->getMessage(),
             ], 500);
         }
     }

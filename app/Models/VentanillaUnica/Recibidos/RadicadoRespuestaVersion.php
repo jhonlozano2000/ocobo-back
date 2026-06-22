@@ -2,13 +2,14 @@
 
 namespace App\Models\VentanillaUnica\Recibidos;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RadicadoRespuestaVersion extends Model
 {
     public $timestamps = false;
-    
+
     protected $table = 'ventanilla_radica_reci_respuestas_version';
 
     protected $fillable = [
@@ -34,6 +35,6 @@ class RadicadoRespuestaVersion extends Model
 
     public function usuario(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 }

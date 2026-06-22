@@ -2,6 +2,7 @@
 
 namespace App\Models\Transversal;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -20,11 +21,11 @@ class FirmaEvento extends Model
         'otp_utilizado',
         'ip_address',
         'user_agent',
-        'fecha_firma'
+        'fecha_firma',
     ];
 
     protected $casts = [
-        'fecha_firma' => 'datetime'
+        'fecha_firma' => 'datetime',
     ];
 
     public function documentable()
@@ -34,6 +35,6 @@ class FirmaEvento extends Model
 
     public function user()
     {
-        return $this->belongsTo(\App\Models\User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 }

@@ -6,7 +6,6 @@ use App\Events\VentanillaUnica\RespuestaEditing;
 use App\Http\Controllers\Controller;
 use App\Models\VentanillaUnica\Recibidos\RadicadoRespuesta;
 use App\Models\VentanillaUnica\Recibidos\RadicadoRespuestaParticipante;
-use App\Models\VentanillaUnica\Recibidos\RadicadoRespuestaVersion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -30,7 +29,7 @@ class RadicadoRespuestasController extends Controller
             'usuarioCrea',
             'usuarioEditando',
             'participantes.usuario',
-            'versiones' => fn($q) => $q->orderBy('version', 'desc')->limit(10)
+            'versiones' => fn ($q) => $q->orderBy('version', 'desc')->limit(10),
         ])->findOrFail($id);
 
         return $this->successResponse($respuesta, 'Respuesta obtenida');
@@ -78,7 +77,7 @@ class RadicadoRespuestasController extends Controller
     {
         $respuesta = RadicadoRespuesta::findOrFail($id);
 
-        if (!$respuesta->puedeEditar()) {
+        if (! $respuesta->puedeEditar()) {
             return $this->errorResponse('No puedes editar esta respuesta', null, 403);
         }
 
@@ -103,7 +102,7 @@ class RadicadoRespuestasController extends Controller
     {
         $respuesta = RadicadoRespuesta::findOrFail($id);
 
-        if (!$respuesta->adquirirLock()) {
+        if (! $respuesta->adquirirLock()) {
             return $this->errorResponse('No se pudo adquirir el lock', null, 423);
         }
 
@@ -139,7 +138,7 @@ class RadicadoRespuestasController extends Controller
     {
         $respuesta = RadicadoRespuesta::findOrFail($id);
 
-        if (!$respuesta->puedeEditar()) {
+        if (! $respuesta->puedeEditar()) {
             return $this->errorResponse('No puedes guardar versión', null, 403);
         }
 

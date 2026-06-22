@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests\ControlAcceso;
 
+use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\ValidationException;
 
 class StoreUserSedeRequest extends FormRequest
 {
@@ -19,7 +22,7 @@ class StoreUserSedeRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -27,29 +30,27 @@ class StoreUserSedeRequest extends FormRequest
             'user_id' => [
                 'required',
                 'integer',
-                'exists:users,id'
+                'exists:users,id',
             ],
             'sede_id' => [
                 'required',
                 'integer',
-                'exists:config_sedes,id'
+                'exists:config_sedes,id',
             ],
             'estado' => [
                 'nullable',
-                'in:0,1,true,false'
+                'in:0,1,true,false',
             ],
             'observaciones' => [
                 'nullable',
                 'string',
-                'max:1000'
-            ]
+                'max:1000',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -62,14 +63,12 @@ class StoreUserSedeRequest extends FormRequest
             'sede_id.exists' => 'La sede seleccionada no existe.',
             'estado.in' => 'El estado debe ser 0, 1, true o false.',
             'observaciones.string' => 'Las observaciones deben ser una cadena de texto.',
-            'observaciones.max' => 'Las observaciones no pueden superar los 1000 caracteres.'
+            'observaciones.max' => 'Las observaciones no pueden superar los 1000 caracteres.',
         ];
     }
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
@@ -77,7 +76,7 @@ class StoreUserSedeRequest extends FormRequest
             'user_id' => 'usuario',
             'sede_id' => 'sede',
             'estado' => 'estado',
-            'observaciones' => 'observaciones'
+            'observaciones' => 'observaciones',
         ];
     }
 
@@ -88,7 +87,7 @@ class StoreUserSedeRequest extends FormRequest
     {
         // Si no hay datos en el input, intentar obtenerlos del contenido JSON
         $input = $this->all();
-        
+
         if (empty($input) && $this->getContent()) {
             $jsonData = json_decode($this->getContent(), true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($jsonData)) {
@@ -100,13 +99,13 @@ class StoreUserSedeRequest extends FormRequest
         // Convertir strings a enteros si es necesario
         if (isset($input['user_id'])) {
             $this->merge([
-                'user_id' => is_string($input['user_id']) ? (int) $input['user_id'] : $input['user_id']
+                'user_id' => is_string($input['user_id']) ? (int) $input['user_id'] : $input['user_id'],
             ]);
         }
 
         if (isset($input['sede_id'])) {
             $this->merge([
-                'sede_id' => is_string($input['sede_id']) ? (int) $input['sede_id'] : $input['sede_id']
+                'sede_id' => is_string($input['sede_id']) ? (int) $input['sede_id'] : $input['sede_id'],
             ]);
         }
     }
@@ -114,19 +113,18 @@ class StoreUserSedeRequest extends FormRequest
     /**
      * Handle a failed validation attempt.
      *
-     * @param \Illuminate\Contracts\Validation\Validator $validator
      * @return void
      *
-     * @throws \Illuminate\Validation\ValidationException
+     * @throws ValidationException
      */
-    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator)
+    protected function failedValidation(Validator $validator)
     {
         $response = response()->json([
-            'status'  => false,
+            'status' => false,
             'message' => 'Errores de validación.',
-            'errors'  => $validator->errors(),
+            'errors' => $validator->errors(),
         ], 422);
 
-        throw new \Illuminate\Validation\ValidationException($validator, $response);
+        throw new ValidationException($validator, $response);
     }
 }

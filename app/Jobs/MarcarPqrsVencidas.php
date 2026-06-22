@@ -23,7 +23,7 @@ class MarcarPqrsVencidas implements ShouldQueue
 
             Log::info("Job MarcarPqrsVencidas: {$actualizadas} PQRS marcadas como Vencidas");
         } catch (\Exception $e) {
-            Log::error("Job MarcarPqrsVencidas error: " . $e->getMessage());
+            Log::error('Job MarcarPqrsVencidas error: '.$e->getMessage());
         }
     }
 }

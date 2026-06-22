@@ -2,6 +2,7 @@
 
 namespace App\Models\Configuracion;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -17,7 +18,7 @@ class configSede extends Model
         'email',
         'ubicacion',
         'divi_poli_id',
-        'estado'
+        'estado',
     ];
 
     /**
@@ -41,7 +42,7 @@ class configSede extends Model
      */
     public function usuarios()
     {
-        return $this->belongsToMany(\App\Models\User::class, 'users_sedes', 'sede_id', 'user_id')
+        return $this->belongsToMany(User::class, 'users_sedes', 'sede_id', 'user_id')
             ->withPivot('estado', 'observaciones')
             ->withTimestamps();
     }
@@ -51,7 +52,7 @@ class configSede extends Model
      */
     public function usuariosActivos()
     {
-        return $this->belongsToMany(\App\Models\User::class, 'users_sedes', 'sede_id', 'user_id')
+        return $this->belongsToMany(User::class, 'users_sedes', 'sede_id', 'user_id')
             ->withPivot('estado', 'observaciones')
             ->wherePivot('estado', true)
             ->withTimestamps();
@@ -64,7 +65,7 @@ class configSede extends Model
     {
         return $this->usuarios()->attach($userId, [
             'estado' => true,
-            'observaciones' => $observaciones
+            'observaciones' => $observaciones,
         ]);
     }
 

@@ -2,15 +2,17 @@
 
 namespace App\Models\VentanillaUnica\Comunes;
 
+use App\Helpers\CalendarioHelper;
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Models\Configuracion\ConfigDiviPoli;
+use App\Models\Configuracion\ConfigListaDetalle;
+use App\Models\Gestion\GestionTercero;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Gestion\GestionTercero;
-use App\Models\Configuracion\ConfigListaDetalle;
-use App\Models\Configuracion\ConfigDiviPoli;
-use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
-use App\Helpers\CalendarioHelper;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class VentanillaPqrs extends Model
 {
@@ -20,6 +22,9 @@ class VentanillaPqrs extends Model
 
     protected $fillable = [
         'ventanilla_radica_reci_id',
+        'gestion_tercero_id',
+        'clasificacion_documental_trd_id',
+        'config_divi_poli_id_afectado',
         'tipo_pqrs_id',
         'prioridad',
         'estado_tramite',
@@ -99,7 +104,7 @@ class VentanillaPqrs extends Model
 
     public function radicado(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci::class, 'ventanilla_radica_reci_id');
+        return $this->belongsTo(VentanillaRadicaReci::class, 'ventanilla_radica_reci_id');
     }
 
     public function tercero(): BelongsTo
@@ -120,6 +125,17 @@ class VentanillaPqrs extends Model
     public function divisionPoliticaAfectado(): BelongsTo
     {
         return $this->belongsTo(ConfigDiviPoli::class, 'config_divi_poli_id_afectado');
+    }
+
+    public function archivos()
+    {
+        return $this->hasMany(VentanillaPqrsArchivo::class, 'ventanilla_pqrs_id');
+    }
+
+    public function archivoDigital()
+    {
+        return $this->hasOne(VentanillaPqrsArchivo::class, 'ventanilla_pqrs_id')
+            ->where('tipo', 'digital');
     }
 
     public function scopeActivas($query)
@@ -176,7 +192,7 @@ class VentanillaPqrs extends Model
 
     public function getDiasHabilesRestantes(): int
     {
-        if (!$this->fecha_vencimiento) {
+        if (! $this->fecha_vencimiento) {
             return 0;
         }
         try {
@@ -202,10 +218,11 @@ class VentanillaPqrs extends Model
         if ($dias <= 5) {
             return ['color' => 'warning', 'label' => 'Urgente'];
         }
+
         return ['color' => 'info', 'label' => 'En término'];
     }
 
-    public function calcularFechaVencimiento(): \Carbon\Carbon
+    public function calcularFechaVencimiento(): Carbon
     {
         $tipoLabel = $this->tipoPqrs->nombre ?? 'Peticion';
         $dias = self::TERMINOS[$tipoLabel] ?? 15;
@@ -215,6 +232,7 @@ class VentanillaPqrs extends Model
         }
 
         $fechaInicio = $this->fechor_tramite ?? now();
+
         return CalendarioHelper::calcularVencimiento($fechaInicio, $dias);
     }
 
@@ -231,7 +249,7 @@ class VentanillaPqrs extends Model
         $this->update([
             'tiene_prorroga' => true,
             'fecha_vencimiento' => $nuevaFecha,
-            'observaciones' => ($this->observaciones ? $this->observaciones . "\n" : '') . "[PRÓRROGA] Aplicada el " . now()->format('Y-m-d H:i:s'),
+            'observaciones' => ($this->observaciones ? $this->observaciones."\n" : '').'[PRÓRROGA] Aplicada el '.now()->format('Y-m-d H:i:s'),
         ]);
 
         return true;

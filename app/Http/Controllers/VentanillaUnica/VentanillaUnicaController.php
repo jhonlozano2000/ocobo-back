@@ -3,15 +3,14 @@
 namespace App\Http\Controllers\VentanillaUnica;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
+use App\Http\Requests\Ventanilla\ConfigurarTiposDocumentalesRequest;
+use App\Http\Requests\Ventanilla\ListVentanillaUnicaRequest;
 use App\Http\Requests\Ventanilla\StoreVentanillaUnicaRequest;
 use App\Http\Requests\Ventanilla\UpdateVentanillaUnicaRequest;
-use App\Http\Requests\Ventanilla\ListVentanillaUnicaRequest;
-use App\Http\Requests\Ventanilla\ConfigurarTiposDocumentalesRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Comunes\VentanillaUnica;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class VentanillaUnicaController extends Controller
 {
@@ -21,11 +20,11 @@ class VentanillaUnicaController extends Controller
 
     public function __construct()
     {
-        $this->middleware('can:' . self::PERM . 'Listar')->only(['index']);
-        $this->middleware('can:' . self::PERM . 'Crear')->only(['store']);
-        $this->middleware('can:' . self::PERM . 'Mostrar')->only(['show', 'listarTiposDocumentales']);
-        $this->middleware('can:' . self::PERM . 'Editar')->only(['update', 'configurarTiposDocumentales']);
-        $this->middleware('can:' . self::PERM . 'Eliminar')->only(['destroy']);
+        $this->middleware('can:'.self::PERM.'Listar')->only(['index']);
+        $this->middleware('can:'.self::PERM.'Crear')->only(['store']);
+        $this->middleware('can:'.self::PERM.'Mostrar')->only(['show', 'listarTiposDocumentales']);
+        $this->middleware('can:'.self::PERM.'Editar')->only(['update', 'configurarTiposDocumentales']);
+        $this->middleware('can:'.self::PERM.'Eliminar')->only(['destroy']);
     }
 
     /**
@@ -35,11 +34,12 @@ class VentanillaUnicaController extends Controller
      * Es útil para interfaces de administración donde se necesita mostrar
      * las ventanillas disponibles en una sede.
      *
-     * @param int $sedeId ID de la sede
-     * @param ListVentanillaUnicaRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de ventanillas
+     * @param  int  $sedeId  ID de la sede
+     * @param  ListVentanillaUnicaRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con el listado de ventanillas
      *
      * @urlParam sedeId integer required El ID de la sede. Example: 1
+     *
      * @queryParam search string Buscar por nombre o descripción. Example: "Principal"
      * @queryParam estado integer Filtrar por estado (0 inactivo, 1 activo). Example: 1
      * @queryParam per_page integer Número de elementos por página (por defecto: 15). Example: 20
@@ -64,12 +64,10 @@ class VentanillaUnicaController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Sede no encontrada"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el listado de ventanillas",
@@ -117,11 +115,12 @@ class VentanillaUnicaController extends Controller
      * Este método permite crear una nueva ventanilla en una sede específica.
      * La ventanilla incluye nombre, descripción y configuración de numeración.
      *
-     * @param int $sedeId ID de la sede
-     * @param StoreVentanillaUnicaRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la ventanilla creada
+     * @param  int  $sedeId  ID de la sede
+     * @param  StoreVentanillaUnicaRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con la ventanilla creada
      *
      * @urlParam sedeId integer required El ID de la sede. Example: 1
+     *
      * @bodyParam nombre string required Nombre de la ventanilla. Example: "Ventanilla Principal"
      * @bodyParam descripcion string Descripción de la ventanilla. Example: "Ventanilla principal de la sede"
      * @bodyParam numeracion_unificada boolean Configuración de numeración unificada. Example: true
@@ -139,7 +138,6 @@ class VentanillaUnicaController extends Controller
      *     "updated_at": "2024-01-01T00:00:00.000000Z"
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -147,7 +145,6 @@ class VentanillaUnicaController extends Controller
      *     "nombre": ["El nombre es obligatorio."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al crear la ventanilla",
@@ -178,6 +175,7 @@ class VentanillaUnicaController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al crear la ventanilla', $e->getMessage(), 500);
         }
     }
@@ -188,9 +186,9 @@ class VentanillaUnicaController extends Controller
      * Este método permite obtener los detalles de una ventanilla específica.
      * Es útil para mostrar información detallada o para formularios de edición.
      *
-     * @param int $sedeId ID de la sede
-     * @param int $id ID de la ventanilla
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la ventanilla
+     * @param  int  $sedeId  ID de la sede
+     * @param  int  $id  ID de la ventanilla
+     * @return JsonResponse Respuesta JSON con la ventanilla
      *
      * @urlParam sedeId integer required El ID de la sede. Example: 1
      * @urlParam id integer required El ID de la ventanilla. Example: 1
@@ -211,12 +209,10 @@ class VentanillaUnicaController extends Controller
      *     }
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Ventanilla no encontrada"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener la ventanilla",
@@ -242,13 +238,14 @@ class VentanillaUnicaController extends Controller
      * Este método permite modificar los datos de una ventanilla existente,
      * incluyendo conversión automática del campo numeracion_unificada.
      *
-     * @param int $sedeId ID de la sede
-     * @param int $id ID de la ventanilla
-     * @param UpdateVentanillaUnicaRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la ventanilla actualizada
+     * @param  int  $sedeId  ID de la sede
+     * @param  int  $id  ID de la ventanilla
+     * @param  UpdateVentanillaUnicaRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con la ventanilla actualizada
      *
      * @urlParam sedeId integer required El ID de la sede. Example: 1
      * @urlParam id integer required El ID de la ventanilla. Example: 1
+     *
      * @bodyParam nombre string Nombre de la ventanilla. Example: "Ventanilla Principal Actualizada"
      * @bodyParam descripcion string Descripción de la ventanilla. Example: "Ventanilla principal actualizada"
      * @bodyParam numeracion_unificada boolean Configuración de numeración unificada. Example: true
@@ -265,12 +262,10 @@ class VentanillaUnicaController extends Controller
      *     "updated_at": "2024-01-01T00:00:00.000000Z"
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Ventanilla no encontrada"
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -278,7 +273,6 @@ class VentanillaUnicaController extends Controller
      *     "nombre": ["El nombre es obligatorio."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al actualizar la ventanilla",
@@ -309,6 +303,7 @@ class VentanillaUnicaController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar la ventanilla', $e->getMessage(), 500);
         }
     }
@@ -319,9 +314,9 @@ class VentanillaUnicaController extends Controller
      * Este método permite eliminar una ventanilla específica del sistema.
      * Se recomienda verificar que no tenga dependencias antes de eliminar.
      *
-     * @param int $sedeId ID de la sede
-     * @param int $id ID de la ventanilla
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la eliminación
+     * @param  int  $sedeId  ID de la sede
+     * @param  int  $id  ID de la ventanilla
+     * @return JsonResponse Respuesta JSON confirmando la eliminación
      *
      * @urlParam sedeId integer required El ID de la sede. Example: 1
      * @urlParam id integer required El ID de la ventanilla a eliminar. Example: 1
@@ -330,12 +325,10 @@ class VentanillaUnicaController extends Controller
      *   "status": true,
      *   "message": "Ventanilla eliminada exitosamente"
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Ventanilla no encontrada"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al eliminar la ventanilla",
@@ -365,6 +358,7 @@ class VentanillaUnicaController extends Controller
             return $this->successResponse(null, 'Ventanilla eliminada exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar la ventanilla', $e->getMessage(), 500);
         }
     }
@@ -375,23 +369,22 @@ class VentanillaUnicaController extends Controller
      * Este método permite configurar qué tipos documentales están permitidos
      * en una ventanilla específica.
      *
-     * @param int $id ID de la ventanilla
-     * @param ConfigurarTiposDocumentalesRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la configuración
+     * @param  int  $id  ID de la ventanilla
+     * @param  ConfigurarTiposDocumentalesRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON confirmando la configuración
      *
      * @urlParam id integer required El ID de la ventanilla. Example: 1
+     *
      * @bodyParam tipos_documentales array required Array de IDs de tipos documentales. Example: [1, 2, 3]
      *
      * @response 200 {
      *   "status": true,
      *   "message": "Tipos documentales configurados exitosamente"
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Ventanilla no encontrada"
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -399,7 +392,6 @@ class VentanillaUnicaController extends Controller
      *     "tipos_documentales": ["Los tipos documentales son obligatorios."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al configurar los tipos documentales",
@@ -419,6 +411,7 @@ class VentanillaUnicaController extends Controller
             return $this->successResponse(null, 'Tipos documentales configurados exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al configurar los tipos documentales', $e->getMessage(), 500);
         }
     }
@@ -429,8 +422,8 @@ class VentanillaUnicaController extends Controller
      * Este método permite obtener todos los tipos documentales que están
      * permitidos en una ventanilla específica.
      *
-     * @param int $id ID de la ventanilla
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con los tipos documentales
+     * @param  int  $id  ID de la ventanilla
+     * @return JsonResponse Respuesta JSON con los tipos documentales
      *
      * @urlParam id integer required El ID de la ventanilla. Example: 1
      *
@@ -446,12 +439,10 @@ class VentanillaUnicaController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Ventanilla no encontrada"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener los tipos documentales",

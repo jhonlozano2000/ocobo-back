@@ -2,27 +2,31 @@
 
 namespace Tests\Feature\VentanillaUnica;
 
-use App\Models\Configuracion\ConfigListaDetalle;
-use App\Models\Gestion\GestionTercero;
-use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
-use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
-use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
-use App\Models\User;
-use App\Models\ControlAcceso\UserCargo;
 use App\Models\Calidad\CalidadOrganigrama;
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Models\Configuracion\ConfigListaDetalle;
+use App\Models\ControlAcceso\UserCargo;
+use App\Models\Gestion\GestionTercero;
+use App\Models\User;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\VentanillaUnica\PqrsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
 
 class FlujoPqrsAtomicTest extends TestCase
 {
     use RefreshDatabase;
 
     protected User $user;
+
     protected GestionTercero $tercero;
+
     protected ClasificacionDocumentalTRD $clasificacion;
+
     protected ConfigListaDetalle $medioRecepcion;
+
     protected ConfigListaDetalle $tipoPqrs;
 
     protected function setUp(): void
@@ -170,7 +174,7 @@ class FlujoPqrsAtomicTest extends TestCase
         // Simular un escenario donde PQRS falla después de crear el radicado
         // Esto se puede hacer mockeando el servicio PQRS para que lance una excepción
 
-        $this->mock(\App\Services\VentanillaUnica\PqrsService::class, function ($mock) {
+        $this->mock(PqrsService::class, function ($mock) {
             $mock->shouldReceive('crearDesdeRadicado')
                 ->once()
                 ->andThrow(new \Exception('Error simulado en PQRS'));

@@ -49,7 +49,7 @@ Route::middleware('throttle:config-operations')->group(function () {
                     'store' => 'store',
                     'show' => 'show',
                     'update' => 'update',
-                    'destroy' => 'destroy'
+                    'destroy' => 'destroy',
                 ])->except('create', 'edit');
         });
 
@@ -69,7 +69,7 @@ Route::middleware('throttle:config-operations')->group(function () {
                     'store' => 'store',
                     'show' => 'show',
                     'update' => 'update',
-                    'destroy' => 'destroy'
+                    'destroy' => 'destroy',
                 ])->except('create', 'edit');
         });
 
@@ -90,7 +90,7 @@ Route::middleware('throttle:config-operations')->group(function () {
                     'store' => 'store',
                     'show' => 'show',
                     'update' => 'update',
-                    'destroy' => 'destroy'
+                    'destroy' => 'destroy',
                 ])->except('create', 'edit');
         });
 

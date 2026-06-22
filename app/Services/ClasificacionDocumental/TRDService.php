@@ -2,11 +2,11 @@
 
 namespace App\Services\ClasificacionDocumental;
 
+use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRDVersion;
-use App\Models\Calidad\CalidadOrganigrama;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class TRDService
@@ -14,17 +14,17 @@ class TRDService
     /**
      * Obtiene TRD con filtros.
      */
-    public function getAll(array $filters = []): LengthAwarePaginator|\Illuminate\Database\Eloquent\Collection
+    public function getAll(array $filters = []): LengthAwarePaginator|Collection
     {
         $query = ClasificacionDocumentalTRD::whereIn('tipo', ['Serie', 'SubSerie'])
             ->whereNull('parent')
             ->with(['children', 'dependencia']);
 
-        if (!empty($filters['dependencia_id'])) {
+        if (! empty($filters['dependencia_id'])) {
             $query->where('dependencia_id', $filters['dependencia_id']);
         }
 
-        if (!empty($filters['tipo'])) {
+        if (! empty($filters['tipo'])) {
             $query->where('tipo', $filters['tipo']);
         }
 
@@ -75,6 +75,7 @@ class TRDService
     public function create(array $data): ClasificacionDocumentalTRD
     {
         $data['user_register'] = auth()->id();
+
         return ClasificacionDocumentalTRD::create($data);
     }
 
@@ -84,12 +85,13 @@ class TRDService
     public function update(int $id, array $data): ?ClasificacionDocumentalTRD
     {
         $trd = ClasificacionDocumentalTRD::find($id);
-        
-        if (!$trd) {
+
+        if (! $trd) {
             return null;
         }
 
         $trd->update($data);
+
         return $trd;
     }
 
@@ -99,8 +101,8 @@ class TRDService
     public function delete(int $id): bool
     {
         $trd = ClasificacionDocumentalTRD::find($id);
-        
-        if (!$trd || $trd->children()->count() > 0) {
+
+        if (! $trd || $trd->children()->count() > 0) {
             return false;
         }
 
@@ -129,7 +131,7 @@ class TRDService
             'dependencia_id' => $dependenciaId,
             'version' => ($lastVersion ?? 0) + 1,
             'estado_version' => 'TEMP',
-            'user_register' => auth()->id()
+            'user_register' => auth()->id(),
         ]);
     }
 
@@ -138,20 +140,20 @@ class TRDService
      */
     public function importFromExcel(array $requestData, $archivoFile): array
     {
-        \Log::info('TRD Import started', ['requestData' => $requestData, 'hasFile' => !empty($archivoFile)]);
-        
+        \Log::info('TRD Import started', ['requestData' => $requestData, 'hasFile' => ! empty($archivoFile)]);
+
         // La dependencia se obtiene de la celda B4 del archivo Excel, no del request
         $dependenciaId = null; // Se obtendrás de B4 en importFromExcelInternal
         $versionId = $requestData['version_id'] ?? null;
 
         // Guardar archivo temporal
         $fileName = $archivoFile->getClientOriginalName();
-        $tempPath = storage_path('app/temp/' . $fileName);
-        
-        if (!is_dir(storage_path('app/temp'))) {
+        $tempPath = storage_path('app/temp/'.$fileName);
+
+        if (! is_dir(storage_path('app/temp'))) {
             mkdir(storage_path('app/temp'), 0755, true);
         }
-        
+
         $archivoFile->move(storage_path('app/temp'), $fileName);
 
         \Log::info('TRD Import file saved', ['tempPath' => $tempPath, 'exists' => file_exists($tempPath)]);
@@ -188,14 +190,14 @@ class TRDService
         \Log::info('TRD Import - Codigo dependencia from B4', ['codigo' => $codigoDependencia]);
 
         // Buscar la dependencia por código y tipo
-        $dependencia = \App\Models\Calidad\CalidadOrganigrama::where('cod_organico', $codigoDependencia)
+        $dependencia = CalidadOrganigrama::where('cod_organico', $codigoDependencia)
             ->where('tipo', 'Dependencia')
             ->first();
-        
-        if (!$dependencia) {
+
+        if (! $dependencia) {
             return [
                 'inserted' => 0,
-                'errors' => ['No se encontró la dependencia con código: ' . $codigoDependencia]
+                'errors' => ['No se encontró la dependencia con código: '.$codigoDependencia],
             ];
         }
 
@@ -203,22 +205,24 @@ class TRDService
         \Log::info('TRD Import - Dependencia encontrada', ['id' => $dependenciaId, 'nombre' => $dependencia->nom_organico]);
 
         // Obtener o crear versión para esta dependencia
-        $ultimaVersion = \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRDVersion::where('dependencia_id', $dependenciaId)->max('version') ?? 0;
+        $ultimaVersion = ClasificacionDocumentalTRDVersion::where('dependencia_id', $dependenciaId)->max('version') ?? 0;
         $nuevaVersion = $ultimaVersion + 1;
 
-        $version = \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRDVersion::create([
+        $version = ClasificacionDocumentalTRDVersion::create([
             'dependencia_id' => $dependenciaId,
             'version' => $nuevaVersion,
             'estado_version' => 'TEMP',
             'user_register' => auth()->id(),
-            'observaciones' => 'Importación masiva desde Excel'
+            'observaciones' => 'Importación masiva desde Excel',
         ]);
 
         $versionId = $version->id;
         \Log::info('TRD Import - Nueva versión creada', ['version_id' => $versionId, 'version' => $nuevaVersion]);
 
         foreach ($data as $index => $row) {
-            if ($index < 6) continue;
+            if ($index < 6) {
+                continue;
+            }
 
             $colA = trim($row[0] ?? '');
             $colB = trim($row[1] ?? '');
@@ -226,17 +230,19 @@ class TRDService
             $diasVencimiento = trim($row[3] ?? '');
             $nombre = trim($row[4] ?? '');
 
-            if (empty($nombre)) continue;
+            if (empty($nombre)) {
+                continue;
+            }
 
-            $hasA = !empty($colA);
-            $hasB = !empty($colB);
-            $hasC = !empty($colC);
+            $hasA = ! empty($colA);
+            $hasB = ! empty($colB);
+            $hasC = ! empty($colC);
 
             $tipo = null;
             $codigo = null;
             $parent = null;
 
-            if ($hasA && $hasB && !$hasC) {
+            if ($hasA && $hasB && ! $hasC) {
                 $tipo = 'Serie';
                 $codigo = $colB;
                 $parent = null;
@@ -246,17 +252,19 @@ class TRDService
                 $tipo = 'SubSerie';
                 $codigo = $colC;
                 if ($idSerie === null) {
-                    $errors[] = "Fila " . ($index + 1) . ": SubSerie sin Serie padre";
+                    $errors[] = 'Fila '.($index + 1).': SubSerie sin Serie padre';
+
                     continue;
                 }
                 $parent = $idSerie;
                 $idSubSerie = null;
-            } elseif (!$hasA && !$hasB && !$hasC) {
+            } elseif (! $hasA && ! $hasB && ! $hasC) {
                 $tipo = 'TipoDocumento';
                 $codigo = null;
                 $parent = $idSubSerie ?? $idSerie;
                 if ($parent === null) {
-                    $errors[] = "Fila " . ($index + 1) . ": TipoDocumento sin padre";
+                    $errors[] = 'Fila '.($index + 1).': TipoDocumento sin padre';
+
                     continue;
                 }
             } else {
@@ -268,7 +276,7 @@ class TRDService
                     'tipo' => $tipo,
                     'cod' => $codigo,
                     'nom' => $nombre,
-                    'dias_vencimiento' => !empty($diasVencimiento) && is_numeric($diasVencimiento) ? (int) $diasVencimiento : null,
+                    'dias_vencimiento' => ! empty($diasVencimiento) && is_numeric($diasVencimiento) ? (int) $diasVencimiento : null,
                     'parent' => $parent,
                     'dependencia_id' => $dependenciaId,
                     'a_g' => $tipo === 'SubSerie' ? trim(mb_substr($row[7] ?? '', 0, 5)) : null, // Columna H: Archivo Gestión
@@ -289,7 +297,7 @@ class TRDService
                 $pdfAValue = strtolower(trim($row[5] ?? '')); // Columna F
                 $pdfANivel = strtolower(trim($row[6] ?? '')); // Columna G: Nivel PDF/A
                 $requierePdfA = in_array($pdfAValue, ['sí', 'si', 'x']);
-                if ($requierePdfA || !empty($pdfANivel) && $pdfANivel !== 'null') {
+                if ($requierePdfA || ! empty($pdfANivel) && $pdfANivel !== 'null') {
                     $data['requiere_pdf_a'] = true;
                     // Usar nivel de columna G si existe, si no default "1b"
                     if (in_array($pdfANivel, ['1a', '1b', '2a', '2b', '3'])) {
@@ -315,13 +323,13 @@ class TRDService
                     $idSubSerie = $elemento->id;
                 }
             } catch (\Exception $e) {
-                $errors[] = "Fila " . ($index + 1) . ": Error al insertar - {$e->getMessage()}";
+                $errors[] = 'Fila '.($index + 1).": Error al insertar - {$e->getMessage()}";
             }
         }
 
         return [
             'inserted' => $inserted,
-            'errors' => $errors
+            'errors' => $errors,
         ];
     }
 }

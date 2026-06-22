@@ -3,7 +3,6 @@
 namespace App\Traits;
 
 use App\Models\UsersActivityLog;
-use Illuminate\Support\Facades\Auth;
 
 trait VentanillaAuditTrait
 {
@@ -11,10 +10,10 @@ trait VentanillaAuditTrait
      * Registra eventos de auditoría para operaciones de Ventanilla Única.
      * Cumplimiento ISO 27001 - Trazabilidad de cambios.
      *
-     * @param mixed $model El modelo afectado
-     * @param string $action Acción: created, updated, deleted, view
-     * @param string $numRadicado Número de radicado para búsqueda rápida
-     * @param array $metadata Metadatos adicionales
+     * @param  mixed  $model  El modelo afectado
+     * @param  string  $action  Acción: created, updated, deleted, view
+     * @param  string  $numRadicado  Número de radicado para búsqueda rápida
+     * @param  array  $metadata  Metadatos adicionales
      * @return void
      */
     public function auditVentanilla($model, string $action, string $numRadicado = '', array $metadata = [])

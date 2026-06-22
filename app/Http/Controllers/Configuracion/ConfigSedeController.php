@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\Configuracion\StoreConfigSedeRequest;
 use App\Http\Requests\Configuracion\UpdateConfigSedeRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\Configuracion\ConfigSede;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -21,8 +22,8 @@ class ConfigSedeController extends Controller
      * Es útil para interfaces de administración donde se necesita mostrar
      * la lista completa de sedes disponibles.
      *
-     * @param Request $request La solicitud HTTP que puede contener parámetros de filtrado
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de sedes
+     * @param  Request  $request  La solicitud HTTP que puede contener parámetros de filtrado
+     * @return JsonResponse Respuesta JSON con el listado de sedes
      *
      * @queryParam search string Buscar por nombre, dirección o código. Example: "Principal"
      * @queryParam estado integer Filtrar por estado (0 inactivo, 1 activo). Example: 1
@@ -45,7 +46,6 @@ class ConfigSedeController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el listado de sedes",
@@ -98,8 +98,8 @@ class ConfigSedeController extends Controller
      * Este método permite crear una nueva sede con validación de datos
      * y conversión automática del campo estado.
      *
-     * @param StoreConfigSedeRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la sede creada
+     * @param  StoreConfigSedeRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con la sede creada
      *
      * @bodyParam nombre string required Nombre de la sede. Example: "Sede Principal"
      * @bodyParam codigo string required Código único de la sede. Example: "SEDE001"
@@ -122,7 +122,6 @@ class ConfigSedeController extends Controller
      *     "estado": 1
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Datos de validación incorrectos",
@@ -130,7 +129,6 @@ class ConfigSedeController extends Controller
      *     "nombre": ["El nombre de la sede es obligatorio."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al crear la sede",
@@ -145,7 +143,7 @@ class ConfigSedeController extends Controller
             $validatedData = $request->validated();
 
             // Filtrar solo los campos que existen en el modelo
-            $validatedData = array_intersect_key($validatedData, array_flip((new ConfigSede())->getFillable()));
+            $validatedData = array_intersect_key($validatedData, array_flip((new ConfigSede)->getFillable()));
 
             // Convertir estado a booleano si se proporciona
             if (isset($validatedData['estado'])) {
@@ -163,6 +161,7 @@ class ConfigSedeController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al crear la sede', $e->getMessage(), 500);
         }
     }
@@ -173,8 +172,8 @@ class ConfigSedeController extends Controller
      * Este método permite obtener los detalles de una sede específica.
      * Es útil para mostrar información detallada o para formularios de edición.
      *
-     * @param ConfigSede $sede La sede a obtener (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la sede
+     * @param  ConfigSede  $sede  La sede a obtener (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON con la sede
      *
      * @urlParam sede integer required El ID de la sede. Example: 1
      *
@@ -190,12 +189,10 @@ class ConfigSedeController extends Controller
      *     "estado": 1
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Sede no encontrada"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener la sede",
@@ -220,9 +217,9 @@ class ConfigSedeController extends Controller
      * Este método permite modificar los datos de una sede existente,
      * incluyendo conversión automática del campo estado.
      *
-     * @param UpdateConfigSedeRequest $request La solicitud HTTP validada
-     * @param ConfigSede $sede La sede a actualizar (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con la sede actualizada
+     * @param  UpdateConfigSedeRequest  $request  La solicitud HTTP validada
+     * @param  ConfigSede  $sede  La sede a actualizar (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON con la sede actualizada
      *
      * @bodyParam nombre string Nombre de la sede. Example: "Sede Principal"
      * @bodyParam codigo string Código único de la sede. Example: "SEDE001"
@@ -245,7 +242,6 @@ class ConfigSedeController extends Controller
      *     "estado": 1
      *   }
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Datos de validación incorrectos",
@@ -253,7 +249,6 @@ class ConfigSedeController extends Controller
      *     "email": ["El formato del email no es válido."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al actualizar la sede",
@@ -290,6 +285,7 @@ class ConfigSedeController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar la sede', $e->getMessage(), 500);
         }
     }
@@ -300,8 +296,8 @@ class ConfigSedeController extends Controller
      * Este método permite eliminar una sede específica del sistema.
      * Se recomienda verificar que no tenga dependencias antes de eliminar.
      *
-     * @param ConfigSede $sede La sede a eliminar (inyectado por Laravel)
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la eliminación
+     * @param  ConfigSede  $sede  La sede a eliminar (inyectado por Laravel)
+     * @return JsonResponse Respuesta JSON confirmando la eliminación
      *
      * @urlParam sede integer required El ID de la sede a eliminar. Example: 1
      *
@@ -309,7 +305,6 @@ class ConfigSedeController extends Controller
      *   "status": true,
      *   "message": "Sede eliminada exitosamente"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al eliminar la sede",
@@ -328,6 +323,7 @@ class ConfigSedeController extends Controller
             return $this->successResponse(null, 'Sede eliminada exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar la sede', $e->getMessage(), 500);
         }
     }
@@ -339,7 +335,7 @@ class ConfigSedeController extends Controller
      * Es útil para formularios de selección y listados donde solo se necesitan
      * las sedes disponibles para uso.
      *
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de sedes activas
+     * @return JsonResponse Respuesta JSON con el listado de sedes activas
      *
      * @response 200 {
      *   "status": true,
@@ -360,7 +356,6 @@ class ConfigSedeController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el listado de sedes activas",
@@ -388,7 +383,7 @@ class ConfigSedeController extends Controller
      * incluyendo el total de sedes y sedes activas/inactivas.
      * Es útil para dashboards de administración.
      *
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las estadísticas
+     * @return JsonResponse Respuesta JSON con las estadísticas
      *
      * @response 200 {
      *   "status": true,
@@ -399,7 +394,6 @@ class ConfigSedeController extends Controller
      *     "sedes_inactivas": 1
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener las estadísticas",

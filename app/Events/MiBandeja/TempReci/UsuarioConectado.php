@@ -2,7 +2,6 @@
 
 namespace App\Events\MiBandeja\TempReci;
 
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -14,7 +13,9 @@ class UsuarioConectado implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public int $documentoId;
+
     public int $userId;
+
     public string $userName;
 
     public function __construct(int $documentoId, int $userId, string $userName)

@@ -27,7 +27,7 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => env('APP_URL') . '/storage',
+            'url' => env('APP_URL').'/storage',
             'visibility' => 'public',
             'throw' => false,
         ],
@@ -93,6 +93,20 @@ return [
         'otros_archivos' => [
             'driver' => 'local',
             'root' => storage_path('app/otros_archivos'),
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+
+        'pqrs_archivos' => [
+            'driver' => 'local',
+            'root' => storage_path('app/pqrs_archivos'),
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+
+        'archivo_expedientes' => [
+            'driver' => 'local',
+            'root' => storage_path('app/archivo_expedientes'),
             'visibility' => 'private',
             'throw' => false,
         ],

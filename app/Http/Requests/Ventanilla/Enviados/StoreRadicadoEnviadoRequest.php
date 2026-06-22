@@ -43,7 +43,7 @@ class StoreRadicadoEnviadoRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $terceroId = $this->tercero_id ?? $this->tercero_enviado_id;
-            if (!$terceroId) {
+            if (! $terceroId) {
                 $validator->errors()->add('tercero_id', 'El destinatario es obligatorio.');
             }
         });
@@ -54,6 +54,7 @@ class StoreRadicadoEnviadoRequest extends FormRequest
         $validated = parent::validated($key, $default);
         $validated['tercero_id'] = $validated['tercero_id'] ?? $validated['tercero_enviado_id'] ?? null;
         unset($validated['tercero_enviado_id']);
+
         return $validated;
     }
 

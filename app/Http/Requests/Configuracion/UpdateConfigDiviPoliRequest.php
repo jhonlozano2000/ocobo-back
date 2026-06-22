@@ -2,9 +2,10 @@
 
 namespace App\Http\Requests\Configuracion;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class UpdateConfigDiviPoliRequest extends FormRequest
 {
@@ -37,13 +38,13 @@ class UpdateConfigDiviPoliRequest extends FormRequest
         if (is_object($diviPoli)) {
             $id = $diviPoli->id ?? $diviPoli->getKey();
             if ($id) {
-                return (int)$id;
+                return (int) $id;
             }
         }
 
         // Si es numérico, usarlo directamente
         if (is_numeric($diviPoli)) {
-            return (int)$diviPoli;
+            return (int) $diviPoli;
         }
 
         // Como último recurso, intentar obtener desde los segmentos de la URL
@@ -52,7 +53,7 @@ class UpdateConfigDiviPoliRequest extends FormRequest
         if ($divisionPoliticaIndex !== false && isset($segments[$divisionPoliticaIndex + 1])) {
             $id = $segments[$divisionPoliticaIndex + 1];
             if (is_numeric($id)) {
-                return (int)$id;
+                return (int) $id;
             }
         }
 
@@ -62,7 +63,7 @@ class UpdateConfigDiviPoliRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -76,7 +77,7 @@ class UpdateConfigDiviPoliRequest extends FormRequest
         if (is_object($diviPoli)) {
             $diviPoliId = $diviPoli->id ?? $diviPoli->getKey();
         } elseif (is_numeric($diviPoli)) {
-            $diviPoliId = (int)$diviPoli;
+            $diviPoliId = (int) $diviPoli;
         } else {
             // Como último recurso, usar el método getDiviPoliId
             $diviPoliId = $this->getDiviPoliId();
@@ -108,7 +109,7 @@ class UpdateConfigDiviPoliRequest extends FormRequest
                 if ($value) {
                     $exists = DB::table('config_divi_poli')
                         ->where('codigo', $value)
-                        ->where('id', '!=', (int)$diviPoliId)
+                        ->where('id', '!=', (int) $diviPoliId)
                         ->exists();
 
                     if ($exists) {
@@ -126,21 +127,19 @@ class UpdateConfigDiviPoliRequest extends FormRequest
             'nombre' => [
                 'sometimes',
                 'string',
-                'max:70'
+                'max:70',
             ],
             'tipo' => [
                 'sometimes',
                 'string',
                 'max:15',
-                'in:Pais,Departamento,Municipio'
-            ]
+                'in:Pais,Departamento,Municipio',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -161,8 +160,6 @@ class UpdateConfigDiviPoliRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
@@ -170,7 +167,7 @@ class UpdateConfigDiviPoliRequest extends FormRequest
             'parent' => 'división política padre',
             'codigo' => 'código',
             'nombre' => 'nombre',
-            'tipo' => 'tipo'
+            'tipo' => 'tipo',
         ];
     }
 }

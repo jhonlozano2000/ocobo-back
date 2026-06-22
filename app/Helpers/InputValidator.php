@@ -3,7 +3,6 @@
 namespace App\Helpers;
 
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Helper de Validación de Entrada
@@ -22,8 +21,6 @@ class InputValidator
     /**
      * Valida y sanitiza un array de entrada
      *
-     * @param array $data
-     * @param array $rules
      * @return array ['valid' => bool, 'data' => array, 'errors' => array]
      */
     public static function validate(array $data, array $rules): array
@@ -47,9 +44,6 @@ class InputValidator
 
     /**
      * Sanitiza campos de texto comunes
-     *
-     * @param array $data
-     * @return array
      */
     public static function sanitize(array $data): array
     {
@@ -65,12 +59,11 @@ class InputValidator
     /**
      * Valida ID numérico
      *
-     * @param mixed $id
-     * @return bool
+     * @param  mixed  $id
      */
     public static function isValidId($id): bool
     {
-        if (!is_numeric($id) || $id <= 0) {
+        if (! is_numeric($id) || $id <= 0) {
             return false;
         }
 
@@ -79,9 +72,6 @@ class InputValidator
 
     /**
      * Valida formato de email
-     *
-     * @param string $email
-     * @return bool
      */
     public static function isValidEmail(string $email): bool
     {
@@ -90,9 +80,6 @@ class InputValidator
 
     /**
      * Valida formato de URL
-     *
-     * @param string $url
-     * @return bool
      */
     public static function isValidUrl(string $url): bool
     {
@@ -102,8 +89,7 @@ class InputValidator
     /**
      * Valida y limpia IDs de entrada
      *
-     * @param mixed $id
-     * @param string $fieldName
+     * @param  mixed  $id
      * @return array ['valid' => bool, 'id' => int|null, 'error' => string|null]
      */
     public static function validateId($id, string $fieldName = 'id'): array
@@ -116,7 +102,7 @@ class InputValidator
             ];
         }
 
-        if (!is_numeric($id)) {
+        if (! is_numeric($id)) {
             return [
                 'valid' => false,
                 'id' => null,
@@ -143,12 +129,6 @@ class InputValidator
 
     /**
      * Valida longitud de strings
-     *
-     * @param string $value
-     * @param int $min
-     * @param int $max
-     * @param string $fieldName
-     * @return array
      */
     public static function validateLength(string $value, int $min = 1, int $max = 255, string $fieldName = 'campo'): array
     {

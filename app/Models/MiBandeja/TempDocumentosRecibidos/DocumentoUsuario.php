@@ -3,6 +3,7 @@
 namespace App\Models\MiBandeja\TempDocumentosRecibidos;
 
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -16,10 +17,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $documento_id ID del documento
  * @property int $user_id ID del usuario
  * @property string $rol Rol: firmante|responsable|proyector
- * @property \Carbon\Carbon|null $ultimo_acceso Última actividad
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- *
+ * @property Carbon|null $ultimo_acceso Última actividad
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Documento $documento
  * @property-read User $usuario
  */
@@ -63,8 +63,6 @@ class DocumentoUsuario extends Model
 
     /**
      * Obtiene el nombre del usuario.
-     *
-     * @return string
      */
     public function nombreUsuario(): string
     {
@@ -73,8 +71,6 @@ class DocumentoUsuario extends Model
 
     /**
      * Obtiene el color asociado al rol.
-     *
-     * @return string
      */
     public function color(): string
     {

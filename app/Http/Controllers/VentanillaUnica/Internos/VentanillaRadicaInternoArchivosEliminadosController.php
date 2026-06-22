@@ -38,6 +38,7 @@ class VentanillaRadicaInternoArchivosEliminadosController extends Controller
             return $this->successResponse($archivo, 'Archivo eliminado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar el archivo', $e->getMessage(), 500);
         }
     }
@@ -50,7 +51,7 @@ class VentanillaRadicaInternoArchivosEliminadosController extends Controller
         try {
             $archivo = VentanillaRadicaInternoArchivosEliminados::where('radica_interno_id', $id)->get();
 
-            if (!$archivo) {
+            if (! $archivo) {
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 
@@ -65,7 +66,7 @@ class VentanillaRadicaInternoArchivosEliminadosController extends Controller
         try {
             $archivo = VentanillaRadicaInternoArchivosEliminados::where('radica_interno_id', $id)->get();
 
-            if (!$archivo) {
+            if (! $archivo) {
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 

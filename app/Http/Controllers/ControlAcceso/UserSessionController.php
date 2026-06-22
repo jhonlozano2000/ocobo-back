@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\ControlAcceso;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
 use App\Http\Requests\ControlAcceso\ListUserSessionRequest;
-use App\Models\ControlAcceso\UsersSession;
-use Illuminate\Http\Request;
+use App\Http\Traits\ApiResponseTrait;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Jenssegers\Agent\Agent;
 
@@ -22,8 +22,8 @@ class UserSessionController extends Controller
      * ubicación de cada sesión. Es útil para que los usuarios puedan
      * revisar su actividad de inicio de sesión.
      *
-     * @param ListUserSessionRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las sesiones
+     * @param  ListUserSessionRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con las sesiones
      *
      * @queryParam limit integer Número de sesiones a obtener (por defecto: 6, máximo: 50). Example: 10
      *
@@ -47,7 +47,6 @@ class UserSessionController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Datos de validación incorrectos",
@@ -55,7 +54,6 @@ class UserSessionController extends Controller
      *     "limit": ["El límite no puede exceder 50."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener las sesiones",
@@ -74,7 +72,7 @@ class UserSessionController extends Controller
                 ->take($limit)
                 ->get();
 
-            $agent = new Agent();
+            $agent = new Agent;
 
             // Transformar los datos al formato que el frontend espera
             $formattedSessions = $sessions->map(function ($session) use ($agent) {
@@ -82,7 +80,7 @@ class UserSessionController extends Controller
 
                 return [
                     'id' => $session->id,
-                    'browserName' => $agent->browser() . ' on ' . $agent->platform(),
+                    'browserName' => $agent->browser().' on '.$agent->platform(),
                     'device' => $agent->device(),
                     'location' => $session->ip_address, // Para ubicación real se necesitaría un servicio de GeoIP
                     'date' => $session->last_login_at->format('d M Y, H:i'),
@@ -106,11 +104,12 @@ class UserSessionController extends Controller
      * de un usuario específico, incluyendo información detallada sobre
      * cada sesión.
      *
-     * @param ListUserSessionRequest $request La solicitud HTTP validada
-     * @param int $userId El ID del usuario
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con las sesiones
+     * @param  ListUserSessionRequest  $request  La solicitud HTTP validada
+     * @param  int  $userId  El ID del usuario
+     * @return JsonResponse Respuesta JSON con las sesiones
      *
      * @urlParam userId integer required El ID del usuario. Example: 1
+     *
      * @queryParam limit integer Número de sesiones a obtener (por defecto: 15, máximo: 50). Example: 20
      *
      * @response 200 {
@@ -127,12 +126,10 @@ class UserSessionController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Usuario no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener las sesiones",
@@ -142,9 +139,9 @@ class UserSessionController extends Controller
     public function getUserSessions(ListUserSessionRequest $request, int $userId)
     {
         try {
-            $user = \App\Models\User::find($userId);
+            $user = User::find($userId);
 
-            if (!$user) {
+            if (! $user) {
                 return $this->errorResponse('Usuario no encontrado', null, 404);
             }
 
@@ -156,7 +153,7 @@ class UserSessionController extends Controller
                 ->take($limit)
                 ->get();
 
-            $agent = new Agent();
+            $agent = new Agent;
 
             // Transformar los datos
             $formattedSessions = $sessions->map(function ($session) use ($agent) {
@@ -164,7 +161,7 @@ class UserSessionController extends Controller
 
                 return [
                     'id' => $session->id,
-                    'browserName' => $agent->browser() . ' on ' . $agent->platform(),
+                    'browserName' => $agent->browser().' on '.$agent->platform(),
                     'device' => $agent->device(),
                     'location' => $session->ip_address,
                     'date' => $session->last_login_at->format('d M Y, H:i'),
@@ -187,8 +184,8 @@ class UserSessionController extends Controller
      * Este método permite al usuario eliminar una sesión específica,
      * útil para cerrar sesiones en dispositivos no autorizados.
      *
-     * @param int $sessionId El ID de la sesión a eliminar
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la eliminación
+     * @param  int  $sessionId  El ID de la sesión a eliminar
+     * @return JsonResponse Respuesta JSON confirmando la eliminación
      *
      * @urlParam sessionId integer required El ID de la sesión a eliminar. Example: 1
      *
@@ -196,12 +193,10 @@ class UserSessionController extends Controller
      *   "status": true,
      *   "message": "Sesión eliminada exitosamente"
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Sesión no encontrada"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al eliminar la sesión",
@@ -214,7 +209,7 @@ class UserSessionController extends Controller
             $user = Auth::user();
             $session = $user->sessions()->find($sessionId);
 
-            if (!$session) {
+            if (! $session) {
                 return $this->errorResponse('Sesión no encontrada', null, 404);
             }
 
@@ -229,7 +224,7 @@ class UserSessionController extends Controller
     /**
      * Función de ayuda para obtener el ícono del dispositivo.
      *
-     * @param Agent $agent Instancia del agente de usuario
+     * @param  Agent  $agent  Instancia del agente de usuario
      * @return string Nombre del ícono
      */
     private function getDeviceIcon(Agent $agent): string
@@ -241,6 +236,7 @@ class UserSessionController extends Controller
             if (str_contains(strtolower($agent->platform()), 'mac')) {
                 return 'tabler-brand-apple';
             }
+
             return 'tabler-device-desktop';
         }
 
@@ -251,6 +247,7 @@ class UserSessionController extends Controller
             if (str_contains(strtolower($agent->platform()), 'ios')) {
                 return 'tabler-device-mobile';
             }
+
             return 'tabler-device-mobile';
         }
 

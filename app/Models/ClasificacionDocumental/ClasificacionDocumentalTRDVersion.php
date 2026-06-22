@@ -22,7 +22,7 @@ class ClasificacionDocumentalTRDVersion extends Model
         'observaciones',
         'aprobado_por',
         'fecha_aprobacion',
-        'user_register'
+        'user_register',
     ];
 
     protected $casts = [
@@ -156,7 +156,7 @@ class ClasificacionDocumentalTRDVersion extends Model
      */
     public function isAprobada(): bool
     {
-        return !is_null($this->aprobado_por);
+        return ! is_null($this->aprobado_por);
     }
 
     /**

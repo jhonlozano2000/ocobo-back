@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Configuracion;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreConfigVentanillaRequest extends FormRequest
@@ -19,7 +20,7 @@ class StoreConfigVentanillaRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -27,35 +28,33 @@ class StoreConfigVentanillaRequest extends FormRequest
             'sede_id' => [
                 'required',
                 'integer',
-                'exists:config_sedes,id'
+                'exists:config_sedes,id',
             ],
             'nombre' => [
                 'required',
                 'string',
-                'max:100'
+                'max:100',
             ],
             'descripcion' => [
                 'nullable',
                 'string',
-                'max:255'
+                'max:255',
             ],
             'codigo' => [
                 'nullable',
                 'string',
                 'max:20',
-                'unique:config_ventanillas,codigo'
+                'unique:config_ventanillas,codigo',
             ],
             'estado' => [
                 'nullable',
-                'in:0,1,true,false'
-            ]
+                'in:0,1,true,false',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -77,8 +76,6 @@ class StoreConfigVentanillaRequest extends FormRequest
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
@@ -87,7 +84,7 @@ class StoreConfigVentanillaRequest extends FormRequest
             'nombre' => 'nombre de la ventanilla',
             'descripcion' => 'descripción',
             'codigo' => 'código',
-            'estado' => 'estado'
+            'estado' => 'estado',
         ];
     }
 }

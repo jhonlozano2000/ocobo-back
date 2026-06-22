@@ -11,11 +11,12 @@ use Illuminate\Support\Facades\DB;
 class ConfigDiviPoliService
 {
     private const TIPOS_VALIDOS = ['Pais', 'Departamento', 'Municipio'];
+
     private const CACHE_TTL = 15;
 
     public function getAll(array $filters = []): LengthAwarePaginator|Collection
     {
-        $cacheKey = 'divi_poli:all:' . md5(json_encode($filters ?? []));
+        $cacheKey = 'divi_poli:all:'.md5(json_encode($filters ?? []));
 
         return Cache::remember($cacheKey, now()->addMinutes(self::CACHE_TTL), function () use ($filters) {
             $query = ConfigDiviPoli::select([
@@ -35,20 +36,20 @@ class ConfigDiviPoliService
                     WHEN config_divi_poli.tipo = 'Departamento' THEN pais_directo.nombre
                     WHEN config_divi_poli.tipo = 'Municipio' THEN pais.nombre
                     ELSE NULL
-                END as pais_nombre")
+                END as pais_nombre"),
             ])
-            ->leftJoin('config_divi_poli as departamento', function($j) {
-                $j->on('config_divi_poli.parent', '=', 'departamento.id')
-                  ->where('departamento.tipo', '=', 'Departamento');
-            })
-            ->leftJoin('config_divi_poli as pais', function($j) {
-                $j->on('departamento.parent', '=', 'pais.id')
-                  ->where('pais.tipo', '=', 'Pais');
-            })
-            ->leftJoin('config_divi_poli as pais_directo', function($j) {
-                $j->on('config_divi_poli.parent', '=', 'pais_directo.id')
-                  ->where('pais_directo.tipo', '=', 'Pais');
-            });
+                ->leftJoin('config_divi_poli as departamento', function ($j) {
+                    $j->on('config_divi_poli.parent', '=', 'departamento.id')
+                        ->where('departamento.tipo', '=', 'Departamento');
+                })
+                ->leftJoin('config_divi_poli as pais', function ($j) {
+                    $j->on('departamento.parent', '=', 'pais.id')
+                        ->where('pais.tipo', '=', 'Pais');
+                })
+                ->leftJoin('config_divi_poli as pais_directo', function ($j) {
+                    $j->on('config_divi_poli.parent', '=', 'pais_directo.id')
+                        ->where('pais_directo.tipo', '=', 'Pais');
+                });
 
             $this->applyFilters($query, $filters);
 
@@ -58,8 +59,8 @@ class ConfigDiviPoliService
                 WHEN config_divi_poli.tipo = 'Municipio' THEN 3
                 ELSE 4
             END")
-            ->orderBy('pais_nombre', 'asc')
-            ->orderBy('config_divi_poli.nombre', 'asc');
+                ->orderBy('pais_nombre', 'asc')
+                ->orderBy('config_divi_poli.nombre', 'asc');
 
             return $this->paginateIfRequested($query, $filters['per_page'] ?? null);
         });
@@ -68,16 +69,16 @@ class ConfigDiviPoliService
     public function getHierarchy(): Collection
     {
         return ConfigDiviPoli::where('tipo', 'Pais')
-            ->with(['children' => function($q) {
+            ->with(['children' => function ($q) {
                 $q->where('tipo', 'Departamento')
-                  ->orderBy('nombre', 'asc')
-                  ->with(['children' => function($sq) {
-                      $sq->where('tipo', 'Municipio')->orderBy('nombre', 'asc');
-                  }]);
+                    ->orderBy('nombre', 'asc')
+                    ->with(['children' => function ($sq) {
+                        $sq->where('tipo', 'Municipio')->orderBy('nombre', 'asc');
+                    }]);
             }])
             ->orderBy('nombre', 'asc')
             ->get()
-            ->map(function($p) {
+            ->map(function ($p) {
                 return $this->mapHierarchy($p);
             });
     }
@@ -113,7 +114,7 @@ class ConfigDiviPoliService
 
         return [
             'total_divisiones' => $total,
-            'conteo_por_tipo' => $conteoPorTipo
+            'conteo_por_tipo' => $conteoPorTipo,
         ];
     }
 
@@ -121,6 +122,7 @@ class ConfigDiviPoliService
     {
         $model = ConfigDiviPoli::create($data);
         $this->clearCache();
+
         return $model;
     }
 
@@ -129,6 +131,7 @@ class ConfigDiviPoliService
         $model = ConfigDiviPoli::findOrFail($id);
         $model->fill($data)->save();
         $this->clearCache();
+
         return $model;
     }
 
@@ -142,6 +145,7 @@ class ConfigDiviPoliService
 
         $deleted = $model->delete();
         $this->clearCache();
+
         return $deleted;
     }
 
@@ -152,25 +156,25 @@ class ConfigDiviPoliService
 
     private function clearCache(): void
     {
-        Cache::forget('divi_poli:all:' . md5(json_encode([])));
+        Cache::forget('divi_poli:all:'.md5(json_encode([])));
         Cache::forget('divi_poli:hierarchy');
     }
 
     private function applyFilters($query, array $filters): void
     {
-        if (!empty($filters['tipo'])) {
+        if (! empty($filters['tipo'])) {
             $query->where('config_divi_poli.tipo', $filters['tipo']);
         }
 
-        if (!empty($filters['parent'])) {
+        if (! empty($filters['parent'])) {
             $query->where('config_divi_poli.parent', $filters['parent']);
         }
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = $filters['search'];
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('config_divi_poli.nombre', 'like', "%{$search}%")
-                  ->orWhere('config_divi_poli.codigo', 'like', "%{$search}%");
+                    ->orWhere('config_divi_poli.codigo', 'like', "%{$search}%");
             });
         }
     }
@@ -182,22 +186,22 @@ class ConfigDiviPoliService
             'codigo' => $pais->codigo,
             'nombre' => $pais->nombre,
             'tipo' => $pais->tipo,
-            'departamentos' => $pais->children->map(function($d) {
+            'departamentos' => $pais->children->map(function ($d) {
                 return [
                     'id' => $d->id,
                     'codigo' => $d->codigo,
                     'nombre' => $d->nombre,
                     'tipo' => $d->tipo,
-                    'municipios' => $d->children->map(function($m) {
+                    'municipios' => $d->children->map(function ($m) {
                         return [
                             'id' => $m->id,
                             'codigo' => $m->codigo,
                             'nombre' => $m->nombre,
-                            'tipo' => $m->tipo
+                            'tipo' => $m->tipo,
                         ];
-                    })
+                    }),
                 ];
-            })
+            }),
         ];
     }
 
@@ -207,15 +211,15 @@ class ConfigDiviPoliService
     public function getWithAncestors(int $id): ?array
     {
         $item = ConfigDiviPoli::find($id);
-        
-        if (!$item) {
+
+        if (! $item) {
             return null;
         }
 
         // Obtener ancestros recursivamente
         $ancestors = [];
         $current = $item;
-        
+
         while ($current->parent) {
             $parent = ConfigDiviPoli::find($current->parent);
             if ($parent) {
@@ -223,7 +227,7 @@ class ConfigDiviPoliService
                     'id' => $parent->id,
                     'codigo' => $parent->codigo,
                     'nombre' => $parent->nombre,
-                    'tipo' => $parent->tipo
+                    'tipo' => $parent->tipo,
                 ];
                 $current = $parent;
             } else {
@@ -236,7 +240,7 @@ class ConfigDiviPoliService
             'codigo' => $item->codigo,
             'nombre' => $item->nombre,
             'tipo' => $item->tipo,
-            'ancestors' => $ancestors
+            'ancestors' => $ancestors,
         ];
     }
 

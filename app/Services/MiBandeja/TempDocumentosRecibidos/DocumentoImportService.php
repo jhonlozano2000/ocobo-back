@@ -5,6 +5,7 @@ namespace App\Services\MiBandeja\TempDocumentosRecibidos;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Contenido;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use Illuminate\Http\UploadedFile;
+use PhpOffice\PhpWord\IOFactory;
 
 class DocumentoImportService
 {
@@ -64,7 +65,7 @@ class DocumentoImportService
     {
         $tempPath = $archivo->getRealPath();
 
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
         if ($zip->open($tempPath) === true) {
             $documentXml = $zip->getFromName('word/document.xml');
             $zip->close();
@@ -74,13 +75,15 @@ class DocumentoImportService
             }
         }
 
-        $phpWord = \PhpOffice\PhpWord\IOFactory::load($tempPath);
+        $phpWord = IOFactory::load($tempPath);
+
         return $this->phpWordToTipTap($phpWord);
     }
 
     private function importarHtml(UploadedFile $archivo): array
     {
         $html = file_get_contents($archivo->getRealPath());
+
         return $this->htmlToTipTap($html);
     }
 
@@ -91,17 +94,19 @@ class DocumentoImportService
 
         $contenido = [
             'type' => 'doc',
-            'content' => []
+            'content' => [],
         ];
 
         foreach ($lineas as $linea) {
-            if (trim($linea) === '') continue;
+            if (trim($linea) === '') {
+                continue;
+            }
 
             $contenido['content'][] = [
                 'type' => 'paragraph',
                 'content' => [
-                    ['type' => 'text', 'text' => trim($linea)]
-                ]
+                    ['type' => 'text', 'text' => trim($linea)],
+                ],
             ];
         }
 
@@ -112,10 +117,10 @@ class DocumentoImportService
     {
         $contenido = [
             'type' => 'doc',
-            'content' => []
+            'content' => [],
         ];
 
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         $dom->loadXML($xml);
 
         $body = $dom->getElementsByTagName('body')->item(0);
@@ -158,7 +163,7 @@ class DocumentoImportService
 
         return [
             'type' => 'paragraph',
-            'content' => $content ?: [['type' => 'text', 'text' => '']]
+            'content' => $content ?: [['type' => 'text', 'text' => '']],
         ];
     }
 
@@ -167,7 +172,7 @@ class DocumentoImportService
         return [
             'type' => 'heading',
             'attrs' => ['level' => $level],
-            'content' => $this->parseInlineElements($node)
+            'content' => $this->parseInlineElements($node),
         ];
     }
 
@@ -179,14 +184,14 @@ class DocumentoImportService
             if ($child->localName === 'li' || $child->nodeName === 'li') {
                 $items[] = [
                     'type' => 'listItem',
-                    'content' => [$this->parseParagraph($child)]
+                    'content' => [$this->parseParagraph($child)],
                 ];
             }
         }
 
         return [
             'type' => $type,
-            'content' => $items
+            'content' => $items,
         ];
     }
 
@@ -194,7 +199,7 @@ class DocumentoImportService
     {
         return [
             'type' => 'blockquote',
-            'content' => $this->parseInlineElements($node)
+            'content' => $this->parseInlineElements($node),
         ];
     }
 
@@ -203,8 +208,8 @@ class DocumentoImportService
         return [
             'type' => 'codeBlock',
             'content' => [
-                ['type' => 'text', 'text' => trim($node->textContent)]
-            ]
+                ['type' => 'text', 'text' => trim($node->textContent)],
+            ],
         ];
     }
 
@@ -213,26 +218,28 @@ class DocumentoImportService
         $rows = [];
 
         foreach ($node->childNodes as $rowNode) {
-            if ($rowNode->localName !== 'tr' && $rowNode->nodeName !== 'tr') continue;
+            if ($rowNode->localName !== 'tr' && $rowNode->nodeName !== 'tr') {
+                continue;
+            }
 
             $cells = [];
             foreach ($rowNode->childNodes as $cellNode) {
                 $cellType = $cellNode->localName === 'th' || $cellNode->nodeName === 'th' ? 'tableHeader' : 'tableCell';
                 $cells[] = [
                     'type' => $cellType,
-                    'content' => [$this->parseParagraph($cellNode)]
+                    'content' => [$this->parseParagraph($cellNode)],
                 ];
             }
 
             $rows[] = [
                 'type' => 'tableRow',
-                'content' => $cells
+                'content' => $cells,
             ];
         }
 
         return [
             'type' => 'table',
-            'content' => $rows
+            'content' => $rows,
         ];
     }
 
@@ -275,7 +282,7 @@ class DocumentoImportService
                 $text = trim($child->textContent);
                 if ($text !== '') {
                     $inlineContent = ['type' => 'text', 'text' => $text];
-                    if (!empty($marks)) {
+                    if (! empty($marks)) {
                         $inlineContent['marks'] = $marks;
                     }
                     $content[] = $inlineContent;
@@ -301,7 +308,7 @@ class DocumentoImportService
     {
         $contenido = [
             'type' => 'doc',
-            'content' => []
+            'content' => [],
         ];
 
         foreach ($phpWord->getSections() as $section) {
@@ -325,16 +332,16 @@ class DocumentoImportService
             str_contains($className, 'Title') => [
                 'type' => 'heading',
                 'attrs' => ['level' => 1],
-                'content' => [['type' => 'text', 'text' => $this->getElementText($element)]]
+                'content' => [['type' => 'text', 'text' => $this->getElementText($element)]],
             ],
             str_contains($className, 'Heading') => [
                 'type' => 'heading',
                 'attrs' => ['level' => $element->getDepth() ?? 1],
-                'content' => [['type' => 'text', 'text' => $this->getElementText($element)]]
+                'content' => [['type' => 'text', 'text' => $this->getElementText($element)]],
             ],
             str_contains($className, 'ListItem') => [
                 'type' => 'listItem',
-                'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => $this->getElementText($element)]]]]
+                'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => $this->getElementText($element)]]]],
             ],
             str_contains($className, 'HorizontalRule') => ['type' => 'horizontalRule'],
             default => null
@@ -345,7 +352,7 @@ class DocumentoImportService
     {
         return [
             'type' => 'paragraph',
-            'content' => [['type' => 'text', 'text' => $this->getElementText($element)]]
+            'content' => [['type' => 'text', 'text' => $this->getElementText($element)]],
         ];
     }
 
@@ -354,19 +361,20 @@ class DocumentoImportService
         if (method_exists($element, 'getText')) {
             return $element->getText();
         }
+
         return '';
     }
 
     private function htmlToTipTap(string $html): array
     {
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         @$dom->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'));
 
         $body = $dom->getElementsByTagName('body')->item(0);
 
         $contenido = [
             'type' => 'doc',
-            'content' => []
+            'content' => [],
         ];
 
         if ($body) {
@@ -414,7 +422,7 @@ class DocumentoImportService
     {
         return [
             'type' => 'paragraph',
-            'content' => $this->htmlInlineToTipTap($node)
+            'content' => $this->htmlInlineToTipTap($node),
         ];
     }
 
@@ -423,7 +431,7 @@ class DocumentoImportService
         return [
             'type' => 'heading',
             'attrs' => ['level' => $level],
-            'content' => $this->htmlInlineToTipTap($node)
+            'content' => $this->htmlInlineToTipTap($node),
         ];
     }
 
@@ -435,14 +443,14 @@ class DocumentoImportService
             if (strtolower($child->localName ?? $child->nodeName) === 'li') {
                 $items[] = [
                     'type' => 'listItem',
-                    'content' => [$this->htmlParagraphToTipTap($child)]
+                    'content' => [$this->htmlParagraphToTipTap($child)],
                 ];
             }
         }
 
         return [
             'type' => $type,
-            'content' => $items
+            'content' => $items,
         ];
     }
 
@@ -451,26 +459,28 @@ class DocumentoImportService
         $rows = [];
 
         foreach ($node->childNodes as $rowNode) {
-            if (strtolower($rowNode->localName ?? $rowNode->nodeName) !== 'tr') continue;
+            if (strtolower($rowNode->localName ?? $rowNode->nodeName) !== 'tr') {
+                continue;
+            }
 
             $cells = [];
             foreach ($rowNode->childNodes as $cellNode) {
                 $cellType = strtolower($cellNode->localName ?? $cellNode->nodeName) === 'th' ? 'tableHeader' : 'tableCell';
                 $cells[] = [
                     'type' => $cellType,
-                    'content' => [$this->htmlParagraphToTipTap($cellNode)]
+                    'content' => [$this->htmlParagraphToTipTap($cellNode)],
                 ];
             }
 
             $rows[] = [
                 'type' => 'tableRow',
-                'content' => $cells
+                'content' => $cells,
             ];
         }
 
         return [
             'type' => 'table',
-            'content' => $rows
+            'content' => $rows,
         ];
     }
 
@@ -478,7 +488,7 @@ class DocumentoImportService
     {
         return [
             'type' => 'blockquote',
-            'content' => $this->htmlInlineToTipTap($node)
+            'content' => $this->htmlInlineToTipTap($node),
         ];
     }
 
@@ -486,7 +496,7 @@ class DocumentoImportService
     {
         return [
             'type' => 'codeBlock',
-            'content' => [['type' => 'text', 'text' => trim($node->textContent)]]
+            'content' => [['type' => 'text', 'text' => trim($node->textContent)]],
         ];
     }
 
@@ -530,13 +540,14 @@ class DocumentoImportService
                         break;
                     case 'br':
                         $content[] = ['type' => 'hardBreak'];
+
                         continue 2;
                 }
 
                 $text = trim($child->textContent);
                 if ($text !== '') {
                     $inlineContent = ['type' => 'text', 'text' => $text];
-                    if (!empty($marks)) {
+                    if (! empty($marks)) {
                         $inlineContent['marks'] = $marks;
                     }
                     $content[] = $inlineContent;

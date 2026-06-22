@@ -3,6 +3,7 @@
 namespace App\Models\MiBandeja\TempDocumentosRecibidos;
 
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -19,9 +20,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $hash_contenido Hash del contenido
  * @property string|null $descripcion Descripción opcional
  * @property int $numero_version Número secuencial de versión
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- *
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  * @property-read Documento $documento
  * @property-read User $usuario
  */
@@ -74,10 +74,10 @@ class Version extends Model
      * Solo crea versión si el contenido es diferente al de la última versión.
      * Además mantiene un límite máximo de versiones (50).
      *
-     * @param Documento $documento Documento a versionar
-     * @param array $contenido Contenido Yjs actual
-     * @param User $user Usuario que crea la versión
-     * @param string|null $descripcion Descripción opcional
+     * @param  Documento  $documento  Documento a versionar
+     * @param  array  $contenido  Contenido Yjs actual
+     * @param  User  $user  Usuario que crea la versión
+     * @param  string|null  $descripcion  Descripción opcional
      * @return static|null Retorna la versión creada o null si el contenido no cambió
      */
     public static function crearVersion(Documento $documento, array $contenido, User $user, ?string $descripcion = null): ?Version
@@ -108,8 +108,8 @@ class Version extends Model
      *
      * Elimina las versiones más antiguas si excede MAX_VERIONES.
      *
-     * @param Documento $documento Documento a limitar
-     * @param int $maxVersiones Número máximo de versiones (default: MAX_VERIONES)
+     * @param  Documento  $documento  Documento a limitar
+     * @param  int  $maxVersiones  Número máximo de versiones (default: MAX_VERIONES)
      * @return int Número de versiones eliminadas
      */
     public static function limitarVersiones(Documento $documento, int $maxVersiones = self::MAX_VERIONES): int

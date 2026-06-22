@@ -14,6 +14,6 @@ class LoginSession extends Model
         'browser',
         'device',
         'location',
-        'ip_address'
+        'ip_address',
     ];
 }

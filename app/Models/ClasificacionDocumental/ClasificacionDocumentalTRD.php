@@ -3,6 +3,7 @@
 namespace App\Models\ClasificacionDocumental;
 
 use App\Models\Calidad\CalidadOrganigrama;
+use App\Models\Configuracion\ConfigVarias;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -39,7 +40,7 @@ class ClasificacionDocumentalTRD extends Model
         'estado_version',
         'requiere_pdf_a',
         'pdf_a_nivel',
-        'convierte_a_pdf_a'
+        'convierte_a_pdf_a',
     ];
 
     protected $casts = [
@@ -222,11 +223,11 @@ class ClasificacionDocumentalTRD extends Model
                 'id' => $elemento->id,
                 'tipo' => $elemento->tipo,
                 'cod' => $elemento->cod,
-                'nom' => $elemento->nom
+                'nom' => $elemento->nom,
             ]);
-            
+
             $parentId = $elemento->parent;
-            
+
             if ($parentId === null) {
                 $elemento = null;
             } elseif ($parentId instanceof self) {
@@ -245,6 +246,7 @@ class ClasificacionDocumentalTRD extends Model
     public function getCodigoCompleto(): string
     {
         $jerarquia = $this->getJerarquia();
+
         return implode('.', array_column($jerarquia, 'cod'));
     }
 
@@ -254,6 +256,7 @@ class ClasificacionDocumentalTRD extends Model
     public function getNombreCompleto(): string
     {
         $jerarquia = $this->getJerarquia();
+
         return implode(' > ', array_column($jerarquia, 'nom'));
     }
 
@@ -277,7 +280,7 @@ class ClasificacionDocumentalTRD extends Model
      */
     public function puedeEliminar(): bool
     {
-        return !$this->hasChildren();
+        return ! $this->hasChildren();
     }
 
     /**
@@ -299,6 +302,7 @@ class ClasificacionDocumentalTRD extends Model
     public function puedeSerPadre(ClasificacionDocumentalTRD $padre): bool
     {
         $tiposValidos = $this->getTiposPadreValidos();
+
         return in_array($padre->tipo, $tiposValidos);
     }
 
@@ -315,7 +319,7 @@ class ClasificacionDocumentalTRD extends Model
                 'id' => $this->id,
                 'cod' => $this->cod,
                 'nom' => $this->nom,
-                'tipo' => $this->tipo
+                'tipo' => $this->tipo,
             ];
         }
 
@@ -333,7 +337,7 @@ class ClasificacionDocumentalTRD extends Model
                     'id' => $parent->id,
                     'cod' => $parent->cod,
                     'nom' => $parent->nom,
-                    'tipo' => $parent->tipo
+                    'tipo' => $parent->tipo,
                 ];
             }
         }
@@ -360,7 +364,7 @@ class ClasificacionDocumentalTRD extends Model
                         'id' => $grandParent->id,
                         'cod' => $grandParent->cod,
                         'nom' => $grandParent->nom,
-                        'tipo' => $grandParent->tipo
+                        'tipo' => $grandParent->tipo,
                     ];
                 }
             }
@@ -382,7 +386,7 @@ class ClasificacionDocumentalTRD extends Model
                 'id' => $this->id,
                 'cod' => $this->cod,
                 'nom' => $this->nom,
-                'tipo' => $this->tipo
+                'tipo' => $this->tipo,
             ];
         }
 
@@ -400,7 +404,7 @@ class ClasificacionDocumentalTRD extends Model
                     'id' => $parent->id,
                     'cod' => $parent->cod,
                     'nom' => $parent->nom,
-                    'tipo' => $parent->tipo
+                    'tipo' => $parent->tipo,
                 ];
             }
         }
@@ -410,14 +414,14 @@ class ClasificacionDocumentalTRD extends Model
 
     /**
      * Obtiene los días de vencimiento con herencia jerárquica.
-     * 
+     *
      * Orden de búsqueda:
      * 1. Este elemento (TipoDocumento, SubSerie o Serie)
      * 2. SubSerie padre (si existe)
      * 3. Serie abuelo (si existe)
      * 4. Valor por defecto de config_varias
      *
-     * @param int|null $default Valor por defecto si no se encuentra ninguno
+     * @param  int|null  $default  Valor por defecto si no se encuentra ninguno
      * @return int Días de vencimiento
      */
     public function getDiasVencimiento(?int $default = null): int
@@ -457,7 +461,7 @@ class ClasificacionDocumentalTRD extends Model
         }
 
         // Último recurso: 5 días
-        return (int) \App\Models\Configuracion\ConfigVarias::getValor('dias_vencimiento_predeterminado', '5');
+        return (int) ConfigVarias::getValor('dias_vencimiento_predeterminado', '5');
     }
 
     /**
@@ -503,12 +507,10 @@ class ClasificacionDocumentalTRD extends Model
 
     /**
      * Obtiene el modelo padre cargado.
-     *
-     * @return self|null
      */
     protected function getParentModel(): ?self
     {
-        if (!$this->parent) {
+        if (! $this->parent) {
             return null;
         }
 
@@ -521,8 +523,6 @@ class ClasificacionDocumentalTRD extends Model
 
     /**
      * Obtiene la información completa de días de vencimiento.
-     *
-     * @return array
      */
     public function getInfoDiasVencimiento(): array
     {
@@ -549,15 +549,13 @@ class ClasificacionDocumentalTRD extends Model
         return [
             'dias' => $dias,
             'fuente' => $fuente,
-            'jerarquia' => $jerarquia
+            'jerarquia' => $jerarquia,
         ];
     }
 
     /**
      * Obtiene la información de días de vencimiento configurados (sin default).
      * Para uso en APIs y formularios UI.
-     *
-     * @return array
      */
     public function getInfoDiasVencimientoConfigurado(): array
     {
@@ -584,7 +582,7 @@ class ClasificacionDocumentalTRD extends Model
         return [
             'dias' => $dias,
             'fuente' => $fuente,
-            'jerarquia' => $jerarquia
+            'jerarquia' => $jerarquia,
         ];
     }
 

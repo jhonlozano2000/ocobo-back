@@ -2,9 +2,8 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use App\Models\User;
-use Illuminate\Support\Facades\Auth;
+use Tests\TestCase;
 
 class SecurityTest extends TestCase
 {
@@ -15,7 +14,7 @@ class SecurityTest extends TestCase
         for ($i = 0; $i < 6; $i++) {
             $response = $this->postJson('/api/login', [
                 'email' => 'test@example.com',
-                'password' => 'wrongpassword'
+                'password' => 'wrongpassword',
             ]);
         }
 
@@ -45,7 +44,7 @@ class SecurityTest extends TestCase
     public function cors_headers_present(): void
     {
         $response = $this->getJson('/api/ventanilla/recibidos', [
-            'Origin' => 'http://localhost:3000'
+            'Origin' => 'http://localhost:3000',
         ]);
 
         $response->assertHeader('Access-Control-Allow-Origin');
@@ -65,7 +64,7 @@ class SecurityTest extends TestCase
     public function no_sensitive_data_in_response(): void
     {
         $user = User::factory()->create([
-            'password' => 'secretpassword'
+            'password' => 'secretpassword',
         ]);
 
         $response = $this->actingAs($user)->getJson('/api/user');

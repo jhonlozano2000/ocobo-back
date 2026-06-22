@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\Gestion\GestionTerceroController;
+use App\Http\Controllers\OfiArchivo\OfiArchivoExpedienteController;
+use App\Http\Controllers\Transversal\FirmaElectronicaController;
+use App\Http\Controllers\VentanillaUnica\DocumentoController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,24 +23,28 @@ Route::middleware('auth:sanctum')->get('/auth/check', function () {
     return response()->json(['authenticated' => true]);
 });
 
-
 // ==========================================
 // RUTAS DE GESTIÓN DE ARCHIVO (ISO 27001)
-Route::middleware("auth:sanctum")->prefix("archivo")->group(function () {
-    Route::get("/expedientes", [\App\Http\Controllers\OfiArchivo\OfiArchivoExpedienteController::class, "index"]);
-    Route::post("/expedientes", [\App\Http\Controllers\OfiArchivo\OfiArchivoExpedienteController::class, "store"]);
-    Route::post("/expedientes/{id}/incorporar", [\App\Http\Controllers\OfiArchivo\OfiArchivoExpedienteController::class, "incorporarDocumento"]);
-    Route::get("/expedientes/{id}/indice", [\App\Http\Controllers\OfiArchivo\OfiArchivoExpedienteController::class, "generarIndicePdf"]);
+Route::middleware('auth:sanctum')->prefix('archivo')->group(function () {
+    Route::get('/expedientes', [OfiArchivoExpedienteController::class, 'index']);
+    Route::post('/expedientes', [OfiArchivoExpedienteController::class, 'store']);
+    Route::post('/expedientes/{id}/incorporar', [OfiArchivoExpedienteController::class, 'incorporarDocumento']);
+    Route::get('/expedientes/{id}', [OfiArchivoExpedienteController::class, 'show']);
+    Route::put('/expedientes/{id}', [OfiArchivoExpedienteController::class, 'update']);
+    Route::post('/expedientes/{id}/cerrar', [OfiArchivoExpedienteController::class, 'cerrarExpediente']);
+    Route::post('/expedientes/{id}/archivos', [OfiArchivoExpedienteController::class, 'subirArchivos']);
+    Route::post('/expedientes/{expedienteId}/documentos/{documentoId}/soft-delete', [OfiArchivoExpedienteController::class, 'softDeleteDocumento']);
+    Route::get('/expedientes/{id}/indice', [OfiArchivoExpedienteController::class, 'generarIndicePdf']);
 
     // RUTAS DE GESTIÓN DE TERCEROS (VISTA 360)
-    Route::get("/terceros/{identificacion}/historial", [\App\Http\Controllers\Gestion\GestionTerceroController::class, "showHistory"]);
+    Route::get('/terceros/{identificacion}/historial', [GestionTerceroController::class, 'showHistory']);
 
     // RUTAS DE FIRMA ELECTRÓNICA (LEY 527)
     Route::prefix('firma-electronica')->group(function () {
-        Route::post('/solicitar-otp', [\App\Http\Controllers\Transversal\FirmaElectronicaController::class, 'solicitarOtp']);
-        Route::post('/firmar', [\App\Http\Controllers\Transversal\FirmaElectronicaController::class, 'firmarDocumento']);
+        Route::post('/solicitar-otp', [FirmaElectronicaController::class, 'solicitarOtp']);
+        Route::post('/firmar', [FirmaElectronicaController::class, 'firmarDocumento']);
     });
 
     // RUTAS SEGURAS DE DOCUMENTOS (ISO 27001)
-    Route::get("/documentos/ver", [\App\Http\Controllers\VentanillaUnica\DocumentoController::class, "verDocumento"]);
+    Route::get('/documentos/ver', [DocumentoController::class, 'verDocumento']);
 });

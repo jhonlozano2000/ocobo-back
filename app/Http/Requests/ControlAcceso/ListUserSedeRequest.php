@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\ControlAcceso;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ListUserSedeRequest extends FormRequest
@@ -19,7 +20,7 @@ class ListUserSedeRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -27,30 +28,28 @@ class ListUserSedeRequest extends FormRequest
             'user_id' => [
                 'nullable',
                 'integer',
-                'exists:users,id'
+                'exists:users,id',
             ],
             'sede_id' => [
                 'nullable',
                 'integer',
-                'exists:config_sedes,id'
+                'exists:config_sedes,id',
             ],
             'estado' => [
                 'nullable',
-                'in:0,1'
+                'in:0,1',
             ],
             'per_page' => [
                 'nullable',
                 'integer',
                 'min:1',
-                'max:100'
-            ]
+                'max:100',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -62,14 +61,12 @@ class ListUserSedeRequest extends FormRequest
             'estado.in' => 'El estado debe ser 0 o 1.',
             'per_page.integer' => 'El número de elementos por página debe ser un número entero.',
             'per_page.min' => 'El número de elementos por página debe ser al menos 1.',
-            'per_page.max' => 'El número de elementos por página no puede superar 100.'
+            'per_page.max' => 'El número de elementos por página no puede superar 100.',
         ];
     }
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
@@ -77,7 +74,7 @@ class ListUserSedeRequest extends FormRequest
             'user_id' => 'usuario',
             'sede_id' => 'sede',
             'estado' => 'estado',
-            'per_page' => 'elementos por página'
+            'per_page' => 'elementos por página',
         ];
     }
 }

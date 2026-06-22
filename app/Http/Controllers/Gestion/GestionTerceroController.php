@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Gestion\GestionTerceroRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Gestion\GestionTercero;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,13 +15,14 @@ use Illuminate\Support\Facades\DB;
 class GestionTerceroController extends Controller
 {
     use ApiResponseTrait;
+
     /**
      * Obtiene un listado de todos los terceros del sistema.
      *
      * Este método retorna todos los terceros con su relación de división política.
      * Incluye opciones de filtrado, búsqueda y paginación.
      *
-     * @param Request $request La solicitud HTTP que puede contener parámetros de filtrado
+     * @param  Request  $request  La solicitud HTTP que puede contener parámetros de filtrado
      * @return JsonResponse Respuesta JSON con el listado de terceros
      *
      * @queryParam tipo string Filtrar por tipo de tercero (Natural, Juridico). Example: Natural
@@ -53,7 +56,6 @@ class GestionTerceroController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener terceros",
@@ -104,9 +106,6 @@ class GestionTerceroController extends Controller
     /**
      * Obtiene la vista 360 de un tercero por su número de identificación.
      * Incluye historial de radicados y expedientes vinculados.
-     *
-     * @param string $identificacion
-     * @return JsonResponse
      */
     public function showHistory(string $identificacion): JsonResponse
     {
@@ -116,23 +115,23 @@ class GestionTerceroController extends Controller
                 ->with('divisionPolitica')
                 ->first();
 
-            if (!$tercero) {
+            if (! $tercero) {
                 return $this->errorResponse('Tercero no encontrado', null, 404);
             }
 
             // 2. Obtener Radicados Recibidos (Entradas)
-            $radicadosRecibidos = \App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci::where('tercero_id', $tercero->id)
+            $radicadosRecibidos = VentanillaRadicaReci::where('tercero_id', $tercero->id)
                 ->select('id', 'num_radicado', 'asunto', 'fec_radicado', 'estado')
-                ->with(['expedientes' => function($q) {
+                ->with(['expedientes' => function ($q) {
                     $q->select('ofi_archivo_expedientes.id', 'numero_expediente', 'nombre_expediente');
                 }])
                 ->latest()
                 ->get();
 
             // 3. Obtener Radicados Enviados (Salidas)
-            $radicadosEnviados = \App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados::where('tercero_id', $tercero->id)
+            $radicadosEnviados = VentanillaRadicaEnviados::where('tercero_id', $tercero->id)
                 ->select('id', 'num_radicado', 'asunto', 'fec_radicado', 'estado')
-                ->with(['expedientes' => function($q) {
+                ->with(['expedientes' => function ($q) {
                     $q->select('ofi_archivo_expedientes.id', 'numero_expediente', 'nombre_expediente');
                 }])
                 ->latest()
@@ -140,9 +139,9 @@ class GestionTerceroController extends Controller
 
             // 4. Consolidar Expedientes únicos en los que participa este tercero
             $expedientes = collect();
-            $radicadosRecibidos->each(fn($r) => $expedientes->push(...$r->expedientes));
-            $radicadosEnviados->each(fn($r) => $expedientes->push(...$r->expedientes));
-            
+            $radicadosRecibidos->each(fn ($r) => $expedientes->push(...$r->expedientes));
+            $radicadosEnviados->each(fn ($r) => $expedientes->push(...$r->expedientes));
+
             $expedientesUnicos = $expedientes->unique('id')->values();
 
             return $this->successResponse([
@@ -150,7 +149,7 @@ class GestionTerceroController extends Controller
                 'radicados_recibidos' => $radicadosRecibidos,
                 'radicados_enviados' => $radicadosEnviados,
                 'expedientes' => $expedientesUnicos,
-                'total_tramites' => $radicadosRecibidos->count() + $radicadosEnviados->count()
+                'total_tramites' => $radicadosRecibidos->count() + $radicadosEnviados->count(),
             ], 'Historial documental obtenido exitosamente');
 
         } catch (\Exception $e) {
@@ -161,7 +160,7 @@ class GestionTerceroController extends Controller
     /**
      * Crea un nuevo tercero en el sistema.
      *
-     * @param GestionTerceroRequest $request Datos validados del tercero
+     * @param  GestionTerceroRequest  $request  Datos validados del tercero
      * @return JsonResponse Respuesta JSON con el tercero creado
      *
      * @response 201 {
@@ -196,6 +195,7 @@ class GestionTerceroController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al crear el tercero', $e->getMessage(), 500);
         }
     }
@@ -203,7 +203,7 @@ class GestionTerceroController extends Controller
     /**
      * Obtiene un tercero específico por su ID.
      *
-     * @param GestionTercero $tercero El tercero a mostrar (inyectado por Laravel)
+     * @param  GestionTercero  $tercero  El tercero a mostrar (inyectado por Laravel)
      * @return JsonResponse Respuesta JSON con el tercero
      *
      * @response 200 {
@@ -236,8 +236,8 @@ class GestionTerceroController extends Controller
     /**
      * Actualiza un tercero existente en el sistema.
      *
-     * @param GestionTerceroRequest $request Datos validados del tercero
-     * @param GestionTercero $tercero El tercero a actualizar (inyectado por Laravel)
+     * @param  GestionTerceroRequest  $request  Datos validados del tercero
+     * @param  GestionTercero  $tercero  El tercero a actualizar (inyectado por Laravel)
      * @return JsonResponse Respuesta JSON con el tercero actualizado
      *
      * @response 200 {
@@ -270,6 +270,7 @@ class GestionTerceroController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar el tercero', $e->getMessage(), 500);
         }
     }
@@ -277,7 +278,7 @@ class GestionTerceroController extends Controller
     /**
      * Elimina un tercero del sistema.
      *
-     * @param GestionTercero $tercero El tercero a eliminar (inyectado por Laravel)
+     * @param  GestionTercero  $tercero  El tercero a eliminar (inyectado por Laravel)
      * @return JsonResponse Respuesta JSON confirmando la eliminación
      *
      * @response 200 {
@@ -297,6 +298,7 @@ class GestionTerceroController extends Controller
             return $this->successResponse(null, 'Tercero eliminado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar el tercero', $e->getMessage(), 500);
         }
     }
@@ -344,7 +346,7 @@ class GestionTerceroController extends Controller
      *
      * Este método permite búsqueda rápida de terceros para autocompletado.
      *
-     * @param Request $request La solicitud HTTP con el término de búsqueda
+     * @param  Request  $request  La solicitud HTTP con el término de búsqueda
      * @return JsonResponse Respuesta JSON con los terceros encontrados
      *
      * @queryParam q string required El término de búsqueda (mínimo 3 caracteres). Example: "Juan"
@@ -367,7 +369,7 @@ class GestionTerceroController extends Controller
     {
         $request->validate([
             'q' => 'required|string|min:3|max:50',
-            'limit' => 'nullable|integer|min:1|max:100'
+            'limit' => 'nullable|integer|min:1|max:100',
         ]);
 
         try {

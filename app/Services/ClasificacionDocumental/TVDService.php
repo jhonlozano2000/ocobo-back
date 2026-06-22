@@ -3,31 +3,31 @@
 namespace App\Services\ClasificacionDocumental;
 
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTVD;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
 
 class TVDService
 {
     /**
      * Obtiene TVD con filtros.
      */
-    public function getAll(array $filters = []): LengthAwarePaginator|\Illuminate\Database\Eloquent\Collection
+    public function getAll(array $filters = []): LengthAwarePaginator|Collection
     {
         $query = ClasificacionDocumentalTVD::with(['children', 'dependencia'])
             ->whereNull('parent');
 
-        if (!empty($filters['dependencia_id'])) {
+        if (! empty($filters['dependencia_id'])) {
             $query->where('dependencia_id', $filters['dependencia_id']);
         }
 
-        if (!empty($filters['tipo'])) {
+        if (! empty($filters['tipo'])) {
             $query->where('tipo', $filters['tipo']);
         }
 
-        if (!empty($filters['buscar'])) {
+        if (! empty($filters['buscar'])) {
             $query->where(function ($q) use ($filters) {
                 $q->where('cod', 'like', "%{$filters['buscar']}%")
-                  ->orWhere('nom', 'like', "%{$filters['buscar']}%");
+                    ->orWhere('nom', 'like', "%{$filters['buscar']}%");
             });
         }
 
@@ -75,6 +75,7 @@ class TVDService
     public function create(array $data): ClasificacionDocumentalTVD
     {
         $data['user_register'] = auth()->id();
+
         return ClasificacionDocumentalTVD::create($data);
     }
 
@@ -84,12 +85,13 @@ class TVDService
     public function update(int $id, array $data): ?ClasificacionDocumentalTVD
     {
         $tvd = ClasificacionDocumentalTVD::find($id);
-        
-        if (!$tvd) {
+
+        if (! $tvd) {
             return null;
         }
 
         $tvd->update($data);
+
         return $tvd;
     }
 
@@ -99,8 +101,8 @@ class TVDService
     public function delete(int $id): bool
     {
         $tvd = ClasificacionDocumentalTVD::find($id);
-        
-        if (!$tvd) {
+
+        if (! $tvd) {
             return false;
         }
 

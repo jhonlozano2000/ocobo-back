@@ -2,20 +2,15 @@
 
 namespace App\Helpers;
 
-use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
-use Illuminate\Support\Facades\DB;
+use App\Models\OfiArchivo\OfiArchivoExpediente;
 
 class ExpedienteHelper
 {
     /**
      * Genera un número único de expediente basado en la normativa AGN.
      * Formato: YYYY-DEP-SER-CONSECUTIVO
-     *
-     * @param int $dependenciaId
-     * @param int $serieTrdId
-     * @return string
      */
     public static function generarNumeroExpediente(int $dependenciaId, int $serieTrdId): string
     {

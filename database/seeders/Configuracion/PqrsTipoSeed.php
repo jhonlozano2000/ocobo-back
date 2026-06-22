@@ -13,7 +13,7 @@ class PqrsTipoSeed extends Seeder
         $lista = ConfigLista::create([
             'cod' => 'TipPQRS',
             'nombre' => 'Tipos de PQRS (Ley 1755/2015)',
-            'descripcion' => 'Clasificación de peticiones, quejas, reclamos y sugerencias según Ley 1755 de 2015'
+            'descripcion' => 'Clasificación de peticiones, quejas, reclamos y sugerencias según Ley 1755 de 2015',
         ]);
 
         $tipos = [

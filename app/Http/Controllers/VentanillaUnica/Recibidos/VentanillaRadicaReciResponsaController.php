@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\VentanillaUnica\Recibidos;
 
 use App\Http\Controllers\Controller;
-use App\Http\Traits\ApiResponseTrait;
-use App\Http\Requests\Ventanilla\Recibidos\StoreResponsaReciboRequest;
 use App\Http\Requests\Ventanilla\Generales\ListResponsablesRequest;
-use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsa;
+use App\Http\Requests\Ventanilla\Recibidos\StoreResponsaReciboRequest;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsa;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class VentanillaRadicaReciResponsaController extends Controller
 {
@@ -20,7 +21,7 @@ class VentanillaRadicaReciResponsaController extends Controller
 
     public function __construct()
     {
-        $this->middleware('can:' . self::PERM . 'Editar')->only(['index', 'store', 'show', 'update', 'destroy', 'getByRadicado', 'assignToRadicado']);
+        $this->middleware('can:'.self::PERM.'Editar')->only(['index', 'store', 'show', 'update', 'destroy', 'getByRadicado', 'assignToRadicado']);
     }
 
     /**
@@ -29,8 +30,8 @@ class VentanillaRadicaReciResponsaController extends Controller
      * Este método retorna todos los responsables registrados en el sistema
      * con información detallada de usuarios y radicaciones.
      *
-     * @param ListResponsablesRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el listado de responsables
+     * @param  ListResponsablesRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con el listado de responsables
      *
      * @queryParam radica_reci_id integer Filtrar por ID de radicación. Example: 1
      * @queryParam user_id integer Filtrar por ID de usuario. Example: 1
@@ -57,7 +58,6 @@ class VentanillaRadicaReciResponsaController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el listado de responsables",
@@ -101,8 +101,8 @@ class VentanillaRadicaReciResponsaController extends Controller
      * Este método permite asignar múltiples responsables a una radicación
      * en una sola operación, validando que los datos sean un arreglo.
      *
-     * @param VentanillaRadicaReciResponsaRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con los responsables creados
+     * @param  VentanillaRadicaReciResponsaRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con los responsables creados
      *
      * @bodyParam responsables array required Array de responsables. Example: [{"radica_reci_id": 1, "user_id": 1, "custodio": true}]
      *
@@ -118,12 +118,10 @@ class VentanillaRadicaReciResponsaController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 400 {
      *   "status": false,
      *   "message": "Los datos deben ser un arreglo no vacío"
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -131,7 +129,6 @@ class VentanillaRadicaReciResponsaController extends Controller
      *     "responsables": ["Los responsables son obligatorios."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al asignar responsables",
@@ -147,7 +144,7 @@ class VentanillaRadicaReciResponsaController extends Controller
             $validatedData = $request->validated();
 
             // Verificar que se envíe el array de responsables
-            if (!isset($validatedData['responsables']) || !is_array($validatedData['responsables']) || empty($validatedData['responsables'])) {
+            if (! isset($validatedData['responsables']) || ! is_array($validatedData['responsables']) || empty($validatedData['responsables'])) {
                 return $this->errorResponse('Se debe enviar un array de responsables no vacío', null, 400);
             }
 
@@ -179,6 +176,7 @@ class VentanillaRadicaReciResponsaController extends Controller
             return $this->successResponse($responsablesCreados, 'Responsables asignados exitosamente', 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al asignar responsables', $e->getMessage(), 500);
         }
     }
@@ -189,8 +187,8 @@ class VentanillaRadicaReciResponsaController extends Controller
      * Este método permite obtener los detalles de un responsable específico
      * incluyendo información del usuario y la radicación.
      *
-     * @param int $id ID del responsable
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el responsable
+     * @param  int  $id  ID del responsable
+     * @return JsonResponse Respuesta JSON con el responsable
      *
      * @urlParam id integer required El ID del responsable. Example: 1
      *
@@ -213,12 +211,10 @@ class VentanillaRadicaReciResponsaController extends Controller
      *     }
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Responsable no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener el responsable",
@@ -230,7 +226,7 @@ class VentanillaRadicaReciResponsaController extends Controller
         try {
             $responsable = VentanillaRadicaReciResponsa::with(['usuarioCargo', 'radicado'])->find($id);
 
-            if (!$responsable) {
+            if (! $responsable) {
                 return $this->errorResponse('Responsable no encontrado', null, 404);
             }
 
@@ -246,11 +242,12 @@ class VentanillaRadicaReciResponsaController extends Controller
      * Este método permite modificar los datos de un responsable existente,
      * incluyendo conversión automática del campo custodio.
      *
-     * @param int $id ID del responsable
-     * @param VentanillaRadicaReciResponsaRequest $request La solicitud HTTP validada
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el responsable actualizado
+     * @param  int  $id  ID del responsable
+     * @param  VentanillaRadicaReciResponsaRequest  $request  La solicitud HTTP validada
+     * @return JsonResponse Respuesta JSON con el responsable actualizado
      *
      * @urlParam id integer required El ID del responsable. Example: 1
+     *
      * @bodyParam radica_reci_id integer ID de la radicación. Example: 1
      * @bodyParam user_id integer ID del usuario. Example: 1
      * @bodyParam custodio boolean Indica si es custodio. Example: true
@@ -266,12 +263,10 @@ class VentanillaRadicaReciResponsaController extends Controller
      *     "updated_at": "2024-01-01T10:00:00.000000Z"
      *   }
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Responsable no encontrado"
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -279,7 +274,6 @@ class VentanillaRadicaReciResponsaController extends Controller
      *     "radica_reci_id": ["La radicación es obligatoria."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al actualizar el responsable",
@@ -293,7 +287,7 @@ class VentanillaRadicaReciResponsaController extends Controller
 
             $responsable = VentanillaRadicaReciResponsa::find($id);
 
-            if (!$responsable) {
+            if (! $responsable) {
                 return $this->errorResponse('Responsable no encontrado', null, 404);
             }
 
@@ -314,6 +308,7 @@ class VentanillaRadicaReciResponsaController extends Controller
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al actualizar el responsable', $e->getMessage(), 500);
         }
     }
@@ -324,8 +319,8 @@ class VentanillaRadicaReciResponsaController extends Controller
      * Este método permite eliminar un responsable específico del sistema.
      * Se recomienda verificar que no tenga dependencias antes de eliminar.
      *
-     * @param int $id ID del responsable
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON confirmando la eliminación
+     * @param  int  $id  ID del responsable
+     * @return JsonResponse Respuesta JSON confirmando la eliminación
      *
      * @urlParam id integer required El ID del responsable a eliminar. Example: 1
      *
@@ -333,12 +328,10 @@ class VentanillaRadicaReciResponsaController extends Controller
      *   "status": true,
      *   "message": "Responsable eliminado exitosamente"
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "Responsable no encontrado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al eliminar el responsable",
@@ -352,7 +345,7 @@ class VentanillaRadicaReciResponsaController extends Controller
 
             $responsable = VentanillaRadicaReciResponsa::find($id);
 
-            if (!$responsable) {
+            if (! $responsable) {
                 return $this->errorResponse('Responsable no encontrado', null, 404);
             }
 
@@ -369,6 +362,7 @@ class VentanillaRadicaReciResponsaController extends Controller
             return $this->successResponse(null, 'Responsable eliminado exitosamente');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al eliminar el responsable', $e->getMessage(), 500);
         }
     }
@@ -379,8 +373,8 @@ class VentanillaRadicaReciResponsaController extends Controller
      * Este método permite obtener todos los responsables asignados
      * a una radicación específica.
      *
-     * @param int $radica_reci_id ID de la radicación
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con los responsables
+     * @param  int  $radica_reci_id  ID de la radicación
+     * @return JsonResponse Respuesta JSON con los responsables
      *
      * @urlParam radica_reci_id integer required El ID de la radicación. Example: 1
      *
@@ -401,12 +395,10 @@ class VentanillaRadicaReciResponsaController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 404 {
      *   "status": false,
      *   "message": "No hay responsables asignados para este radicado"
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al obtener los responsables",
@@ -436,11 +428,12 @@ class VentanillaRadicaReciResponsaController extends Controller
      * Este método permite asignar múltiples responsables a una radicación específica
      * usando el ID de la radicación en la URL.
      *
-     * @param int $radica_reci_id ID de la radicación
-     * @param Request $request Array de responsables a asignar
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con los responsables asignados
+     * @param  int  $radica_reci_id  ID de la radicación
+     * @param  Request  $request  Array de responsables a asignar
+     * @return JsonResponse Respuesta JSON con los responsables asignados
      *
      * @urlParam radica_reci_id integer required El ID de la radicación. Example: 1
+     *
      * @bodyParam responsables array required Array de responsables. Example: [{"user_id": 1, "custodio": true}]
      *
      * @response 201 {
@@ -455,12 +448,10 @@ class VentanillaRadicaReciResponsaController extends Controller
      *     }
      *   ]
      * }
-     *
      * @response 400 {
      *   "status": false,
      *   "message": "Se debe enviar un array de responsables no vacío"
      * }
-     *
      * @response 422 {
      *   "status": false,
      *   "message": "Error de validación",
@@ -468,7 +459,6 @@ class VentanillaRadicaReciResponsaController extends Controller
      *     "responsables": ["Los responsables son obligatorios."]
      *   }
      * }
-     *
      * @response 500 {
      *   "status": false,
      *   "message": "Error al asignar responsables",
@@ -489,7 +479,7 @@ class VentanillaRadicaReciResponsaController extends Controller
                 $responsable = VentanillaRadicaReciResponsa::create([
                     'radica_reci_id' => $radica_reci_id,
                     'users_cargos_id' => $responsableData['users_cargos_id'],
-                    'custodio' => $responsableData['custodio']
+                    'custodio' => $responsableData['custodio'],
                 ]);
                 $responsablesCreados[] = $responsable->load(['usuarioCargo', 'radicado']);
             }
@@ -497,11 +487,13 @@ class VentanillaRadicaReciResponsaController extends Controller
             DB::commit();
 
             return $this->successResponse($responsablesCreados, 'Responsables asignados exitosamente', 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->errorResponse('Error al asignar responsables', $e->getMessage(), 500);
         }
     }

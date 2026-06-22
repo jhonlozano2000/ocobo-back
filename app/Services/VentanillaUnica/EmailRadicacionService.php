@@ -208,7 +208,7 @@ class EmailRadicacionService
             try {
                 $replyResult = $this->responderConRadicado(
                     $emailId,
-                    'Su correo ha sido radicado exitosamente con el número ' . $numRadicado . '. Adjunto rótulo del radicado.'
+                    'Su correo ha sido radicado exitosamente con el número '.$numRadicado.'. Adjunto rótulo del radicado.'
                 );
             } catch (\Exception $e) {
                 \Log::warning('EmailRadicacionService: Error al enviar respuesta automática (recibido)', [
@@ -280,7 +280,7 @@ class EmailRadicacionService
             $radicado = $this->enviadosService->create($radicadoData);
 
             // Guardar adjuntos del email enviado
-            if (!empty($email->adjuntos_info) && $email->tiene_adjuntos) {
+            if (! empty($email->adjuntos_info) && $email->tiene_adjuntos) {
                 try {
                     $mailbox = $this->imapService->connect();
                     $inbox = $mailbox->inbox();
@@ -288,13 +288,13 @@ class EmailRadicacionService
                         ->withBody()
                         ->withBodyStructure()
                         ->findOrFail((int) $email->imap_uid);
-                    
-                    $directorio = 'radicados_enviados/' . $radicado->num_radicado;
-                    
+
+                    $directorio = 'radicados_enviados/'.$radicado->num_radicado;
+
                     foreach ($message->attachments() as $attachment) {
                         $this->imapService->saveAttachment($attachment, $directorio);
                     }
-                    
+
                     $mailbox->disconnect();
                 } catch (\Exception $e) {
                     Log::error('EmailRadicacionService: Error al guardar adjuntos del correo enviado', [
@@ -337,7 +337,7 @@ class EmailRadicacionService
             try {
                 $replyResult = $this->responderConRadicado(
                     $emailId,
-                    'Su correo ha sido radicado exitosamente con el número ' . $numRadicado . '. Adjunto rótulo del radicado.'
+                    'Su correo ha sido radicado exitosamente con el número '.$numRadicado.'. Adjunto rótulo del radicado.'
                 );
             } catch (\Exception $e) {
                 \Log::warning('EmailRadicacionService: Error al enviar respuesta automática (enviado)', [
@@ -448,7 +448,7 @@ class EmailRadicacionService
             $ultimoNumero = DB::table('ventanilla_radica_reci')
                 ->where('num_radicado', 'like', $prefijo.'%')
                 ->lockForUpdate()
-                ->max(DB::raw("CAST(SUBSTRING(num_radicado, ".(strlen($prefijo) + 1).") AS UNSIGNED)"));
+                ->max(DB::raw('CAST(SUBSTRING(num_radicado, '.(strlen($prefijo) + 1).') AS UNSIGNED)'));
 
             $siguienteNumero = ($ultimoNumero ?? 0) + 1;
 
@@ -468,7 +468,7 @@ class EmailRadicacionService
             $ultimoNumero = DB::table('ventanilla_radica_enviados')
                 ->where('num_radicado', 'like', $prefijo.'%')
                 ->lockForUpdate()
-                ->max(DB::raw("CAST(SUBSTRING(num_radicado, ".(strlen($prefijo) + 1).") AS UNSIGNED)"));
+                ->max(DB::raw('CAST(SUBSTRING(num_radicado, '.(strlen($prefijo) + 1).') AS UNSIGNED)'));
 
             $siguienteNumero = ($ultimoNumero ?? 0) + 1;
 

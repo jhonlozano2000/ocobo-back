@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Configuracion\ConfigSede;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
-use App\Models\Configuracion\ConfigSede;
 
 class UsersSede extends Model
 {
@@ -17,13 +16,13 @@ class UsersSede extends Model
         'user_id',
         'sede_id',
         'estado',
-        'observaciones'
+        'observaciones',
     ];
 
     protected $casts = [
         'estado' => 'boolean',
         'created_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'updated_at' => 'datetime',
     ];
 
     /**

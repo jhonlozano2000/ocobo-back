@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Ventanilla\Generales;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class AsignarPermisosVentanillaRequest extends FormRequest
@@ -19,7 +20,7 @@ class AsignarPermisosVentanillaRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -27,20 +28,18 @@ class AsignarPermisosVentanillaRequest extends FormRequest
             'usuarios' => [
                 'required',
                 'array',
-                'min:1'
+                'min:1',
             ],
             'usuarios.*' => [
                 'required',
                 'integer',
-                'exists:users,id'
-            ]
+                'exists:users,id',
+            ],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
-     *
-     * @return array
      */
     public function messages(): array
     {
@@ -50,20 +49,18 @@ class AsignarPermisosVentanillaRequest extends FormRequest
             'usuarios.min' => 'Debe seleccionar al menos un usuario.',
             'usuarios.*.required' => 'Cada usuario es obligatorio.',
             'usuarios.*.integer' => 'Cada usuario debe ser un número entero.',
-            'usuarios.*.exists' => 'Uno o más usuarios no existen.'
+            'usuarios.*.exists' => 'Uno o más usuarios no existen.',
         ];
     }
 
     /**
      * Get custom attributes for validator errors.
-     *
-     * @return array
      */
     public function attributes(): array
     {
         return [
             'usuarios' => 'usuarios',
-            'usuarios.*' => 'usuario'
+            'usuarios.*' => 'usuario',
         ];
     }
 }

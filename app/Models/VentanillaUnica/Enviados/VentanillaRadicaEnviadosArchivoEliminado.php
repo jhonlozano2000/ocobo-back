@@ -2,6 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Enviados;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -26,7 +27,7 @@ class VentanillaRadicaEnviadosArchivoEliminado extends Model
 
     public function usuario()
     {
-        return $this->belongsTo(\App\Models\User::class, 'deleted_by');
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 
     public function radicado()

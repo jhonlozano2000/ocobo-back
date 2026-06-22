@@ -4,6 +4,7 @@ namespace App\Http\Controllers\MiBandeja\TempDocumentosRecibidos;
 
 use App\Events\MiBandeja\TempReci\CursorActualizado;
 use App\Http\Controllers\Controller;
+use App\Models\MiBandeja\TempDocumentosRecibidos\Cursor;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,7 +23,7 @@ class CursorController extends Controller
      * Retorna usuarios con posición y selección actuales.
      * Excluye inactivos por más de 30 segundos.
      *
-     * @param Documento $documento Documento
+     * @param  Documento  $documento  Documento
      * @return JsonResponse Lista de cursores
      *
      * @response 200 {
@@ -45,14 +46,14 @@ class CursorController extends Controller
         $cursores = $documento->cursores()
             ->where('ultima_actividad', '>', now()->subSeconds(30))
             ->get()
-            ->map(fn($cursor) => $cursor->toArray());
+            ->map(fn ($cursor) => $cursor->toArray());
 
         return response()->json(['cursores' => $cursores]);
     }
 
     private function limpiarCursoresHuerfanos(int $segundos = 60): void
     {
-        \App\Models\MiBandeja\TempDocumentosRecibidos\Cursor::where('ultima_actividad', '<', now()->subSeconds($segundos))
+        Cursor::where('ultima_actividad', '<', now()->subSeconds($segundos))
             ->whereDoesntHave('usuario', function ($q) {
                 $q->whereRaw('last_login_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)');
             })
@@ -65,8 +66,8 @@ class CursorController extends Controller
      * Guarda posición y selección del cursor.
      * Emite evento WebSocket para sincronización tiempo real.
      *
-     * @param Request $request Solicitud
-     * @param Documento $documento Documento
+     * @param  Request  $request  Solicitud
+     * @param  Documento  $documento  Documento
      * @return JsonResponse Cursor actualizado
      *
      * @bodyParam posicion integer required Posición del cursor. Example: 15
@@ -79,11 +80,9 @@ class CursorController extends Controller
      *     "posicion": 15
      *   }
      * }
-     *
      * @response 403 {
      *   "message": "No tienes permisos"
      * }
-     *
      * @response 404 {
      *   "message": "Cursor no encontrado"
      * }
@@ -96,7 +95,7 @@ class CursorController extends Controller
             'seleccion_fin' => 'nullable|string',
         ]);
 
-        if (!$documento->puedeEditar($request->user())) {
+        if (! $documento->puedeEditar($request->user())) {
             return response()->json(['message' => 'No tienes permisos'], 403);
         }
 
@@ -104,7 +103,7 @@ class CursorController extends Controller
             ->where('user_id', $request->user()->id)
             ->first();
 
-        if (!$cursor) {
+        if (! $cursor) {
             return response()->json(['message' => 'Cursor no encontrado'], 404);
         }
 

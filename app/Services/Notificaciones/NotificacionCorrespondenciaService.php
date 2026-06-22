@@ -18,9 +18,6 @@ class NotificacionCorrespondenciaService
 
     /**
      * Envía notificación de correspondencia recibida a responsables.
-     *
-     * @param VentanillaRadicaReci $radicado
-     * @return array
      */
     public function enviarRadicadoRecibido(VentanillaRadicaReci $radicado): array
     {
@@ -43,9 +40,6 @@ class NotificacionCorrespondenciaService
 
     /**
      * Envía notificación de correspondencia enviada a responsables.
-     *
-     * @param VentanillaRadicaEnviados $radicado
-     * @return array
      */
     public function enviarRadicadoEnviado(VentanillaRadicaEnviados $radicado): array
     {
@@ -86,9 +80,6 @@ class NotificacionCorrespondenciaService
 
     /**
      * Obtiene correos únicos de responsables del radicado recibido.
-     *
-     * @param VentanillaRadicaReci $radicado
-     * @return Collection
      */
     private function obtenerCorreosResponsables(VentanillaRadicaReci $radicado): Collection
     {
@@ -101,9 +92,6 @@ class NotificacionCorrespondenciaService
 
     /**
      * Obtiene correos únicos de responsables del radicado enviado.
-     *
-     * @param VentanillaRadicaEnviados $radicado
-     * @return Collection
      */
     private function obtenerCorreosResponsablesEnviado(VentanillaRadicaEnviados $radicado): Collection
     {

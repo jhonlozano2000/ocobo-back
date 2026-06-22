@@ -3,7 +3,6 @@
 namespace App\Helpers;
 
 use App\Models\Configuracion\ConfigVarias;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -29,6 +28,7 @@ class MailConfigHelper
             // Solo configurar si tenemos host y credenciales
             if (empty($host) || empty($username) || empty($password)) {
                 Log::debug('MailConfigHelper: Configuración de correo no completa, usando defaults');
+
                 return;
             }
 
@@ -48,7 +48,7 @@ class MailConfigHelper
             ]);
 
             // Configurar el from global si está definido
-            if (!empty($fromAddress)) {
+            if (! empty($fromAddress)) {
                 config([
                     'mail.from.name' => $fromName ?: $username,
                     'mail.from.address' => $fromAddress,
@@ -58,7 +58,7 @@ class MailConfigHelper
             Log::debug('MailConfigHelper: Configuración de correo aplicada desde config_varias');
         } catch (\Exception $e) {
             Log::warning('MailConfigHelper: Error al configurar correo', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -72,7 +72,7 @@ class MailConfigHelper
         $username = ConfigVarias::getValor('correo_username');
         $password = ConfigVarias::getValor('correo_password');
 
-        return !empty($host) && !empty($username) && !empty($password);
+        return ! empty($host) && ! empty($username) && ! empty($password);
     }
 
     /**
@@ -116,5 +116,32 @@ class MailConfigHelper
             // (podría ser una contraseña guardada antes de la encriptación)
             return $encryptedPassword;
         }
+    }
+
+    /**
+     * Obtiene la configuración IMAP desde config_varias.
+     */
+    public static function getImapConfig(): array
+    {
+        return [
+            'host' => ConfigVarias::getValor('correo_imap_host', 'imap.gmail.com'),
+            'port' => (int) ConfigVarias::getValor('correo_imap_port', '993'),
+            'encryption' => ConfigVarias::getValor('correo_imap_encryption', 'ssl'),
+            'username' => ConfigVarias::getValor('correo_username', ''),
+            'password' => self::decryptPassword(ConfigVarias::getValor('correo_password', '')),
+            'configured' => self::isImapConfigured(),
+        ];
+    }
+
+    /**
+     * Verifica si la configuración IMAP está completa.
+     */
+    public static function isImapConfigured(): bool
+    {
+        $host = ConfigVarias::getValor('correo_imap_host');
+        $username = ConfigVarias::getValor('correo_username');
+        $password = ConfigVarias::getValor('correo_password');
+
+        return ! empty($host) && ! empty($username) && ! empty($password);
     }
 }

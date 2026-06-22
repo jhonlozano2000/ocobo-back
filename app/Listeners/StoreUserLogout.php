@@ -2,8 +2,8 @@
 
 namespace App\Listeners;
 
-use App\Models\UsersAuthenticationLog;
 use App\Models\ControlAcceso\UsersSession;
+use App\Models\UsersAuthenticationLog;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Log;
 
@@ -22,20 +22,20 @@ class StoreUserLogout
 
             if ($session) {
                 $duration = $session->last_login_at->diff(now())->format('%H:%i:%s');
-                
+
                 $session->update([
                     'logout_at' => now(),
-                    'is_active' => false
+                    'is_active' => false,
                 ]);
 
                 UsersAuthenticationLog::logEvent([
-                    'user_id'  => $userId,
-                    'event'    => 'logout',
-                    'success'  => true,
-                    'details'  => "Sesión cerrada. Duración: {$duration}",
+                    'user_id' => $userId,
+                    'event' => 'logout',
+                    'success' => true,
+                    'details' => "Sesión cerrada. Duración: {$duration}",
                 ]);
 
-                Log::info('Sesión cerrada para usuario: ' . $userId . ' | Duración: ' . $duration);
+                Log::info('Sesión cerrada para usuario: '.$userId.' | Duración: '.$duration);
             }
         }
     }

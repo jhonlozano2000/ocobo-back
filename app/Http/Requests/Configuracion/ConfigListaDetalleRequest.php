@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Configuracion;
 
 use App\Models\Configuracion\ConfigLista;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,7 +20,7 @@ class ConfigListaDetalleRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules()
     {
@@ -50,7 +51,7 @@ class ConfigListaDetalleRequest extends FormRequest
             'nombre.required' => 'El nombre es obligatorio.',
             'nombre.string' => 'El nombre debe ser una cadena de texto.',
             'nombre.max' => 'El nombre no puede superar los 70 caracteres.',
-            'nombre.unique' => 'El nombre ya existe en la lista "' . $nombreLista . '", por favor elija otro.',
+            'nombre.unique' => 'El nombre ya existe en la lista "'.$nombreLista.'", por favor elija otro.',
         ];
     }
 }

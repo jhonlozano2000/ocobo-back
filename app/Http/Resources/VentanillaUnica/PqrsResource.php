@@ -4,6 +4,7 @@ namespace App\Http\Resources\VentanillaUnica;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Carbon;
 
 class PqrsResource extends JsonResource
 {
@@ -50,12 +51,35 @@ class PqrsResource extends JsonResource
                 'id' => $this->radicado->id,
                 'num_radicado' => $this->radicado->num_radicado,
                 'asunto' => $this->radicado->asunto,
-                'fec_venci' => $this->radicado->fec_venci?->format('Y-m-d'),
+                'fec_venci' => $this->radicado->fec_venci instanceof Carbon
+                    ? $this->radicado->fec_venci->format('Y-m-d')
+                    : $this->radicado->fec_venci,
                 'clasificacion' => $this->radicado->clasificacionDocumental ? [
                     'id' => $this->radicado->clasificacionDocumental->id,
                     'nombre' => $this->radicado->clasificacionDocumental->nom,
                 ] : null,
+                'responsables' => $this->radicado->responsables->map(fn ($r) => [
+                    'id' => $r->id,
+                    'custodio' => $r->custodio,
+                    'fechor_visto' => $r->fechor_visto?->toIso8601String(),
+                    'usuario' => $r->userCargo?->user ? [
+                        'id' => $r->userCargo->user->id,
+                        'nombre_completo' => trim($r->userCargo->user->nombres.' '.$r->userCargo->user->apellidos),
+                        'nombres' => $r->userCargo->user->nombres,
+                        'apellidos' => $r->userCargo->user->apellidos,
+                        'email' => $r->userCargo->user->email,
+                    ] : null,
+                    'cargo' => $r->userCargo?->cargo ? [
+                        'id' => $r->userCargo->cargo->id,
+                        'nombre' => $r->userCargo->cargo->nom_organico,
+                        'codigo' => $r->userCargo->cargo->cod_organico,
+                    ] : null,
+                ]),
             ] : null,
+            'estado_firma' => $this->estado_firma,
+            'fecha_firma' => $this->fecha_firma?->toIso8601String(),
+            'firmado_en_representacion' => $this->firmado_en_representacion,
+            'nombre_representado' => $this->nombre_representado,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
@@ -109,6 +133,7 @@ class PqrsResource extends JsonResource
         if ($dias <= 5) {
             return ['class' => 'badge-light-warning', 'color' => 'warning', 'label' => 'Urgente'];
         }
+
         return ['class' => 'badge-light-info', 'color' => 'info', 'label' => 'En término'];
     }
 }
