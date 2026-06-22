@@ -277,6 +277,11 @@ class VentanillaPqrsController extends Controller
         try {
             $pqrs = VentanillaPqrs::with([
                 'radicado',
+                'radicado.usuarioCreaRadicado',
+                'radicado.usuarioSubio',
+                'radicado.responsables.userCargo.user',
+                'radicado.responsables.userCargo.cargo',
+                'radicado.archivos.usuarioSubido',
                 'tercero',
                 'tipoPqrs',
             ])->find($id);
@@ -287,6 +292,74 @@ class VentanillaPqrsController extends Controller
 
             $eventos = [];
 
+            // ── Eventos del radicado recibido asociado ──
+            $radicado = $pqrs->radicado;
+            if ($radicado) {
+                // Radicado creado
+                $eventos[] = [
+                    'fecha' => $radicado->created_at->toIso8601String(),
+                    'tipo' => 'radicado_creado',
+                    'titulo' => 'Radicado creado',
+                    'descripcion' => 'Se creó el radicado '.$radicado->num_radicado,
+                    'datos' => [
+                        'num_radicado' => $radicado->num_radicado,
+                        'radicado_id' => $radicado->id,
+                    ],
+                ];
+
+                // Archivo digital subido
+                if (! empty($radicado->archivo_digital)) {
+                    $eventos[] = [
+                        'fecha' => $radicado->updated_at->toIso8601String(),
+                        'tipo' => 'archivo_digital_subido',
+                        'titulo' => 'Archivo digital subido',
+                        'descripcion' => 'Se cargó el archivo digital principal: '.basename($radicado->archivo_digital),
+                        'usuario' => $radicado->usuarioSubio ? $radicado->usuarioSubio->getInfoUsuario() : null,
+                        'datos' => [
+                            'archivo_nombre' => basename($radicado->archivo_digital),
+                            'extension' => pathinfo($radicado->archivo_digital, PATHINFO_EXTENSION),
+                        ],
+                    ];
+                }
+
+                // Responsables asignados
+                foreach ($radicado->responsables as $responsable) {
+                    $user = $responsable->userCargo && $responsable->userCargo->user
+                        ? $responsable->userCargo->user->getInfoUsuario()
+                        : null;
+                    $cargoRel = $responsable->userCargo?->cargo;
+                    $cargo = (isset($cargoRel) && is_object($cargoRel)) ? $cargoRel : null;
+                    $eventos[] = [
+                        'fecha' => $responsable->created_at->toIso8601String(),
+                        'tipo' => 'responsable_asignado',
+                        'titulo' => 'Responsable asignado',
+                        'descripcion' => $cargo
+                            ? 'Se asignó como responsable'.($responsable->custodio ? ' (custodio)' : '').': '.$cargo->nom_organico
+                            : 'Se asignó un responsable',
+                        'usuario' => $user,
+                        'datos' => [
+                            'responsable_id' => $responsable->id,
+                        ],
+                    ];
+                }
+
+                // Archivos adjuntos subidos
+                foreach ($radicado->archivos as $archivo) {
+                    $eventos[] = [
+                        'fecha' => $archivo->created_at->toIso8601String(),
+                        'tipo' => 'adjunto_subido',
+                        'titulo' => 'Archivo adjunto subido',
+                        'descripcion' => 'Se subió el archivo: '.$archivo->nom_origi,
+                        'usuario' => $archivo->usuarioSubido ? $archivo->usuarioSubido->getInfoUsuario() : null,
+                        'datos' => [
+                            'nombre' => $archivo->nom_origi,
+                            'tipo' => $archivo->archivo_tipo,
+                        ],
+                    ];
+                }
+            }
+
+            // ── Eventos propios del PQRS ──
             $eventos[] = [
                 'fecha' => $pqrs->created_at->toIso8601String(),
                 'tipo' => 'pqrs_creada',
