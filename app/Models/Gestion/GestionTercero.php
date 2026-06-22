@@ -32,11 +32,8 @@ class GestionTercero extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        // Los campos encriptados causaban "payload is invalid" - removidos temporalmente
-        // 'num_docu_nit' => 'encrypted',
-        // 'direccion' => 'encrypted',
-        // 'telefono' => 'encrypted',
-        // 'email' => 'encrypted',
+        'notifica_email' => 'boolean',
+        'notifica_msm' => 'boolean',
     ];
 
     public function divisionPolitica()

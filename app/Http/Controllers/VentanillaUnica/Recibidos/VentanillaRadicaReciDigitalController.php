@@ -183,7 +183,7 @@ class VentanillaRadicaReciDigitalController extends Controller
 
             $usuario = Auth::user();
             VentanillaRadicaReciArchivoEliminado::create([
-                'radica_reci_id' => $radicado->id,
+                'radicado_id' => $radicado->id,
                 'archivo' => $archivoEliminado,
                 'deleted_by' => $usuario?->id,
                 'deleted_at' => now(),
@@ -321,7 +321,7 @@ class VentanillaRadicaReciDigitalController extends Controller
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
 
-            $historial = VentanillaRadicaReciArchivoEliminado::where('radica_reci_id', $id)
+            $historial = VentanillaRadicaReciArchivoEliminado::where('radicado_id', $id)
                 ->with('usuario:id,nombres,apellidos')
                 ->orderBy('deleted_at', 'desc')
                 ->get();

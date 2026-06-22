@@ -391,6 +391,8 @@ class VentanillaRadicaReciController extends Controller
             $clasificacionData = null;
             $serie = null;
             $subserie = null;
+            $serieModel = null;
+            $subserieModel = null;
 
             if ($clasificacion) {
                 // Obtener la subserie (parent) - puede ser un objeto cargado o un entero

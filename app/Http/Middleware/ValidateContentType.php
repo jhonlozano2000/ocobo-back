@@ -93,8 +93,13 @@ class ValidateContentType
         $contentType = $request->header('Content-Type');
 
         if (empty($contentType)) {
-            // Algunos clientes no envían Content-Type, permitir si es GET
-            if ($request->method() === 'GET') {
+            // Permitir POST sin Content-Type cuando el body está vacío
+            // Axios y algunos clientes HTTP no envían Content-Length ni Content-Type en POSTs sin body
+            $contentLength = $request->header('Content-Length');
+            $bodyEmpty = $contentLength === null || (int) $contentLength === 0;
+
+            // También verificar que no haya contenido en el body directamente
+            if ($request->method() === 'GET' || $bodyEmpty || empty($request->getContent())) {
                 return;
             }
 
@@ -197,6 +202,6 @@ class ValidateContentType
                $request->hasFile('documento') ||
                $request->hasFile('anexos') ||
                $request->hasFile('archivos') ||
-               $request->files->keys()->count() > 0;
+               (is_array($request->files) && count($request->files) > 0);
     }
 }

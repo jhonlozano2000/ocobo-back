@@ -71,6 +71,13 @@
             </div>
             @endif
 
+            @if(isset($hashRadicado))
+            <div class="cod-verifica" style="margin-top: 12px;">
+                <p>Código de integridad SHA-256 del radicado (Ley 527/1999 — verificación electrónica)</p>
+                <strong style="font-size: 12px; letter-spacing: 1px; word-break: break-all;">{{ $hashRadicado }}</strong>
+            </div>
+            @endif
+
             <div class="attachments-info">
                 <strong>Documentos adjuntos:</strong>
                 <p>En este correo encontrará adjuntos los siguientes documentos:</p>

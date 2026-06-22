@@ -10,6 +10,8 @@ class VentanillaRadicaReciArchivoEliminado extends Model
 {
     use HasFactory;
 
+    public $timestamps = false;
+
     protected $table = 'ventanilla_radica_reci_archivos_eliminados';
 
     protected $fillable = [
@@ -21,8 +23,6 @@ class VentanillaRadicaReciArchivoEliminado extends Model
 
     protected $casts = [
         'deleted_at' => 'datetime',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
     ];
 
     /**

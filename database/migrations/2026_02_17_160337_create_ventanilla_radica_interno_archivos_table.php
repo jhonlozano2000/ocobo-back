@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
 
             $table->unsignedBigInteger('radicado_id');
-            $table->foreign('radicado_id')->references('id')->on('ventanilla_radica_reci')->onDelete('cascade');
+            $table->foreign('radicado_id')->references('id')->on('ventanilla_radica_internos')->onDelete('cascade');
 
             $table->unsignedBigInteger('subido_por')->nullable()->comment('Usuario que subió el archivo');
             $table->foreign('subido_por')->references('id')->on('users');

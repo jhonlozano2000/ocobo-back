@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
@@ -34,6 +35,14 @@ class RadicadoRecibidoNotificacionTercero extends Mailable
 
     public function content(): Content
     {
+        // Hash SHA-256 del número de radicado para verificación de integridad
+        $hashRadicado = hash('sha256', $this->radicado->num_radicado);
+
+        // Fecha límite de respuesta
+        $fecVenci = $this->radicado->fec_venci
+            ? Carbon::parse($this->radicado->fec_venci)->format('d/m/Y')
+            : 'No definida';
+
         return new Content(
             view: 'emails.radicado-recibido-tercero',
             with: [
@@ -42,8 +51,10 @@ class RadicadoRecibidoNotificacionTercero extends Mailable
                 'numRadicado' => $this->radicado->num_radicado,
                 'asunto' => $this->radicado->asunto,
                 'fechaRadicado' => $this->radicado->created_at->format('d/m/Y H:i'),
+                'fecVenci' => $fecVenci,
                 'codVerifica' => $this->radicado->cod_verifica,
                 'nombreTercero' => $this->radicado->tercero?->nom_razo_soci ?? 'Ciudadano',
+                'hashRadicado' => $hashRadicado,
             ],
         );
     }

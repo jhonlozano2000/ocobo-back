@@ -520,18 +520,6 @@ class VentanillaRadicaEnviadosController extends Controller
                 return $this->errorResponse('Radicado enviado no encontrado', null, 404);
             }
 
-            $responsableVisto = VentanillaRadicaEnviadosRespona::where('radica_enviado_id', $id)
-                ->whereNotNull('fechor_visto')
-                ->exists();
-
-            if ($responsableVisto) {
-                return $this->errorResponse(
-                    'No se puede editar el asunto porque al menos un responsable ya ha visto el documento',
-                    null,
-                    400
-                );
-            }
-
             $radicado->update(['asunto' => $request->asunto]);
             DB::commit();
 
@@ -560,18 +548,6 @@ class VentanillaRadicaEnviadosController extends Controller
 
             if (! $radicado) {
                 return $this->errorResponse('Radicado enviado no encontrado', null, 404);
-            }
-
-            $responsableVisto = VentanillaRadicaEnviadosRespona::where('radica_enviado_id', $id)
-                ->whereNotNull('fechor_visto')
-                ->exists();
-
-            if ($responsableVisto) {
-                return $this->errorResponse(
-                    'No se pueden actualizar las fechas porque al menos un responsable ya ha visto el documento',
-                    null,
-                    422
-                );
             }
 
             $request->validate([
@@ -617,18 +593,6 @@ class VentanillaRadicaEnviadosController extends Controller
 
             if (! $radicado) {
                 return $this->errorResponse('Radicado enviado no encontrado', null, 404);
-            }
-
-            $responsableHaVisto = VentanillaRadicaEnviadosRespona::where('radica_enviado_id', $id)
-                ->whereNotNull('fechor_visto')
-                ->exists();
-
-            if ($responsableHaVisto) {
-                return $this->errorResponse(
-                    'No se puede editar la clasificación documental porque al menos un responsable ya ha visto el documento',
-                    null,
-                    422
-                );
             }
 
             $radicado->update(['clasifica_documen_id' => $request->clasifica_documen_id]);

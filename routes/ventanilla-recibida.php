@@ -73,14 +73,14 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
         Route::get('/radica-recibida/{id}/archivos/digital/download', [VentanillaRadicaReciDigitalController::class, 'download'])->name('radica-recibida.archivos.digital.download')->middleware('can:'.$permReci.'Mostrar');
         Route::get('/radica-recibida/{id}/archivos/digital/ocr', [VentanillaRadicaReciDigitalController::class, 'getOcr'])->name('radica-recibida.archivos.digital.ocr')->middleware('can:'.$permReci.'Mostrar');
         Route::get('/radica-recibida/{id}/archivos/adjuntos/listar', [VentanillaRadicaReciAdjuntosController::class, 'listarArchivosAdjuntos'])->name('radica-recibida.archivos.adjuntos.listar')->middleware('can:'.$permReci.'Mostrar');
-        Route::get('/radica-recibida/{archivoId}/archivos/adjuntos/descargar', [VentanillaRadicaReciAdjuntosController::class, 'descargarArchivoAdjunto'])->name('radica-recibida.archivos.adjuntos.descargar')->middleware('can:'.$permReci.'Mostrar');
+        Route::get('/radica-recibida/{id}/archivos/adjuntos/{archivoId}/descargar', [VentanillaRadicaReciAdjuntosController::class, 'descargarArchivoAdjunto'])->name('radica-recibida.archivos.adjuntos.descargar')->middleware('can:'.$permReci.'Mostrar');
         Route::get('/radica-recibida/{id}/archivos/historial/archivos-eliminados', [VentanillaRadicaReciDigitalController::class, 'historialEliminaciones'])->name('radica-recibida.archivos.historial.eliminaciones')->middleware('can:'.$permReci.'Mostrar');
     });
 
     // Rutas con throttle:api (generales)
     Route::middleware('throttle:api')->group(function () use ($permReci) {
         Route::delete('/radica-recibida/{id}/archivos/digital/delete', [VentanillaRadicaReciDigitalController::class, 'deleteFile'])->name('radica-recibida.archivos.digital.delete')->middleware('can:'.$permReci.'Eliminar digital');
-        Route::delete('/radica-recibida/{archivoId}/archivos/adjuntos/eliminar', [VentanillaRadicaReciAdjuntosController::class, 'eliminarArchivoAdjunto'])->name('radica-recibida.archivos.adjuntos.eliminar')->middleware('can:'.$permReci.'Eliminar adjuntos');
+        Route::delete('/radica-recibida/{id}/archivos/adjuntos/{archivoId}/eliminar', [VentanillaRadicaReciAdjuntosController::class, 'eliminarArchivoAdjunto'])->name('radica-recibida.archivos.adjuntos.eliminar')->middleware('can:'.$permReci.'Eliminar adjuntos');
         Route::apiResource('responsables', VentanillaRadicaReciResponsaController::class)->except('create', 'edit')->middleware('can:'.$permReci.'Editar');
         Route::get('/radica-recibida/{radica_reci_id}/responsables', [VentanillaRadicaReciResponsaController::class, 'getByRadicado'])->name('radica-recibida.responsables.listar')->middleware('can:'.$permReci.'Editar');
         Route::get('/metadata/clasificacion-niveles', [MetadataController::class, 'nivelClasificacionIndex'])->name('metadata.niveles')->middleware('can:'.$permReci.'Listar');

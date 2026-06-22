@@ -9,9 +9,10 @@ use App\Http\Requests\Ventanilla\Recibidos\UploadArchivosAdjuntosRecibidoRequest
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivo;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * Controlador para la gestión de archivos adjuntos de radicaciones recibidas.
@@ -28,9 +29,9 @@ class VentanillaRadicaReciAdjuntosController extends Controller
 
     public function __construct()
     {
-        $this->middleware('can:'.self::PERM.'Subir adjuntos')->only(['subir']);
-        $this->middleware('can:'.self::PERM.'Eliminar adjuntos')->only(['eliminar']);
-        $this->middleware('can:'.self::PERM.'Mostrar')->only(['listar', 'descargar']);
+        $this->middleware('can:'.self::PERM.'Subir adjuntos')->only(['subir', 'subirArchivosAdjuntos']);
+        $this->middleware('can:'.self::PERM.'Eliminar adjuntos')->only(['eliminar', 'eliminarArchivoAdjunto']);
+        $this->middleware('can:'.self::PERM.'Mostrar')->only(['listar', 'listarArchivosAdjuntos', 'descargar', 'descargarArchivoAdjunto']);
     }
 
     /**
@@ -45,32 +46,36 @@ class VentanillaRadicaReciAdjuntosController extends Controller
             }
 
             $archivos = $request->file('archivos');
-            if (! is_array($archivos)) {
-                $archivos = $request->hasFile('archivos') ? [$archivos] : [];
-            }
             if (empty($archivos)) {
                 return $this->errorResponse('No se encontraron archivos válidos', null, 400);
             }
 
             $archivosSubidos = [];
             $usuario = Auth::user();
+            $storage = Storage::disk(self::DISK);
 
-            foreach ($request->file('archivos') as $archivo) {
-                $tempRequest = new Request;
-                $tempRequest->files->set('archivo', $archivo);
-
-                $uploadData = ArchivoHelper::guardarArchivoConHash($tempRequest, 'archivo', self::DISK);
-                if (! $uploadData) {
+            foreach ($archivos as $archivo) {
+                if (! $archivo || ! $archivo->isValid()) {
                     continue;
                 }
+
+                // Guardar archivo directamente en el disco
+                $nombreArchivo = Str::random(50).'.'.$archivo->getClientOriginalExtension();
+                $contenido = $archivo->getContent();
+                if (empty($contenido)) {
+                    continue;
+                }
+
+                $storage->put($nombreArchivo, $contenido);
+                $hash = hash('sha256', $contenido);
 
                 $archivoAdicional = VentanillaRadicaReciArchivo::create([
                     'radicado_id' => $radicado->id,
                     'subido_por' => $usuario?->id,
-                    'archivo' => $uploadData['path'],
+                    'archivo' => $nombreArchivo,
                     'nom_origi' => $archivo->getClientOriginalName(),
                     'archivo_peso' => $archivo->getSize(),
-                    'hash_sha256' => $uploadData['hash'],
+                    'hash_sha256' => $hash,
                 ]);
 
                 FileMetadataHelper::crearMetadataArchivoAdjunto($archivoAdicional);
@@ -78,13 +83,17 @@ class VentanillaRadicaReciAdjuntosController extends Controller
                 $archivosSubidos[] = [
                     'id' => $archivoAdicional->id,
                     'nombre' => $archivoAdicional->nom_origi,
-                    'ruta' => $uploadData['path'],
-                    'hash_sha256' => $uploadData['hash'],
+                    'ruta' => $nombreArchivo,
+                    'hash_sha256' => $hash,
                     'subido_por' => $usuario ? trim($usuario->nombres.' '.$usuario->apellidos) : 'No se registró usuario',
                     'tamaño' => $archivoAdicional->archivo_peso,
                     'tipo' => $archivo->getMimeType(),
-                    'file_url' => ArchivoHelper::obtenerUrl($uploadData['path'], self::DISK),
+                    'file_url' => ArchivoHelper::obtenerUrl($nombreArchivo, self::DISK),
                 ];
+            }
+
+            if (empty($archivosSubidos)) {
+                return $this->errorResponse('No se pudieron procesar los archivos enviados', null, 422);
             }
 
             return $this->successResponse($archivosSubidos, 'Archivos adicionales subidos exitosamente');
@@ -177,5 +186,26 @@ class VentanillaRadicaReciAdjuntosController extends Controller
 
             return $this->errorResponse('Error al eliminar archivo', $e->getMessage(), 500);
         }
+    }
+
+    // ── Alias para compatibilidad con las rutas ───────────────────────
+    public function subirArchivosAdjuntos($id, UploadArchivosAdjuntosRecibidoRequest $request)
+    {
+        return $this->subir($id, $request);
+    }
+
+    public function listarArchivosAdjuntos($id)
+    {
+        return $this->listar($id);
+    }
+
+    public function descargarArchivoAdjunto($id, $archivoId)
+    {
+        return $this->descargar($id, $archivoId);
+    }
+
+    public function eliminarArchivoAdjunto($id, $archivoId)
+    {
+        return $this->eliminar($id, $archivoId);
     }
 }
