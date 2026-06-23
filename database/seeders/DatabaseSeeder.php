@@ -18,7 +18,7 @@ use Database\Seeders\Permisos\PermisosConfiguracionSeeder;
 use Database\Seeders\Permisos\PermisosControlAccesoSeeder;
 use Database\Seeders\Permisos\PermisosDigitalizacionSeeder;
 use Database\Seeders\Permisos\PermisosGestionSeeder;
-use Database\Seeders\Permisos\PermisosOtrosSeeder;
+use Database\Seeders\Permisos\PermisosMiBandejaSeeder;
 use Database\Seeders\Permisos\PermisosRadicarSeeder;
 use Database\Seeders\Permisos\PermisosReportesSeeder;
 use Illuminate\Database\Seeder;
@@ -55,6 +55,8 @@ class DatabaseSeeder extends Seeder
         $this->call(PermisosDigitalizacionSeeder::class);
         $this->call(PermisosReportesSeeder::class);
         $this->call(PermisosOtrosSeeder::class);
+
+        $this->call(PermisosMiBandejaSeeder::class);
 
         $this->call(PermisosRadicarSeeder::class);
     }

@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Helpers\MailConfigHelper;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -20,12 +21,13 @@ class OtpFirmaMail extends Mailable
     {
         $this->otp = $otp;
         $this->nombre = $nombre;
+        MailConfigHelper::configureFromConfigVarias();
     }
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Código de Seguridad para Firma Electrónica - Ocobo SGDEA',
+            subject: 'Cï¿½digo de Seguridad para Firma Electrï¿½nica - Ocobo SGDEA',
         );
     }
 
