@@ -21,10 +21,10 @@ class RadicadoComentariosController extends Controller
 
     public function __construct()
     {
-        $this->middleware('can:'.self::PERM.'Mostrar')->only(['index', 'show']);
-        $this->middleware('can:'.self::PERM_COMENTARIOS.'Crear')->only(['store']);
-        $this->middleware('can:'.self::PERM_COMENTARIOS.'Editar')->only(['update', 'resolver']);
-        $this->middleware('can:'.self::PERM_COMENTARIOS.'Eliminar')->only(['destroy']);
+        $this->middleware('can:' . self::PERM . 'Mostrar')->only(['index', 'show']);
+        $this->middleware('can:' . self::PERM_COMENTARIOS . 'Crear')->only(['store']);
+        $this->middleware('can:' . self::PERM_COMENTARIOS . 'Editar')->only(['update', 'resolver']);
+        $this->middleware('can:' . self::PERM_COMENTARIOS . 'Eliminar')->only(['destroy']);
     }
 
     public function index(int $radicaReciId): JsonResponse
@@ -40,7 +40,7 @@ class RadicadoComentariosController extends Controller
             ->get();
 
         return $this->apiResponseSuccess(
-            $comentarios->map(fn ($c) => $c->getInfo()),
+            $comentarios->map(fn($c) => $c->getInfo()),
             'Comentarios obtenidos exitosamente'
         );
     }
@@ -57,6 +57,14 @@ class RadicadoComentariosController extends Controller
         return $this->apiResponseSuccess($comentario->getInfo(), 'Comentario obtenido exitosamente');
     }
 
+    /**
+     * Store a newly created comment in storage.
+     * @param Request $request
+     * @param int $radicaReciId
+     * @return JsonResponse
+     *
+     * @author Jhon Javer Lozano Arce
+     */
     public function store(Request $request, int $radicaReciId): JsonResponse
     {
         $request->validate([
@@ -103,7 +111,7 @@ class RadicadoComentariosController extends Controller
                 201
             );
         } catch (\Exception $e) {
-            return $this->apiResponseError('Error al crear comentario: '.$e->getMessage(), 500);
+            return $this->apiResponseError('Error al crear comentario: ' . $e->getMessage(), 500);
         }
     }
 
@@ -132,7 +140,7 @@ class RadicadoComentariosController extends Controller
 
             return $this->apiResponseSuccess($comentario->getInfo(), 'Comentario actualizado');
         } catch (\Exception $e) {
-            return $this->apiResponseError('Error al actualizar: '.$e->getMessage(), 500);
+            return $this->apiResponseError('Error al actualizar: ' . $e->getMessage(), 500);
         }
     }
 
@@ -153,7 +161,7 @@ class RadicadoComentariosController extends Controller
 
             return $this->apiResponseSuccess($comentario->getInfo(), 'Comentario resuelto');
         } catch (\Exception $e) {
-            return $this->apiResponseError('Error al resolver: '.$e->getMessage(), 500);
+            return $this->apiResponseError('Error al resolver: ' . $e->getMessage(), 500);
         }
     }
 
@@ -177,7 +185,7 @@ class RadicadoComentariosController extends Controller
 
             return $this->apiResponseSuccess(null, 'Comentario eliminado');
         } catch (\Exception $e) {
-            return $this->apiResponseError('Error al eliminar: '.$e->getMessage(), 500);
+            return $this->apiResponseError('Error al eliminar: ' . $e->getMessage(), 500);
         }
     }
 }

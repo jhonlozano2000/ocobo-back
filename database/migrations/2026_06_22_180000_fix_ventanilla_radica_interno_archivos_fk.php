@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('ventanilla_radica_interno_archivos', function (Blueprint $table) {
-            $table->dropIndex('ventanilla_radica_interno_archivos_radicado_id_foreign');
+            $table->dropIndex('ventanilla_radica_interno_archivos_radicado_id_index');
             $table->foreign('radicado_id')->references('id')->on('ventanilla_radica_internos')->onDelete('cascade');
         });
     }

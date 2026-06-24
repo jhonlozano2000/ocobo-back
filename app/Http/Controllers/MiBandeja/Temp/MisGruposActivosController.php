@@ -102,4 +102,23 @@ class MisGruposActivosController extends Controller
             return $this->errorResponse('Error al obtener grupos activos', $e->getMessage(), 500);
         }
     }
+
+    public function liberarBloqueo(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+            $grupo = MiBandejaTemp::find($id);
+
+            if (!$grupo) {
+                return $this->errorResponse('Grupo no encontrado', null, 404);
+            }
+
+            $service = app(\App\Services\MiBandeja\GrupoColaborativoService::class);
+            $service->liberarBloqueo($grupo, $user);
+
+            return $this->successResponse(null, 'Documento liberado exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al liberar documento', $e->getMessage(), 500);
+        }
+    }
 }

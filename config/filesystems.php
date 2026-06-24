@@ -111,6 +111,20 @@ return [
             'throw' => false,
         ],
 
+        'mi_bandeja_temp' => [
+            'driver' => 'local',
+            'root' => storage_path('app/mi_bandeja_temp'),
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+
+        'plantillas' => [
+            'driver' => 'local',
+            'root' => storage_path('app/plantillas'),
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+
     ],
 
     /*

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\VentanillaUnica\Recibidos;
 
 use App\Events\VentanillaUnica\RespuestaEditing;
 use App\Http\Controllers\Controller;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Recibidos\RadicadoRespuesta;
 use App\Models\VentanillaUnica\Recibidos\RadicadoRespuestaParticipante;
 use Illuminate\Http\Request;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\Validator;
 
 class RadicadoRespuestasController extends Controller
 {
+    use ApiResponseTrait;
+
     public function index(Request $request, int $radicadoId)
     {
         $respuestas = RadicadoRespuesta::where('radicado_id', $radicadoId)
@@ -65,10 +68,14 @@ class RadicadoRespuestasController extends Controller
             'puede_editar' => true,
         ]);
 
-        broadcast(new RespuestaEditing($respuesta, 'respuesta_creada', [
-            'user_id' => Auth::id(),
-            'user_nombre' => Auth::user()->name,
-        ]))->toOthers();
+        try {
+            broadcast(new RespuestaEditing($respuesta, 'respuesta_creada', [
+                'user_id' => Auth::id(),
+                'user_nombre' => Auth::user()->name,
+            ]))->toOthers();
+        } catch (\Exception $e) {
+            \Log::warning('Broadcast failed on respuesta_creada: '.$e->getMessage());
+        }
 
         return $this->successResponse($respuesta, 'Respuesta creada');
     }
@@ -89,10 +96,14 @@ class RadicadoRespuestasController extends Controller
         ]);
 
         if ($request->has('contenido') || $request->has('contenido_json')) {
-            broadcast(new RespuestaEditing($respuesta, 'contenido_actualizado', [
-                'user_id' => Auth::id(),
-                'user_nombre' => Auth::user()->name,
-            ]))->toOthers();
+            try {
+                broadcast(new RespuestaEditing($respuesta, 'contenido_actualizado', [
+                    'user_id' => Auth::id(),
+                    'user_nombre' => Auth::user()->name,
+                ]))->toOthers();
+            } catch (\Exception $e) {
+                \Log::warning('Broadcast failed on contenido_actualizado: '.$e->getMessage());
+            }
         }
 
         return $this->successResponse($respuesta, 'Respuesta actualizada');
@@ -108,10 +119,14 @@ class RadicadoRespuestasController extends Controller
 
         $respuesta->refresh();
 
-        broadcast(new RespuestaEditing($respuesta, 'lock_adquirido', [
-            'user_id' => Auth::id(),
-            'user_nombre' => Auth::user()->name,
-        ]))->toOthers();
+        try {
+            broadcast(new RespuestaEditing($respuesta, 'lock_adquirido', [
+                'user_id' => Auth::id(),
+                'user_nombre' => Auth::user()->name,
+            ]))->toOthers();
+        } catch (\Exception $e) {
+            \Log::warning('Broadcast failed on lock_adquirido: '.$e->getMessage());
+        }
 
         return $this->successResponse($respuesta, 'Lock adquirido');
     }
@@ -127,9 +142,13 @@ class RadicadoRespuestasController extends Controller
         $respuesta->liberarLock();
         $respuesta->refresh();
 
-        broadcast(new RespuestaEditing($respuesta, 'lock_liberado', [
-            'user_id' => Auth::id(),
-        ]))->toOthers();
+        try {
+            broadcast(new RespuestaEditing($respuesta, 'lock_liberado', [
+                'user_id' => Auth::id(),
+            ]))->toOthers();
+        } catch (\Exception $e) {
+            \Log::warning('Broadcast failed on lock_liberado: '.$e->getMessage());
+        }
 
         return $this->successResponse($respuesta, 'Lock liberado');
     }

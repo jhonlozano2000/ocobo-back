@@ -14,6 +14,13 @@ use App\Services\Configuracion\ConfigDiviPoliService;
 use App\Services\Configuracion\ConfigListaService;
 use App\Services\ControlAcceso\RoleService;
 use App\Services\ControlAcceso\UserService;
+use App\Models\MiBandeja\MiBandejaTemp;
+use App\Models\MiBandeja\MiBandejaTempArchivoVersion;
+use App\Models\MiBandeja\MiBandejaTempGrupoFirmante;
+use App\Models\MiBandeja\MiBandejaTempGrupoProyector;
+use App\Models\MiBandeja\MiBandejaTempGrupoResponsable;
+use App\Models\MiBandeja\MiBandejaTempNota;
+use App\Observers\MiBandeja\GrupoColaborativoAuditObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
@@ -35,7 +42,18 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(Router $router): void
     {
+        $this->registrarObservers();
         $this->configurarRateLimiting();
+    }
+
+    private function registrarObservers(): void
+    {
+        MiBandejaTemp::observe(GrupoColaborativoAuditObserver::class);
+        MiBandejaTempArchivoVersion::observe(GrupoColaborativoAuditObserver::class);
+        MiBandejaTempNota::observe(GrupoColaborativoAuditObserver::class);
+        MiBandejaTempGrupoResponsable::observe(GrupoColaborativoAuditObserver::class);
+        MiBandejaTempGrupoFirmante::observe(GrupoColaborativoAuditObserver::class);
+        MiBandejaTempGrupoProyector::observe(GrupoColaborativoAuditObserver::class);
     }
 
     private function configurarRateLimiting(): void

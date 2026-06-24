@@ -32,3 +32,6 @@ Schedule::command('archivo:depurar-digital --disco=radicados_recibidos --dias=30
     ->weekly()->sundays()->at('01:00')->withoutOverlapping();
 Schedule::command('archivo:depurar-digital --disco=radicados_enviados --dias=30')
     ->weekly()->sundays()->at('01:30')->withoutOverlapping();
+
+// Grupos Colaborativos: liberar bloqueos expirados cada hora
+Schedule::command('grupos-colaborativos:liberar-bloqueos')->hourly()->withoutOverlapping();

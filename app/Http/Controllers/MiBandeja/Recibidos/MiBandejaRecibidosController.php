@@ -37,7 +37,7 @@ class MiBandejaRecibidosController extends Controller
                 $query->where('estado_trabajo', $estado);
             }
 
-            $radicados = $query->limit(50)->get();
+            $radicados = $query->with('tercero')->limit(50)->get();
 
             return response()->json([
                 'status' => true,

@@ -212,6 +212,33 @@ class GrupoColaborativoService
         });
     }
 
+    public function liberarBloqueo(MiBandejaTemp $grupo, User $user): void
+    {
+        $version = $grupo->ultimaVersion;
+
+        if (!$version) {
+            throw new \RuntimeException('No hay documento que liberar');
+        }
+
+        if (!$version->estaBloqueadoPor($user->id)) {
+            throw new \RuntimeException('No tienes un bloqueo activo en este documento');
+        }
+
+        DB::transaction(function () use ($version, $user) {
+            $version->update([
+                'bloqueado_por_user_id' => null,
+                'fecha_bloqueo' => null,
+            ]);
+
+            Event::dispatch(new DocumentoLiberado(
+                $version->grupo_id,
+                $version->version,
+                $user->id,
+                "{$user->nombres} {$user->apellidos}",
+            ));
+        });
+    }
+
     public function marcarCumplido(MiBandejaTemp $grupo, User $user): array
     {
         return DB::transaction(function () use ($grupo, $user) {

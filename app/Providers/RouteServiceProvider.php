@@ -112,6 +112,14 @@ class RouteServiceProvider extends ServiceProvider
                 ->prefix('api/mi-bandeja/recibidos')
                 ->group(base_path('routes/mi-bandeja-recibidos.php'));
 
+            Route::middleware('api')
+                ->prefix('api/mi-bandeja/enviados')
+                ->group(base_path('routes/mi-bandeja-enviados.php'));
+
+            Route::middleware('api')
+                ->prefix('api/mi-bandeja')
+                ->group(base_path('routes/mi-bandeja-temp.php'));
+
             // GESTIÓN DE ARCHIVO — PRÉSTAMOS
             Route::middleware('api')
                 ->prefix('api/archivo')
@@ -131,6 +139,11 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('api')
                 ->prefix('api/archivo/dashboard')
                 ->group(base_path('routes/archivo-dashboard.php'));
+
+            // GESTIÓN DE ARCHIVO — PLANTILLAS DE DOCUMENTOS
+            Route::middleware('api')
+                ->prefix('api/archivo')
+                ->group(base_path('routes/archivo-plantillas.php'));
         });
     }
 }

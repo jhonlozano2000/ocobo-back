@@ -34,6 +34,10 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('grupos-colaborativo
     Route::post('/{id}/check-in', [MiBandejaTempController::class, 'checkIn'])->name('check-in')->middleware('can:'.$permMiBandeja.'Ver');
     Route::post('/{id}/subir-version-inicial', [MiBandejaTempController::class, 'subirVersionInicial'])->name('subir-version-inicial')->middleware('can:'.$permMiBandeja.'Crear');
 
+    Route::post('/{id}/liberar-bloqueo', [MisGruposActivosController::class, 'liberarBloqueo'])
+        ->name('liberar-bloqueo')
+        ->middleware('can:'.$permMiBandeja.'Ver');
+
     // Responsables
     Route::prefix('{grupo}/responsables')->name('responsables.')->group(function () use ($permMiBandeja) {
         Route::get('/', [MiBandejaTempGrupoResponsableController::class, 'index'])->name('index')->middleware('can:'.$permMiBandeja.'Ver');

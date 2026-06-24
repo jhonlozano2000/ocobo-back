@@ -59,5 +59,7 @@ class DatabaseSeeder extends Seeder
         $this->call(PermisosMiBandejaSeeder::class);
 
         $this->call(PermisosRadicarSeeder::class);
+
+        $this->call(PermisosPlantillasDocumentosSeeder::class);
     }
 }

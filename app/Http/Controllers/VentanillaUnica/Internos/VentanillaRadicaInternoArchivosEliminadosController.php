@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\VentanillaUnica\Internos;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoArchivosEliminados;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class VentanillaRadicaInternoArchivosEliminadosController extends Controller
 {
+    use ApiResponseTrait;
+
     /**
      * Display a listing of the resource.
      */

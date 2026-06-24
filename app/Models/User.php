@@ -14,6 +14,7 @@ use App\Models\ControlAcceso\UserNotificationSetting;
 use App\Models\ControlAcceso\UsersSession;
 use App\Models\VentanillaUnica\Comunes\VentanillaUnica;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -127,6 +128,23 @@ class User extends Authenticatable
             ->with('cargo')
             ->where('estado', true)
             ->whereNull('fecha_fin');
+    }
+
+    /**
+     * Relación con el cargo activo del usuario a través de UserCargo.
+     *
+     * @return HasOneThrough
+     */
+    public function cargo(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            CalidadOrganigrama::class,
+            UserCargo::class,
+            'user_id',
+            'id',
+            'id',
+            'cargo_id'
+        )->where('estado', true)->whereNull('fecha_fin');
     }
 
     /**
