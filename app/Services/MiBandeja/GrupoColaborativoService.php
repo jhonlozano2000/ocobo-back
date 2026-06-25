@@ -82,6 +82,8 @@ class GrupoColaborativoService
                 );
             }
 
+            $this->marcarDescargaPlantilla($grupo, $user);
+
             return [
                 'archivo' => $diskPath,
                 'nombre' => $version->nombre_original,
@@ -133,6 +135,7 @@ class GrupoColaborativoService
             ]);
 
             $grupo->update(['plantilla_cargada' => true]);
+            $this->marcarDescargaPlantilla($grupo, $user);
 
             Event::dispatch(new DocumentoBloqueado(
                 $grupo->id,
@@ -411,5 +414,41 @@ class GrupoColaborativoService
                 'comentario_version' => null,
             ]);
         });
+    }
+
+    public function anular(MiBandejaTemp $grupo, User $user): void
+    {
+        if ($grupo->usua_crea_id !== $user->id) {
+            throw new \RuntimeException('Solo el creador del grupo puede anularlo');
+        }
+
+        if ($grupo->estado_grupo === 'anulado') {
+            throw new \RuntimeException('El grupo ya se encuentra anulado');
+        }
+
+        $grupo->update(['estado_grupo' => 'anulado']);
+    }
+
+    private function marcarDescargaPlantilla(MiBandejaTemp $grupo, User $user): void
+    {
+        $miembro = MiBandejaTempGrupoResponsable::where('grupo_id', $grupo->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$miembro) {
+            $miembro = MiBandejaTempGrupoFirmante::where('grupo_id', $grupo->id)
+                ->where('user_id', $user->id)
+                ->first();
+        }
+
+        if (!$miembro) {
+            $miembro = MiBandejaTempGrupoProyector::where('grupo_id', $grupo->id)
+                ->where('user_id', $user->id)
+                ->first();
+        }
+
+        if ($miembro && !$miembro->descargo_plantilla) {
+            $miembro->update(['descargo_plantilla' => true]);
+        }
     }
 }

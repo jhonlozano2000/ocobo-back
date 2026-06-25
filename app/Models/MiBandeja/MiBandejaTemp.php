@@ -64,7 +64,7 @@ class MiBandejaTemp extends Model
      */
     public function radicadoEnviado(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviado::class, 'radicado_id');
+        return $this->belongsTo(\App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados::class, 'radicado_id');
     }
 
     /**

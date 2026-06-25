@@ -316,6 +316,28 @@ class MiBandejaTempController extends Controller
     }
 
     /**
+     * Anula un grupo colaborativo. Solo el creador puede hacerlo.
+     */
+    public function anular($id)
+    {
+        try {
+            $grupo = MiBandejaTemp::find($id);
+
+            if (!$grupo) {
+                return $this->errorResponse('Grupo no encontrado', null, 404);
+            }
+
+            $this->grupoService->anular($grupo, Auth::user());
+
+            return $this->successResponse(null, 'Grupo anulado exitosamente');
+        } catch (\RuntimeException $e) {
+            return $this->errorResponse($e->getMessage(), null, 403);
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al anular grupo', $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Marca la tarea del usuario autenticado como terminada en un grupo.
      */
     public function marcarTerminado(Request $request, $id)

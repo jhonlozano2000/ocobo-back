@@ -5,6 +5,7 @@ namespace App\Http\Controllers\MiBandeja\Temp;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\MiBandejaTemp;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -17,7 +18,7 @@ class MisGruposActivosController extends Controller
         $this->middleware('auth:sanctum');
     }
 
-    public function index(Request $request)
+    public function index()
     {
         try {
             $user = Auth::user();
@@ -27,6 +28,9 @@ class MisGruposActivosController extends Controller
                     'responsables.user:id,nombres,apellidos',
                     'firmantes.user:id,nombres,apellidos',
                     'proyectores.user:id,nombres,apellidos',
+                    'radicadoRecibido.tercero',
+                    'radicadoEnviado.tercero',
+                    'radicadoInterno',
                 ])
                 ->where('estado_grupo', 'activo')
                 ->where(function ($q) use ($user) {
@@ -81,8 +85,52 @@ class MisGruposActivosController extends Controller
                     ];
                 }
 
+                // Radicado info via accessor
+                $radicadoModel = $grupo->radicado;
+                $radicado = null;
+                if ($radicadoModel) {
+                    $tercero = $radicadoModel->tercero ?? null;
+                    $radicado = [
+                        'numero' => $radicadoModel->num_radicado ?? null,
+                        'fecha_radicado' => $radicadoModel->created_at?->toISOString(),
+                        'fecha_vencimiento' => $radicadoModel->fec_venci ? Carbon::parse($radicadoModel->fec_venci)->format('Y-m-d') : null,
+                        'tercero' => $tercero?->nom_razo_soci,
+                    ];
+                }
+
+                // Full member lists
+                $responsables = $grupo->responsables->map(fn($r) => [
+                    'user' => [
+                        'nombres' => $r->user?->nombres,
+                        'apellidos' => $r->user?->apellidos,
+                    ],
+                    'estado_tarea' => $r->estado_tarea ?? 'pendiente',
+                    'descargo_plantilla' => (bool) $r->descargo_plantilla,
+                    'es_custodio' => (bool) $r->es_custodio,
+                ])->values();
+
+                $firmantes = $grupo->firmantes->map(fn($f) => [
+                    'user' => [
+                        'nombres' => $f->user?->nombres,
+                        'apellidos' => $f->user?->apellidos,
+                    ],
+                    'estado_tarea' => $f->estado_tarea ?? 'pendiente',
+                    'descargo_plantilla' => (bool) $f->descargo_plantilla,
+                    'orden_firma' => $f->orden_firma,
+                ])->values();
+
+                $proyectores = $grupo->proyectores->map(fn($p) => [
+                    'user' => [
+                        'nombres' => $p->user?->nombres,
+                        'apellidos' => $p->user?->apellidos,
+                    ],
+                    'estado_tarea' => $p->estado_tarea ?? 'pendiente',
+                    'descargo_plantilla' => (bool) $p->descargo_plantilla,
+                ])->values();
+
                 return [
                     'id' => $grupo->id,
+                    'usua_crea_id' => $grupo->usua_crea_id,
                     'nombre' => $grupo->nombre,
                     'asunto' => $grupo->asunto,
                     'estado' => $grupo->estado,
@@ -94,6 +142,10 @@ class MisGruposActivosController extends Controller
                     'plantilla_cargada' => (bool) $grupo->plantilla_cargada,
                     'plantilla_id' => $grupo->plantilla_id,
                     'ultima_version' => $versionData,
+                    'radicado' => $radicado,
+                    'responsables' => $responsables,
+                    'firmantes' => $firmantes,
+                    'proyectores' => $proyectores,
                 ];
             });
 

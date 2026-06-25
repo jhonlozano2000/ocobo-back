@@ -66,6 +66,9 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('grupos-colaborativo
         Route::post('/{id}/marcar-terminado', [MiBandejaTempGrupoProyectorController::class, 'marcarTerminado'])->name('marcar-terminado')->middleware('can:'.$permMiBandeja.'Ver');
     });
 
+    // Anular grupo (solo creador)
+    Route::post('/{id}/anular', [MiBandejaTempController::class, 'anular'])->name('anular')->middleware('can:'.$permMiBandeja.'Eliminar');
+
     // Adjuntos
     Route::prefix('{grupo}/adjuntos')->name('adjuntos.')->group(function () use ($permMiBandeja) {
         Route::get('/', [MiBandejaTempGrupoAdjuntoController::class, 'index'])->name('index')->middleware('can:'.$permMiBandeja.'Ver');

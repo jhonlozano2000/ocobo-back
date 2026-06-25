@@ -39,6 +39,7 @@ class UpdateMiBandejaTempRequest extends FormRequest
             'con_copia' => 'nullable|array',
             'anexos' => 'nullable|array',
             'plantilla_cargada' => 'nullable|boolean',
+            'plantilla_id' => 'nullable|integer|exists:ofi_archivo_plantillas_documentos,id',
         ];
     }
 }
