@@ -22,9 +22,8 @@ class PlantillaDocumentoService
             $uuid = Str::uuid();
             $extension = $archivo->getClientOriginalExtension();
             $nombreArchivo = "{$uuid}.{$extension}";
-            $directorio = 'documentos';
 
-            $path = $archivo->storeAs($directorio, $nombreArchivo, self::DISCO);
+            $path = $archivo->storeAs('', $nombreArchivo, self::DISCO);
 
             $rutaCompleta = storage_path("app/plantillas/{$path}");
             $hash = hash_file('sha256', $rutaCompleta);
@@ -83,9 +82,8 @@ class PlantillaDocumentoService
                 $uuid = Str::uuid();
                 $extension = $archivo->getClientOriginalExtension();
                 $nombreArchivo = "{$uuid}.{$extension}";
-                $directorio = 'documentos';
 
-                $newPath = $archivo->storeAs($directorio, $nombreArchivo, self::DISCO);
+                $newPath = $archivo->storeAs('', $nombreArchivo, self::DISCO);
 
                 $rutaCompleta = storage_path("app/plantillas/{$newPath}");
                 $hash = hash_file('sha256', $rutaCompleta);
