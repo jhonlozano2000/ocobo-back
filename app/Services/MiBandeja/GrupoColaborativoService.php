@@ -22,7 +22,7 @@ use Illuminate\Support\Str;
 
 class GrupoColaborativoService
 {
-    private const DISCO = 'mi_bandeja_temp';
+    private const DISCO = 'plantillas_grupos';
     private const HORAS_BLOQUEO = 24;
 
     public function __construct() {}
@@ -108,7 +108,9 @@ class GrupoColaborativoService
 
             $extension = $plantilla->extension;
             $uuid = Str::uuid() . '.' . $extension;
-            $rutaRelativa = "documentos/{$uuid}";
+            $radicado = $grupo->radicado;
+            $numRadicado = $radicado?->num_radicado ?? 'sin-radicado';
+            $rutaRelativa = "{$numRadicado}/{$uuid}";
 
             Storage::disk(self::DISCO)->put(
                 $rutaRelativa,
@@ -177,7 +179,9 @@ class GrupoColaborativoService
             $pesoKB = round($archivo->getSize() / 1024, 2);
             $uuid = Str::uuid() . '.' . $extension;
 
-            $rutaRelativa = "documentos/{$uuid}";
+            $radicado = $grupo->radicado;
+            $numRadicado = $radicado?->num_radicado ?? 'sin-radicado';
+            $rutaRelativa = "{$numRadicado}/{$uuid}";
             $rutaCompleta = Storage::disk(self::DISCO)->path($rutaRelativa);
 
             $directorio = dirname($rutaCompleta);
@@ -391,7 +395,9 @@ class GrupoColaborativoService
             $pesoKB = round($archivo->getSize() / 1024, 2);
             $uuid = Str::uuid() . '.' . $extension;
 
-            $rutaRelativa = "documentos/{$uuid}";
+            $radicado = $grupo->radicado;
+            $numRadicado = $radicado?->num_radicado ?? 'sin-radicado';
+            $rutaRelativa = "{$numRadicado}/{$uuid}";
             $rutaCompleta = Storage::disk(self::DISCO)->path($rutaRelativa);
 
             $directorio = dirname($rutaCompleta);

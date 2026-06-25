@@ -12,7 +12,7 @@ class MiBandejaTempVersionController extends Controller
 {
     use ApiResponseTrait;
 
-    private const DISK = 'mi_bandeja_temp';
+    private const DISK = 'plantillas_grupos';
 
     public function index($grupoId)
     {

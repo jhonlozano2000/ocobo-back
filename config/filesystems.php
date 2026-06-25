@@ -125,6 +125,13 @@ return [
             'throw' => false,
         ],
 
+        'plantillas_grupos' => [
+            'driver' => 'local',
+            'root' => storage_path('app/plantillas_grupos'),
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+
     ],
 
     /*
