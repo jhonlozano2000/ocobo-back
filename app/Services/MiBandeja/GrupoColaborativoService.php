@@ -88,6 +88,8 @@ class GrupoColaborativoService
                 );
             }
 
+            $this->reemplazarVariablesSiTienePlaceholders($diskPath, $grupo, $user);
+
             $this->marcarDescargaPlantilla($grupo, $user);
 
             return [
@@ -567,6 +569,60 @@ class GrupoColaborativoService
 
     private function reemplazarVariablesEnArchivo(string $rutaCompleta, array $variables): void
     {
+        if (!file_exists($rutaCompleta)) {
+            throw new \RuntimeException('El archivo no existe: ' . $rutaCompleta);
+        }
+
+        $handle = fopen($rutaCompleta, 'rb');
+        $magicBytes = fread($handle, 4);
+        fclose($handle);
+        $esZip = $magicBytes === "PK\x03\x04" || $magicBytes === "PK\x05\x06" || $magicBytes === "PK\x07\x08";
+
+        if ($esZip) {
+            $this->reemplazarVariablesEnZip($rutaCompleta, $variables);
+        } else {
+            $this->reemplazarVariablesEnTexto($rutaCompleta, $variables);
+        }
+    }
+
+    private function reemplazarVariablesEnZip(string $rutaCompleta, array $variables): void
+    {
+        $zip = new \ZipArchive();
+        $res = $zip->open($rutaCompleta);
+        if ($res !== true) {
+            throw new \RuntimeException('No se pudo abrir el archivo ZIP: ' . $rutaCompleta);
+        }
+
+        $entradasVariables = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $nombre = $zip->getNameIndex($i);
+            if (
+                str_ends_with($nombre, '.xml') ||
+                str_ends_with($nombre, '.rels')
+            ) {
+                $entradasVariables[] = $nombre;
+            }
+        }
+
+        $plantillaService = app(\App\Services\OfiArchivo\PlantillaDocumentoService::class);
+
+        foreach ($entradasVariables as $nombre) {
+            $contenido = $zip->getFromName($nombre);
+            if ($contenido === false) continue;
+
+            $original = $contenido;
+            $contenido = $plantillaService->reemplazarVariables($contenido, $variables);
+
+            if ($contenido !== $original) {
+                $zip->addFromString($nombre, $contenido);
+            }
+        }
+
+        $zip->close();
+    }
+
+    private function reemplazarVariablesEnTexto(string $rutaCompleta, array $variables): void
+    {
         $contenido = file_get_contents($rutaCompleta);
         if ($contenido === false) {
             throw new \RuntimeException('No se pudo leer el archivo para reemplazar variables');
@@ -578,6 +634,43 @@ class GrupoColaborativoService
         $bytes = file_put_contents($rutaCompleta, $contenido, LOCK_EX);
         if ($bytes === false) {
             throw new \RuntimeException('No se pudo escribir el archivo con las variables reemplazadas');
+        }
+    }
+
+    private function reemplazarVariablesSiTienePlaceholders(string $rutaCompleta, MiBandejaTemp $grupo, User $user): void
+    {
+        $handle = fopen($rutaCompleta, 'rb');
+        $magicBytes = fread($handle, 4);
+        fclose($handle);
+        $esZip = $magicBytes === "PK\x03\x04" || $magicBytes === "PK\x05\x06" || $magicBytes === "PK\x07\x08";
+
+        if ($esZip) {
+            $zip = new \ZipArchive();
+            $res = $zip->open($rutaCompleta);
+            if ($res !== true) return;
+
+            $tienePlaceholders = false;
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $nombre = $zip->getNameIndex($i);
+                if (!str_ends_with($nombre, '.xml') && !str_ends_with($nombre, '.rels')) continue;
+                $contenido = $zip->getFromName($nombre);
+                if ($contenido !== false && str_contains($contenido, '${NUM_RADICADO}')) {
+                    $tienePlaceholders = true;
+                    break;
+                }
+            }
+
+            if ($tienePlaceholders) {
+                $variables = $this->obtenerVariablesPlantilla($grupo, $user);
+                $valores = [];
+                foreach ($variables as $v) {
+                    $valores[$v['clave']] = $v['valor_defecto'];
+                }
+                $zip->close();
+                $this->reemplazarVariablesEnZip($rutaCompleta, $valores);
+            } else {
+                $zip->close();
+            }
         }
     }
 
