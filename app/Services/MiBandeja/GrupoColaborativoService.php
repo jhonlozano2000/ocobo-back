@@ -36,7 +36,13 @@ class GrupoColaborativoService
                 throw new \RuntimeException('El grupo no tiene ninguna versión del documento ni plantilla asociada');
             }
 
-            return $this->crearVersionDesdePlantilla($grupo, $user);
+            $variables = $this->obtenerVariablesPlantilla($grupo, $user);
+            $valores = [];
+            foreach ($variables as $v) {
+                $valores[$v['clave']] = $v['valor_defecto'];
+            }
+
+            return $this->crearVersionDesdePlantilla($grupo, $user, $valores);
         }
 
         return DB::transaction(function () use ($version, $user, $grupo) {
@@ -503,72 +509,6 @@ class GrupoColaborativoService
         ], array_keys($defaults), $defaults);
 
         return $variables;
-    }
-
-    public function descargarConVariables(MiBandejaTemp $grupo, User $user, array $variables): array
-    {
-        $version = $grupo->ultimaVersion;
-
-        if (!$version) {
-            if (!$grupo->plantilla_id) {
-                throw new \RuntimeException('El grupo no tiene ninguna versión del documento ni plantilla asociada');
-            }
-            return $this->crearVersionDesdePlantilla($grupo, $user, $variables);
-        }
-
-        return DB::transaction(function () use ($version, $user, $grupo, $variables) {
-            $version->lockForUpdate();
-
-            if ($version->bloqueoExpirado()) {
-                $version->update([
-                    'bloqueado_por_user_id' => null,
-                    'fecha_bloqueo' => null,
-                ]);
-            }
-
-            if ($version->bloqueado_por_user_id !== null && $version->bloqueado_por_user_id !== $user->id) {
-                $bloqueador = User::find($version->bloqueado_por_user_id);
-                $nombre = $bloqueador ? "{$bloqueador->nombres} {$bloqueador->apellidos}" : 'otro usuario';
-                throw new \RuntimeException("El documento está bloqueado por {$nombre}");
-            }
-
-            $version->update([
-                'bloqueado_por_user_id' => $user->id,
-                'fecha_bloqueo' => Carbon::now(),
-            ]);
-
-            $path = $version->ruta_completa;
-            if (!Storage::disk(self::DISCO)->exists($path)) {
-                throw new \RuntimeException('El archivo no se encuentra en el servidor');
-            }
-
-            $diskPath = Storage::disk(self::DISCO)->path($path);
-            $hashActual = hash_file('sha256', $diskPath);
-
-            if ($hashActual !== $version->hash_seguridad) {
-                throw new \RuntimeException(
-                    'Integridad del archivo comprometida: el hash SHA-256 no coincide. '
-                    . 'El archivo pudo haber sido modificado en el servidor.'
-                );
-            }
-
-            $this->reemplazarVariablesEnArchivo($diskPath, $variables);
-            $this->marcarDescargaPlantilla($grupo, $user);
-
-            Event::dispatch(new DocumentoBloqueado(
-                $grupo->id,
-                $user->id,
-                "{$user->nombres} {$user->apellidos}",
-                Carbon::now()->toISOString(),
-            ));
-
-            return [
-                'archivo' => $diskPath,
-                'nombre' => $version->nombre_original,
-                'mime' => $version->mime_type,
-                'version' => $version->version,
-            ];
-        });
     }
 
     private function etiquetaVariable(string $clave): string

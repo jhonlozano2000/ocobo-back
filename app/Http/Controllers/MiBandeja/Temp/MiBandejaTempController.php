@@ -217,64 +217,6 @@ class MiBandejaTempController extends Controller
     }
 
     /**
-     * Retorna las variables disponibles de la plantilla con sus valores por defecto.
-     */
-    public function variablesPlantilla($id)
-    {
-        try {
-            $grupo = MiBandejaTemp::with([
-                'plantilla', 'responsables.user', 'firmantes.user', 'proyectores.user',
-                'radicadoRecibido.tercero.divisionPolitica',
-                'radicadoEnviado.tercero.divisionPolitica',
-                'radicadoInterno',
-            ])->find($id);
-
-            if (!$grupo) {
-                return $this->errorResponse('Grupo no encontrado', null, 404);
-            }
-
-            $variables = $this->grupoService->obtenerVariablesPlantilla($grupo, Auth::user());
-
-            return $this->successResponse($variables, 'Variables de la plantilla');
-        } catch (\Exception $e) {
-            return $this->errorResponse('Error al obtener variables', $e->getMessage(), 500);
-        }
-    }
-
-    /**
-     * Descarga el documento reemplazando las variables de la plantilla.
-     */
-    public function descargarConVariables(Request $request, $id)
-    {
-        try {
-            $grupo = MiBandejaTemp::with([
-                'plantilla', 'responsables.user', 'firmantes.user', 'proyectores.user',
-                'radicadoRecibido.tercero.divisionPolitica',
-                'radicadoEnviado.tercero.divisionPolitica',
-                'radicadoInterno',
-            ])->find($id);
-
-            if (!$grupo) {
-                return $this->errorResponse('Grupo no encontrado', null, 404);
-            }
-
-            $variables = $request->input('variables', []);
-
-            $resultado = $this->grupoService->descargarConVariables($grupo, Auth::user(), $variables);
-
-            return response()->download(
-                $resultado['archivo'],
-                $resultado['nombre'],
-                ['Content-Type' => $resultado['mime']]
-            );
-        } catch (\RuntimeException $e) {
-            return $this->errorResponse($e->getMessage(), null, 422);
-        } catch (\Exception $e) {
-            return $this->errorResponse('Error al descargar documento', $e->getMessage(), 500);
-        }
-    }
-
-    /**
      * Sube una nueva versión del documento y libera el bloqueo (check-in).
      */
     public function checkIn(CheckInRequest $request, $id)
