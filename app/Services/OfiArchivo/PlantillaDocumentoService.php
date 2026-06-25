@@ -190,7 +190,7 @@ class PlantillaDocumentoService
             '${NOTIFICACION_MEDIO}',
         ];
 
-        $reemplazos = array_map(fn($key) => $variables[$key] ?? '', $placeholders);
+        $reemplazos = array_map(fn($key) => $variables[str_replace(['${', '}'], '', $key)] ?? '', $placeholders);
 
         return str_replace($placeholders, $reemplazos, $contenido);
     }
