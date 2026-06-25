@@ -31,6 +31,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('grupos-colaborativo
 
     // Check-out / Check-in del documento
     Route::get('/{id}/check-out', [MiBandejaTempController::class, 'checkOut'])->name('check-out')->middleware('can:'.$permMiBandeja.'Ver');
+    Route::post('/{id}/descargar-con-variables', [MiBandejaTempController::class, 'descargarConVariables'])->name('descargar-con-variables')->middleware('can:'.$permMiBandeja.'Ver');
+    Route::get('/{id}/variables-plantilla', [MiBandejaTempController::class, 'variablesPlantilla'])->name('variables-plantilla')->middleware('can:'.$permMiBandeja.'Ver');
     Route::post('/{id}/check-in', [MiBandejaTempController::class, 'checkIn'])->name('check-in')->middleware('can:'.$permMiBandeja.'Ver');
     Route::post('/{id}/subir-version-inicial', [MiBandejaTempController::class, 'subirVersionInicial'])->name('subir-version-inicial')->middleware('can:'.$permMiBandeja.'Crear');
 
