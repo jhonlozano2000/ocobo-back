@@ -63,6 +63,26 @@ class VentanillaRadicaInterno extends Model
         return $this->belongsTo(User::class, 'usuario_crea');
     }
 
+    /**
+     * Dependencia de origen inferida del usuario creador.
+     */
+    public function getDependenciaOrigenAttribute()
+    {
+        $cargoActivo = $this->usuarioCrea?->cargoActivo;
+        if (!$cargoActivo?->cargo) {
+            return null;
+        }
+
+        $node = $cargoActivo->cargo;
+        $visited = 0;
+        while ($node && $node->tipo !== 'Dependencia' && $visited < 20) {
+            $node = $node->parent;
+            $visited++;
+        }
+
+        return $node ? ['id' => $node->id, 'nombre' => $node->nom_organico] : null;
+    }
+
     public function usuarioSubido()
     {
         return $this->belongsTo(User::class, 'subido_por');

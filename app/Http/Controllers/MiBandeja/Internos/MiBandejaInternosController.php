@@ -39,7 +39,11 @@ class MiBandejaInternosController extends Controller
                 $query->where('estado_trabajo', $estado);
             }
 
-            $radicados = $query->with('responsables.userCargo')->limit(50)->get();
+            $radicados = $query
+                ->with(['responsables.userCargo', 'usuarioCrea.cargoActivo.cargo'])
+                ->limit(50)
+                ->get()
+                ->each->append('dependencia_origen');
 
             return response()->json([
                 'status' => true,
