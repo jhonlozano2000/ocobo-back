@@ -48,18 +48,22 @@ class MiBandejaTempController extends Controller
             $estadoGrupo = $request->get('estado_grupo', '');
 
             $query = MiBandejaTemp::with([
-                'responsables.user.cargo',
+                'revisores.user.cargo',
                 'firmantes.user.cargo',
                 'proyectores.user.cargo',
+                'aprobadores.user.cargo',
                 'adjuntos',
             ])
-            ->whereHas('responsables', function ($q) use ($userId) {
+            ->whereHas('revisores', function ($q) use ($userId) {
                 $q->where('user_id', $userId);
             })
             ->orWhereHas('firmantes', function ($q) use ($userId) {
                 $q->where('user_id', $userId);
             })
             ->orWhereHas('proyectores', function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            })
+            ->orWhereHas('aprobadores', function ($q) use ($userId) {
                 $q->where('user_id', $userId);
             })
             ->orderBy('created_at', 'desc');
@@ -100,7 +104,7 @@ class MiBandejaTempController extends Controller
             $grupo = MiBandejaTemp::create($validated);
 
             return $this->successResponse(
-                $grupo->load(['responsables.user.cargo', 'firmantes.user.cargo', 'proyectores.user.cargo']),
+                $grupo->load(['revisores.user.cargo', 'firmantes.user.cargo', 'proyectores.user.cargo', 'aprobadores.user.cargo']),
                 'Grupo colaborativo creado exitosamente',
                 201
             );
@@ -119,9 +123,10 @@ class MiBandejaTempController extends Controller
     {
         try {
             $grupo = MiBandejaTemp::with([
-                'responsables.user.cargo',
+                'revisores.user.cargo',
                 'firmantes.user.cargo',
                 'proyectores.user.cargo',
+                'aprobadores.user.cargo',
                 'adjuntos',
                 'creadoPor',
             ])->find($id);
@@ -155,7 +160,7 @@ class MiBandejaTempController extends Controller
             $grupo->update($request->validated());
 
             return $this->successResponse(
-                $grupo->load(['responsables.user.cargo', 'firmantes.user.cargo', 'proyectores.user.cargo', 'adjuntos']),
+                $grupo->load(['revisores.user.cargo', 'firmantes.user.cargo', 'proyectores.user.cargo', 'aprobadores.user.cargo', 'adjuntos']),
                 'Grupo actualizado exitosamente'
             );
         } catch (\Exception $e) {
@@ -295,7 +300,7 @@ class MiBandejaTempController extends Controller
     {
         try {
             $grupo = MiBandejaTemp::with([
-                'responsables', 'firmantes', 'proyectores', 'adjuntos'
+                'revisores', 'firmantes', 'proyectores', 'aprobadores', 'adjuntos'
             ])->find($id);
 
             if (! $grupo) {
@@ -351,7 +356,7 @@ class MiBandejaTempController extends Controller
 
             $resultado = $this->grupoService->marcarCumplido($grupo, Auth::user());
 
-            $grupo->load(['responsables', 'firmantes', 'proyectores']);
+            $grupo->load(['revisores', 'firmantes', 'proyectores', 'aprobadores']);
 
             $responseData = [
                 'grupo' => $grupo,

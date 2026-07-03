@@ -34,3 +34,18 @@ Broadcast::channel('documentos.{documentoId}', function ($user, $documentoId) {
 
     return $documento->tieneAcceso($user);
 });
+
+// ==========================================
+// Canales de Grupos Colaborativos
+// ==========================================
+Broadcast::channel('grupo-colaborativo.{grupoId}', function ($user, $grupoId) {
+    $grupo = \App\Models\MiBandeja\MiBandejaTemp::find($grupoId);
+
+    if (! $grupo) {
+        return false;
+    }
+
+    return $grupo->responsables()->where('user_id', $user->id)->exists()
+        || $grupo->firmantes()->where('user_id', $user->id)->exists()
+        || $grupo->proyectores()->where('user_id', $user->id)->exists();
+});

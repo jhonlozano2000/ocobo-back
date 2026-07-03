@@ -7,7 +7,8 @@ use App\Models\MiBandeja\MiBandejaTempArchivoVersion;
 use App\Models\MiBandeja\MiBandejaTempAuditLog;
 use App\Models\MiBandeja\MiBandejaTempGrupoFirmante;
 use App\Models\MiBandeja\MiBandejaTempGrupoProyector;
-use App\Models\MiBandeja\MiBandejaTempGrupoResponsable;
+use App\Models\MiBandeja\MiBandejaTempGrupoRevisor;
+use App\Models\MiBandeja\MiBandejaTempGrupoAprobador;
 use App\Models\MiBandeja\MiBandejaTempNota;
 
 class GrupoColaborativoAuditObserver
@@ -35,7 +36,8 @@ class GrupoColaborativoAuditObserver
     private function rolDe($model): string
     {
         return match (true) {
-            $model instanceof MiBandejaTempGrupoResponsable => 'RESPONSABLE',
+            $model instanceof MiBandejaTempGrupoRevisor => 'REVISOR',
+            $model instanceof MiBandejaTempGrupoAprobador => 'APROBADOR',
             $model instanceof MiBandejaTempGrupoFirmante => 'FIRMANTE',
             $model instanceof MiBandejaTempGrupoProyector => 'PROYECTOR',
             default => 'MIEMBRO',
@@ -84,7 +86,8 @@ class GrupoColaborativoAuditObserver
                 );
                 break;
 
-            case $model instanceof MiBandejaTempGrupoResponsable:
+            case $model instanceof MiBandejaTempGrupoRevisor:
+            case $model instanceof MiBandejaTempGrupoAprobador:
             case $model instanceof MiBandejaTempGrupoFirmante:
             case $model instanceof MiBandejaTempGrupoProyector:
                 $rol = $this->rolDe($model);
@@ -145,7 +148,8 @@ class GrupoColaborativoAuditObserver
                 }
                 break;
 
-            case $model instanceof MiBandejaTempGrupoResponsable:
+            case $model instanceof MiBandejaTempGrupoRevisor:
+            case $model instanceof MiBandejaTempGrupoAprobador:
             case $model instanceof MiBandejaTempGrupoFirmante:
             case $model instanceof MiBandejaTempGrupoProyector:
                 $dirty = $model->getDirty();
@@ -180,7 +184,8 @@ class GrupoColaborativoAuditObserver
                 );
                 break;
 
-            case $model instanceof MiBandejaTempGrupoResponsable:
+            case $model instanceof MiBandejaTempGrupoRevisor:
+            case $model instanceof MiBandejaTempGrupoAprobador:
             case $model instanceof MiBandejaTempGrupoFirmante:
             case $model instanceof MiBandejaTempGrupoProyector:
                 $rol = $this->rolDe($model);

@@ -17,8 +17,7 @@ class NotaCreada implements ShouldBroadcast
     public int $grupoId;
     public string $contenido;
     public int $userId;
-    public string $userName;
-    public ?string $userAvatar;
+    public array $user;
     public string $createdAt;
 
     public function __construct(MiBandejaTempNota $nota)
@@ -29,9 +28,23 @@ class NotaCreada implements ShouldBroadcast
         $this->grupoId = $nota->grupo_id;
         $this->contenido = $nota->contenido;
         $this->userId = $nota->user_id;
-        $this->userName = trim(($nota->user->nombres ?? '') . ' ' . ($nota->user->apellidos ?? ''));
-        $this->userAvatar = $nota->user->avatar ?? null;
-        $this->createdAt = $nota->created_at->toISOString();
+
+        $userModel = $nota->user;
+        $this->user = $userModel
+            ? [
+                'id' => $userModel->id,
+                'nombres' => $userModel->nombres ?? '',
+                'apellidos' => $userModel->apellidos ?? '',
+                'avatar' => $userModel->avatar ?: null,
+            ]
+            : [
+                'id' => $nota->user_id,
+                'nombres' => '',
+                'apellidos' => '',
+                'avatar' => null,
+            ];
+
+        $this->createdAt = $nota->created_at?->toISOString() ?? now()->toISOString();
     }
 
     public function broadcastOn(): array
@@ -48,12 +61,7 @@ class NotaCreada implements ShouldBroadcast
             'grupo_id' => $this->grupoId,
             'contenido' => $this->contenido,
             'user_id' => $this->userId,
-            'user' => [
-                'id' => $this->userId,
-                'nombres' => explode(' ', $this->userName)[0] ?? '',
-                'apellidos' => implode(' ', array_slice(explode(' ', $this->userName), 1)) ?? '',
-                'avatar' => $this->userAvatar,
-            ],
+            'user' => $this->user,
             'created_at' => $this->createdAt,
         ];
     }

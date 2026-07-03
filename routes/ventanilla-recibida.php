@@ -4,8 +4,10 @@ use App\Http\Controllers\VentanillaUnica\MetadataController;
 use App\Http\Controllers\VentanillaUnica\Recibidos\RadicadoComentariosController;
 use App\Http\Controllers\VentanillaUnica\Recibidos\RadicadoRespuestasController;
 use App\Http\Controllers\VentanillaUnica\Recibidos\VentanillaRadicaReciAdjuntosController;
+use App\Http\Controllers\VentanillaUnica\Recibidos\VentanillaRadicaReciCompartirHistorialController;
 use App\Http\Controllers\VentanillaUnica\Recibidos\VentanillaRadicaReciController;
 use App\Http\Controllers\VentanillaUnica\Recibidos\VentanillaRadicaReciDigitalController;
+use App\Http\Controllers\VentanillaUnica\Recibidos\VentanillaRadicaReciPaseHistorialController;
 use App\Http\Controllers\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsaController;
 use Illuminate\Support\Facades\Route;
 
@@ -54,6 +56,10 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
         Route::delete('/radica-recibida/comentarios/{id}', [RadicadoComentariosController::class, 'destroy'])->name('radica-recibida.comentarios.destroy')->middleware('can:'.$permReci.'Comentar');
 
         Route::post('/radica-recibida/{radica_reci_id}/responsables', [VentanillaRadicaReciResponsaController::class, 'assignToRadicado'])->name('radica-recibida.responsables.asignar')->middleware('can:'.$permReci.'Editar');
+
+        Route::post('/radica-recibida/{radica_reci_id}/pase', [VentanillaRadicaReciPaseHistorialController::class, 'store'])->name('radica-recibida.pase.registrar')->middleware('can:'.$permReci.'Editar');
+
+        Route::post('/radica-recibida/{radica_reci_id}/compartir', [VentanillaRadicaReciCompartirHistorialController::class, 'store'])->name('radica-recibida.compartir.registrar')->middleware('can:'.$permReci.'Editar');
     });
 
     // Rutas con throttle:uploads (10/min) - subida de archivos
@@ -83,6 +89,10 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
         Route::delete('/radica-recibida/{id}/archivos/adjuntos/{archivoId}/eliminar', [VentanillaRadicaReciAdjuntosController::class, 'eliminarArchivoAdjunto'])->name('radica-recibida.archivos.adjuntos.eliminar')->middleware('can:'.$permReci.'Eliminar adjuntos');
         Route::apiResource('responsables', VentanillaRadicaReciResponsaController::class)->except('create', 'edit')->middleware('can:'.$permReci.'Editar');
         Route::get('/radica-recibida/{radica_reci_id}/responsables', [VentanillaRadicaReciResponsaController::class, 'getByRadicado'])->name('radica-recibida.responsables.listar')->middleware('can:'.$permReci.'Editar');
+
+        Route::get('/radica-recibida/{radica_reci_id}/pase-historial', [VentanillaRadicaReciPaseHistorialController::class, 'byRadicado'])->name('radica-recibida.pase.historial')->middleware('can:'.$permReci.'Mostrar');
+
+        Route::get('/radica-recibida/{radica_reci_id}/compartir-historial', [VentanillaRadicaReciCompartirHistorialController::class, 'byRadicado'])->name('radica-recibida.compartir.historial')->middleware('can:'.$permReci.'Mostrar');
         Route::get('/metadata/clasificacion-niveles', [MetadataController::class, 'nivelClasificacionIndex'])->name('metadata.niveles')->middleware('can:'.$permReci.'Listar');
         Route::get('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'show'])->name('metadata.show')->middleware('can:'.$permReci.'Mostrar');
         Route::put('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'store'])->name('metadata.update')->middleware('can:'.$permReci.'Editar');

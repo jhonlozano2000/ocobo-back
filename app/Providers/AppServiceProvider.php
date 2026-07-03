@@ -18,7 +18,8 @@ use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempArchivoVersion;
 use App\Models\MiBandeja\MiBandejaTempGrupoFirmante;
 use App\Models\MiBandeja\MiBandejaTempGrupoProyector;
-use App\Models\MiBandeja\MiBandejaTempGrupoResponsable;
+use App\Models\MiBandeja\MiBandejaTempGrupoRevisor;
+use App\Models\MiBandeja\MiBandejaTempGrupoAprobador;
 use App\Models\MiBandeja\MiBandejaTempNota;
 use App\Observers\MiBandeja\GrupoColaborativoAuditObserver;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -51,7 +52,8 @@ class AppServiceProvider extends ServiceProvider
         MiBandejaTemp::observe(GrupoColaborativoAuditObserver::class);
         MiBandejaTempArchivoVersion::observe(GrupoColaborativoAuditObserver::class);
         MiBandejaTempNota::observe(GrupoColaborativoAuditObserver::class);
-        MiBandejaTempGrupoResponsable::observe(GrupoColaborativoAuditObserver::class);
+        MiBandejaTempGrupoRevisor::observe(GrupoColaborativoAuditObserver::class);
+        MiBandejaTempGrupoAprobador::observe(GrupoColaborativoAuditObserver::class);
         MiBandejaTempGrupoFirmante::observe(GrupoColaborativoAuditObserver::class);
         MiBandejaTempGrupoProyector::observe(GrupoColaborativoAuditObserver::class);
     }

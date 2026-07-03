@@ -13,7 +13,9 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciCompartirHistorial;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciOptimizedView;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciPaseHistorial;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsa;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
 use App\Services\VentanillaUnica\PqrsService;
@@ -566,7 +568,88 @@ class VentanillaRadicaReciController extends Controller
                 ];
             }
 
-            // 5. Documento visto por responsable
+            // 5. Pases realizados (historial de reasignaciones)
+            $pases = VentanillaRadicaReciPaseHistorial::with([
+                'usuarioOrigen', 'usuarioDestino', 'usersCargosDestino.cargo'
+            ])
+                ->where('radica_reci_id', $id)
+                ->get();
+
+            foreach ($pases as $pase) {
+                $usuarioOrigenInfo = $pase->usuarioOrigen?->getInfoUsuario();
+                $usuarioDestinoInfo = $pase->usuarioDestino?->getInfoUsuario();
+                $cargoDestino = $pase->usersCargosDestino?->cargo;
+
+                $origenNombre = $usuarioOrigenInfo['nombre_completo'] ?? ($pase->usuarioOrigen?->name ?? 'Usuario');
+                $destinoNombre = $usuarioDestinoInfo['nombre_completo'] ?? ($pase->usuarioDestino?->name ?? 'Usuario');
+                $cargoNombre = $cargoDestino?->nom_organico;
+
+                $descripcion = $cargoNombre
+                    ? "Pase de {$origenNombre} a {$destinoNombre} ({$cargoNombre})"
+                    : "Pase de {$origenNombre} a {$destinoNombre}";
+
+                $eventos[] = [
+                    'fecha' => $pase->created_at,
+                    'tipo' => 'pase_realizado',
+                    'titulo' => 'Pase de radicado',
+                    'descripcion' => $descripcion,
+                    'usuario' => $usuarioOrigenInfo,
+                    'icono' => 'tabler-arrow-forward-up',
+                    'datos' => [
+                        'pase_id' => $pase->id,
+                        'tipo_pase' => $pase->tipo,
+                        'usuario_origen' => $usuarioOrigenInfo,
+                        'usuario_destino' => $usuarioDestinoInfo,
+                        'cargo_destino' => $cargoDestino ? [
+                            'id' => $cargoDestino->id,
+                            'nombre' => $cargoDestino->nom_organico,
+                            'codigo' => $cargoDestino->cod_organico,
+                        ] : null,
+                    ],
+                ];
+            }
+
+            // 6. Compartir (con copia / CC) realizados
+            $compartirs = VentanillaRadicaReciCompartirHistorial::with([
+                'usuarioOrigen', 'usuarioDestino', 'usersCargosDestino.cargo'
+            ])
+                ->where('radica_reci_id', $id)
+                ->get();
+
+            foreach ($compartirs as $compartir) {
+                $usuarioOrigenInfo = $compartir->usuarioOrigen?->getInfoUsuario();
+                $usuarioDestinoInfo = $compartir->usuarioDestino?->getInfoUsuario();
+                $cargoDestino = $compartir->usersCargosDestino?->cargo;
+
+                $origenNombre = $usuarioOrigenInfo['nombre_completo'] ?? ($compartir->usuarioOrigen?->name ?? 'Usuario');
+                $destinoNombre = $usuarioDestinoInfo['nombre_completo'] ?? ($compartir->usuarioDestino?->name ?? 'Usuario');
+                $cargoNombre = $cargoDestino?->nom_organico;
+
+                $descripcion = $cargoNombre
+                    ? "Compartido con {$destinoNombre} ({$cargoNombre}) por {$origenNombre}"
+                    : "Compartido con {$destinoNombre} por {$origenNombre}";
+
+                $eventos[] = [
+                    'fecha' => $compartir->created_at,
+                    'tipo' => 'compartir_realizado',
+                    'titulo' => 'Compartir radicado',
+                    'descripcion' => $descripcion,
+                    'usuario' => $usuarioOrigenInfo,
+                    'icono' => 'tabler-copy-plus',
+                    'datos' => [
+                        'compartir_id' => $compartir->id,
+                        'usuario_origen' => $usuarioOrigenInfo,
+                        'usuario_destino' => $usuarioDestinoInfo,
+                        'cargo_destino' => $cargoDestino ? [
+                            'id' => $cargoDestino->id,
+                            'nombre' => $cargoDestino->nom_organico,
+                            'codigo' => $cargoDestino->cod_organico,
+                        ] : null,
+                    ],
+                ];
+            }
+
+            // 7. Documento visto por responsable
             foreach ($radicado->responsables as $responsable) {
                 if ($responsable->fechor_visto) {
                     $user = $responsable->userCargo && $responsable->userCargo->user
@@ -590,7 +673,7 @@ class VentanillaRadicaReciController extends Controller
                 }
             }
 
-            // 6. Archivos adjuntos subidos
+            // 8. Archivos adjuntos subidos
             foreach ($radicado->archivos as $archivo) {
                 $eventos[] = [
                     'fecha' => $archivo->created_at,
@@ -608,7 +691,7 @@ class VentanillaRadicaReciController extends Controller
                 ];
             }
 
-            // 7. Archivos eliminados
+            // 9. Archivos eliminados
             foreach ($radicado->archivosEliminados as $eliminado) {
                 $eventos[] = [
                     'fecha' => $eliminado->deleted_at,

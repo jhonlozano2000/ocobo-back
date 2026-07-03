@@ -25,42 +25,46 @@ class MisGruposActivosController extends Controller
 
             $grupos = MiBandejaTemp::with([
                     'ultimaVersion.bloqueadoPor:id,nombres,apellidos',
-                    'responsables.user:id,nombres,apellidos',
+                    'revisores.user:id,nombres,apellidos',
                     'firmantes.user:id,nombres,apellidos',
                     'proyectores.user:id,nombres,apellidos',
+                    'aprobadores.user:id,nombres,apellidos',
                     'radicadoRecibido.tercero',
                     'radicadoEnviado.tercero',
                     'radicadoInterno',
                 ])
                 ->where('estado_grupo', 'activo')
                 ->where(function ($q) use ($user) {
-                    $q->whereHas('responsables', fn($q) => $q->where('user_id', $user->id))
+                    $q->whereHas('revisores', fn($q) => $q->where('user_id', $user->id))
                       ->orWhereHas('firmantes', fn($q) => $q->where('user_id', $user->id))
-                      ->orWhereHas('proyectores', fn($q) => $q->where('user_id', $user->id));
+                      ->orWhereHas('proyectores', fn($q) => $q->where('user_id', $user->id))
+                      ->orWhereHas('aprobadores', fn($q) => $q->where('user_id', $user->id));
                 })
                 ->orderBy('updated_at', 'desc')
                 ->get();
 
             $data = $grupos->map(function ($grupo) use ($user) {
-                $miembroR = $grupo->responsables->firstWhere('user_id', $user->id);
+                $miembroRv = $grupo->revisores->firstWhere('user_id', $user->id);
                 $miembroF = $grupo->firmantes->firstWhere('user_id', $user->id);
                 $miembroP = $grupo->proyectores->firstWhere('user_id', $user->id);
+                $miembroAp = $grupo->aprobadores->firstWhere('user_id', $user->id);
 
-                if ($miembroR) {
-                    $miRol = 'responsable';
-                    $esCustodio = (bool) $miembroR->es_custodio;
+                if ($miembroRv) {
+                    $miRol = 'revisor';
                     $ordenFirma = null;
-                    $miEstadoTarea = $miembroR->estado_tarea ?? 'pendiente';
+                    $miEstadoTarea = $miembroRv->estado_tarea ?? 'pendiente';
                 } elseif ($miembroF) {
                     $miRol = 'firmante';
-                    $esCustodio = false;
                     $ordenFirma = $miembroF->orden_firma;
                     $miEstadoTarea = $miembroF->estado_tarea ?? 'pendiente';
-                } else {
+                } elseif ($miembroP) {
                     $miRol = 'proyector';
-                    $esCustodio = false;
                     $ordenFirma = null;
                     $miEstadoTarea = $miembroP->estado_tarea ?? 'pendiente';
+                } else {
+                    $miRol = 'aprobador';
+                    $ordenFirma = null;
+                    $miEstadoTarea = $miembroAp->estado_tarea ?? 'pendiente';
                 }
 
                 $ultimaVersion = $grupo->ultimaVersion;
@@ -99,14 +103,13 @@ class MisGruposActivosController extends Controller
                 }
 
                 // Full member lists
-                $responsables = $grupo->responsables->map(fn($r) => [
+                $revisores = $grupo->revisores->map(fn($r) => [
                     'user' => [
                         'nombres' => $r->user?->nombres,
                         'apellidos' => $r->user?->apellidos,
                     ],
                     'estado_tarea' => $r->estado_tarea ?? 'pendiente',
                     'descargo_plantilla' => (bool) $r->descargo_plantilla,
-                    'es_custodio' => (bool) $r->es_custodio,
                 ])->values();
 
                 $firmantes = $grupo->firmantes->map(fn($f) => [
@@ -128,6 +131,15 @@ class MisGruposActivosController extends Controller
                     'descargo_plantilla' => (bool) $p->descargo_plantilla,
                 ])->values();
 
+                $aprobadores = $grupo->aprobadores->map(fn($a) => [
+                    'user' => [
+                        'nombres' => $a->user?->nombres,
+                        'apellidos' => $a->user?->apellidos,
+                    ],
+                    'estado_tarea' => $a->estado_tarea ?? 'pendiente',
+                    'descargo_plantilla' => (bool) $a->descargo_plantilla,
+                ])->values();
+
                 return [
                     'id' => $grupo->id,
                     'usua_crea_id' => $grupo->usua_crea_id,
@@ -135,7 +147,6 @@ class MisGruposActivosController extends Controller
                     'asunto' => $grupo->asunto,
                     'estado' => $grupo->estado,
                     'mi_rol' => $miRol,
-                    'es_custodio' => $esCustodio,
                     'orden_firma' => $ordenFirma,
                     'mi_estado_tarea' => $miEstadoTarea,
                     'todos_cumplidos' => $grupo->todosTerminados(),
@@ -143,9 +154,10 @@ class MisGruposActivosController extends Controller
                     'plantilla_id' => $grupo->plantilla_id,
                     'ultima_version' => $versionData,
                     'radicado' => $radicado,
-                    'responsables' => $responsables,
+                    'revisores' => $revisores,
                     'firmantes' => $firmantes,
                     'proyectores' => $proyectores,
+                    'aprobadores' => $aprobadores,
                 ];
             });
 

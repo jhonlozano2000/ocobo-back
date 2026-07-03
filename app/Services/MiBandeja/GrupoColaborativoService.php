@@ -9,7 +9,8 @@ use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempArchivoVersion;
 use App\Models\MiBandeja\MiBandejaTempGrupoFirmante;
 use App\Models\MiBandeja\MiBandejaTempGrupoProyector;
-use App\Models\MiBandeja\MiBandejaTempGrupoResponsable;
+use App\Models\MiBandeja\MiBandejaTempGrupoRevisor;
+use App\Models\MiBandeja\MiBandejaTempGrupoAprobador;
 use App\Models\User;
 use App\Models\MiBandeja\MiBandejaTempAuditLog;
 use App\Models\OfiArchivo\OfiArchivoPlantillaDocumento;
@@ -17,6 +18,7 @@ use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -26,6 +28,17 @@ class GrupoColaborativoService
     private const HORAS_BLOQUEO = 24;
 
     public function __construct() {}
+
+    private function dispatchSafely($event): void
+    {
+        try {
+            Event::dispatch($event);
+        } catch (\Exception $e) {
+            Log::warning('Evento no se pudo transmitir: ' . $e->getMessage(), [
+                'event' => get_class($event),
+            ]);
+        }
+    }
 
     public function checkOut(MiBandejaTemp $grupo, User $user): array
     {
@@ -66,7 +79,7 @@ class GrupoColaborativoService
                 'fecha_bloqueo' => Carbon::now(),
             ]);
 
-            Event::dispatch(new DocumentoBloqueado(
+            $this->dispatchSafely(new DocumentoBloqueado(
                 $grupo->id,
                 $user->id,
                 "{$user->nombres} {$user->apellidos}",
@@ -152,7 +165,7 @@ class GrupoColaborativoService
             $grupo->update(['plantilla_cargada' => true]);
             $this->marcarDescargaPlantilla($grupo, $user);
 
-            Event::dispatch(new DocumentoBloqueado(
+            $this->dispatchSafely(new DocumentoBloqueado(
                 $grupo->id,
                 $user->id,
                 "{$user->nombres} {$user->apellidos}",
@@ -189,16 +202,9 @@ class GrupoColaborativoService
 
             $radicado = $grupo->radicado;
             $numRadicado = $radicado?->num_radicado ?? 'sin-radicado';
-            $rutaRelativa = "{$numRadicado}/{$uuid}";
+
+            $rutaRelativa = Storage::disk(self::DISCO)->putFileAs($numRadicado, $archivo, $uuid);
             $rutaCompleta = Storage::disk(self::DISCO)->path($rutaRelativa);
-
-            $directorio = dirname($rutaCompleta);
-            if (!is_dir($directorio)) {
-                mkdir($directorio, 0755, true);
-            }
-
-            $archivo->move($directorio, basename($rutaCompleta));
-
             $hash = hash_file('sha256', $rutaCompleta);
 
             $partes = explode('.', $ultimaVersion->version);
@@ -221,7 +227,7 @@ class GrupoColaborativoService
                 'comentario_version' => $comentario,
             ]);
 
-            Event::dispatch(new DocumentoLiberado(
+            $this->dispatchSafely(new DocumentoLiberado(
                 $grupo->id,
                 $nuevaVersion,
                 $user->id,
@@ -250,7 +256,7 @@ class GrupoColaborativoService
                 'fecha_bloqueo' => null,
             ]);
 
-            Event::dispatch(new DocumentoLiberado(
+            $this->dispatchSafely(new DocumentoLiberado(
                 $version->grupo_id,
                 $version->version,
                 $user->id,
@@ -262,49 +268,59 @@ class GrupoColaborativoService
     public function marcarCumplido(MiBandejaTemp $grupo, User $user): array
     {
         return DB::transaction(function () use ($grupo, $user) {
-            $rol = null;
-            $actualizado = false;
+            $rolesCompletados = [];
+            $userId = $user->id;
 
-            $responsable = $grupo->responsables()->where('user_id', $user->id)->first();
-            if ($responsable) {
-                $responsable->update([
-                    'estado_tarea' => 'cumplido',
-                    'fechor_terminado' => Carbon::now(),
-                    'descargo_plantilla' => true,
-                ]);
-                $rol = 'responsable';
-                $actualizado = true;
-            }
-
-            if (!$actualizado) {
-                $firmante = $grupo->firmantes()->where('user_id', $user->id)->first();
-                if ($firmante) {
-                    $firmante->update([
+            $completarEntrada = function ($entrada, string $nombreRol) use (&$rolesCompletados) {
+                if ($entrada && $entrada->estado_tarea !== 'cumplido') {
+                    $entrada->update([
                         'estado_tarea' => 'cumplido',
                         'fechor_terminado' => Carbon::now(),
                         'descargo_plantilla' => true,
                     ]);
-                    $rol = 'firmante';
-                    $actualizado = true;
+                    $rolesCompletados[] = $nombreRol;
                 }
+            };
+
+            $revisor = $grupo->revisores()->where('user_id', $userId)->first();
+            $completarEntrada($revisor, 'revisor');
+
+            $proyector = $grupo->proyectores()->where('user_id', $userId)->first();
+            $completarEntrada($proyector, 'proyector');
+
+            $aprobador = $grupo->aprobadores()->where('user_id', $userId)->first();
+            if ($aprobador && $aprobador->estado_tarea !== 'cumplido') {
+                $otrosProyectoresPendientes = $grupo->proyectores()
+                    ->where('user_id', '!=', $userId)
+                    ->where('estado_tarea', '!=', 'cumplido')
+                    ->exists();
+                $otrosRevisoresPendientes = $grupo->revisores()
+                    ->where('user_id', '!=', $userId)
+                    ->where('estado_tarea', '!=', 'cumplido')
+                    ->exists();
+                if ($otrosProyectoresPendientes || $otrosRevisoresPendientes) {
+                    throw new \RuntimeException('Deben completar su tarea todos los proyectores y revisores antes de que los aprobadores puedan marcar cumplido');
+                }
+                $completarEntrada($aprobador, 'aprobador');
             }
 
-            if (!$actualizado) {
-                $proyector = $grupo->proyectores()->where('user_id', $user->id)->first();
-                if ($proyector) {
-                    $proyector->update([
-                        'estado_tarea' => 'cumplido',
-                        'fechor_terminado' => Carbon::now(),
-                        'descargo_plantilla' => true,
-                    ]);
-                    $rol = 'proyector';
-                    $actualizado = true;
+            $firmante = $grupo->firmantes()->where('user_id', $userId)->first();
+            if ($firmante && $firmante->estado_tarea !== 'cumplido') {
+                $otrosAprobadoresPendientes = $grupo->aprobadores()
+                    ->where('user_id', '!=', $userId)
+                    ->where('estado_tarea', '!=', 'cumplido')
+                    ->exists();
+                if ($otrosAprobadoresPendientes) {
+                    throw new \RuntimeException('Deben completar su tarea todos los aprobadores antes de que los firmantes puedan marcar cumplido');
                 }
+                $completarEntrada($firmante, 'firmante');
             }
 
-            if (!$actualizado) {
+            if (empty($rolesCompletados)) {
                 throw new \RuntimeException('No eres miembro de este grupo');
             }
+
+            $rolPrincipal = $rolesCompletados[0];
 
             $grupo->refresh();
             $todosCumplidos = $grupo->todosTerminados();
@@ -315,17 +331,17 @@ class GrupoColaborativoService
                 $nuevoEstado = 'listo_envio';
             }
 
-            Event::dispatch(new MiembroCumplido(
+            $this->dispatchSafely(new MiembroCumplido(
                 $grupo->id,
                 $user->id,
                 "{$user->nombres} {$user->apellidos}",
-                $rol,
+                $rolPrincipal,
                 $todosCumplidos,
                 $nuevoEstado,
             ));
 
             return [
-                'rol' => $rol,
+                'rol' => $rolPrincipal,
                 'todos_cumplidos' => $todosCumplidos,
                 'nuevo_estado' => $grupo->estado,
             ];
@@ -405,16 +421,9 @@ class GrupoColaborativoService
 
             $radicado = $grupo->radicado;
             $numRadicado = $radicado?->num_radicado ?? 'sin-radicado';
-            $rutaRelativa = "{$numRadicado}/{$uuid}";
+
+            $rutaRelativa = Storage::disk(self::DISCO)->putFileAs($numRadicado, $archivo, $uuid);
             $rutaCompleta = Storage::disk(self::DISCO)->path($rutaRelativa);
-
-            $directorio = dirname($rutaCompleta);
-            if (!is_dir($directorio)) {
-                mkdir($directorio, 0755, true);
-            }
-
-            $archivo->move($directorio, basename($rutaCompleta));
-
             $hash = hash_file('sha256', $rutaCompleta);
 
             return MiBandejaTempArchivoVersion::create([
@@ -481,9 +490,10 @@ class GrupoColaborativoService
             'TIPO_DOCUMENTAL' => '',
             'CODIGO_SERIE' => '',
             'CODIGO_SUB_SERIE' => '',
-            'RESPONSABLES' => $miembrosNombres($grupo->responsables),
+            'RESPONSABLES' => $miembrosNombres($grupo->revisores),
             'FIRMANTES' => $miembrosNombres($grupo->firmantes),
             'PROYECTORES' => $miembrosNombres($grupo->proyectores),
+            'APROBADORES' => $miembrosNombres($grupo->aprobadores),
             'DESTINATARIOS' => '',
             'FUNCIONARIO_ACTUAL' => trim(($user->nombres ?? '') . ' ' . ($user->apellidos ?? '')),
             'CARGO_ACTUAL' => $user->cargo?->nombre ?? '',
@@ -676,18 +686,24 @@ class GrupoColaborativoService
 
     private function marcarDescargaPlantilla(MiBandejaTemp $grupo, User $user): void
     {
-        $miembro = MiBandejaTempGrupoResponsable::where('grupo_id', $grupo->id)
+        $miembro = MiBandejaTempGrupoRevisor::where('grupo_id', $grupo->id)
             ->where('user_id', $user->id)
             ->first();
 
         if (!$miembro) {
-            $miembro = MiBandejaTempGrupoFirmante::where('grupo_id', $grupo->id)
+            $miembro = MiBandejaTempGrupoProyector::where('grupo_id', $grupo->id)
                 ->where('user_id', $user->id)
                 ->first();
         }
 
         if (!$miembro) {
-            $miembro = MiBandejaTempGrupoProyector::where('grupo_id', $grupo->id)
+            $miembro = MiBandejaTempGrupoAprobador::where('grupo_id', $grupo->id)
+                ->where('user_id', $user->id)
+                ->first();
+        }
+
+        if (!$miembro) {
+            $miembro = MiBandejaTempGrupoFirmante::where('grupo_id', $grupo->id)
                 ->where('user_id', $user->id)
                 ->first();
         }

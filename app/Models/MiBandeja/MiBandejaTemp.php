@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * Modelo para grupos colaborativos temporales en Mi Bandeja.
- * Representa un grupo de trabajo temporal con responsables, firmantes y proyectores.
+ * Representa un grupo de trabajo temporal con revisores, firmantes, proyectores y aprobadores.
  */
 class MiBandejaTemp extends Model
 {
@@ -131,13 +131,23 @@ class MiBandejaTemp extends Model
     }
 
     /**
-     * Relación con los responsables del grupo.
+     * Relación con los revisores del grupo.
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
-    public function responsables(): HasMany
+    public function revisores(): HasMany
     {
-        return $this->hasMany(MiBandejaTempGrupoResponsable::class, 'grupo_id');
+        return $this->hasMany(MiBandejaTempGrupoRevisor::class, 'grupo_id');
+    }
+
+    /**
+     * Relación con los aprobadores del grupo.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function aprobadores(): HasMany
+    {
+        return $this->hasMany(MiBandejaTempGrupoAprobador::class, 'grupo_id');
     }
 
     /**
@@ -192,18 +202,20 @@ class MiBandejaTemp extends Model
      */
     public function todosTerminados(): bool
     {
-        $responsables = $this->responsables->count();
+        $revisores = $this->revisores->count();
         $firmantes = $this->firmantes->count();
         $proyectores = $this->proyectores->count();
+        $aprobadores = $this->aprobadores->count();
 
-        if ($responsables === 0 && $firmantes === 0 && $proyectores === 0) {
+        if ($revisores === 0 && $firmantes === 0 && $proyectores === 0 && $aprobadores === 0) {
             return false;
         }
 
-        $todosResponsables = $this->responsables->every(fn ($r) => $r->estado_tarea === 'cumplido');
+        $todosRevisores = $this->revisores->every(fn ($r) => $r->estado_tarea === 'cumplido');
         $todosFirmantes = $this->firmantes->every(fn ($f) => $f->estado_tarea === 'cumplido' && $f->fechor_firmado !== null);
         $todosProyectores = $this->proyectores->every(fn ($p) => $p->estado_tarea === 'cumplido');
+        $todosAprobadores = $this->aprobadores->every(fn ($a) => $a->estado_tarea === 'cumplido');
 
-        return $todosResponsables && $todosFirmantes && $todosProyectores;
+        return $todosRevisores && $todosFirmantes && $todosProyectores && $todosAprobadores;
     }
 }

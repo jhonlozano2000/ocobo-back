@@ -117,6 +117,10 @@ class RouteServiceProvider extends ServiceProvider
                 ->group(base_path('routes/mi-bandeja-enviados.php'));
 
             Route::middleware('api')
+                ->prefix('api/mi-bandeja/internos')
+                ->group(base_path('routes/mi-bandeja-internos.php'));
+
+            Route::middleware('api')
                 ->prefix('api/mi-bandeja')
                 ->group(base_path('routes/mi-bandeja-temp.php'));
 

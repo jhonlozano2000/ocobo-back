@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EncryptCookies;
+use App\Http\Middleware\VerifyCsrfToken;
 use Laravel\Sanctum\Http\Middleware\AuthenticateSession;
 use Laravel\Sanctum\Sanctum;
 
@@ -76,6 +78,8 @@ return [
     */
 
     'middleware' => [
+        'encrypt_cookies' => EncryptCookies::class,
+        'verify_csrf_token' => VerifyCsrfToken::class,
         AuthenticateSession::class,
     ],
 

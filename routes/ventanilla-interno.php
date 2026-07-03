@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoAdjuntosController;
+use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoCompartirHistorialController;
 use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoController;
 use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoDestinatariosController;
 use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoDigitalController;
+use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoPaseHistorialController;
 use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoProyectoresController;
 use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoResponsaController;
 use Illuminate\Support\Facades\Route;
@@ -50,6 +52,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('responsables-internos', VentanillaRadicaInternoResponsaController::class)->except('create', 'edit')->middleware('can:'.$permInterno.'Editar');
     Route::get('/radica-interno/{radica_interno_id}/responsables', [VentanillaRadicaInternoResponsaController::class, 'getByRadicado'])->name('radica-interno.responsables.listar')->middleware('can:'.$permInterno.'Editar');
     Route::post('/radica-interno/{radica_interno_id}/responsables', [VentanillaRadicaInternoResponsaController::class, 'assignToRadicado'])->name('radica-interno.responsables.asignar')->middleware('can:'.$permInterno.'Editar');
+
+    Route::post('/radica-interno/{radica_interno_id}/pase', [VentanillaRadicaInternoPaseHistorialController::class, 'store'])->name('radica-interno.pase.registrar')->middleware('can:'.$permInterno.'Editar');
+    Route::get('/radica-interno/{radica_interno_id}/pase-historial', [VentanillaRadicaInternoPaseHistorialController::class, 'byRadicado'])->name('radica-interno.pase.historial')->middleware('can:'.$permInterno.'Mostrar');
+
+    Route::post('/radica-interno/{radica_interno_id}/compartir', [VentanillaRadicaInternoCompartirHistorialController::class, 'store'])->name('radica-interno.compartir.registrar')->middleware('can:'.$permInterno.'Editar');
+    Route::get('/radica-interno/{radica_interno_id}/compartir-historial', [VentanillaRadicaInternoCompartirHistorialController::class, 'byRadicado'])->name('radica-interno.compartir.historial')->middleware('can:'.$permInterno.'Mostrar');
 
     Route::apiResource('proyectores-internos', VentanillaRadicaInternoProyectoresController::class)->except('create', 'edit')->middleware('can:'.$permInterno.'Editar');
     Route::get('/radica-interno/{radica_interno_id}/proyectores', [VentanillaRadicaInternoProyectoresController::class, 'getByRadicado'])->name('radica-interno.proyectores.listar')->middleware('can:'.$permInterno.'Editar');
