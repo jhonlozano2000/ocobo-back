@@ -28,10 +28,16 @@ class StoreMiBandejaTempRequest extends FormRequest
      */
     public function rules(): array
     {
+        $tablaRadicado = match ($this->input('radicado_tipo')) {
+            'enviado' => 'ventanilla_radica_envia',
+            'interno' => 'ventanilla_radica_internos',
+            default => 'ventanilla_radica_reci',
+        };
+
         return [
             'nombre' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
-            'radicado_id' => 'required|integer|exists:ventanilla_radica_reci,id',
+            'radicado_id' => "required|integer|exists:{$tablaRadicado},id",
             'radicado_tipo' => ['required', Rule::in(['recibido', 'enviado', 'interno'])],
             'estado' => ['nullable', Rule::in(['borrador', 'activo', 'finalizado', 'archivado'])],
             'estado_grupo' => ['nullable', Rule::in(['activo', 'inactivo', 'anulado'])],
