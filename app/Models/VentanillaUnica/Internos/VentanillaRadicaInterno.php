@@ -40,6 +40,7 @@ class VentanillaRadicaInterno extends Model
         'observa_aprue_anula',
         'estado_firma',
         'fecha_firma',
+        'dependencia_origen_id',
     ];
 
     protected $casts = [
@@ -64,10 +65,27 @@ class VentanillaRadicaInterno extends Model
     }
 
     /**
-     * Dependencia de origen inferida del usuario creador.
+     * Dependencia de origen.
+     */
+    public function dependenciaOrigen()
+    {
+        return $this->belongsTo(CalidadOrganigrama::class, 'dependencia_origen_id');
+    }
+
+    /**
+     * Atributo compuesto: prefiere la relación guardada, fallback a inferencia del usuario creador.
      */
     public function getDependenciaOrigenAttribute()
     {
+        if ($this->relationLoaded('dependenciaOrigen') && $this->dependenciaOrigen) {
+            return ['id' => $this->dependenciaOrigen->id, 'nombre' => $this->dependenciaOrigen->nom_organico];
+        }
+
+        if ($this->dependencia_origen_id) {
+            $dep = $this->dependenciaOrigen;
+            return $dep ? ['id' => $dep->id, 'nombre' => $dep->nom_organico] : null;
+        }
+
         $cargoActivo = $this->usuarioCrea?->cargoActivo;
         if (!$cargoActivo?->cargo) {
             return null;

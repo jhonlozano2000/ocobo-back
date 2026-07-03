@@ -40,7 +40,7 @@ class MiBandejaInternosController extends Controller
             }
 
             $radicados = $query
-                ->with(['responsables.userCargo', 'usuarioCrea.cargoActivo.cargo'])
+                ->with(['responsables.userCargo', 'usuarioCrea.cargoActivo.cargo', 'dependenciaOrigen'])
                 ->limit(50)
                 ->get()
                 ->each->append('dependencia_origen');
