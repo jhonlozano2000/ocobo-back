@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\MiBandeja\Enviados;
 
 use App\Http\Controllers\Controller;
-use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviado;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados as VentanillaRadicaEnviado;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
