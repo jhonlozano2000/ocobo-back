@@ -21,6 +21,7 @@ use Database\Seeders\Permisos\PermisosGestionSeeder;
 use Database\Seeders\Permisos\PermisosMiBandejaSeeder;
 use Database\Seeders\Permisos\PermisosRadicarSeeder;
 use Database\Seeders\Permisos\PermisosReportesSeeder;
+use Database\Seeders\Permisos\PermisosWorkflowsSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -61,5 +62,6 @@ class DatabaseSeeder extends Seeder
         $this->call(PermisosRadicarSeeder::class);
 
         $this->call(PermisosPlantillasDocumentosSeeder::class);
+        $this->call(PermisosWorkflowsSeeder::class);
     }
 }

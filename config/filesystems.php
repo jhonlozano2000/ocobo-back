@@ -132,6 +132,13 @@ return [
             'throw' => false,
         ],
 
+        'workflows_archivos' => [
+            'driver' => 'local',
+            'root' => storage_path('app/workflows_archivos'),
+            'visibility' => 'private',
+            'throw' => false,
+        ],
+
     ],
 
     /*
