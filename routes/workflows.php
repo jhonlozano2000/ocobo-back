@@ -38,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}', [WorkFlowTareaController::class, 'destroy']);
     Route::post('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/asignar', [WorkFlowTareaController::class, 'asignar']);
     Route::patch('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/estado', [WorkFlowTareaController::class, 'cambiarEstado']);
+    Route::put('workflows/{workflow}/nodos/{nodo}/tareas/reordenar', [WorkFlowTareaController::class, 'reordenar']);
 
     Route::get('workflows/{workflow}/archivos', [WorkFlowArchivoController::class, 'index']);
     Route::post('workflows/{workflow}/archivos', [WorkFlowArchivoController::class, 'store']);

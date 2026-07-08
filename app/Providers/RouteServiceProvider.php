@@ -148,6 +148,11 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('api')
                 ->prefix('api/archivo')
                 ->group(base_path('routes/archivo-plantillas.php'));
+
+            // WORKFLOWS PERSONALIZADOS (ISO 27001 A.9, A.12)
+            Route::middleware('api')
+                ->prefix('api/workflows')
+                ->group(base_path('routes/workflows.php'));
         });
     }
 }

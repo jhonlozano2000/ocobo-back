@@ -6,7 +6,7 @@ use App\Models\ControlAcceso\UserCargo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class VentanillaRadicaEnviadosRespona extends Model
+class VentanillaRadicaEnviadosResponsable extends Model
 {
     use HasFactory;
 

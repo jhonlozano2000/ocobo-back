@@ -41,6 +41,8 @@ class ClasificacionDocumentalTRD extends Model
         'requiere_pdf_a',
         'pdf_a_nivel',
         'convierte_a_pdf_a',
+        'disposicion_final',
+        'soporte',
     ];
 
     protected $casts = [

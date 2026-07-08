@@ -16,7 +16,7 @@ use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciCompartirHistorial;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciOptimizedView;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciPaseHistorial;
-use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsa;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsable;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
 use App\Services\VentanillaUnica\PqrsService;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
@@ -1344,7 +1344,7 @@ class VentanillaRadicaReciController extends Controller
             }
 
             // Verificar si algún responsable ya ha visto el documento
-            $responsableVisto = VentanillaRadicaReciResponsa::where('radica_reci_id', $id)
+            $responsableVisto = VentanillaRadicaReciResponsable::where('radica_reci_id', $id)
                 ->whereNotNull('fechor_visto')
                 ->exists();
 
@@ -1431,7 +1431,7 @@ class VentanillaRadicaReciController extends Controller
             }
 
             // Verificar si algún responsable ha visto el documento
-            $responsableHaVisto = VentanillaRadicaReciResponsa::where('radica_reci_id', $id)
+            $responsableHaVisto = VentanillaRadicaReciResponsable::where('radica_reci_id', $id)
                 ->whereNotNull('fechor_visto')
                 ->exists();
 

@@ -5,7 +5,7 @@ namespace App\Services\VentanillaUnica\Recibidos;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciPaseHistorial;
-use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsa;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
@@ -54,7 +54,7 @@ class PaseHistorialService
                 'tipo' => $data['tipo'] ?? VentanillaRadicaReciPaseHistorial::TIPO_PASE,
             ]);
 
-            $responsable = VentanillaRadicaReciResponsa::create([
+            $responsable = VentanillaRadicaReciResponsable::create([
                 'radica_reci_id' => $data['radica_reci_id'],
                 'users_cargos_id' => $usersCargosId,
                 'custodio' => 0,

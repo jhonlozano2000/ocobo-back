@@ -23,6 +23,9 @@ Route::middleware('auth:sanctum')->get('/auth/check', function () {
     return response()->json(['authenticated' => true]);
 });
 
+// Usuario autenticado (usado por SessionGuard del frontend)
+Route::middleware('auth:sanctum')->get('/getme', [AuthController::class, 'getMe']);
+
 // ==========================================
 // RUTAS DE GESTIÓN DE ARCHIVO (ISO 27001)
 Route::middleware('auth:sanctum')->prefix('archivo')->group(function () {

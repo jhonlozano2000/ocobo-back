@@ -540,6 +540,18 @@ Route::middleware('auth:sanctum')->prefix('comunicaciones-recibidas')->group(fun
 
 ## 📋 Changelog
 
+### v2.6 (Julio 2026) — In-App Notifications en Tiempo Real (Reverb)
+
+- ✅ **M16 In-App Notifications** — Sistema de notificaciones push en tiempo real
+- ✅ **Notificacion model** — `notifications` table con user_id, type, title, message, data, read_at
+- ✅ **NotificationPushed event** — Broadcast a PrivateChannel('user.{id}') con Laravel Reverb
+- ✅ **InAppNotificationController** — 4 endpoints: index, unreadCount, markAsRead, markAllAsRead
+- ✅ **InAppNotificationResource** — Serialización con formato ISO para fechas
+- ✅ **Rutas API** — `GET|POST|PATCH /api/transversal/in-app-notifications/*`
+- ✅ **Integración Reverb** — WebSocket push en tiempo real a cada usuario
+- ✅ **Fallo a polling** — El frontend consulta cada 2 min como respaldo
+- ✅ **Migración** — `create_notifications_table` con índices y FK
+
 ### v2.5 (Junio 2026) — Firma Electrónica + Notificaciones + Mejoras
 - ✅ **M13 Firma Electrónica** — OTP + PDF stamping (FPDI) + FirmaEvento (ISO 27001) para recibidos, enviados, internos y PQRS (Ley 527/1999)
 - ✅ **AnularPqrs** — Endpoint con motivo, estado_tramite → Vencida

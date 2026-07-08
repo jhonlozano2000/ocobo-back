@@ -9,6 +9,7 @@ use App\Http\Requests\Workflows\StoreWorkFlowTareaRequest;
 use App\Http\Requests\Workflows\UpdateWorkFlowTareaRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Services\Workflows\WorkFlowTareaService;
+use Illuminate\Http\Request;
 
 class WorkFlowTareaController extends Controller
 {
@@ -107,6 +108,21 @@ class WorkFlowTareaController extends Controller
             return $this->successResponse($tarea, 'Estado de tarea actualizado correctamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al cambiar estado de tarea', $e->getMessage());
+        }
+    }
+
+    public function reordenar(Request $request, int $workflowId, int $nodoId)
+    {
+        try {
+            $request->validate([
+                'tareas' => 'required|array',
+                'tareas.*' => 'required|integer|exists:work_flow_tareas,id',
+            ]);
+
+            $tareas = $this->tareaService->reordenar($nodoId, $request->input('tareas'));
+            return $this->successResponse($tareas, 'Tareas reordenadas correctamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al reordenar tareas', $e->getMessage());
         }
     }
 }

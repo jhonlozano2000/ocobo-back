@@ -94,7 +94,8 @@ class VentanillaRadicaInterno extends Model
         $node = $cargoActivo->cargo;
         $visited = 0;
         while ($node && $node->tipo !== 'Dependencia' && $visited < 20) {
-            $node = $node->parent;
+            $parentId = $node->getAttribute('parent');
+            $node = $parentId ? $node->parent()->first() : null;
             $visited++;
         }
 
@@ -129,7 +130,7 @@ class VentanillaRadicaInterno extends Model
      */
     public function responsables()
     {
-        return $this->hasMany(VentanillaRadicaInternoResponsa::class, 'radica_interno_id');
+        return $this->hasMany(VentanillaRadicaInternoResponsable::class, 'radica_interno_id');
     }
 
     /**

@@ -98,6 +98,23 @@ class WorkFlowTareaService
         });
     }
 
+    public function reordenar(int $nodoId, array $tareaIds)
+    {
+        return DB::transaction(function () use ($nodoId, $tareaIds) {
+            foreach ($tareaIds as $index => $tareaId) {
+                WorkFlowTarea::where('nodo_id', $nodoId)
+                    ->where('id', $tareaId)
+                    ->update(['orden' => $index]);
+            }
+
+            return WorkFlowTarea::where('nodo_id', $nodoId)
+                ->with('responsable:id,name')
+                ->orderBy('orden')
+                ->orderBy('created_at')
+                ->get();
+        });
+    }
+
     public function asignar(int $tareaId, int $responsableUserId): WorkFlowTarea
     {
         return DB::transaction(function () use ($tareaId, $responsableUserId) {

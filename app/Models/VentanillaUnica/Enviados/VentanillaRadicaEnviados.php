@@ -158,7 +158,7 @@ class VentanillaRadicaEnviados extends Model
 
     public function responsables()
     {
-        return $this->hasMany(VentanillaRadicaEnviadosRespona::class, 'radica_enviado_id');
+        return $this->hasMany(VentanillaRadicaEnviadosResponsable::class, 'radica_enviado_id');
     }
 
     public function usuariosResponsables()

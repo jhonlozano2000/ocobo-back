@@ -4,7 +4,7 @@ namespace App\Http\Requests\Ventanilla\Enviados;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreResponsaEnviadoRequest extends FormRequest
+class StoreResponsableEnviadoRequest extends FormRequest
 {
     public function authorize(): bool
     {

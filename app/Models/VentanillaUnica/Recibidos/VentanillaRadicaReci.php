@@ -188,7 +188,7 @@ class VentanillaRadicaReci extends Model
      */
     public function responsables()
     {
-        return $this->hasMany(VentanillaRadicaReciResponsa::class, 'radica_reci_id');
+        return $this->hasMany(VentanillaRadicaReciResponsable::class, 'radica_reci_id');
     }
 
     /**

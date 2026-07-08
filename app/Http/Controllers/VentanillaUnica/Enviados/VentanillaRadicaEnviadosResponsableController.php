@@ -3,15 +3,15 @@
 namespace App\Http\Controllers\VentanillaUnica\Enviados;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Ventanilla\Enviados\StoreResponsaEnviadoRequest;
-use App\Http\Requests\Ventanilla\Enviados\UpdateResponsaEnviadoRequest;
+use App\Http\Requests\Ventanilla\Enviados\StoreResponsableEnviadoRequest;
+use App\Http\Requests\Ventanilla\Enviados\UpdateResponsableEnviadoRequest;
 use App\Http\Requests\Ventanilla\Generales\ListResponsablesEnviadoRequest;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosRespona;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosResponsable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class VentanillaRadicaEnviadosResponsaController extends Controller
+class VentanillaRadicaEnviadosResponsableController extends Controller
 {
     use ApiResponseTrait;
 
@@ -23,7 +23,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
     public function index(ListResponsablesEnviadoRequest $request)
     {
         try {
-            $query = VentanillaRadicaEnviadosRespona::with(['userCargo.user', 'userCargo.cargo', 'radicado']);
+            $query = VentanillaRadicaEnviadosResponsable::with(['userCargo.user', 'userCargo.cargo', 'radicado']);
 
             if ($request->filled('radica_enviado_id')) {
                 $query->where('radica_enviado_id', $request->radica_enviado_id);
@@ -49,7 +49,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
         }
     }
 
-    public function store(StoreResponsaEnviadoRequest $request)
+    public function store(StoreResponsableEnviadoRequest $request)
     {
         try {
             DB::beginTransaction();
@@ -68,7 +68,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
                     return $this->errorResponse('Cada responsable debe incluir radica_enviado_id', null, 400);
                 }
 
-                $responsable = VentanillaRadicaEnviadosRespona::create([
+                $responsable = VentanillaRadicaEnviadosResponsable::create([
                     'radica_enviado_id' => $radicaEnviadoId,
                     'users_cargos_id' => (int) $item['users_cargos_id'],
                     'custodio' => filter_var($item['custodio'], FILTER_VALIDATE_BOOLEAN),
@@ -89,7 +89,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
     public function show($id)
     {
         try {
-            $responsable = VentanillaRadicaEnviadosRespona::with(['userCargo.user', 'userCargo.cargo', 'radicado'])->find($id);
+            $responsable = VentanillaRadicaEnviadosResponsable::with(['userCargo.user', 'userCargo.cargo', 'radicado'])->find($id);
 
             if (! $responsable) {
                 return $this->errorResponse('Responsable no encontrado', null, 404);
@@ -104,12 +104,12 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
         }
     }
 
-    public function update($id, UpdateResponsaEnviadoRequest $request)
+    public function update($id, UpdateResponsableEnviadoRequest $request)
     {
         try {
             DB::beginTransaction();
 
-            $responsable = VentanillaRadicaEnviadosRespona::find($id);
+            $responsable = VentanillaRadicaEnviadosResponsable::find($id);
 
             if (! $responsable) {
                 return $this->errorResponse('Responsable no encontrado', null, 404);
@@ -144,7 +144,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
         try {
             DB::beginTransaction();
 
-            $responsable = VentanillaRadicaEnviadosRespona::find($id);
+            $responsable = VentanillaRadicaEnviadosResponsable::find($id);
 
             if (! $responsable) {
                 return $this->errorResponse('Responsable no encontrado', null, 404);
@@ -165,7 +165,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
     public function getByRadicado($radica_enviado_id)
     {
         try {
-            $responsables = VentanillaRadicaEnviadosRespona::with(['userCargo.user', 'userCargo.cargo'])
+            $responsables = VentanillaRadicaEnviadosResponsable::with(['userCargo.user', 'userCargo.cargo'])
                 ->where('radica_enviado_id', $radica_enviado_id)
                 ->orderBy('created_at', 'desc')
                 ->get();
@@ -178,7 +178,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
         }
     }
 
-    public function assignToRadicado($radica_enviado_id, StoreResponsaEnviadoRequest $request)
+    public function assignToRadicado($radica_enviado_id, StoreResponsableEnviadoRequest $request)
     {
         try {
             DB::beginTransaction();
@@ -193,7 +193,7 @@ class VentanillaRadicaEnviadosResponsaController extends Controller
             $responsablesCreados = [];
 
             foreach ($responsables as $item) {
-                $responsable = VentanillaRadicaEnviadosRespona::create([
+                $responsable = VentanillaRadicaEnviadosResponsable::create([
                     'radica_enviado_id' => (int) $radica_enviado_id,
                     'users_cargos_id' => (int) $item['users_cargos_id'],
                     'custodio' => filter_var($item['custodio'], FILTER_VALIDATE_BOOLEAN),

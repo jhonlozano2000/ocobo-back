@@ -10,7 +10,7 @@ use App\Http\Requests\Ventanilla\Enviados\StoreRadicadoEnviadoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
-use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosRespona;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosResponsable;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
 use App\Traits\AuditViewTrait;
 use App\Traits\VentanillaAuditTrait;

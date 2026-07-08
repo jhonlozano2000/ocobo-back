@@ -5,7 +5,7 @@ namespace App\Services\VentanillaUnica\Internos;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoPaseHistorial;
-use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoResponsa;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoResponsable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
@@ -54,7 +54,7 @@ class PaseHistorialInternoService
                 'tipo' => $data['tipo'] ?? VentanillaRadicaInternoPaseHistorial::TIPO_PASE,
             ]);
 
-            $responsable = VentanillaRadicaInternoResponsa::create([
+            $responsable = VentanillaRadicaInternoResponsable::create([
                 'radica_interno_id' => $data['radica_interno_id'],
                 'users_cargos_id' => $usersCargosId,
                 'custodio' => 0,

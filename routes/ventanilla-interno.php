@@ -7,7 +7,7 @@ use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoDestina
 use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoDigitalController;
 use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoPaseHistorialController;
 use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoProyectoresController;
-use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoResponsaController;
+use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoResponsableController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -49,9 +49,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/historial/archivos-eliminados', [VentanillaRadicaInternoDigitalController::class, 'historialEliminaciones'])->name('historial.eliminaciones');
     });
 
-    Route::apiResource('responsables-internos', VentanillaRadicaInternoResponsaController::class)->except('create', 'edit')->middleware('can:'.$permInterno.'Editar');
-    Route::get('/radica-interno/{radica_interno_id}/responsables', [VentanillaRadicaInternoResponsaController::class, 'getByRadicado'])->name('radica-interno.responsables.listar')->middleware('can:'.$permInterno.'Editar');
-    Route::post('/radica-interno/{radica_interno_id}/responsables', [VentanillaRadicaInternoResponsaController::class, 'assignToRadicado'])->name('radica-interno.responsables.asignar')->middleware('can:'.$permInterno.'Editar');
+    Route::apiResource('responsables-internos', VentanillaRadicaInternoResponsableController::class)->except('create', 'edit')->middleware('can:'.$permInterno.'Editar');
+    Route::get('/radica-interno/{radica_interno_id}/responsables', [VentanillaRadicaInternoResponsableController::class, 'getByRadicado'])->name('radica-interno.responsables.listar')->middleware('can:'.$permInterno.'Editar');
+    Route::post('/radica-interno/{radica_interno_id}/responsables', [VentanillaRadicaInternoResponsableController::class, 'assignToRadicado'])->name('radica-interno.responsables.asignar')->middleware('can:'.$permInterno.'Editar');
 
     Route::post('/radica-interno/{radica_interno_id}/pase', [VentanillaRadicaInternoPaseHistorialController::class, 'store'])->name('radica-interno.pase.registrar')->middleware('can:'.$permInterno.'Editar');
     Route::get('/radica-interno/{radica_interno_id}/pase-historial', [VentanillaRadicaInternoPaseHistorialController::class, 'byRadicado'])->name('radica-interno.pase.historial')->middleware('can:'.$permInterno.'Mostrar');

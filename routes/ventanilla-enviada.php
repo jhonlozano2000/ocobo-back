@@ -5,7 +5,7 @@ use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosContro
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosDigitalController;
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosFirmantesController;
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosProyectoresController;
-use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosResponsaController;
+use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosResponsableController;
 use App\Http\Controllers\VentanillaUnica\MetadataController;
 use Illuminate\Support\Facades\Route;
 
@@ -50,9 +50,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/historial/archivos-eliminados', [VentanillaRadicaEnviadosDigitalController::class, 'historialEliminaciones'])->name('historial.eliminaciones')->middleware('can:'.$permEnvi.'Mostrar');
     });
 
-    Route::apiResource('responsables-enviados', VentanillaRadicaEnviadosResponsaController::class)->except('create', 'edit')->middleware('can:'.$permEnvi.'Editar');
-    Route::get('/radica-enviada/{radica_enviado_id}/responsables', [VentanillaRadicaEnviadosResponsaController::class, 'getByRadicado'])->name('radica-enviada.responsables.listar')->middleware('can:'.$permEnvi.'Editar');
-    Route::post('/radica-enviada/{radica_enviado_id}/responsables', [VentanillaRadicaEnviadosResponsaController::class, 'assignToRadicado'])->name('radica-enviada.responsables.asignar')->middleware('can:'.$permEnvi.'Editar');
+    Route::apiResource('responsables-enviados', VentanillaRadicaEnviadosResponsableController::class)->except('create', 'edit')->middleware('can:'.$permEnvi.'Editar');
+    Route::get('/radica-enviada/{radica_enviado_id}/responsables', [VentanillaRadicaEnviadosResponsableController::class, 'getByRadicado'])->name('radica-enviada.responsables.listar')->middleware('can:'.$permEnvi.'Editar');
+    Route::post('/radica-enviada/{radica_enviado_id}/responsables', [VentanillaRadicaEnviadosResponsableController::class, 'assignToRadicado'])->name('radica-enviada.responsables.asignar')->middleware('can:'.$permEnvi.'Editar');
 
     Route::apiResource('firmantes-enviados', VentanillaRadicaEnviadosFirmantesController::class)->except('create', 'edit')->middleware('can:'.$permEnvi.'Editar');
     Route::get('/radica-enviada/{radica_enviado_id}/firmantes', [VentanillaRadicaEnviadosFirmantesController::class, 'getByRadicado'])->name('radica-enviada.firmantes.listar')->middleware('can:'.$permEnvi.'Editar');
