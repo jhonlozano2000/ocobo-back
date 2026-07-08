@@ -24,7 +24,12 @@ class TareaController extends Controller
     public function __construct(
         private readonly TareaService $tareaService
     ) {
-        // $this->middleware('can:...')->only(['index']);
+        $this->middleware('can:viewAny,Tarea')->only(['index']);
+        $this->middleware('can:create,Tarea')->only(['store']);
+        $this->middleware('can:view,Tarea')->only(['show']);
+        $this->middleware('can:update,Tarea')->only(['update']);
+        $this->middleware('can:delete,Tarea')->only(['destroy']);
+        $this->middleware('can:update,Tarea')->only(['completar']);
     }
 
     /**

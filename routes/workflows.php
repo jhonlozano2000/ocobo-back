@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\Workflows\WorkflowNodoController;
 use App\Http\Controllers\Api\Workflows\WorkflowInstanciaController;
 use App\Http\Controllers\Api\Workflows\WorkFlowTareaController;
 use App\Http\Controllers\Api\Workflows\WorkFlowArchivoController;
+use App\Http\Controllers\Api\Workflows\TareaController;
+use App\Http\Controllers\Api\Workflows\TareaChecklistController;
 use Illuminate\Support\Facades\Route;
 
 // ==========================================
@@ -44,4 +46,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('workflows/{workflow}/archivos', [WorkFlowArchivoController::class, 'store']);
     Route::get('workflows/{workflow}/archivos/{archivo}/download', [WorkFlowArchivoController::class, 'download']);
     Route::delete('workflows/{workflow}/archivos/{archivo}', [WorkFlowArchivoController::class, 'destroy']);
+
+    // Tareas (module-level, not nodo-level)
+    Route::get('{workflow}/tareas', [TareaController::class, 'index']);
+    Route::post('tareas', [TareaController::class, 'store']);
+    Route::get('tareas/{tarea}', [TareaController::class, 'show']);
+    Route::put('tareas/{tarea}', [TareaController::class, 'update']);
+    Route::delete('tareas/{tarea}', [TareaController::class, 'destroy']);
+    Route::post('tareas/{tarea}/completar', [TareaController::class, 'completar']);
+
+    // Checklist items (scoped to parent tarea)
+    Route::get('tareas/{tarea}/checklists', [TareaChecklistController::class, 'index']);
+    Route::post('tareas/{tarea}/checklists', [TareaChecklistController::class, 'store']);
+    Route::put('tareas/{tarea}/checklists/{checklist}', [TareaChecklistController::class, 'update']);
+    Route::delete('tareas/{tarea}/checklists/{checklist}', [TareaChecklistController::class, 'destroy']);
+    Route::put('tareas/{tarea}/checklists/reordenar', [TareaChecklistController::class, 'reordenar']);
 });

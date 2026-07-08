@@ -29,14 +29,12 @@ class TareaService
         return DB::transaction(function () use ($data, $user) {
             Workflow::findOrFail($data['workflow_id']);
 
-            $sanitizedDesc = isset($data['descripcion'])
-                ? (strip_tags($data['descripcion']) ?: null)
-                : null;
-
             $tarea = Tarea::create([
                 'workflow_id' => $data['workflow_id'],
                 'nombre' => $data['nombre'],
-                'descripcion' => $sanitizedDesc,
+                'descripcion' => isset($data['descripcion'])
+                    ? \Mews\Purifier\Facades\Purifier::clean($data['descripcion'])
+                    : null,
                 'fecha_limite' => $data['fecha_limite'] ?? null,
                 'estado' => $data['estado'] ?? 'pendiente',
             ]);
@@ -70,10 +68,7 @@ class TareaService
             }
 
             if (isset($data['descripcion'])) {
-                $clean = strip_tags($data['descripcion']);
-                if ($clean !== '') {
-                    $updateData['descripcion'] = $clean;
-                }
+                $updateData['descripcion'] = \Mews\Purifier\Facades\Purifier::clean($data['descripcion']);
             }
 
             if (isset($data['fecha_limite'])) {

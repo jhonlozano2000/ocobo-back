@@ -5,10 +5,12 @@ namespace App\Providers;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Models\Workflows\Tarea;
 use App\Models\Workflows\Workflow;
 use App\Policies\MiBandeja\TempReci\DocumentoPolicy;
 use App\Policies\UserPolicy;
 use App\Policies\VentanillaRadicaReciPolicy;
+use App\Policies\Workflows\TareaPolicy;
 use App\Policies\Workflows\WorkflowPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
@@ -24,6 +26,7 @@ class AuthServiceProvider extends ServiceProvider
         User::class => UserPolicy::class,
         Documento::class => DocumentoPolicy::class,
         Workflow::class => WorkflowPolicy::class,
+        Tarea::class => TareaPolicy::class,
     ];
 
     /**
