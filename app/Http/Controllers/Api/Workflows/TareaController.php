@@ -37,7 +37,7 @@ class TareaController extends Controller
             $tareas = Tarea::where('workflow_id', $workflowId)
                 ->with(['propietarios', 'responsables', 'checklists'])
                 ->orderBy('created_at', 'desc')
-                ->paginate(request('per_page', 15));
+                ->paginate(min((int) request('per_page', 15), 100));
 
             return $this->successResponse($tareas, 'Tareas obtenidas correctamente');
         } catch (\Exception $e) {

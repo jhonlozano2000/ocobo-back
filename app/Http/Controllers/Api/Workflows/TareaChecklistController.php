@@ -10,6 +10,7 @@ use App\Http\Requests\Workflows\UpdateChecklistItemRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\Tarea;
 use App\Models\Workflows\TareaChecklist;
+use Illuminate\Validation\Rule;
 use App\Services\Workflows\TareaService;
 
 /**
@@ -91,7 +92,11 @@ class TareaChecklistController extends Controller
         try {
             $data = request()->validate([
                 'orden' => 'required|array',
-                'orden.*' => 'required|integer|exists:tarea_checklists,id',
+                'orden.*' => [
+                    'required',
+                    'integer',
+                    Rule::exists('tarea_checklists', 'id')->where('tarea_id', $tarea->id),
+                ],
             ]);
             $this->tareaService->reordenarChecklist($tarea, $data['orden']);
             return $this->successResponse(null, 'Checklists reordenados correctamente');

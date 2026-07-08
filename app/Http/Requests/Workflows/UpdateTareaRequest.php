@@ -26,7 +26,7 @@ class UpdateTareaRequest extends FormRequest
             'responsables' => 'nullable|array',
             'responsables.*' => 'integer|exists:users,id',
             'checklists' => 'nullable|array',
-            'checklists.*.id' => 'nullable|integer',
+            'checklists.*.id' => 'nullable|integer|exists:tarea_checklists,id',
             'checklists.*.item_descripcion' => 'required_with:checklists|string|max:500',
             'checklists.*.esta_completado' => 'nullable|boolean',
         ];
