@@ -2,6 +2,7 @@
 
 namespace App\Services\Auth;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 
 class TwoFactorToken
@@ -34,6 +35,14 @@ class TwoFactorToken
             if ($payload['exp'] < now()->timestamp) {
                 return null;
             }
+
+            $tokenHash = sha1($token);
+            if (Cache::has('2fa_token_used_' . $tokenHash)) {
+                return null;
+            }
+
+            $remainingSeconds = max(1, $payload['exp'] - now()->timestamp);
+            Cache::put('2fa_token_used_' . $tokenHash, true, $remainingSeconds);
 
             return (int) $payload['user_id'];
         } catch (\Exception $e) {
