@@ -68,6 +68,8 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'two_factor_confirmed_at' => 'datetime',
+        'two_factor_secret' => 'encrypted',
     ];
 
     public function getAvatarUrlAttribute()
@@ -78,6 +80,21 @@ class User extends Authenticatable
     public function getFirmaUrlAttribute()
     {
         return ArchivoHelper::obtenerUrl($this->firma, 'firmas');
+    }
+
+    public function getTwoFactorEnabledAttribute(): bool
+    {
+        return $this->two_factor_confirmed_at !== null;
+    }
+
+    public function getTwoFactorRecoveryCodesAttribute($value): ?array
+    {
+        return $value ? json_decode($value, true) : null;
+    }
+
+    public function setTwoFactorRecoveryCodesAttribute($value): void
+    {
+        $this->attributes['two_factor_recovery_codes'] = $value ? json_encode($value) : null;
     }
 
     /**
@@ -334,5 +351,21 @@ class User extends Authenticatable
     public function usuarioCreaRadicado()
     {
         return $this->hasMany(VentanillaRadicaReci::class, 'usuario_crea');
+    }
+
+    /**
+     * Tareas donde el usuario es propietario.
+     */
+    public function tareasPropietario(): BelongsToMany
+    {
+        return $this->belongsToMany(Tarea::class, 'tarea_propietarios', 'user_id', 'tarea_id');
+    }
+
+    /**
+     * Tareas donde el usuario es responsable.
+     */
+    public function tareasResponsable(): BelongsToMany
+    {
+        return $this->belongsToMany(Tarea::class, 'tarea_responsables', 'user_id', 'tarea_id');
     }
 }
