@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\AuthLoginRequest;
 use App\Http\Requests\Auth\AuthRegisterRequest;
 use App\Http\Resources\UserResource;
+use App\Services\Auth\TwoFactorToken;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\User;
 use App\Models\UsersAuthenticationLog;
@@ -67,6 +68,16 @@ class AuthController extends Controller
             $this->logFailedLoginAttempt($user->id, $user->email, 'Credenciales incorrectas', $request);
 
             return $this->errorResponse('Las credenciales proporcionadas son incorrectas.', null, 401);
+        }
+
+        // Si el usuario tiene 2FA activo, NO crear sesión aún
+        if ($user->twoFactorEnabled) {
+            $token = TwoFactorToken::generate($user->id);
+
+            return $this->successResponse([
+                'requires_2fa' => true,
+                'two_factor_token' => $token,
+            ], 'Se requiere verificación de dos factores');
         }
 
         // Autenticar al usuario (esto establecerá la sesión)
