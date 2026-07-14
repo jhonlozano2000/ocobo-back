@@ -58,6 +58,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -94,7 +96,7 @@ class User extends Authenticatable
 
     public function setTwoFactorRecoveryCodesAttribute($value): void
     {
-        $this->attributes['two_factor_recovery_codes'] = $value ? json_encode($value) : null;
+        $this->attributes['two_factor_recovery_codes'] = is_array($value) ? json_encode($value) : null;
     }
 
     /**
