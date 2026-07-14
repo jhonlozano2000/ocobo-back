@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Firma\FirmaController;
 use App\Http\Controllers\Transversal\FirmaEventosController;
+use App\Http\Controllers\Transversal\FirmaValidacionController;
 use App\Http\Controllers\Transversal\InAppNotificationController;
 use App\Http\Controllers\Transversal\NotificacionesController;
 use Illuminate\Support\Facades\Route;
@@ -27,3 +28,6 @@ Route::middleware('auth:sanctum')->prefix('in-app-notifications')->group(functio
 Route::middleware('auth:sanctum')->prefix('firma-eventos')->group(function () {
     Route::get('/{tipo}/{documentoId}', [FirmaEventosController::class, 'historial']);
 });
+
+// M13 — Validación de integridad de firma
+Route::middleware('auth:sanctum')->post('firma-validar', [FirmaValidacionController::class, 'validar']);
