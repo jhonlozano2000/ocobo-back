@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 // Rutas públicas con rate limiting específico
 Route::middleware('throttle:login')->post('/login', [AuthController::class, 'login']);
 Route::middleware('throttle:register')->post('/register', [AuthController::class, 'register']);
-Route::post('/logout', [AuthController::class, 'logout']);
+Route::middleware(['auth:sanctum', 'throttle:login'])->post('/logout', [AuthController::class, 'logout']);
 
 // Verificación de sesión activa (usado por GuestOnlyRoute)
 Route::middleware('auth:sanctum')->get('/auth/check', function () {
@@ -25,6 +25,26 @@ Route::middleware('auth:sanctum')->get('/auth/check', function () {
 
 // Usuario autenticado (usado por SessionGuard del frontend)
 Route::middleware('auth:sanctum')->get('/getme', [AuthController::class, 'getMe']);
+
+// Verificación de permisos server-side (OWASP A01 - Broken Access Control)
+Route::middleware('auth:sanctum')->post('/auth/check-permissions', function (Illuminate\Http\Request $request) {
+    $user = $request->user();
+    $permissions = $request->input('permissions', []);
+    $results = [];
+    foreach ($permissions as $perm) {
+        $results[$perm] = $user->can($perm);
+    }
+    return response()->json(['data' => $results]);
+});
+
+// Rutas de 2FA
+Route::middleware('auth:sanctum')->prefix('2fa')->group(function () {
+    Route::get('/setup', [App\Http\Controllers\Auth\TwoFactorController::class, 'setup']);
+    Route::post('/confirm', [App\Http\Controllers\Auth\TwoFactorController::class, 'confirm'])->middleware('throttle:2fa-confirm');
+    Route::post('/disable', [App\Http\Controllers\Auth\TwoFactorController::class, 'disable'])->middleware('throttle:2fa-disable');
+});
+
+Route::post('/2fa/verify', [App\Http\Controllers\Auth\TwoFactorController::class, 'verify'])->middleware('throttle:2fa-verify');
 
 // ==========================================
 // RUTAS DE GESTIÓN DE ARCHIVO (ISO 27001)

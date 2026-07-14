@@ -76,9 +76,11 @@ class AppServiceProvider extends ServiceProvider
                 });
         });
 
-        // Rate limit autenticación: 5 intentos/min por IP (Brute Force Protection)
+        // Rate limit autenticación: 5 intentos/min por email+IP (Brute Force Protection)
         RateLimiter::for('login', function (Request $request) {
-            $loginId = $request->input('email') ?: $request->ip();
+            $email = $request->input('email', 'unknown');
+            $ip = $request->ip();
+            $loginId = $email . '|' . $ip;
 
             return Limit::perMinute(5)
                 ->by($loginId)
@@ -187,6 +189,42 @@ class AppServiceProvider extends ServiceProvider
                 ->response(function (Request $request, array $headers) {
                     return response()->json([
                         'message' => 'Límite de sincronización alcanzado.',
+                        'retry_after' => $headers['Retry-After'] ?? 60,
+                    ], 429);
+                });
+        });
+
+        // Rate limit 2FA confirm: 5 intentos/min por usuario
+        RateLimiter::for('2fa-confirm', function (Request $request) {
+            return Limit::perMinute(5)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Demasiados intentos de confirmación 2FA. Intente en 1 minuto.',
+                        'retry_after' => $headers['Retry-After'] ?? 60,
+                    ], 429);
+                });
+        });
+
+        // Rate limit 2FA disable: 3 intentos/min por usuario
+        RateLimiter::for('2fa-disable', function (Request $request) {
+            return Limit::perMinute(3)
+                ->by($request->user()?->id ?: $request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Demasiados intentos para desactivar 2FA. Intente en 1 minuto.',
+                        'retry_after' => $headers['Retry-After'] ?? 60,
+                    ], 429);
+                });
+        });
+
+        // Rate limit 2FA verify: 5 intentos/min por IP (brute force protection)
+        RateLimiter::for('2fa-verify', function (Request $request) {
+            return Limit::perMinute(5)
+                ->by($request->ip())
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Demasiados intentos de verificación 2FA. Intente en 1 minuto.',
                         'retry_after' => $headers['Retry-After'] ?? 60,
                     ], 429);
                 });
