@@ -81,6 +81,7 @@ class UserResource extends JsonResource
             'dependencia' => $dependencia,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+            'has_2fa_enabled' => $this->two_factor_confirmed_at !== null,
         ];
 
         return $this->sanitizeOutput($data);
