@@ -18,6 +18,7 @@ use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciOptimizedView;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciPaseHistorial;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsable;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
+use App\Services\ReportesExportService;
 use App\Services\VentanillaUnica\PqrsService;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use App\Traits\AuditViewTrait;
@@ -37,9 +38,12 @@ class VentanillaRadicaReciController extends Controller
 
     private const PERM = 'Radicar -> Cores. Recibida -> ';
 
-    public function __construct()
+    protected ReportesExportService $exportService;
+
+    public function __construct(ReportesExportService $exportService)
     {
-        $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'listarRadicados', 'estadisticas']);
+        $this->exportService = $exportService;
+        $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'listarRadicados', 'estadisticas', 'export']);
         $this->middleware('can:'.self::PERM.'Crear')->only(['store']);
         $this->middleware('can:'.self::PERM.'Mostrar')->only(['show', 'lineaTiempo']);
         $this->middleware('can:'.self::PERM.'Editar')->only(['update']);
@@ -187,6 +191,72 @@ class VentanillaRadicaReciController extends Controller
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener el listado de radicaciones', $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Exporta el listado de radicaciones recibidas en el formato solicitado.
+     */
+    public function export(Request $request)
+    {
+        $request->validate([
+            'format' => 'required|in:excel,pdf,csv',
+        ]);
+
+        $query = VentanillaRadicaReciOptimizedView::query()
+            ->conPermisoJerarquico(auth()->user());
+
+        $query->search($request->search)
+            ->fechaEntre($request->fecha_desde, $request->fecha_hasta)
+            ->clasificacionDocumental($request->clasifica_documen_id)
+            ->tercero($request->tercero_id)
+            ->medioRecepcion($request->medio_recep_id)
+            ->estadoTrabajo($request->estado_trabajo)
+            ->ordenadoPorFecha();
+
+        $radicados = $query->get();
+
+        $datos = $radicados->map(function ($r) {
+            return [
+                'id' => $r->id,
+                'num_radicado' => $r->num_radicado,
+                'asunto' => $r->asunto,
+                'fec_docu' => $r->fec_docu,
+                'fec_venci' => $r->fec_venci,
+                'clasificacion' => $r->clasificacion_nombre ?? '',
+                'tercero' => $r->tercero_nombre ?? '',
+                'medio_recepcion' => $r->medio_recepcion_nombre ?? '',
+                'estado_trabajo' => $r->estado_trabajo ?? '',
+                'creado_por' => $r->usuario_crea_nombre ?? '',
+                'created_at' => $r->created_at,
+            ];
+        })->toArray();
+
+        $data = [
+            'titulo' => 'Radicaciones Recibidas',
+            'datos' => $datos,
+        ];
+
+        $nombre = 'radicaciones_recibidas';
+
+        return match ($request->format) {
+            'excel' => $this->downloadExcel($data, $nombre),
+            'pdf' => $this->downloadPDF($data, $nombre),
+            'csv' => $this->exportService->exportarCSV($data, $nombre),
+        };
+    }
+
+    protected function downloadExcel(array $data, string $nombre)
+    {
+        $path = $this->exportService->exportarExcel($data, $nombre);
+
+        return response()->download($path, $nombre . '.xlsx')->deleteFileAfterSend(true);
+    }
+
+    protected function downloadPDF(array $data, string $nombre)
+    {
+        $path = $this->exportService->exportarPDF($data, $nombre);
+
+        return response()->download($path, $nombre . '.pdf')->deleteFileAfterSend(true);
     }
 
     /**

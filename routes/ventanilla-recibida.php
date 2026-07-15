@@ -32,6 +32,7 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
         Route::post('/radica-recibida/{id}/solicitar-anulacion', [VentanillaRadicaReciController::class, 'solicitarAnulacion'])->name('radica-recibida.solicitar-anulacion')->middleware('can:'.$permReci.'Listar');
         Route::post('/radica-recibida/{id}/procesar-anulacion', [VentanillaRadicaReciController::class, 'procesarAnulacion'])->name('radica-recibida.procesar-anulacion')->middleware('can:Jefe de Archivo');
         Route::get('/radica-recibida', [VentanillaRadicaReciController::class, 'index'])->name('radica-recibida.index')->middleware('can:'.$permReci.'Listar');
+        Route::get('/radica-recibida/export', [VentanillaRadicaReciController::class, 'export'])->name('radica-recibida.export')->middleware('can:'.$permReci.'Listar');
         Route::get('/radica-recibida/{id}', [VentanillaRadicaReciController::class, 'show'])->name('radica-recibida.show')->middleware('can:'.$permReci.'Mostrar');
         Route::get('/radica-recibida/search/ocr', [VentanillaRadicaReciController::class, 'searchByOcr'])->name('radica-recibida.search-ocr')->middleware('can:'.$permReci.'Listar');
     });
@@ -87,6 +88,7 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
     Route::middleware('throttle:api')->group(function () use ($permReci) {
         Route::delete('/radica-recibida/{id}/archivos/digital/delete', [VentanillaRadicaReciDigitalController::class, 'deleteFile'])->name('radica-recibida.archivos.digital.delete')->middleware('can:'.$permReci.'Eliminar digital');
         Route::delete('/radica-recibida/{id}/archivos/adjuntos/{archivoId}/eliminar', [VentanillaRadicaReciAdjuntosController::class, 'eliminarArchivoAdjunto'])->name('radica-recibida.archivos.adjuntos.eliminar')->middleware('can:'.$permReci.'Eliminar adjuntos');
+        Route::post('/radica-recibida/responsables/{id}/marcar-visto', [VentanillaRadicaReciResponsableController::class, 'marcarVisto'])->name('radica-recibida.responsables.marcar-visto')->middleware('can:'.$permReci.'Editar');
         Route::apiResource('responsables', VentanillaRadicaReciResponsableController::class)->except('create', 'edit')->middleware('can:'.$permReci.'Editar');
         Route::get('/radica-recibida/{radica_reci_id}/responsables', [VentanillaRadicaReciResponsableController::class, 'getByRadicado'])->name('radica-recibida.responsables.listar')->middleware('can:'.$permReci.'Editar');
 

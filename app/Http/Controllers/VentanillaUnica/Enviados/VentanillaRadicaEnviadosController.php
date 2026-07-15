@@ -12,6 +12,7 @@ use App\Models\Configuracion\ConfigVarias;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosResponsable;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
+use App\Services\ReportesExportService;
 use App\Traits\AuditViewTrait;
 use App\Traits\VentanillaAuditTrait;
 use Carbon\Carbon;
@@ -29,9 +30,12 @@ class VentanillaRadicaEnviadosController extends Controller
 
     private const PERM = 'Radicar -> Cores. Enviada -> ';
 
-    public function __construct()
+    protected ReportesExportService $exportService;
+
+    public function __construct(ReportesExportService $exportService)
     {
-        $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'listarRadicados', 'estadisticas']);
+        $this->exportService = $exportService;
+        $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'listarRadicados', 'estadisticas', 'export']);
         $this->middleware('can:'.self::PERM.'Crear')->only(['store']);
         $this->middleware('can:'.self::PERM.'Mostrar')->only(['show', 'lineaTiempo']);
         $this->middleware('can:'.self::PERM.'Editar')->only(['update']);
@@ -116,6 +120,90 @@ class VentanillaRadicaEnviadosController extends Controller
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener el listado de radicados enviados', $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Exporta el listado de radicados enviados en el formato solicitado.
+     */
+    public function export(Request $request)
+    {
+        $request->validate([
+            'format' => 'required|in:excel,pdf,csv',
+        ]);
+
+        $query = VentanillaRadicaEnviados::with([
+            'clasificacionDocumental',
+            'tercero',
+            'medioEnvio',
+        ]);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('num_radicado', 'like', "%{$search}%")
+                    ->orWhere('asunto', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('fecha_desde') && $request->filled('fecha_hasta')) {
+            $query->whereBetween('created_at', [$request->fecha_desde, $request->fecha_hasta]);
+        }
+
+        if ($request->filled('clasifica_documen_id')) {
+            $query->where('clasifica_documen_id', $request->clasifica_documen_id);
+        }
+
+        if ($request->filled('tercero_enviado_id')) {
+            $query->where('tercero_id', $request->tercero_enviado_id);
+        }
+
+        if ($request->filled('medio_enviado_id')) {
+            $query->where('medio_enviado_id', $request->medio_enviado_id);
+        }
+
+        $radicados = $query->orderBy('created_at', 'desc')->get();
+
+        $datos = $radicados->map(function ($r) {
+            return [
+                'id' => $r->id,
+                'num_radicado' => $r->num_radicado,
+                'asunto' => $r->asunto,
+                'fec_docu' => $r->fec_docu,
+                'fec_venci' => $r->fec_venci,
+                'clasificacion' => $r->clasificacionDocumental?->nom ?? '',
+                'tercero' => $r->tercero?->nom_razo_soci ?? '',
+                'medio_envio' => $r->medioEnvio?->nombre ?? '',
+                'estado_trabajo' => $r->estado_trabajo ?? '',
+                'created_at' => $r->created_at,
+            ];
+        })->toArray();
+
+        $data = [
+            'titulo' => 'Radicados Enviados',
+            'datos' => $datos,
+        ];
+
+        $nombre = 'radicados_enviados';
+
+        return match ($request->format) {
+            'excel' => $this->downloadExcel($data, $nombre),
+            'pdf' => $this->downloadPDF($data, $nombre),
+            'csv' => $this->exportService->exportarCSV($data, $nombre),
+        };
+    }
+
+    protected function downloadExcel(array $data, string $nombre)
+    {
+        $path = $this->exportService->exportarExcel($data, $nombre);
+
+        return response()->download($path, $nombre . '.xlsx')->deleteFileAfterSend(true);
+    }
+
+    protected function downloadPDF(array $data, string $nombre)
+    {
+        $path = $this->exportService->exportarPDF($data, $nombre);
+
+        return response()->download($path, $nombre . '.pdf')->deleteFileAfterSend(true);
     }
 
     public function store(StoreRadicadoEnviadoRequest $request)

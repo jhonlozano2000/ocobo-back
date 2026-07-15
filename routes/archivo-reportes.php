@@ -9,5 +9,6 @@ use Illuminate\Support\Facades\Route;
  */
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('reportes/{tipo}', [OfiArchivoReportesController::class, 'generar']);
+    Route::get('reportes/{tipo}/export', [OfiArchivoReportesController::class, 'export']);
     Route::get('reportes-estadisticas', [OfiArchivoReportesController::class, 'estadisticas']);
 });

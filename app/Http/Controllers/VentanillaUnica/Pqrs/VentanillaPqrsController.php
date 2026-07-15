@@ -11,6 +11,7 @@ use App\Http\Resources\VentanillaUnica\PqrsResource;
 use App\Http\Traits\ApiResponseTrait;
 use App\Mail\PqrsNotificacionEmail;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
+use App\Services\ReportesExportService;
 use App\Services\VentanillaUnica\PqrsService;
 use App\Traits\AuditViewTrait;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -27,9 +28,13 @@ class VentanillaPqrsController extends Controller
 
     private const PERM = 'Radicar -> PQRSF -> ';
 
+    protected ReportesExportService $exportService;
+
     public function __construct(
-        private PqrsService $pqrsService
+        private PqrsService $pqrsService,
+        ReportesExportService $exportService
     ) {
+        $this->exportService = $exportService;
         $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'estadisticas', 'lineaTiempo']);
         $this->middleware('can:'.self::PERM.'Crear')->only(['store']);
         $this->middleware('can:'.self::PERM.'Editar')->only(['update']);
@@ -104,6 +109,101 @@ class VentanillaPqrsController extends Controller
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener el listado de PQRS', $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Exporta el listado de PQRS en el formato solicitado.
+     */
+    public function export(Request $request)
+    {
+        $request->validate([
+            'format' => 'required|in:excel,pdf,csv',
+        ]);
+
+        $query = VentanillaPqrs::with([
+            'radicado',
+            'tercero',
+            'tipoPqrs',
+            'clasificacionDocumental',
+        ])->whereNotNull('ventanilla_radica_reci_id');
+
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->whereHas('radicado', function ($q) use ($request) {
+                    $q->where('num_radicado', 'like', "%{$request->search}%")
+                        ->orWhere('asunto', 'like', "%{$request->search}%");
+                })->orWhere('nom_afectado', 'like', "%{$request->search}%")
+                    ->orWhere('num_docu_afectado', 'like', "%{$request->search}%");
+            });
+        }
+
+        if ($request->filled('tipo_pqrs_id')) {
+            $query->where('tipo_pqrs_id', $request->tipo_pqrs_id);
+        }
+
+        if ($request->filled('estado_tramite')) {
+            $query->where('estado_tramite', $request->estado_tramite);
+        }
+
+        if ($request->filled('prioridad')) {
+            $query->where('prioridad', $request->prioridad);
+        }
+
+        if ($request->filled('clasificacion_id')) {
+            $query->where('clasificacion_documental_trd_id', $request->clasificacion_id);
+        }
+
+        if ($request->filled('gestion_tercero_id')) {
+            $query->where('gestion_tercero_id', $request->gestion_tercero_id);
+        }
+
+        if ($request->filled('fecha_desde') && $request->filled('fecha_hasta')) {
+            $query->whereBetween('fecha_vencimiento', [$request->fecha_desde, $request->fecha_hasta]);
+        }
+
+        $pqrsList = $query->latest()->get();
+
+        $datos = $pqrsList->map(function ($p) {
+            return [
+                'id' => $p->id,
+                'num_radicado' => $p->radicado?->num_radicado ?? '',
+                'tipo_pqrs' => $p->tipoPqrs?->nombre ?? '',
+                'estado_tramite' => $p->estado_tramite ?? '',
+                'prioridad' => $p->prioridad ?? '',
+                'nom_afectado' => $p->nom_afectado ?? '',
+                'num_docu_afectado' => $p->num_docu_afectado ?? '',
+                'fecha_vencimiento' => $p->fecha_vencimiento?->format('Y-m-d') ?? '',
+                'clasificacion' => $p->clasificacionDocumental?->nom ?? '',
+                'created_at' => $p->created_at,
+            ];
+        })->toArray();
+
+        $data = [
+            'titulo' => 'PQRS',
+            'datos' => $datos,
+        ];
+
+        $nombre = 'pqrs';
+
+        return match ($request->format) {
+            'excel' => $this->downloadExcel($data, $nombre),
+            'pdf' => $this->downloadPDF($data, $nombre),
+            'csv' => $this->exportService->exportarCSV($data, $nombre),
+        };
+    }
+
+    protected function downloadExcel(array $data, string $nombre)
+    {
+        $path = $this->exportService->exportarExcel($data, $nombre);
+
+        return response()->download($path, $nombre . '.xlsx')->deleteFileAfterSend(true);
+    }
+
+    protected function downloadPDF(array $data, string $nombre)
+    {
+        $path = $this->exportService->exportarPDF($data, $nombre);
+
+        return response()->download($path, $nombre . '.pdf')->deleteFileAfterSend(true);
     }
 
     public function store(StorePqrsRequest $request): JsonResponse

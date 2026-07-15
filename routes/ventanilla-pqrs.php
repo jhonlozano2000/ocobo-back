@@ -11,6 +11,7 @@ Route::middleware(['auth:sanctum', 'throttle:radicacion'])->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('throttle:api')->group(function () {
         Route::get('/pqrs', [VentanillaPqrsController::class, 'index'])->name('pqrs.index');
+        Route::get('/pqrs/export', [VentanillaPqrsController::class, 'export'])->name('pqrs.export');
         Route::get('/pqrs/estadisticas', [VentanillaPqrsController::class, 'estadisticas'])->name('pqrs.estadisticas');
         Route::get('/pqrs/{id}/linea-tiempo', [VentanillaPqrsController::class, 'lineaTiempo'])->name('pqrs.linea-tiempo');
         Route::get('/pqrs/{id}', [VentanillaPqrsController::class, 'show'])->name('pqrs.show');
