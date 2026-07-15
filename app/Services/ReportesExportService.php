@@ -8,6 +8,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class ReportesExportService
 {
@@ -20,9 +21,9 @@ class ReportesExportService
         $sheet = $spreadsheet->getActiveSheet();
 
         // Headers
-        $headers = $columnas ?: array_keys($data['datos'][0] ?? []);
+        $headers = $columnas ?: array_keys(($data['datos'][0] ?? []));
         foreach ($headers as $i => $header) {
-            $col = chr(65 + $i);
+            $col = Coordinate::stringFromColumnIndex($i + 1);
             $sheet->setCellValue($col . '1', $header);
             $sheet->getStyle($col . '1')->getFont()->setBold(true);
             $sheet->getStyle($col . '1')->getFill()
@@ -34,9 +35,9 @@ class ReportesExportService
 
         // Data
         $row = 2;
-        foreach ($data['datos'] as $item) {
+        foreach (($data['datos'] ?? []) as $item) {
             foreach ($headers as $i => $header) {
-                $col = chr(65 + $i);
+                $col = Coordinate::stringFromColumnIndex($i + 1);
                 $value = $item[$header] ?? $item[strtolower($header)] ?? '';
                 $sheet->setCellValue($col . $row, $value);
             }
@@ -45,7 +46,7 @@ class ReportesExportService
 
         // Auto-size columns
         foreach ($headers as $i => $header) {
-            $col = chr(65 + $i);
+            $col = Coordinate::stringFromColumnIndex($i + 1);
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
@@ -93,7 +94,7 @@ class ReportesExportService
      */
     public function exportarCSV(array $data, string $nombre, array $columnas = [])
     {
-        $headers = $columnas ?: array_keys($data['datos'][0] ?? []);
+        $headers = $columnas ?: array_keys(($data['datos'][0] ?? []));
 
         $callback = function () use ($data, $headers) {
             $handle = fopen('php://output', 'w');
@@ -103,7 +104,7 @@ class ReportesExportService
 
             fputcsv($handle, $headers);
 
-            foreach ($data['datos'] as $item) {
+            foreach (($data['datos'] ?? []) as $item) {
                 $row = [];
                 foreach ($headers as $header) {
                     $row[] = $item[$header] ?? $item[strtolower($header)] ?? '';
