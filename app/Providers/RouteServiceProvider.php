@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
@@ -36,25 +35,8 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
 
-            // BROADCASTING - WebSocket Authorization (para testing, acepta cualquier usuario)
-            Route::post('/broadcasting/auth', function (Request $request) {
-                $appKey = config('reverb.app_key', 'ocobo-app-key-2024');
-                $appSecret = config('reverb.app_secret', 'secret-key-2024');
-
-                // Para testing: usar usuario 1 si no hay sesión
-                $userId = auth()->id() ?? 1;
-                $user = auth()->user() ?? User::find(1);
-                $userName = $user?->name ?? $user?->nombres ?? 'Test User';
-
-                return response()->json([
-                    'auth' => $appKey.':user-'.$userId,
-                    'channel_data' => json_encode([
-                        'user_id' => $userId,
-                        'user_info' => ['name' => $userName],
-                    ]),
-                    'shared_secret' => $appSecret,
-                ]);
-            });
+            Route::middleware('api')
+                ->group(base_path('routes/broadcasting.php'));
 
             Route::middleware('api')
                 ->prefix('api/control-acceso')
@@ -153,6 +135,11 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('api')
                 ->prefix('api/workflows')
                 ->group(base_path('routes/workflows.php'));
+
+            // REPORTES UNIFICADOS M14
+            Route::middleware('api')
+                ->prefix('api/reportes')
+                ->group(base_path('routes/reportes.php'));
         });
     }
 }
