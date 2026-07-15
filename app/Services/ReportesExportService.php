@@ -20,7 +20,6 @@ class ReportesExportService
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Headers
         $headers = $columnas ?: array_keys(($data['datos'][0] ?? []));
         foreach ($headers as $i => $header) {
             $col = Coordinate::stringFromColumnIndex($i + 1);
@@ -33,31 +32,28 @@ class ReportesExportService
                 ->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
 
-        // Data
         $row = 2;
         foreach (($data['datos'] ?? []) as $item) {
             foreach ($headers as $i => $header) {
                 $col = Coordinate::stringFromColumnIndex($i + 1);
-                $value = $item[$header] ?? $item[strtolower($header)] ?? '';
+                $value = is_array($item) ? ($item[$header] ?? $item[strtolower($header)] ?? '') : '';
                 $sheet->setCellValue($col . $row, $value);
             }
             $row++;
         }
 
-        // Auto-size columns
         foreach ($headers as $i => $header) {
             $col = Coordinate::stringFromColumnIndex($i + 1);
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        $dir = storage_path('app/exports');
-        if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
-
-        $path = $dir . '/' . $nombre . '_' . date('Ymd_His') . '.xlsx';
+        $path = $this->generarRuta($nombre, 'xlsx');
         $writer = new Xlsx($spreadsheet);
         $writer->save($path);
+
+        if (!file_exists($path)) {
+            throw new \RuntimeException("No se pudo generar el archivo Excel.");
+        }
 
         return $path;
     }
@@ -78,13 +74,12 @@ class ReportesExportService
 
         $pdf->setPaper('letter', $orientacion);
 
-        $dir = storage_path('app/exports');
-        if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
+        $path = $this->generarRuta($nombre, 'pdf');
+        $bytes = file_put_contents($path, $pdf->output());
 
-        $path = $dir . '/' . $nombre . '_' . date('Ymd_His') . '.pdf';
-        file_put_contents($path, $pdf->output());
+        if ($bytes === false) {
+            throw new \RuntimeException("No se pudo generar el archivo PDF.");
+        }
 
         return $path;
     }
@@ -95,19 +90,17 @@ class ReportesExportService
     public function exportarCSV(array $data, string $nombre, array $columnas = [])
     {
         $headers = $columnas ?: array_keys(($data['datos'][0] ?? []));
+        $sanitizado = self::sanitizarNombre($nombre);
 
         $callback = function () use ($data, $headers) {
             $handle = fopen('php://output', 'w');
-
-            // UTF-8 BOM for Excel compatibility
             fwrite($handle, "\xEF\xBB\xBF");
-
             fputcsv($handle, $headers);
 
             foreach (($data['datos'] ?? []) as $item) {
                 $row = [];
                 foreach ($headers as $header) {
-                    $row[] = $item[$header] ?? $item[strtolower($header)] ?? '';
+                    $row[] = is_array($item) ? ($item[$header] ?? $item[strtolower($header)] ?? '') : '';
                 }
                 fputcsv($handle, $row);
             }
@@ -117,7 +110,24 @@ class ReportesExportService
 
         return response()->stream($callback, 200, [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $nombre . '_' . date('Ymd_His') . '.csv"',
+            'Content-Disposition' => 'attachment; filename="' . $sanitizado . '_' . date('Ymd_His') . '.csv"',
         ]);
+    }
+
+    protected function generarRuta(string $nombre, string $extension): string
+    {
+        $dir = storage_path('app/exports');
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $sanitizado = self::sanitizarNombre($nombre);
+
+        return $dir . '/' . $sanitizado . '_' . date('Ymd_His') . '.' . $extension;
+    }
+
+    protected static function sanitizarNombre(string $nombre): string
+    {
+        return preg_replace('/[^a-zA-Z0-9_-]/', '', $nombre);
     }
 }
