@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Transversal;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Transversal\MisFirmasResource;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Transversal\FirmaEvento;
+use Illuminate\Http\Request;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
@@ -60,6 +62,42 @@ class FirmaEventosController extends Controller
             'total_firmas' => $eventos->count(),
             'firmas' => $eventos,
         ], 'Historial de firmas electrónicas');
+    }
+
+    public function misFirmas(Request $request): JsonResponse
+    {
+        $tipoMap = [
+            'reci' => VentanillaRadicaReci::class,
+            'enviados' => VentanillaRadicaEnviados::class,
+            'interno' => VentanillaRadicaInterno::class,
+            'pqrs' => VentanillaPqrs::class,
+        ];
+
+        $query = FirmaEvento::where('user_id', $request->user()->id)
+            ->with('user');
+
+        if ($tipo = $request->query('tipo')) {
+            if (isset($tipoMap[$tipo])) {
+                $query->where('documentable_type', $tipoMap[$tipo]);
+            }
+        }
+
+        if ($desde = $request->query('desde')) {
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $desde)) {
+                $query->whereDate('fecha_firma', '>=', $desde);
+            }
+        }
+
+        if ($hasta = $request->query('hasta')) {
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $hasta)) {
+                $query->whereDate('fecha_firma', '<=', $hasta);
+            }
+        }
+
+        $perPage = min((int) $request->query('per_page', 50), 100);
+        $firmas = $query->latest('fecha_firma')->paginate($perPage);
+
+        return $this->successResponse(MisFirmasResource::collection($firmas), 'Listado de firmas');
     }
 
     /**

@@ -26,6 +26,7 @@ Route::middleware('auth:sanctum')->prefix('in-app-notifications')->group(functio
 
 // M13 — Historial de firmas electrónicas (Ley 527/1999, ISO 27001 A.8.15)
 Route::middleware('auth:sanctum')->prefix('firma-eventos')->group(function () {
+    Route::get('/mis-firmas', [FirmaEventosController::class, 'misFirmas']);
     Route::get('/{tipo}/{documentoId}', [FirmaEventosController::class, 'historial']);
 });
 
