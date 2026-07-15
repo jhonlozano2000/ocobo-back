@@ -35,3 +35,6 @@ Schedule::command('archivo:depurar-digital --disco=radicados_enviados --dias=30'
 
 // Grupos Colaborativos: liberar bloqueos expirados cada hora
 Schedule::command('grupos-colaborativos:liberar-bloqueos')->hourly()->withoutOverlapping();
+
+// M14: Reportes programados — revisa cada 5 minutos si hay pendientes
+Schedule::command('reportes:generar-programados')->everyFiveMinutes()->withoutOverlapping();
