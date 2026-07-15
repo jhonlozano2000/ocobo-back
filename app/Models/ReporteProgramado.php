@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ReporteProgramado extends Model
 {
+    use HasFactory;
+
     protected $table = 'reportes_programados';
 
     protected $fillable = [
