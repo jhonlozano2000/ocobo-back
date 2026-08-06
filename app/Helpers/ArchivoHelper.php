@@ -437,8 +437,8 @@ class ArchivoHelper
             }
 
             return $pdf->Output('S'); // Retorna el binario como string
-        } catch (\Exception $e) {
-            // Si falla la inyección (ej: PDF encriptado), retornamos el contenido original
+        } catch (\Throwable $e) {
+            // Si falla la inyección (ej: PDF encriptado, Error/TypeError), retornamos el contenido original
             Log::warning('inyectarMetadatosPDF falló, usando original', [
                 'path' => $realPath,
                 'error' => $e->getMessage(),
