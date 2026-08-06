@@ -2,9 +2,12 @@
 
 namespace App\Services\ClasificacionDocumental;
 
+use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTVD;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Http\UploadedFile;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class TVDService
 {
@@ -111,5 +114,154 @@ class TVDService
         }
 
         return $tvd->delete();
+    }
+
+    /**
+     * Importa TVD desde un archivo Excel/CSV.
+     * Estructura esperada (similar a la plantilla TRD):
+     * Fila 4: A=Dependencia, B=codigo dependencia
+     * Datos desde fila 7: A=dependencia, B=serie, C=subserie, E=nombre; H=gestion, I=central
+     */
+    public function importFromExcel(UploadedFile $archivo): array
+    {
+        $spreadsheet = IOFactory::load($archivo->getRealPath());
+        $sheet = $spreadsheet->getActiveSheet();
+        $data = $sheet->toArray();
+
+        $codigoDependencia = trim($sheet->getCell('B4')->getValue() ?? '');
+        $dependencia = CalidadOrganigrama::where('cod_organico', $codigoDependencia)
+            ->where('tipo', 'Dependencia')
+            ->first();
+
+        if (! $dependencia) {
+            return ['inserted' => 0, 'errors' => ['No se encontró la dependencia con código: '.$codigoDependencia]];
+        }
+
+        $idSerie = null;
+        $inserted = 0;
+        $errors = [];
+
+        foreach ($data as $index => $row) {
+            if ($index < 6) {
+                continue;
+            }
+
+            $colA = trim($row[0] ?? '');
+            $colB = trim($row[1] ?? '');
+            $colC = trim($row[2] ?? '');
+            $nombre = trim($row[4] ?? '');
+
+            if (empty($nombre)) {
+                continue;
+            }
+
+            $hasA = ! empty($colA);
+            $hasB = ! empty($colB);
+            $hasC = ! empty($colC);
+
+            $tipo = null;
+            $codigo = null;
+            $parent = null;
+
+            if ($hasA && $hasB && ! $hasC) {
+                $tipo = 'SerieDocumental';
+                $codigo = $colB;
+                $parent = null;
+            } elseif ($hasA && $hasB && $hasC) {
+                $tipo = 'SubSerieDocumental';
+                $codigo = $colC;
+                if ($idSerie === null) {
+                    $errors[] = 'Fila '.($index + 1).': SubSerie sin Serie padre';
+
+                    continue;
+                }
+                $parent = $idSerie;
+            } elseif (! $hasA && ! $hasB && ! $hasC) {
+                $tipo = 'SubSerieDocumental';
+                $codigo = null;
+                if ($idSerie === null) {
+                    $errors[] = 'Fila '.($index + 1).': elemento sin Serie padre';
+
+                    continue;
+                }
+                $parent = $idSerie;
+            } else {
+                continue;
+            }
+
+            $elemento = ClasificacionDocumentalTVD::create([
+                'tipo' => $tipo,
+                'cod' => $codigo,
+                'nom' => $nombre,
+                'parent' => $parent,
+                'dependencia_id' => $dependencia->id,
+                'gestion' => $tipo === 'SerieDocumental' ? $this->parseInt($row[7] ?? null) : null,
+                'central' => $tipo === 'SerieDocumental' ? $this->parseInt($row[8] ?? null) : null,
+                'soporte' => trim($row[9] ?? '') ?: null,
+                'disposicion_final' => trim($row[10] ?? '') ?: null,
+                'estado' => true,
+                'user_register' => auth()->id(),
+            ]);
+
+            $inserted++;
+
+            if ($tipo === 'SerieDocumental') {
+                $idSerie = $elemento->id;
+            }
+        }
+
+        return [
+            'inserted' => $inserted,
+            'errors' => $errors,
+        ];
+    }
+
+    /**
+     * Valida un archivo TVD sin importar, retornando filas válidas/errores.
+     */
+    public function validarArchivo(UploadedFile $archivo): array
+    {
+        $spreadsheet = IOFactory::load($archivo->getRealPath());
+        $sheet = $spreadsheet->getActiveSheet();
+        $data = $sheet->toArray();
+
+        $filasValidas = 0;
+        $errores = [];
+
+        foreach ($data as $index => $row) {
+            if ($index < 6) {
+                continue;
+            }
+
+            $nombre = trim($row[4] ?? '');
+
+            if (empty($nombre)) {
+                continue;
+            }
+
+            $filasValidas++;
+
+            if (empty(trim($row[1] ?? '')) && empty(trim($row[2] ?? ''))) {
+                $errores[] = 'Fila '.($index + 1).': elemento sin clasificación de serie/subserie';
+            }
+        }
+
+        return [
+            'filas_validas' => $filasValidas,
+            'errores' => $errores,
+        ];
+    }
+
+    private function parseInt($value): ?int
+    {
+        if ($value === null || trim((string) $value) === '') {
+            return null;
+        }
+
+        if (preg_match('/\d+/', (string) $value, $m)) {
+            return (int) $m[0];
+        }
+
+        return null;
     }
 }

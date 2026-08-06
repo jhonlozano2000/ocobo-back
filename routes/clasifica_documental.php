@@ -63,7 +63,10 @@ Route::middleware('throttle:config-operations')->group(function () {
 
             // Importar y validar
             Route::post('/import', [ClasificacionDocumentalTVDController::class, 'import'])->name('import');
-            Route::post('/validate', [ClasificacionDocumentalTVDController::class, 'validate'])->name('validate');
+            Route::post('/validate', [ClasificacionDocumentalTVDController::class, 'validar'])->name('validate');
+
+            // Exportar
+            Route::get('/export', [ClasificacionDocumentalTVDController::class, 'export'])->name('export');
 
             // Resource route
             Route::apiResource('', ClasificacionDocumentalTVDController::class)
