@@ -1437,13 +1437,15 @@ class VentanillaRadicaReciController extends Controller
                 'fec_docu.date' => 'La fecha del documento debe ser una fecha válida',
             ]);
 
-            // Actualizar solo los campos proporcionados
+            // Actualizar solo los campos proporcionados (permite null para limpiar)
             $updateData = [];
-            if ($request->filled('fec_venci')) {
-                $updateData['fec_venci'] = $request->fec_venci;
+            $payload = $request->all();
+
+            if (array_key_exists('fec_venci', $payload)) {
+                $updateData['fec_venci'] = $payload['fec_venci'] ?: null;
             }
-            if ($request->filled('fec_docu')) {
-                $updateData['fec_docu'] = $request->fec_docu;
+            if (array_key_exists('fec_docu', $payload)) {
+                $updateData['fec_docu'] = $payload['fec_docu'] ?: null;
             }
 
             if (empty($updateData)) {
