@@ -72,7 +72,7 @@ class UploadArchivoRecibidoRequest extends FormRequest
             'archivo_digital.required' => 'El archivo es obligatorio.',
             'archivo_digital.file' => 'El archivo debe ser un archivo válido.',
             'archivo_digital.max' => "El archivo no puede superar los {$config['maxSize']} KB.",
-            'archivo.mimes' => "El archivo debe ser de tipo: {$config['allowedExtensions']}.",
+            'archivo_digital.mimes' => "El tipo de archivo no está permitido. Extensiones válidas: {$config['allowedExtensions']}.",
         ];
     }
 
