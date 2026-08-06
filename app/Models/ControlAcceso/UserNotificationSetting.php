@@ -27,6 +27,16 @@ class UserNotificationSetting extends Model
         'new_for_you',
         'account_activity',
         'new_browser_login',
+        'new_device_linked',
+        'email_notifications',
+        'new_for_you_email',
+        'new_for_you_browser',
+        'account_activity_email',
+        'account_activity_browser',
+        'new_browser_login_email',
+        'new_browser_login_browser',
+        'new_device_linked_email',
+        'new_device_linked_browser',
     ];
 
     /**
@@ -38,6 +48,16 @@ class UserNotificationSetting extends Model
         'new_for_you' => 'boolean',
         'account_activity' => 'boolean',
         'new_browser_login' => 'boolean',
+        'new_device_linked' => 'boolean',
+        'email_notifications' => 'boolean',
+        'new_for_you_email' => 'boolean',
+        'new_for_you_browser' => 'boolean',
+        'account_activity_email' => 'boolean',
+        'account_activity_browser' => 'boolean',
+        'new_browser_login_email' => 'boolean',
+        'new_browser_login_browser' => 'boolean',
+        'new_device_linked_email' => 'boolean',
+        'new_device_linked_browser' => 'boolean',
     ];
 
     /**

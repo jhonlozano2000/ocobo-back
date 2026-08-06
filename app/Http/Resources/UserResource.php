@@ -10,6 +10,11 @@ class UserResource extends JsonResource
 {
     use SanitizesApiOutput;
 
+    protected function getSkipSanitization(): array
+    {
+        return ['permissions', 'roles'];
+    }
+
     public function toArray($request)
     {
         app()[PermissionRegistrar::class]->forgetCachedPermissions();

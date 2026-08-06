@@ -11,9 +11,13 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\User;
 use App\Models\UsersAuthenticationLog;
 use App\Services\Seguridad\AuditLogService;
+use App\Mail\PasswordResetMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -229,6 +233,102 @@ class AuthController extends Controller
         return $this->successResponse([
             'user' => new UserResource($user),
         ], 'Usuario registrado correctamente', 201);
+    }
+
+    /**
+     * Forgot Password - Enviar correo con enlace de restablecimiento
+     */
+    public function forgotPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ], [
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'Ingresa un correo electrónico válido.',
+            'email.exists' => 'No encontramos una cuenta con ese correo electrónico.',
+        ]);
+
+        try {
+            $user = User::where('email', $request->email)->first();
+            $token = Password::getRepository()->create($user);
+
+            $resetUrl = url("/es/reset-password?token={$token}&email=" . urlencode($request->email));
+
+            $resetUrl = url("/es/reset-password?token={$token}&email=" . urlencode($request->email));
+
+            Mail::to($request->email)->send(new PasswordResetMail($resetUrl));
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al enviar el correo. Intenta de nuevo más tarde.', null, 500);
+        }
+
+        UsersAuthenticationLog::logEvent([
+            'event' => 'password_reset_requested',
+            'success' => true,
+            'email' => $request->email,
+            'details' => 'Solicitud de restablecimiento de contraseña enviada',
+        ]);
+
+        return $this->successResponse(null, 'Te hemos enviado un correo con las instrucciones para restablecer tu contraseña.');
+    }
+
+    /**
+     * Reset Password - Restablecer contraseña con token
+     */
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email|exists:users,email',
+            'password' => [
+                'required',
+                'confirmed',
+                'min:8',
+                'max:128',
+                'regex:/[A-Z]/',
+                'regex:/[a-z]/',
+                'regex:/[0-9]/',
+                'regex:/[@$!%*#?&.]/',
+            ],
+        ], [
+            'token.required' => 'El token es obligatorio.',
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'Ingresa un correo electrónico válido.',
+            'email.exists' => 'No encontramos una cuenta con ese correo electrónico.',
+            'password.required' => 'La contraseña es obligatoria.',
+            'password.confirmed' => 'Las contraseñas no coinciden.',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.max' => 'La contraseña no debe exceder 128 caracteres.',
+            'password.regex' => 'La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial.',
+        ]);
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+            }
+        );
+
+        if ($status === Password::PASSWORD_RESET) {
+            UsersAuthenticationLog::logEvent([
+                'event' => 'password_reset',
+                'success' => true,
+                'email' => $request->email,
+                'details' => 'Contraseña restablecida correctamente',
+            ]);
+
+            return $this->successResponse(null, 'Contraseña restablecida correctamente. Ahora puedes iniciar sesión.');
+        }
+
+        return $this->errorResponse(
+            $status === Password::INVALID_TOKEN
+                ? 'El enlace de restablecimiento ha expirado o no es válido. Solicita uno nuevo.'
+                : 'No se pudo restablecer la contraseña. Intenta de nuevo.',
+            null,
+            400
+        );
     }
 
     /**

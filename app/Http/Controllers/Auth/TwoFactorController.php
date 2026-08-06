@@ -35,7 +35,7 @@ class TwoFactorController extends Controller
         $user->two_factor_secret = $secret;
         $user->save();
 
-        $qrSvg = $this->google2fa->getQRCodeSvg(
+        $qrSvg = $this->google2fa->getQRCodeInline(
             $request->getHttpHost(),
             $user->email,
             $secret

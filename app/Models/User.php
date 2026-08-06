@@ -48,6 +48,9 @@ class User extends Authenticatable
         'avatar',
         'password',
         'estado',
+        'two_factor_secret',
+        'two_factor_confirmed_at',
+        'two_factor_recovery_codes',
     ];
 
     /**

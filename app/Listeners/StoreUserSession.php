@@ -30,7 +30,7 @@ class StoreUserSession
             'device_type' => $parsed['device_type'],
             'browser' => $parsed['browser'],
             'operating_system' => $parsed['operating_system'],
-            'referer_url' => $this->request->header('referer'),
+            'referer_url' => $this->sanitizeRefererUrl($this->request->header('referer')),
             'last_login_at' => now(),
             'is_active' => true,
             'metadata' => json_encode([
@@ -101,6 +101,21 @@ class StoreUserSession
             'browser' => $browser,
             'operating_system' => $os,
         ];
+    }
+
+    private function sanitizeRefererUrl(?string $url): ?string
+    {
+        if (!$url) {
+            return null;
+        }
+
+        $url = preg_replace('/[?&]token=[^&]+/', '', $url);
+
+        if (strlen($url) > 500) {
+            $url = substr($url, 0, 497) . '...';
+        }
+
+        return $url;
     }
 
     private function getRealIp(): ?string
