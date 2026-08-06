@@ -2,6 +2,8 @@
 
 namespace App\Helpers;
 
+use App\Services\Firma\TsaService;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use setasign\Fpdi\Fpdi;
 
@@ -13,7 +15,7 @@ class FirmaElectronicaHelper
      * @param  string  $disk  Disco donde está el archivo
      * @param  string  $path  Ruta relativa del archivo
      * @param  array  $datosFirma  Datos del firmante (nombre, cargo, fecha, hash)
-     * @return array ['nuevo_path' => string, 'nuevo_hash' => string]
+     * @return array ['nuevo_path' => string, 'nuevo_hash' => string, 'timestamp_token' => ?string, 'timestamp_fecha' => ?string]
      */
     public static function estamparFirma(string $disk, string $path, array $datosFirma): array
     {
@@ -47,16 +49,68 @@ class FirmaElectronicaHelper
             $nuevoContenido = $pdf->Output('S');
             $nuevoHash = hash('sha256', $nuevoContenido);
 
+            // Solicitar timestamp RFC 3161
+            $timestampToken = null;
+            $timestampFecha = null;
+
+            try {
+                $timestampResult = self::solicitarTimestamp($nuevoHash);
+                $timestampToken = $timestampResult['token'];
+                $timestampFecha = $timestampResult['fecha'];
+            } catch (\Exception $e) {
+                Log::warning('Error al solicitar timestamp TSA', [
+                    'hash' => $nuevoHash,
+                    'error' => $e->getMessage(),
+                ]);
+                // La firma no falla por error de timestamp - se registra pero no bloquea
+            }
+
             // Sobrescribir el archivo original con el firmado
             $storage->put($path, $nuevoContenido);
 
             return [
                 'nuevo_path' => $path,
                 'nuevo_hash' => $nuevoHash,
+                'timestamp_token' => $timestampToken,
+                'timestamp_fecha' => $timestampFecha,
             ];
         } finally {
             @unlink($tempPath); // Limpiar temp
         }
+    }
+
+    /**
+     * Solicita un timestamp RFC 3161 para un hash SHA-256.
+     *
+     * @param  string  $hash  Hash SHA-256 en hexadecimal
+     * @return array ['token' => string, 'fecha' => ?string]
+     */
+    public static function solicitarTimestamp(string $hash): array
+    {
+        $tsaService = new TsaService();
+        $token = $tsaService->solicitarTimestamp($hash);
+
+        // Obtener la fecha del token verificándolo
+        $verificacion = $tsaService->verificarTimestamp($token, $hash);
+
+        return [
+            'token' => $token,
+            'fecha' => $verificacion['fecha_firma'] ?? now()->format('Y-m-d H:i:s'),
+        ];
+    }
+
+    /**
+     * Verifica un token de timestamp RFC 3161.
+     *
+     * @param  string  $tokenBase64  Token TSR en base64
+     * @param  string  $hash         Hash SHA-256 esperado en hexadecimal
+     * @return array ['valido' => bool, 'fecha_firma' => ?string]
+     */
+    public static function verificarTimestamp(string $tokenBase64, string $hash): array
+    {
+        $tsaService = new TsaService();
+
+        return $tsaService->verificarTimestamp($tokenBase64, $hash);
     }
 
     /**

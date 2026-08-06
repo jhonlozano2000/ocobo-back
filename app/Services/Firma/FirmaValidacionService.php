@@ -2,6 +2,7 @@
 
 namespace App\Services\Firma;
 
+use App\Helpers\FirmaElectronicaHelper;
 use App\Models\Transversal\FirmaEvento;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
@@ -63,11 +64,30 @@ class FirmaValidacionService
 
         $valido = $hashActual === $ultimoEvento->hash_firmado;
 
+        // Verificar timestamp RFC 3161 si existe
+        $timestampValido = null;
+        $timestampFecha = null;
+
+        if ($ultimoEvento->timestamp_token && $ultimoEvento->hash_firmado) {
+            try {
+                $tsaResult = FirmaElectronicaHelper::verificarTimestamp(
+                    $ultimoEvento->timestamp_token,
+                    $ultimoEvento->hash_firmado
+                );
+                $timestampValido = $tsaResult['valido'];
+                $timestampFecha = $tsaResult['fecha_firma'] ?? $ultimoEvento->timestamp_fecha;
+            } catch (\Exception $e) {
+                $timestampValido = false;
+            }
+        }
+
         return [
             'valido' => $valido,
             'hash_actual' => $hashActual,
             'hash_firmado' => $ultimoEvento->hash_firmado,
             'fecha_firma' => $ultimoEvento->fecha_firma,
+            'timestamp_valido' => $timestampValido,
+            'timestamp_fecha' => $timestampFecha,
             'firmante' => $ultimoEvento->user ? [
                 'nombres' => trim($ultimoEvento->user->nombres . ' ' . $ultimoEvento->user->apellidos),
                 'email' => $ultimoEvento->user->email,

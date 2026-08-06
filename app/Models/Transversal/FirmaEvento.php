@@ -18,6 +18,8 @@ class FirmaEvento extends Model
         'user_id',
         'hash_original',
         'hash_firmado',
+        'timestamp_token',
+        'timestamp_fecha',
         'otp_utilizado',
         'ip_address',
         'user_agent',
@@ -26,6 +28,7 @@ class FirmaEvento extends Model
 
     protected $casts = [
         'fecha_firma' => 'datetime',
+        'timestamp_fecha' => 'datetime',
     ];
 
     public function documentable()

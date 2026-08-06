@@ -149,6 +149,8 @@ class FirmaElectronicaController extends Controller
                 'user_id' => $user->id,
                 'hash_original' => $hashOriginal,
                 'hash_firmado' => $resultadoFirma['nuevo_hash'],
+                'timestamp_token' => $resultadoFirma['timestamp_token'],
+                'timestamp_fecha' => $resultadoFirma['timestamp_fecha'],
                 'otp_utilizado' => '***'.substr($request->otp, -3),
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),
