@@ -5,23 +5,20 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Workflows;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Workflows\StoreChecklistItemRequest;
-use App\Http\Requests\Workflows\UpdateChecklistItemRequest;
+use App\Http\Requests\Workflows\StoreWorkFlowTareaChecklistRequest;
+use App\Http\Requests\Workflows\UpdateWorkFlowTareaChecklistRequest;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\Workflows\Tarea;
-use App\Models\Workflows\TareaChecklist;
+use App\Models\Workflows\WorkFlowTarea;
+use App\Models\Workflows\WorkFlowTareaChecklist;
+use App\Services\Workflows\WorkFlowTareaService;
 use Illuminate\Validation\Rule;
-use App\Services\Workflows\TareaService;
 
-/**
- * Controlador de Ítems de Lista de Verificación de Tareas
- */
-class TareaChecklistController extends Controller
+class WorkFlowTareaChecklistController extends Controller
 {
     use ApiResponseTrait;
 
     public function __construct(
-        private readonly TareaService $tareaService
+        private readonly WorkFlowTareaService $tareaService
     ) {
         $this->middleware('can:Workflows -> Tareas -> Listar')->only(['index']);
         $this->middleware('can:Workflows -> Tareas -> Editar')->only(['store', 'update', 'reordenar']);
@@ -29,10 +26,10 @@ class TareaChecklistController extends Controller
     }
 
     /**
-     * Listar checklists de una tarea
-     * GET /api/workflow-tareas/{tarea}/checklists
+     * Listar checklists de una tarea (System B)
+     * GET /api/workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists
      */
-    public function index(Tarea $tarea)
+    public function index(WorkFlowTarea $tarea)
     {
         try {
             return $this->successResponse(
@@ -45,10 +42,10 @@ class TareaChecklistController extends Controller
     }
 
     /**
-     * Agregar ítem a checklist
-     * POST /api/workflow-tareas/{tarea}/checklists
+     * Agregar ítem a checklist (System B)
+     * POST /api/workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists
      */
-    public function store(StoreChecklistItemRequest $request, Tarea $tarea)
+    public function store(StoreWorkFlowTareaChecklistRequest $request, WorkFlowTarea $tarea)
     {
         try {
             $checklist = $tarea->checklists()->create($request->validated());
@@ -59,10 +56,10 @@ class TareaChecklistController extends Controller
     }
 
     /**
-     * Actualizar ítem de checklist
-     * PUT /api/workflow-tareas/{tarea}/checklists/{checklist}
+     * Actualizar ítem de checklist (System B)
+     * PUT /api/workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists/{checklist}
      */
-    public function update(UpdateChecklistItemRequest $request, Tarea $tarea, TareaChecklist $checklist)
+    public function update(UpdateWorkFlowTareaChecklistRequest $request, WorkFlowTarea $tarea, WorkFlowTareaChecklist $checklist)
     {
         try {
             $checklist->update($request->validated());
@@ -73,10 +70,10 @@ class TareaChecklistController extends Controller
     }
 
     /**
-     * Eliminar ítem de checklist
-     * DELETE /api/workflow-tareas/{tarea}/checklists/{checklist}
+     * Eliminar ítem de checklist (System B)
+     * DELETE /api/workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists/{checklist}
      */
-    public function destroy(Tarea $tarea, TareaChecklist $checklist)
+    public function destroy(WorkFlowTarea $tarea, WorkFlowTareaChecklist $checklist)
     {
         try {
             $checklist->delete();
@@ -87,10 +84,10 @@ class TareaChecklistController extends Controller
     }
 
     /**
-     * Reordenar checklists
-     * PUT /api/workflow-tareas/{tarea}/checklists/reordenar
+     * Reordenar checklists (System B)
+     * PUT /api/workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists/reordenar
      */
-    public function reordenar(Tarea $tarea)
+    public function reordenar(WorkFlowTarea $tarea)
     {
         try {
             $data = request()->validate([
@@ -98,7 +95,7 @@ class TareaChecklistController extends Controller
                 'orden.*' => [
                     'required',
                     'integer',
-                    Rule::exists('tarea_checklists', 'id')->where('tarea_id', $tarea->id),
+                    Rule::exists('work_flow_tarea_checklists', 'id')->where('work_flow_tarea_id', $tarea->id),
                 ],
             ]);
             $this->tareaService->reordenarChecklist($tarea, $data['orden']);

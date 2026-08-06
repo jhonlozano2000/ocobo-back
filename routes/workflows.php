@@ -5,8 +5,11 @@ use App\Http\Controllers\Api\Workflows\WorkflowNodoController;
 use App\Http\Controllers\Api\Workflows\WorkflowInstanciaController;
 use App\Http\Controllers\Api\Workflows\WorkFlowTareaController;
 use App\Http\Controllers\Api\Workflows\WorkFlowArchivoController;
+use App\Http\Controllers\Api\Workflows\WorkFlowTareaChecklistController;
+use App\Http\Controllers\Api\Workflows\WorkflowReporteController;
 use App\Http\Controllers\Api\Workflows\TareaController;
 use App\Http\Controllers\Api\Workflows\TareaChecklistController;
+use App\Http\Controllers\Api\Workflows\MisInstanciasController;
 use Illuminate\Support\Facades\Route;
 
 // ==========================================
@@ -21,6 +24,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('workflows/{workflow}/duplicar', [WorkflowController::class, 'duplicar']);
     Route::patch('workflows/{workflow}/estado', [WorkflowController::class, 'cambiarEstado']);
     Route::post('workflows/{workflow}/canvas', [WorkflowController::class, 'guardarCanvas']);
+
+    // Reportes/KPI
+    Route::get('workflows/{workflow}/reportes', [WorkflowReporteController::class, 'resumen']);
+    Route::get('workflows/{workflow}/reportes/vencidas-por-usuario', [WorkflowReporteController::class, 'tareasVencidasPorUsuario']);
+    Route::get('workflows/{workflow}/reportes/tendencia-mensual', [WorkflowReporteController::class, 'tendenciaMensual']);
 
     Route::get('workflows/{workflow}/nodos', [WorkflowNodoController::class, 'index']);
     Route::post('workflows/{workflow}/nodos', [WorkflowNodoController::class, 'store']);
@@ -42,10 +50,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/estado', [WorkFlowTareaController::class, 'cambiarEstado']);
     Route::put('workflows/{workflow}/nodos/{nodo}/tareas/reordenar', [WorkFlowTareaController::class, 'reordenar']);
 
+    // Checklist items (System B — scoped to WorkFlowTarea)
+    Route::get('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists', [WorkFlowTareaChecklistController::class, 'index']);
+    Route::post('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists', [WorkFlowTareaChecklistController::class, 'store']);
+    Route::put('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists/{checklist}', [WorkFlowTareaChecklistController::class, 'update']);
+    Route::delete('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists/{checklist}', [WorkFlowTareaChecklistController::class, 'destroy']);
+    Route::put('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists/reordenar', [WorkFlowTareaChecklistController::class, 'reordenar']);
+
     Route::get('workflows/{workflow}/archivos', [WorkFlowArchivoController::class, 'index']);
     Route::post('workflows/{workflow}/archivos', [WorkFlowArchivoController::class, 'store']);
     Route::get('workflows/{workflow}/archivos/{archivo}/download', [WorkFlowArchivoController::class, 'download']);
     Route::delete('workflows/{workflow}/archivos/{archivo}', [WorkFlowArchivoController::class, 'destroy']);
+
+    // Mis Tareas e Instancias (usuario autenticado, sin scope de workflow)
+    Route::get('mis-tareas', [TareaController::class, 'misTareas']);
+    Route::get('mis-instancias', MisInstanciasController::class);
 
     // Tareas (module-level, not nodo-level)
     Route::get('{workflow}/tareas', [TareaController::class, 'index']);
@@ -54,6 +73,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('tareas/{tarea}', [TareaController::class, 'update']);
     Route::delete('tareas/{tarea}', [TareaController::class, 'destroy']);
     Route::post('tareas/{tarea}/completar', [TareaController::class, 'completar']);
+    Route::post('tareas/{tarea}/iniciar', [TareaController::class, 'iniciar']);
+    Route::post('tareas/{tarea}/cancelar', [TareaController::class, 'cancelar']);
+    Route::post('tareas/{tarea}/reactivar', [TareaController::class, 'reactivar']);
 
     // Checklist items (scoped to parent tarea)
     Route::get('tareas/{tarea}/checklists', [TareaChecklistController::class, 'index']);

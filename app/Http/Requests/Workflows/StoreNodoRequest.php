@@ -1,48 +1,39 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Workflows;
 
-use App\Http\Requests\SanitizedFormRequest;
+use Illuminate\Foundation\Http\FormRequest;
 
-class StoreNodoRequest extends SanitizedFormRequest
+class StoreNodoRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->user()->hasPermissionTo('Workflows -> Workflows -> Editar');
+        return $this->user()->can('Workflows -> Workflows -> Editar');
     }
 
     public function rules(): array
     {
         return [
-            'nodos' => 'required|array|min:1',
-            'nodos.*.tipo' => 'required|in:inicio,tarea,condicion,notificacion,fin',
+            'nodos' => 'required|array',
+            'nodos.*.id' => 'required|string',
+            'nodos.*.tipo' => 'required|string|in:inicio,fin,tarea,notificacion,condicion',
             'nodos.*.titulo' => 'required|string|max:255',
-            'nodos.*.descripcion' => 'nullable|string',
+            'nodos.*.descripcion' => 'nullable|string|max:1000',
             'nodos.*.posicion_x' => 'required|numeric',
             'nodos.*.posicion_y' => 'required|numeric',
-            'nodos.*.configuracion_json' => 'nullable|json',
-            'nodos.*.orden_ejecucion' => 'nullable|integer|min:0',
-            'nodos.*.responsable_usuario_id' => 'nullable|exists:users,id',
-            'nodos.*.tiempo_limite_horas' => 'nullable|integer|min:1|max:8760',
+            'nodos.*.configuracion_json' => 'nullable|array',
+            'nodos.*.responsable_usuario_id' => 'nullable|integer|exists:users,id',
+            'nodos.*.tiempo_limite_horas' => 'nullable|integer|min:1',
             'nodos.*.adjuntos_permitidos' => 'nullable|boolean',
-
+            'nodos.*.orden_ejecucion' => 'nullable|integer|min:1',
             'conexiones' => 'required|array',
-            'conexiones.*.nodo_origen_id' => 'required|integer',
-            'conexiones.*.nodo_destino_id' => 'required|integer',
+            'conexiones.*.id' => 'required|string',
+            'conexiones.*.nodo_origen_id' => 'required|string',
+            'conexiones.*.nodo_destino_id' => 'required|string',
             'conexiones.*.etiqueta' => 'nullable|string|max:255',
-            'conexiones.*.condicion_json' => 'nullable|json',
-        ];
-    }
-
-    public function messages(): array
-    {
-        return [
-            'nodos.required' => 'Debe enviar al menos un nodo',
-            'nodos.*.tipo.required' => 'El tipo de nodo es obligatorio',
-            'nodos.*.tipo.in' => 'El tipo de nodo no es válido',
-            'nodos.*.titulo.required' => 'El título del nodo es obligatorio',
-            'nodos.*.posicion_x.required' => 'La posición X es obligatoria',
-            'nodos.*.posicion_y.required' => 'La posición Y es obligatoria',
+            'conexiones.*.condicion_json' => 'nullable|array',
         ];
     }
 }

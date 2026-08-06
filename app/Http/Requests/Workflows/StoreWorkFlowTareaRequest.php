@@ -21,6 +21,9 @@ class StoreWorkFlowTareaRequest extends SanitizedFormRequest
             'tiempo_limite_horas' => 'nullable|integer|min:1|max:8760',
             'orden' => 'nullable|integer|min:0',
             'adjuntos_permitidos' => 'nullable|boolean',
+            'checklists' => 'nullable|array',
+            'checklists.*.item_descripcion' => 'required|string|max:500',
+            'checklists.*.esta_completado' => 'nullable|boolean',
         ];
     }
 

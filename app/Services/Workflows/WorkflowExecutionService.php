@@ -2,6 +2,7 @@
 
 namespace App\Services\Workflows;
 
+use App\Exceptions\Workflows\StateTransitionException;
 use App\Models\Workflows\Workflow;
 use App\Models\Workflows\WorkflowInstancia;
 use App\Models\Workflows\WorkflowNodo;
@@ -20,7 +21,8 @@ use Illuminate\Support\Facades\DB;
 class WorkflowExecutionService
 {
     public function __construct(
-        private readonly WorkflowAuditService $auditService
+        private readonly WorkflowAuditService $auditService,
+        private readonly WorkflowNotificationService $notificationService
     ) {}
 
     public function iniciarInstancia(int $workflowId, int $userId): WorkflowInstancia
@@ -30,7 +32,7 @@ class WorkflowExecutionService
 
             $nodoInicio = $workflow->nodos()->where('tipo', 'inicio')->first();
             if (!$nodoInicio) {
-                throw new \RuntimeException('El workflow no tiene un nodo de inicio');
+                throw new StateTransitionException('El workflow no tiene un nodo de inicio');
             }
 
             $fechaLimite = null;
@@ -84,7 +86,7 @@ class WorkflowExecutionService
                 ->firstOrFail();
 
             if ($instancia->estado !== 'en_curso') {
-                throw new \RuntimeException(
+                throw new StateTransitionException(
                     "La instancia está {$instancia->estado}, no se puede ejecutar nodos"
                 );
             }
@@ -93,13 +95,31 @@ class WorkflowExecutionService
                 ->where('nodo_id', $nodoId)
                 ->firstOrFail();
 
+            $siguienteNodo = $this->determinarSiguienteNodo($instanciaId, $nodoId, $resultado);
+
+            $resultadoFinal = $resultado;
+            $nodo = $nodoInstancia->nodo;
+            if ($nodo && $nodo->tipo === 'condicion') {
+                $ramaTomada = null;
+                if ($siguienteNodo) {
+                    $conexion = \App\Models\Workflows\WorkflowConexion::where('nodo_origen_id', $nodoId)
+                        ->where('nodo_destino_id', $siguienteNodo->id)
+                        ->first();
+                    $ramaTomada = $conexion?->etiqueta;
+                }
+                $resultadoFinal = array_merge($resultado, [
+                    '_evaluacion' => [
+                        'rama_tomada' => $ramaTomada,
+                        'evaluado_en' => now()->toIso8601String(),
+                    ],
+                ]);
+            }
+
             $nodoInstancia->update([
                 'estado' => 'completado',
                 'fecha_ejecucion' => now(),
-                'resultado_json' => $resultado,
+                'resultado_json' => $resultadoFinal,
             ]);
-
-            $siguienteNodo = $this->determinarSiguienteNodo($instanciaId, $nodoId, $resultado);
 
             if ($siguienteNodo && $siguienteNodo->tipo === 'fin') {
                 $instancia->update([
@@ -132,7 +152,17 @@ class WorkflowExecutionService
                 ]
             );
 
-            return $instancia->fresh()->load(['nodosInstancia.nodo', 'nodoActual']);
+            $instanciaRefreshed = $instancia->fresh();
+            if ($instanciaRefreshed->estado === 'completada') {
+                $this->notificationService->notificarInstanciaCompletada($instanciaRefreshed);
+            } elseif ($siguienteNodo) {
+                $this->notificationService->notificarInstanciaAvanzada(
+                    $instanciaRefreshed,
+                    $siguienteNodo->titulo
+                );
+            }
+
+            return $instanciaRefreshed->load(['nodosInstancia.nodo', 'nodoActual']);
         });
     }
 
@@ -147,6 +177,11 @@ class WorkflowExecutionService
                 $instancia->workflow_id,
                 $instancia->id,
                 ['estado_anterior' => $instancia->getOriginal('estado')]
+            );
+
+            $this->notificationService->notificarInstanciaAvanzada(
+                $instancia,
+                "instancia {$estado}"
             );
 
             return $instancia->load(['nodosInstancia.nodo', 'nodoActual']);

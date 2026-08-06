@@ -17,8 +17,15 @@ class WorkflowService
 
     public function listar(array $filtros = [])
     {
-        $query = Workflow::with('creador:id,nombres,apellidos')
-            ->withCount('nodos', 'instancias');
+        $query = Workflow::with([
+                'creador:id,nombres,apellidos',
+                'administrador:id,nombres,apellidos',
+            ])->withCount([
+                'nodos',
+                'instancias',
+                'tareasModulo',
+                'tareasModulo as tareas_completadas_count' => fn($q) => $q->where('estado', 'completada'),
+            ]);
 
         if (!empty($filtros['estado'])) {
             $query->where('estado', $filtros['estado']);
@@ -177,12 +184,35 @@ class WorkflowService
             WorkflowNodo::where('workflow_id', $workflowId)->delete();
             WorkflowConexion::where('workflow_id', $workflowId)->delete();
 
+            $clientIdMap = [];
             foreach ($nodos as $nodoData) {
-                $workflow->nodos()->create($nodoData);
+                $clientId = $nodoData['client_id'] ?? null;
+                $nodo = $workflow->nodos()->create(
+                    collect($nodoData)->except(['client_id'])->toArray()
+                );
+                if ($clientId) {
+                    $clientIdMap[$clientId] = $nodo->id;
+                }
             }
 
             foreach ($conexiones as $conexionData) {
-                $workflow->conexiones()->create($conexionData);
+                $origenId = $clientIdMap[$conexionData['nodo_origen_id']]
+                    ?? (is_numeric($conexionData['nodo_origen_id'])
+                        ? (int) $conexionData['nodo_origen_id']
+                        : null);
+                $destinoId = $clientIdMap[$conexionData['nodo_destino_id']]
+                    ?? (is_numeric($conexionData['nodo_destino_id'])
+                        ? (int) $conexionData['nodo_destino_id']
+                        : null);
+
+                if ($origenId && $destinoId) {
+                    $workflow->conexiones()->create([
+                        'nodo_origen_id' => $origenId,
+                        'nodo_destino_id' => $destinoId,
+                        'etiqueta' => $conexionData['etiqueta'] ?? null,
+                        'condicion_json' => $conexionData['condicion_json'] ?? null,
+                    ]);
+                }
             }
 
             $this->auditService->registrar(

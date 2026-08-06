@@ -5,6 +5,7 @@ namespace App\Models\Workflows;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WorkFlowTarea extends Model
 {
@@ -51,5 +52,10 @@ class WorkFlowTarea extends Model
     public function archivos()
     {
         return $this->morphMany(WorkFlowArchivo::class, 'archivable');
+    }
+
+    public function checklists(): HasMany
+    {
+        return $this->hasMany(WorkFlowTareaChecklist::class, 'work_flow_tarea_id')->orderBy('orden');
     }
 }

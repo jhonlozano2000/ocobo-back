@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\Workflows;
 
+use App\Exceptions\Workflows\StateTransitionException;
+use App\Exceptions\Workflows\UncompletedChecklistException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\AsignarWorkFlowTareaRequest;
 use App\Http\Requests\Workflows\CambiarEstadoWorkFlowTareaRequest;
@@ -9,6 +11,7 @@ use App\Http\Requests\Workflows\StoreWorkFlowTareaRequest;
 use App\Http\Requests\Workflows\UpdateWorkFlowTareaRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Services\Workflows\WorkFlowTareaService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 
 class WorkFlowTareaController extends Controller
@@ -28,6 +31,8 @@ class WorkFlowTareaController extends Controller
     public function index(int $workflowId, int $nodoId)
     {
         try {
+            $this->tareaService->verificarVencimientosPorNodo($nodoId);
+
             $instanciaId = request('instancia_id');
             $tareas = $this->tareaService->listar($nodoId, $instanciaId ? (int) $instanciaId : null);
             return $this->successResponse($tareas, 'Tareas obtenidas correctamente');
@@ -54,9 +59,10 @@ class WorkFlowTareaController extends Controller
     public function show(int $workflowId, int $nodoId, int $tareaId)
     {
         try {
-            $tarea = \App\Models\Workflows\WorkFlowTarea::with('responsable:id,name')
+            $tarea = \App\Models\Workflows\WorkFlowTarea::with(['responsable:id,name', 'checklists'])
                 ->where('nodo_id', $nodoId)
                 ->findOrFail($tareaId);
+            $tarea = $this->tareaService->verificarVencimientoAlCargar($tarea);
             return $this->successResponse($tarea, 'Tarea obtenida correctamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener tarea', $e->getMessage(), 404);
@@ -106,8 +112,14 @@ class WorkFlowTareaController extends Controller
                 $data['resultado'] ?? []
             );
             return $this->successResponse($tarea, 'Estado de tarea actualizado correctamente');
+        } catch (UncompletedChecklistException $e) {
+            return $e->render();
+        } catch (StateTransitionException $e) {
+            return $this->errorResponse($e->getMessage(), null, 422);
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Tarea no encontrada', null, 404);
         } catch (\Exception $e) {
-            return $this->errorResponse('Error al cambiar estado de tarea', $e->getMessage());
+            return $this->errorResponse('Error al cambiar estado de tarea', $e->getMessage(), 500);
         }
     }
 

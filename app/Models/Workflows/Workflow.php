@@ -81,6 +81,11 @@ class Workflow extends Model
         return $this->hasManyThrough(WorkFlowTarea::class, WorkflowNodo::class, 'workflow_id', 'nodo_id');
     }
 
+    public function tareasModulo(): HasMany
+    {
+        return $this->hasMany(Tarea::class, 'workflow_id');
+    }
+
     public function archivos(): HasMany
     {
         return $this->hasMany(WorkFlowArchivo::class, 'workflow_id');

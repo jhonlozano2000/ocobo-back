@@ -19,6 +19,7 @@ class PermisosWorkflowsSeeder extends Seeder
             'Workflows -> Instancias -> Ejecutar',
             'Workflows -> Instancias -> Consultar',
             'Workflows -> Tareas -> Listar',
+            'Workflows -> Tareas -> Mostrar',
             'Workflows -> Tareas -> Crear',
             'Workflows -> Tareas -> Editar',
             'Workflows -> Tareas -> Eliminar',

@@ -15,6 +15,7 @@ class WorkFlowArchivoController extends Controller
     public function __construct(
         private readonly WorkFlowArchivoService $archivoService
     ) {
+        $this->middleware('can:Workflows -> Archivos -> Ver')->only(['index']);
         $this->middleware('can:Workflows -> Archivos -> Subir')->only(['store']);
         $this->middleware('can:Workflows -> Archivos -> Descargar')->only(['download']);
         $this->middleware('can:Workflows -> Archivos -> Eliminar')->only(['destroy']);

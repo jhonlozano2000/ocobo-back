@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api\Workflows;
 
+use App\Exceptions\Workflows\StateTransitionException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\EjecutarNodoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\WorkflowInstancia;
 use App\Services\Workflows\WorkflowExecutionService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * Controlador de Instancias de Workflows — Ejecución y monitoreo.
@@ -69,10 +71,12 @@ class WorkflowInstanciaController extends Controller
                 $data['resultado'] ?? []
             );
             return $this->successResponse($instancia, 'Nodo ejecutado correctamente');
-        } catch (\RuntimeException $e) {
+        } catch (StateTransitionException $e) {
             return $this->errorResponse($e->getMessage(), null, 422);
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Instancia no encontrada', null, 404);
         } catch (\Exception $e) {
-            return $this->errorResponse('Error al ejecutar nodo', $e->getMessage());
+            return $this->errorResponse('Error al ejecutar nodo', $e->getMessage(), 500);
         }
     }
 

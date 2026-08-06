@@ -7,7 +7,7 @@ namespace App\Http\Requests\Workflows;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 
-class StoreChecklistItemRequest extends FormRequest
+class UpdateWorkFlowTareaChecklistRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -17,8 +17,9 @@ class StoreChecklistItemRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'item_descripcion' => 'required|string|max:500',
+            'item_descripcion' => 'nullable|string|max:500',
             'esta_completado' => 'nullable|boolean',
+            'orden' => 'nullable|integer|min:0',
         ];
     }
 }

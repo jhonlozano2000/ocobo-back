@@ -22,6 +22,10 @@ class UpdateWorkFlowTareaRequest extends SanitizedFormRequest
             'estado' => 'sometimes|in:pendiente,en_curso,completada,vencida,cancelada',
             'orden' => 'nullable|integer|min:0',
             'adjuntos_permitidos' => 'nullable|boolean',
+            'checklists' => 'nullable|array',
+            'checklists.*.id' => 'nullable|integer|exists:work_flow_tarea_checklists,id',
+            'checklists.*.item_descripcion' => 'required|string|max:500',
+            'checklists.*.esta_completado' => 'nullable|boolean',
         ];
     }
 

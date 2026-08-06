@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions\Workflows;
 
-use Exception;
-
-class UncompletedChecklistException extends Exception
+class UncompletedChecklistException extends WorkflowException
 {
     public function __construct(int $pendingCount = 0)
     {
@@ -15,6 +13,11 @@ class UncompletedChecklistException extends Exception
             : 'No se puede completar la tarea: hay ítems pendientes en la lista de verificación.';
 
         parent::__construct($message, 422);
+    }
+
+    public function getStatusCode(): int
+    {
+        return 422;
     }
 
     public function render(): \Illuminate\Http\JsonResponse

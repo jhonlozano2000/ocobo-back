@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Workflows;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Workflows\UpdateWorkflowNodoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\WorkflowNodo;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ class WorkflowNodoController extends Controller
 
     public function __construct()
     {
+        $this->middleware('can:Workflows -> Workflows -> Mostrar')->only(['index']);
         $this->middleware('can:Workflows -> Workflows -> Editar')->except(['index']);
     }
 
@@ -51,18 +53,11 @@ class WorkflowNodoController extends Controller
         }
     }
 
-    public function update(Request $request, int $workflowId, int $id)
+    public function update(UpdateWorkflowNodoRequest $request, int $workflowId, int $id)
     {
         try {
             $nodo = WorkflowNodo::where('workflow_id', $workflowId)->findOrFail($id);
-            $data = $request->validate([
-                'titulo' => 'sometimes|string|max:255',
-                'descripcion' => 'nullable|string',
-                'posicion_x' => 'sometimes|numeric',
-                'posicion_y' => 'sometimes|numeric',
-                'configuracion_json' => 'nullable|json',
-            ]);
-            $nodo->update($data);
+            $nodo->update($request->validated());
             return $this->successResponse($nodo, 'Nodo actualizado correctamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al actualizar nodo', $e->getMessage());

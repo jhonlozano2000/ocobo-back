@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Requests\Workflows;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Gate;
 
 class UpdateTareaRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return Gate::allows('Workflows -> Tareas -> Editar');
     }
 
     public function rules(): array
@@ -20,7 +21,7 @@ class UpdateTareaRequest extends FormRequest
             'nombre' => 'nullable|string|max:255',
             'descripcion' => 'nullable|string',
             'fecha_limite' => 'nullable|date',
-            'estado' => 'nullable|in:pendiente,en_progreso,completada',
+            'estado' => 'nullable|in:pendiente,en_curso,completada,vencida,cancelada',
             'propietarios' => 'nullable|array',
             'propietarios.*' => 'integer|exists:users,id',
             'responsables' => 'nullable|array',

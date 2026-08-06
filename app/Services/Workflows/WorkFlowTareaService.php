@@ -2,16 +2,21 @@
 
 namespace App\Services\Workflows;
 
+use App\Exceptions\Workflows\StateTransitionException;
+use App\Exceptions\Workflows\UncompletedChecklistException;
 use App\Models\Workflows\WorkFlowTarea;
+use App\Models\Workflows\WorkFlowTareaChecklist;
 use App\Models\Workflows\WorkflowInstancia;
 use App\Models\Workflows\WorkflowNodo;
+use App\Services\Workflows\WorkflowEstadoMachine;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 class WorkFlowTareaService
 {
     public function __construct(
-        private readonly WorkflowAuditService $auditService
+        private readonly WorkflowAuditService $auditService,
+        private readonly WorkflowNotificationService $notificationService
     ) {}
 
     public function listar(int $nodoId, ?int $instanciaId = null): Collection
@@ -43,6 +48,18 @@ class WorkFlowTareaService
                 'orden' => $datos['orden'] ?? 0,
             ]);
 
+            if (!empty($datos['checklists'])) {
+                $checklistItems = [];
+                foreach ($datos['checklists'] as $index => $item) {
+                    $checklistItems[] = new WorkFlowTareaChecklist([
+                        'item_descripcion' => $item['item_descripcion'] ?? $item,
+                        'esta_completado' => $item['esta_completado'] ?? false,
+                        'orden' => $item['orden'] ?? $index,
+                    ]);
+                }
+                $tarea->checklists()->saveMany($checklistItems);
+            }
+
             if ($tarea->tiempo_limite_horas) {
                 $tarea->update([
                     'fecha_limite' => now()->addHours($tarea->tiempo_limite_horas),
@@ -56,20 +73,55 @@ class WorkFlowTareaService
                 ['tarea_id' => $tarea->id, 'titulo' => $tarea->titulo]
             );
 
-            return $tarea->load('responsable:id,name');
+            return $tarea->load('responsable:id,name')->load('checklists');
         });
     }
 
     public function actualizar(int $id, array $datos): WorkFlowTarea
     {
         return DB::transaction(function () use ($id, $datos) {
-            $tarea = WorkFlowTarea::findOrFail($id);
+            $tarea = WorkFlowTarea::with('checklists')->findOrFail($id);
 
             if (isset($datos['tiempo_limite_horas'])) {
                 $datos['fecha_limite'] = now()->addHours($datos['tiempo_limite_horas']);
             }
 
+            if (isset($datos['estado'])) {
+                if (!WorkflowEstadoMachine::puedeTransitar($tarea->estado, $datos['estado'])) {
+                    throw new StateTransitionException(
+                        "No se puede cambiar de '{$tarea->estado}' a '{$datos['estado']}'"
+                    );
+                }
+            }
+
             $tarea->update($datos);
+
+            if (isset($datos['checklists'])) {
+                $incomingIds = collect($datos['checklists'])->pluck('id')->filter();
+                $tarea->checklists()->whereNotIn('id', $incomingIds)->delete();
+
+                foreach ($datos['checklists'] as $index => $item) {
+                    $itemDescripcion = $item['item_descripcion'] ?? $item;
+                    $estaCompletado = $item['esta_completado'] ?? false;
+                    $orden = $item['orden'] ?? $index;
+
+                    if (!empty($item['id'])) {
+                        WorkFlowTareaChecklist::where('id', $item['id'])
+                            ->where('work_flow_tarea_id', $tarea->id)
+                            ->update([
+                                'item_descripcion' => $itemDescripcion,
+                                'esta_completado' => $estaCompletado,
+                                'orden' => $orden,
+                            ]);
+                    } else {
+                        $tarea->checklists()->create([
+                            'item_descripcion' => $itemDescripcion,
+                            'esta_completado' => $estaCompletado,
+                            'orden' => $orden,
+                        ]);
+                    }
+                }
+            }
 
             $this->auditService->registrar(
                 'tarea.actualizada',
@@ -78,7 +130,7 @@ class WorkFlowTareaService
                 ['tarea_id' => $tarea->id, 'titulo' => $tarea->titulo]
             );
 
-            return $tarea->load('responsable:id,name');
+            return $tarea->load('responsable:id,name')->load('checklists');
         });
     }
 
@@ -128,6 +180,8 @@ class WorkFlowTareaService
                 ['tarea_id' => $tarea->id, 'responsable' => $responsableUserId]
             );
 
+            $this->notificationService->notificarTareaAsignadaSistemaB($tarea, $responsableUserId);
+
             return $tarea->load('responsable:id,name');
         });
     }
@@ -135,15 +189,27 @@ class WorkFlowTareaService
     public function cambiarEstado(int $tareaId, string $estado, array $resultado = []): WorkFlowTarea
     {
         return DB::transaction(function () use ($tareaId, $estado, $resultado) {
-            $tarea = WorkFlowTarea::findOrFail($tareaId);
+            $tarea = WorkFlowTarea::with('checklists')->findOrFail($tareaId);
+
+            if (!WorkflowEstadoMachine::puedeTransitar($tarea->estado, $estado)) {
+                throw new StateTransitionException(
+                    "No se puede cambiar de '{$tarea->estado}' a '{$estado}'"
+                );
+            }
+
+            if ($estado === 'completada') {
+                $pendingCount = $tarea->checklists->where('esta_completado', false)->count();
+                if ($pendingCount > 0) {
+                    throw new UncompletedChecklistException($pendingCount);
+                }
+            }
+
+            $estadoAnterior = $tarea->estado;
+
             $datos = ['estado' => $estado];
 
             if ($resultado) {
                 $datos['resultado_json'] = $resultado;
-            }
-
-            if ($estado === 'completada') {
-                $datos['fecha_limite'] = now();
             }
 
             $tarea->update($datos);
@@ -152,29 +218,72 @@ class WorkFlowTareaService
                 'tarea.' . $estado,
                 $tarea->nodo->workflow_id,
                 $tarea->instancia_id,
-                ['tarea_id' => $tarea->id, 'estado_anterior' => $tarea->getOriginal('estado')]
+                ['tarea_id' => $tarea->id, 'estado_anterior' => $estadoAnterior]
             );
 
-            return $tarea->load('responsable:id,name');
+            return $tarea->load('responsable:id,name')->load('checklists');
         });
     }
 
-    public function verificarVencimiento(): int
+    public function verificarVencimientosPorNodo(int $nodoId): void
     {
-        $actualizadas = WorkFlowTarea::where('estado', 'pendiente')
+        $vencidas = WorkFlowTarea::with('nodo:id,workflow_id')
+            ->where('nodo_id', $nodoId)
+            ->whereIn('estado', ['pendiente', 'en_curso'])
             ->whereNotNull('fecha_limite')
             ->where('fecha_limite', '<', now())
-            ->update(['estado' => 'vencida']);
+            ->get(['id', 'nodo_id', 'instancia_id', 'estado', 'responsable_usuario_id', 'titulo']);
 
-        if ($actualizadas > 0) {
+        foreach ($vencidas as $tarea) {
             $this->auditService->registrar(
-                'tareas.vencidas_masivamente',
-                null,
-                null,
-                ['cantidad' => $actualizadas]
+                'tarea.vencida',
+                $tarea->nodo->workflow_id,
+                $tarea->instancia_id,
+                ['tarea_id' => $tarea->id, 'estado_anterior' => $tarea->estado]
             );
+
+            $this->notificationService->notificarWorkFlowTareaVencida($tarea);
         }
 
-        return $actualizadas;
+        WorkFlowTarea::whereIn('id', $vencidas->pluck('id'))->update(['estado' => 'vencida']);
+    }
+
+    public function verificarVencimientoAlCargar(WorkFlowTarea $tarea): WorkFlowTarea
+    {
+        $fechaLimiteStr = $tarea->fecha_limite?->toDateTimeString();
+
+        if (WorkflowEstadoMachine::necesitaVencimiento($tarea->estado, $fechaLimiteStr)) {
+            $estadoAnterior = $tarea->estado;
+            $tarea->update(['estado' => 'vencida']);
+
+            $this->auditService->registrar(
+                'tarea.vencida',
+                $tarea->nodo->workflow_id,
+                $tarea->instancia_id,
+                ['tarea_id' => $tarea->id, 'estado_anterior' => $estadoAnterior]
+            );
+
+            $this->notificationService->notificarWorkFlowTareaVencida($tarea);
+
+            return $tarea->fresh('responsable:id,name');
+        }
+
+        return $tarea;
+    }
+
+    public function reordenarChecklist(WorkFlowTarea $tarea, array $orden): void
+    {
+        foreach ($orden as $index => $checklistId) {
+            WorkFlowTareaChecklist::where('work_flow_tarea_id', $tarea->id)
+                ->where('id', $checklistId)
+                ->update(['orden' => $index]);
+        }
+
+        $this->auditService->registrar(
+            'tarea.checklists.reordenados',
+            $tarea->nodo->workflow_id,
+            $tarea->instancia_id,
+            ['tarea_id' => $tarea->id, 'orden' => $orden]
+        );
     }
 }

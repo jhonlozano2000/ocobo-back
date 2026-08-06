@@ -7,7 +7,7 @@ namespace App\Http\Requests\Workflows;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
 
-class StoreChecklistItemRequest extends FormRequest
+class StoreWorkFlowTareaChecklistRequest extends FormRequest
 {
     public function authorize(): bool
     {
