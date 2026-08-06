@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\ClasificacionDocumental;
 
+use App\Events\NotificationPushed;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ClasificacionDocumental\AprobarTRDVersionRequest;
 use App\Http\Requests\ClasificacionDocumental\ClasificacionDocumentalTRDVersionRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRDVersion;
+use App\Models\Notificacion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -222,9 +224,9 @@ class ClasificacionDocumentalTRDVersionController extends Controller
     public function aprobarVersion(AprobarTRDVersionRequest $request, $dependenciaId)
     {
         try {
-            // Verificar que el usuario tiene el rol de Jefe de Archivo
+            // Verificar que el usuario tiene el permiso Jefe de Archivo (se concede al rol Administrador)
             $user = auth()->user();
-            if (! $user->hasRole('Jefe de Archivo')) {
+            if (! $user->hasPermissionTo('Jefe de Archivo')) {
                 return $this->errorResponse('No tiene permisos para aprobar versiones TRD. Solo el Jefe de Archivo puede realizar esta acción.', null, 403);
             }
 
@@ -255,6 +257,34 @@ class ClasificacionDocumentalTRDVersionController extends Controller
                 'observaciones' => $request->observaciones,
                 'fecha_aprobacion' => now(),
             ]);
+
+            // Notificar al creador de la versión
+            try {
+                $versionPendiente->loadMissing('userRegister', 'dependencia');
+
+                $notificacion = Notificacion::create([
+                    'user_id' => $versionPendiente->user_register,
+                    'type' => 'trd.aprobada',
+                    'title' => 'Versión TRD aprobada',
+                    'message' => sprintf(
+                        'La versión %s de la TRD de "%s" ha sido aprobada.',
+                        $versionPendiente->version,
+                        $versionPendiente->dependencia?->nom_organico ?? 'la dependencia'
+                    ),
+                    'notifiable_type' => get_class($versionPendiente),
+                    'notifiable_id' => $versionPendiente->id,
+                    'data' => [
+                        'url' => "/clasificacion-documental/trd-versiones/{$versionPendiente->id}",
+                    ],
+                ]);
+
+                event(new NotificationPushed($notificacion));
+            } catch (\Throwable $e) {
+                logger()->warning('Failed to notify TRD version approval', [
+                    'version_id' => $versionPendiente->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             DB::commit();
 
@@ -299,9 +329,9 @@ class ClasificacionDocumentalTRDVersionController extends Controller
     public function listarPendientesPorAprobar()
     {
         try {
-            // Verificar que el usuario tiene el rol de Jefe de Archivo
+            // Verificar que el usuario tiene el permiso Jefe de Archivo (se concede al rol Administrador)
             $user = auth()->user();
-            if (! $user->hasRole('Jefe de Archivo')) {
+            if (! $user->hasPermissionTo('Jefe de Archivo')) {
                 return $this->successResponse([], 'No tiene permisos para ver versiones pendientes');
             }
 
@@ -311,7 +341,7 @@ class ClasificacionDocumentalTRDVersionController extends Controller
             })
                 ->with(['trdVersiones' => function ($query) {
                     $query->where('estado_version', 'TEMP')
-                        ->select('dependencia_id', 'version', 'estado_version', 'created_at')
+                        ->select('id', 'dependencia_id', 'version', 'estado_version', 'created_at')
                         ->orderBy('version', 'desc');
                 }])
                 ->select('id', 'nom_organico', 'cod_organico')

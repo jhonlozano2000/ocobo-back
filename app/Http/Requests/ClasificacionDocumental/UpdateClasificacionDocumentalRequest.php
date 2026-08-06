@@ -103,6 +103,17 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
                 'nullable',
                 'boolean',
             ],
+            'disposicion_final' => [
+                'nullable',
+                'string',
+                'max:50',
+            ],
+            'soporte' => [
+                'nullable',
+                'string',
+                'max:20',
+                'in:Papel,Electrónico,Mixto',
+            ],
             'parent' => [
                 'nullable',
                 'integer',

@@ -61,6 +61,10 @@ Route::middleware('throttle:config-operations')->group(function () {
             // Por dependencia
             Route::get('/dependencia/{dependenciaId}', [ClasificacionDocumentalTVDController::class, 'listarPorDependencia'])->name('por-dependencia');
 
+            // Importar y validar
+            Route::post('/import', [ClasificacionDocumentalTVDController::class, 'import'])->name('import');
+            Route::post('/validate', [ClasificacionDocumentalTVDController::class, 'validate'])->name('validate');
+
             // Resource route
             Route::apiResource('', ClasificacionDocumentalTVDController::class)
                 ->parameters(['' => 'tvd'])

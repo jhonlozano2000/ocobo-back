@@ -536,8 +536,8 @@ class ClasificacionDocumentalTRD extends Model
         if ($this->dias_vencimiento !== null) {
             $fuente = "{$this->tipo} (ID: {$this->id})";
         } else {
-            // Buscar en padres
-            foreach ($jerarquia as $item) {
+            // Buscar el ancestro MÁS CERCANO con días (la jerarquía viene de raíz a hoja, iterar en reversa)
+            foreach (array_reverse($jerarquia) as $item) {
                 if ($item['id'] !== $this->id) {
                     $elemento = self::find($item['id']);
                     if ($elemento && $elemento->dias_vencimiento !== null) {
@@ -569,8 +569,8 @@ class ClasificacionDocumentalTRD extends Model
         if ($this->dias_vencimiento !== null) {
             $fuente = "{$this->tipo} (ID: {$this->id})";
         } elseif ($dias !== null) {
-            // Buscar en padres
-            foreach ($jerarquia as $item) {
+            // Buscar el ancestro MÁS CERCANO con días (la jerarquía viene de raíz a hoja, iterar en reversa)
+            foreach (array_reverse($jerarquia) as $item) {
                 if ($item['id'] !== $this->id) {
                     $elemento = self::find($item['id']);
                     if ($elemento && $elemento->dias_vencimiento !== null) {

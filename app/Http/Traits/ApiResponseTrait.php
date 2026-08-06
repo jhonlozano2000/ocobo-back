@@ -35,7 +35,7 @@ trait ApiResponseTrait
         ];
 
         if (! is_null($error)) {
-            $response['error'] = $error;
+            $response['errors'] = $error;
         }
 
         return response()->json($response, $code);

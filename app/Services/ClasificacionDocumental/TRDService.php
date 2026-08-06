@@ -70,10 +70,34 @@ class TRDService
     }
 
     /**
+     * Deriva disposicion_final y soporte desde los campos booleanos.
+     */
+    private function deriveDisposicionSoporte(array &$data): void
+    {
+        $parts = [];
+        if (!empty($data['ct'])) $parts[] = 'CT';
+        if (!empty($data['e'])) $parts[] = 'E';
+        if (!empty($data['m_d'])) $parts[] = 'M/D';
+        if (!empty($data['s'])) $parts[] = 'S';
+        $data['disposicion_final'] = !empty($parts) ? implode(', ', $parts) : null;
+
+        if (!empty($data['papel'])) {
+            $data['soporte'] = 'Papel';
+        } elseif (!empty($data['electronico'])) {
+            $data['soporte'] = 'Electrónico';
+        } elseif (!empty($data['mixto'])) {
+            $data['soporte'] = 'Mixto';
+        } else {
+            $data['soporte'] = null;
+        }
+    }
+
+    /**
      * Crea un elemento TRD.
      */
     public function create(array $data): ClasificacionDocumentalTRD
     {
+        $this->deriveDisposicionSoporte($data);
         $data['user_register'] = auth()->id();
 
         return ClasificacionDocumentalTRD::create($data);
@@ -84,6 +108,8 @@ class TRDService
      */
     public function update(int $id, array $data): ?ClasificacionDocumentalTRD
     {
+        $this->deriveDisposicionSoporte($data);
+
         $trd = ClasificacionDocumentalTRD::find($id);
 
         if (! $trd) {
@@ -179,6 +205,7 @@ class TRDService
         $idSerie = null;
         $idSubSerie = null;
         $inserted = 0;
+        $conDias = 0;
         $errors = [];
 
         $spreadsheet = IOFactory::load($filePath);
@@ -229,6 +256,10 @@ class TRDService
             $colC = trim($row[2] ?? '');
             $diasVencimiento = trim($row[3] ?? '');
             $nombre = trim($row[4] ?? '');
+
+            if ($index === 6 && ! empty($diasVencimiento)) {
+                \Log::info('TRD Import - Muestra dias_vencimiento col D', ['raw' => $row[3] ?? null, 'dias' => $diasVencimiento]);
+            }
 
             if (empty($nombre)) {
                 continue;
@@ -317,6 +348,10 @@ class TRDService
 
                 $inserted++;
 
+                if (! empty($data['dias_vencimiento'])) {
+                    $conDias++;
+                }
+
                 if ($tipo === 'Serie') {
                     $idSerie = $elemento->id;
                 } elseif ($tipo === 'SubSerie') {
@@ -327,9 +362,39 @@ class TRDService
             }
         }
 
+        \Log::info('TRD Import - Resultado', [
+            'inserted' => $inserted,
+            'con_dias_vencimiento' => $conDias,
+            'errors' => count($errors),
+        ]);
+
         return [
             'inserted' => $inserted,
             'errors' => $errors,
         ];
+    }
+
+    /**
+     * Parsea el valor de días de vencimiento desde la celda de Excel de forma tolerante.
+     * Acepta números, "30", " 30 ", "30 días", "30-60", etc.
+     * Retorna int|null.
+     */
+    private function parseDiasVencimiento($value): ?int
+    {
+        if ($value === null || trim((string) $value) === '') {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        // Extraer el primer número entero del texto (ej: "30 días" -> 30)
+        $str = trim((string) $value);
+        if (preg_match('/-?\d+/', $str, $m)) {
+            return (int) $m[0];
+        }
+
+        return null;
     }
 }
