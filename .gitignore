@@ -56,3 +56,17 @@ public/otros_archivos
 !storage/app/avatars/.gitkeep
 !storage/app/firmas/.gitkeep
 !storage/app/temp_files/.gitkeep
+
+# Cache de compilado (se regenera)
+bootstrap/cache/*.php
+
+# Fuentes PDF y cache de framework
+storage/fonts/*.json
+storage/framework/cache/data/*
+
+# Artefactos de depuración/pruebas no deben committearse
+cookies.txt
+debug*.php
+test_*.php
+check_*.php
+phpinfo.php
