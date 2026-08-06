@@ -45,6 +45,14 @@ Route::middleware('throttle:config-operations')->group(function () {
     Route::get('/users/{userId}/cargo', [UserController::class, 'getUserCargo'])->name('users.cargo');
 
     /**
+     * Configuración de notificaciones (ANTES del resource para evitar conflicto con GET /users/{user})
+     */
+    Route::get('/users/notification-settings', [NotificationSettingsController::class, 'show']);
+    Route::put('/users/notification-settings', [NotificationSettingsController::class, 'update']);
+    Route::get('/users/{userId}/notification-settings', [NotificationSettingsController::class, 'getUserSettings']);
+    Route::put('/users/{userId}/notification-settings', [NotificationSettingsController::class, 'updateUserSettings']);
+
+    /**
      * Usuarios - Resource routes
      */
     Route::resource('/users', UserController::class)->except('create', 'edit');
@@ -68,14 +76,6 @@ Route::middleware('throttle:config-operations')->group(function () {
     Route::get('/user/recent-devices', [UserSessionController::class, 'index']);
     Route::get('/users/{userId}/sessions', [UserSessionController::class, 'getUserSessions']);
     Route::delete('/user/sessions/{sessionId}', [UserSessionController::class, 'destroy']);
-
-    /**
-     * Configuración de notificaciones
-     */
-    Route::get('/users/notification-settings', [NotificationSettingsController::class, 'show']);
-    Route::put('/users/notification-settings', [NotificationSettingsController::class, 'update']);
-    Route::get('/users/{userId}/notification-settings', [NotificationSettingsController::class, 'getUserSettings']);
-    Route::put('/users/{userId}/notification-settings', [NotificationSettingsController::class, 'updateUserSettings']);
 
     /**
      * Gestión de ventanillas por usuario

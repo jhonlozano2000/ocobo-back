@@ -43,8 +43,13 @@ return [
     |
     | Ejemplo: *.example.com permite sub.example.com, app.example.com
     |
+    | NOTA: Si la variable de entorno está vacía, se retorna array vacío.
+    | Si se necesita permitir un subdominio, usar: CORS_ALLOWED_ORIGINS_PATTERNS=.*\.example\.com
+    |
     */
-    'allowed_origins_patterns' => explode(',', env('CORS_ALLOWED_ORIGINS_PATTERNS', '')),
+    'allowed_origins_patterns' => env('CORS_ALLOWED_ORIGINS_PATTERNS')
+        ? explode(',', env('CORS_ALLOWED_ORIGINS_PATTERNS'))
+        : [],
 
     'allowed_headers' => [
         'Accept',

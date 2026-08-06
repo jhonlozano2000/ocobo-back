@@ -23,6 +23,13 @@ Broadcast::channel('respuesta.{respuestaId}', function ($user, $respuestaId) {
 });
 
 // ==========================================
+// Canal de Notificaciones Push por Usuario
+// ==========================================
+Broadcast::channel('user.{id}', function ($user, $id) {
+    return (int) $user->id === (int) $id;
+});
+
+// ==========================================
 // Canales de Editor Colaborativo (Mi Bandeja)
 // ==========================================
 Broadcast::channel('documentos.{documentoId}', function ($user, $documentoId) {

@@ -115,9 +115,21 @@ trait SanitizesApiOutput
     /**
      * Sanitiza todos los strings contra XSS
      */
+    /**
+     * Campos que deben omitirse de la sanitización
+     */
+    protected function getSkipSanitization(): array
+    {
+        return [];
+    }
+
     private function sanitizeStrings(array $data): array
     {
+        $skip = $this->getSkipSanitization();
         foreach ($data as $key => $value) {
+            if (in_array($key, $skip)) {
+                continue;
+            }
             if (is_string($value)) {
                 // Algunos campos permiten HTML
                 if (in_array($key, $this->allowHtml)) {

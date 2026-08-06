@@ -38,3 +38,7 @@ Schedule::command('grupos-colaborativos:liberar-bloqueos')->hourly()->withoutOve
 
 // M14: Reportes programados — revisa cada 5 minutos si hay pendientes
 Schedule::command('reportes:generar-programados')->everyFiveMinutes()->withoutOverlapping();
+
+// M16b: Alertas de retención TRD (Decreto 620/2015, ISO 15489)
+// Notifica a responsables cuando fecha_retencion_fin está próxima a vencer (30, 7 y 1 día)
+Schedule::command('alertas:retencion-trd --dias=30,7,1')->dailyAt('06:30')->withoutOverlapping();

@@ -37,6 +37,24 @@ class ConfigDiviPoliService
                     WHEN config_divi_poli.tipo = 'Municipio' THEN pais.nombre
                     ELSE NULL
                 END as pais_nombre"),
+                DB::raw("CASE
+                    WHEN config_divi_poli.tipo = 'Departamento' THEN config_divi_poli.codigo
+                    WHEN config_divi_poli.tipo = 'Municipio' THEN departamento.codigo
+                    ELSE NULL
+                END as departamento_codigo"),
+                DB::raw("CASE
+                    WHEN config_divi_poli.tipo = 'Departamento' THEN config_divi_poli.nombre
+                    WHEN config_divi_poli.tipo = 'Municipio' THEN departamento.nombre
+                    ELSE NULL
+                END as departamento_nombre"),
+                DB::raw("CASE
+                    WHEN config_divi_poli.tipo = 'Municipio' THEN config_divi_poli.codigo
+                    ELSE NULL
+                END as municipio_codigo"),
+                DB::raw("CASE
+                    WHEN config_divi_poli.tipo = 'Municipio' THEN config_divi_poli.nombre
+                    ELSE NULL
+                END as municipio_nombre"),
             ])
                 ->leftJoin('config_divi_poli as departamento', function ($j) {
                     $j->on('config_divi_poli.parent', '=', 'departamento.id')

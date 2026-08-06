@@ -140,6 +140,11 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('api')
                 ->prefix('api/reportes')
                 ->group(base_path('routes/reportes.php'));
+
+            // DASHBOARD GLOBAL M15
+            Route::middleware('api')
+                ->prefix('api/dashboard')
+                ->group(base_path('routes/dashboard.php'));
         });
     }
 }

@@ -218,6 +218,17 @@ class AppServiceProvider extends ServiceProvider
                 });
         });
 
+        // Rate limit forgot/reset password: 3 intentos/min por IP+email
+        RateLimiter::for('forgot-password', function (Request $request) {
+            return Limit::perMinute(3)
+                ->by('forgot-password:' . md5($request->ip() . '|' . ($request->email ?? '')))
+                ->response(function () {
+                    return response()->json([
+                        'message' => 'Demasiadas solicitudes. Intenta de nuevo en 1 minuto.',
+                    ], 429);
+                });
+        });
+
         // Rate limit 2FA verify: 5 intentos/min por IP (brute force protection)
         RateLimiter::for('2fa-verify', function (Request $request) {
             return Limit::perMinute(5)

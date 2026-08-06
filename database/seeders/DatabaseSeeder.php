@@ -19,6 +19,8 @@ use Database\Seeders\Permisos\PermisosControlAccesoSeeder;
 use Database\Seeders\Permisos\PermisosDigitalizacionSeeder;
 use Database\Seeders\Permisos\PermisosGestionSeeder;
 use Database\Seeders\Permisos\PermisosMiBandejaSeeder;
+use Database\Seeders\Permisos\PermisosOtrosSeeder;
+use Database\Seeders\Permisos\PermisosPlantillasDocumentosSeeder;
 use Database\Seeders\Permisos\PermisosRadicarSeeder;
 use Database\Seeders\Permisos\PermisosReportesSeeder;
 use Database\Seeders\Permisos\PermisosWorkflowsSeeder;

@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Route;
 // Rutas públicas con rate limiting específico
 Route::middleware('throttle:login')->post('/login', [AuthController::class, 'login']);
 Route::middleware('throttle:register')->post('/register', [AuthController::class, 'register']);
+Route::middleware('throttle:forgot-password')->post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::middleware('throttle:forgot-password')->post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::middleware(['auth:sanctum', 'throttle:login'])->post('/logout', [AuthController::class, 'logout']);
 
 // Verificación de sesión activa (usado por GuestOnlyRoute)
@@ -30,10 +32,20 @@ Route::middleware('auth:sanctum')->get('/getme', [AuthController::class, 'getMe'
 Route::middleware('auth:sanctum')->post('/auth/check-permissions', function (Illuminate\Http\Request $request) {
     $user = $request->user();
     $permissions = $request->input('permissions', []);
-    $results = [];
-    foreach ($permissions as $perm) {
-        $results[$perm] = $user->can($perm);
+
+    if (empty($permissions)) {
+        $all = $user->getAllPermissions();
+        $results = [];
+        foreach ($all as $perm) {
+            $results[$perm->name] = true;
+        }
+    } else {
+        $results = [];
+        foreach ($permissions as $perm) {
+            $results[$perm] = $user->can($perm);
+        }
     }
+
     return response()->json(['data' => $results]);
 });
 

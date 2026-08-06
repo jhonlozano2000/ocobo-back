@@ -49,7 +49,7 @@ return [
     |
     */
 
-    'expiration' => null,
+    'expiration' => env('SANCTUM_TOKEN_EXPIRATION', 1440), // 24h por defecto (ISO 27001 A.9.4.1)
 
     /*
     |--------------------------------------------------------------------------

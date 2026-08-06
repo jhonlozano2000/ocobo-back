@@ -27,10 +27,10 @@ class FileMetadataHelper
     /**
      * Crea metadatos ISO 27001 para el archivo digital de un radicado recibido.
      */
-    public static function crearMetadataArchivoDigital(VentanillaRadicaReci $radicado, string $archivoPath, string $hash, int $archivoPeso): ?VentanillaRadicaReciMetadata
+    public static function crearMetadataArchivoDigital(VentanillaRadicaReci $radicado, string $archivoPath, string $hash, int $archivoPeso, array $extra = []): ?VentanillaRadicaReciMetadata
     {
         try {
-            $metadata = self::construirMetadata($radicado, null, 'digital', $archivoPath, $hash, $archivoPeso);
+            $metadata = self::construirMetadata($radicado, null, 'digital', $archivoPath, $hash, $archivoPeso, $extra);
 
             return $metadata;
         } catch (\Exception $e) {
@@ -46,7 +46,7 @@ class FileMetadataHelper
     /**
      * Crea metadatos ISO 27001 para un archivo adjunto de un radicado recibido.
      */
-    public static function crearMetadataArchivoAdjunto(VentanillaRadicaReciArchivo $archivo): ?VentanillaRadicaReciMetadata
+    public static function crearMetadataArchivoAdjunto(VentanillaRadicaReciArchivo $archivo, array $extra = []): ?VentanillaRadicaReciMetadata
     {
         try {
             $radicado = $archivo->radicado;
@@ -63,7 +63,8 @@ class FileMetadataHelper
                 'adjunto',
                 $archivo->archivo,
                 $archivo->hash_sha256,
-                $archivo->archivo_peso
+                $archivo->archivo_peso,
+                $extra
             );
 
             return $metadata;
@@ -86,7 +87,8 @@ class FileMetadataHelper
         string $tipoArchivo,
         string $archivoPath,
         string $hash,
-        int $archivoPeso
+        int $archivoPeso,
+        array $extra = []
     ): ?VentanillaRadicaReciMetadata {
         $radicado->load(['clasificacionDocumental', 'tercero', 'responsables.userCargo.user', 'usuarioCreaRadicado']);
 
@@ -188,12 +190,12 @@ class FileMetadataHelper
             'estado_registro' => 'ACTIVO',
         ];
 
-        $metadata = VentanillaRadicaReciMetadata::create($metadataData);
+        $metadata = VentanillaRadicaReciMetadata::create(array_merge($metadataData, $extra));
 
         $usuario = Auth::user();
         VentanillaRadicaReciMetadataHistory::registrarCreacion(
             $metadata->id,
-            $metadataData,
+            array_merge($metadataData, $extra),
             $usuario?->id,
             $usuario ? trim("{$usuario->nombres} {$usuario->apellidos}") : null
         );
@@ -326,10 +328,10 @@ class FileMetadataHelper
         return VentanillaRadicaReciMetadata::where('archivo_id', $archivoId)->first();
     }
 
-    public static function crearMetadataArchivoDigitalEnviados(VentanillaRadicaEnviados $radicado, string $archivoPath, string $hash, int $archivoPeso): ?VentanillaRadicaEnviadosMetadata
+    public static function crearMetadataArchivoDigitalEnviados(VentanillaRadicaEnviados $radicado, string $archivoPath, string $hash, int $archivoPeso, array $extra = []): ?VentanillaRadicaEnviadosMetadata
     {
         try {
-            $metadata = self::construirMetadataEnviados($radicado, null, 'digital', $archivoPath, $hash, $archivoPeso);
+            $metadata = self::construirMetadataEnviados($radicado, null, 'digital', $archivoPath, $hash, $archivoPeso, $extra);
 
             return $metadata;
         } catch (\Exception $e) {
@@ -342,7 +344,7 @@ class FileMetadataHelper
         }
     }
 
-    public static function crearMetadataArchivoAdjuntoEnviados(VentanillaRadicaEnviadosArchivos $archivo): ?VentanillaRadicaEnviadosMetadata
+    public static function crearMetadataArchivoAdjuntoEnviados(VentanillaRadicaEnviadosArchivos $archivo, array $extra = []): ?VentanillaRadicaEnviadosMetadata
     {
         try {
             $radicado = $archivo->radicado;
@@ -357,7 +359,8 @@ class FileMetadataHelper
                 'adjunto',
                 $archivo->archivo,
                 $archivo->hash_sha256 ?? $hash ?? '',
-                $archivo->archivo_peso ?? 0
+                $archivo->archivo_peso ?? 0,
+                $extra
             );
 
             return $metadata;
@@ -377,7 +380,8 @@ class FileMetadataHelper
         string $tipoArchivo,
         string $archivoPath,
         string $hash,
-        int $archivoPeso
+        int $archivoPeso,
+        array $extra = []
     ): ?VentanillaRadicaEnviadosMetadata {
         $radicado->load(['clasificacionDocumental', 'terceroEnviado', 'responsables.userCargo.user', 'usuarioCreaRadicado']);
         $clasificacion = $radicado->clasificacionDocumental;
@@ -456,12 +460,12 @@ class FileMetadataHelper
             'categoria_informacion' => $tipoDocumento,
             'estado_registro' => 'ACTIVO',
         ];
-        $metadata = VentanillaRadicaEnviadosMetadata::create($metadataData);
+        $metadata = VentanillaRadicaEnviadosMetadata::create(array_merge($metadataData, $extra));
 
         $usuario = Auth::user();
         VentanillaRadicaEnviadosMetadataHistory::registrarCreacion(
             $metadata->id,
-            $metadataData,
+            array_merge($metadataData, $extra),
             $usuario?->id,
             $usuario ? trim("{$usuario->nombres} {$usuario->apellidos}") : null
         );
@@ -469,10 +473,10 @@ class FileMetadataHelper
         return $metadata;
     }
 
-    public static function crearMetadataArchivoDigitalInterno(VentanillaRadicaInterno $radicado, string $archivoPath, string $hash, int $archivoPeso): ?VentanillaRadicaInternoMetadata
+    public static function crearMetadataArchivoDigitalInterno(VentanillaRadicaInterno $radicado, string $archivoPath, string $hash, int $archivoPeso, array $extra = []): ?VentanillaRadicaInternoMetadata
     {
         try {
-            $metadata = self::construirMetadataInterno($radicado, null, 'digital', $archivoPath, $hash, $archivoPeso);
+            $metadata = self::construirMetadataInterno($radicado, null, 'digital', $archivoPath, $hash, $archivoPeso, $extra);
 
             return $metadata;
         } catch (\Exception $e) {
@@ -485,7 +489,7 @@ class FileMetadataHelper
         }
     }
 
-    public static function crearMetadataArchivoAdjuntoInterno(VentanillaRadicaInternoArchivos $archivo): ?VentanillaRadicaInternoMetadata
+    public static function crearMetadataArchivoAdjuntoInterno(VentanillaRadicaInternoArchivos $archivo, array $extra = []): ?VentanillaRadicaInternoMetadata
     {
         try {
             $radicado = $archivo->radicado;
@@ -500,7 +504,8 @@ class FileMetadataHelper
                 'adjunto',
                 $archivo->ruta_archivo,
                 $archivo->hash_sha256 ?? $hash ?? '',
-                $archivo->tamano_archivo ?? 0
+                $archivo->tamano_archivo ?? 0,
+                $extra
             );
 
             return $metadata;
@@ -520,7 +525,8 @@ class FileMetadataHelper
         string $tipoArchivo,
         string $archivoPath,
         string $hash,
-        int $archivoPeso
+        int $archivoPeso,
+        array $extra = []
     ): ?VentanillaRadicaInternoMetadata {
         $radicado->load(['clasificacionDocumental', 'tercero', 'responsables.userCargo.user', 'usuarioCrea']);
         $clasificacion = $radicado->clasificacionDocumental;
@@ -599,12 +605,12 @@ class FileMetadataHelper
             'categoria_informacion' => $tipoDocumento,
             'estado_registro' => 'ACTIVO',
         ];
-        $metadata = VentanillaRadicaInternoMetadata::create($metadataData);
+        $metadata = VentanillaRadicaInternoMetadata::create(array_merge($metadataData, $extra));
 
         $usuario = Auth::user();
         VentanillaRadicaInternoMetadataHistory::registrarCreacion(
             $metadata->id,
-            $metadataData,
+            array_merge($metadataData, $extra),
             $usuario?->id,
             $usuario ? trim("{$usuario->nombres} {$usuario->apellidos}") : null
         );
