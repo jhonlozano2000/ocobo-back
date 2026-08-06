@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoResponsable;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -108,6 +110,7 @@ class VentanillaRadicaInternoResponsableController extends Controller
                         'nom_organico' => $cargo->nom_organico,
                         'codigo' => $cargo->cod_organico,
                     ] : null,
+                    'fechor_visto' => $r->fechor_visto,
                     'created_at' => $r->created_at,
                 ];
             })->values();
@@ -178,6 +181,29 @@ class VentanillaRadicaInternoResponsableController extends Controller
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar responsables', $e->getMessage(), 500);
+        }
+    }
+
+    public function marcarVisto($id): JsonResponse
+    {
+        try {
+            $responsable = VentanillaRadicaInternoResponsable::findOrFail($id);
+
+            if (! $responsable->marcarComoVisto()) {
+                return $this->successResponse(
+                    $responsable->fresh()->load(['userCargo.user', 'userCargo.cargo']),
+                    'El radicado ya había sido marcado como visto anteriormente'
+                );
+            }
+
+            return $this->successResponse(
+                $responsable->fresh()->load(['userCargo.user', 'userCargo.cargo']),
+                'Acuse digital registrado exitosamente'
+            );
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Responsable no encontrado', null, 404);
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al registrar el acuse digital', $e->getMessage(), 500);
         }
     }
 }

@@ -38,6 +38,9 @@ class UploadArchivoEnviadoRequest extends FormRequest
                 'max:'.$config['maxSize'],
                 'mimes:'.implode(',', $allowedExtensions),
             ],
+            'descripcion' => ['nullable', 'string', 'max:500'],
+            'palabras_clave' => ['nullable', 'string', 'max:500'],
+            'clasificacion_id' => ['nullable', 'integer', 'exists:clasificacion_documental_trd,id'],
         ];
     }
 

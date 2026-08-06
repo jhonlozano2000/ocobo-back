@@ -69,7 +69,7 @@ return new class extends Migration
 
             $table->foreign('respuesta_id', 'rrp_resp_fk')->references('id')->on('ventanilla_radica_reci_respuestas')->onDelete('cascade');
             $table->foreign('user_id', 'rrp_user_fk')->references('id')->on('users')->onDelete('cascade');
-            $table->index('respuesta_id');
+            $table->index('respuesta_id', 'rrp_respuesta_id_idx');
         });
     }
 

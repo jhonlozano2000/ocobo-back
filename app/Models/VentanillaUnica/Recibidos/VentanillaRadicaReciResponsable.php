@@ -62,6 +62,28 @@ class VentanillaRadicaReciResponsable extends Model
         return $this->custodio;
     }
 
+    public function marcarComoVisto(): bool
+    {
+        if (! $this->fechor_visto) {
+            $this->update(['fechor_visto' => now()]);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public function desmarcarComoVisto(): bool
+    {
+        if ($this->fechor_visto) {
+            $this->update(['fechor_visto' => null]);
+
+            return true;
+        }
+
+        return false;
+    }
+
     public function marcarComoCustodio()
     {
         $this->update(['custodio' => true]);

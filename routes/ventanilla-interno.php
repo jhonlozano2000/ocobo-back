@@ -49,6 +49,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/historial/archivos-eliminados', [VentanillaRadicaInternoDigitalController::class, 'historialEliminaciones'])->name('historial.eliminaciones');
     });
 
+    Route::post('/responsables-internos/{id}/marcar-visto', [VentanillaRadicaInternoResponsableController::class, 'marcarVisto'])->name('radica-interno.responsables.marcar-visto')->middleware('can:'.$permInterno.'Editar');
+    Route::post('/destinatarios-internos/{id}/marcar-visto', [VentanillaRadicaInternoDestinatariosController::class, 'marcarVisto'])->name('radica-interno.destinatarios.marcar-visto')->middleware('can:'.$permInterno.'Editar');
     Route::apiResource('responsables-internos', VentanillaRadicaInternoResponsableController::class)->except('create', 'edit')->middleware('can:'.$permInterno.'Editar');
     Route::get('/radica-interno/{radica_interno_id}/responsables', [VentanillaRadicaInternoResponsableController::class, 'getByRadicado'])->name('radica-interno.responsables.listar')->middleware('can:'.$permInterno.'Editar');
     Route::post('/radica-interno/{radica_interno_id}/responsables', [VentanillaRadicaInternoResponsableController::class, 'assignToRadicado'])->name('radica-interno.responsables.asignar')->middleware('can:'.$permInterno.'Editar');

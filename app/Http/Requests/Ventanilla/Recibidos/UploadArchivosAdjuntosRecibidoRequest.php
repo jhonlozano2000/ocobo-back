@@ -34,6 +34,9 @@ class UploadArchivosAdjuntosRecibidoRequest extends FormRequest
                 'file',
                 'max:'.$maxSize,
             ],
+            'descripcion' => ['nullable', 'string', 'max:500'],
+            'palabras_clave' => ['nullable', 'string', 'max:500'],
+            'clasificacion_id' => ['nullable', 'integer', 'exists:clasificacion_documental_trd,id'],
         ];
     }
 

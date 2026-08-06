@@ -77,7 +77,10 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
                 'subido_por' => $usuario?->id,
             ]);
 
-            FileMetadataHelper::crearMetadataArchivoDigitalEnviados($radicado, $nuevoArchivo, $hashSha256, $fileSize);
+            FileMetadataHelper::crearMetadataArchivoDigitalEnviados(
+                $radicado, $nuevoArchivo, $hashSha256, $fileSize,
+                $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
+            );
 
             try {
                 $ocrText = null;

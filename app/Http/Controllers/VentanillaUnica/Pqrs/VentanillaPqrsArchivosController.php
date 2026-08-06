@@ -230,7 +230,10 @@ class VentanillaPqrsArchivosController extends Controller
                     'hash_sha256' => $uploadData['hash'],
                 ]);
 
-                FileMetadataHelper::crearMetadataArchivoAdjunto($archivoAdicional);
+                FileMetadataHelper::crearMetadataArchivoAdjunto(
+                    $archivoAdicional,
+                    $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
+                );
 
                 $archivosSubidos[] = [
                     'id' => $archivoAdicional->id,

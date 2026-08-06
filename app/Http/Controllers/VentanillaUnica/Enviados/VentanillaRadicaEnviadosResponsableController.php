@@ -8,6 +8,8 @@ use App\Http\Requests\Ventanilla\Enviados\UpdateResponsableEnviadoRequest;
 use App\Http\Requests\Ventanilla\Generales\ListResponsablesEnviadoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosResponsable;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -212,6 +214,29 @@ class VentanillaRadicaEnviadosResponsableController extends Controller
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar responsables', $e->getMessage(), 500);
+        }
+    }
+
+    public function marcarVisto($id): JsonResponse
+    {
+        try {
+            $responsable = VentanillaRadicaEnviadosResponsable::findOrFail($id);
+
+            if (! $responsable->marcarComoVisto()) {
+                return $this->successResponse(
+                    $responsable->fresh()->load(['userCargo.user', 'userCargo.cargo', 'radicado']),
+                    'El radicado ya había sido marcado como visto anteriormente'
+                );
+            }
+
+            return $this->successResponse(
+                $responsable->fresh()->load(['userCargo.user', 'userCargo.cargo', 'radicado']),
+                'Acuse digital registrado exitosamente'
+            );
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Responsable no encontrado', null, 404);
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al registrar el acuse digital', $e->getMessage(), 500);
         }
     }
 }

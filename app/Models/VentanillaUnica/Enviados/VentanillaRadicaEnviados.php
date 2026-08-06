@@ -163,7 +163,7 @@ class VentanillaRadicaEnviados extends Model
 
     public function usuariosResponsables()
     {
-        return $this->belongsToMany(UserCargo::class, 'ventanilla_radica_enviados_responsa', 'radica_enviado_id', 'users_cargos_id')
+        return $this->belongsToMany(UserCargo::class, 'ventanilla_radica_enviados_responsable', 'radica_enviado_id', 'users_cargos_id')
             ->withPivot('custodio', 'fechor_visto')
             ->withTimestamps();
     }

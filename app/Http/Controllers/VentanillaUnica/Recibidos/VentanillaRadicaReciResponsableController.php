@@ -8,6 +8,7 @@ use App\Http\Requests\Ventanilla\Recibidos\StoreResponsableReciboRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsable;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -186,6 +187,32 @@ class VentanillaRadicaReciResponsableController extends Controller
             return $this->successResponse($responsables, 'Responsables de la radicación obtenidos exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener los responsables', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Acuse digital de recibo: marca el responsable como "visto".
+     */
+    public function marcarVisto($id): JsonResponse
+    {
+        try {
+            $responsable = VentanillaRadicaReciResponsable::findOrFail($id);
+
+            if (! $responsable->marcarComoVisto()) {
+                return $this->successResponse(
+                    $responsable->fresh()->load(['usuarioCargo', 'radicado']),
+                    'El radicado ya había sido marcado como visto anteriormente'
+                );
+            }
+
+            return $this->successResponse(
+                $responsable->fresh()->load(['usuarioCargo', 'radicado']),
+                'Acuse digital registrado exitosamente'
+            );
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Responsable no encontrado', null, 404);
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al registrar el acuse digital', $e->getMessage(), 500);
         }
     }
 

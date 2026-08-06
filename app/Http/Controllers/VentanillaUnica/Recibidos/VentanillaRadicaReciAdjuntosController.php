@@ -78,7 +78,10 @@ class VentanillaRadicaReciAdjuntosController extends Controller
                     'hash_sha256' => $hash,
                 ]);
 
-                FileMetadataHelper::crearMetadataArchivoAdjunto($archivoAdicional);
+                FileMetadataHelper::crearMetadataArchivoAdjunto(
+                    $archivoAdicional,
+                    $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
+                );
 
                 $archivosSubidos[] = [
                     'id' => $archivoAdicional->id,

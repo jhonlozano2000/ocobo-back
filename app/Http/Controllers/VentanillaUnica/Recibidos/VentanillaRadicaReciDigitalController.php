@@ -115,7 +115,10 @@ class VentanillaRadicaReciDigitalController extends Controller
                 ]);
             }
 
-            FileMetadataHelper::crearMetadataArchivoDigital($radicado, $nuevoArchivo, $hashSha256, $fileSize);
+            FileMetadataHelper::crearMetadataArchivoDigital(
+                $radicado, $nuevoArchivo, $hashSha256, $fileSize,
+                $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
+            );
 
             DB::commit();
 

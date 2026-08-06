@@ -69,7 +69,10 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
                     'hash_sha256' => $hashSha256,
                 ]);
 
-                FileMetadataHelper::crearMetadataArchivoAdjuntoEnviados($archivoAdicional);
+                FileMetadataHelper::crearMetadataArchivoAdjuntoEnviados(
+                    $archivoAdicional,
+                    $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
+                );
 
                 $nombreUsuario = $usuario ? trim($usuario->nombres.' '.$usuario->apellidos) : 'No se registró usuario';
                 $fileUrl = ArchivoHelper::obtenerUrl($rutaArchivo, self::DISK);

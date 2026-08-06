@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoDestinatarios;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -330,6 +332,24 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar destinatarios', $e->getMessage(), 500);
+        }
+    }
+
+    public function marcarVisto($id): JsonResponse
+    {
+        try {
+            $destinatario = VentanillaRadicaInternoDestinatarios::findOrFail($id);
+
+            $destinatario->marcarComoVisto();
+
+            return $this->successResponse(
+                $destinatario->fresh()->load(['userCargo.user', 'userCargo.cargo']),
+                'Acuse digital registrado exitosamente'
+            );
+        } catch (ModelNotFoundException $e) {
+            return $this->errorResponse('Destinatario no encontrado', null, 404);
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al registrar el acuse digital', $e->getMessage(), 500);
         }
     }
 }
