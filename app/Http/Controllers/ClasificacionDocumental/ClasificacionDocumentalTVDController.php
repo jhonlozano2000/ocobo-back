@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTVD;
 use App\Services\ClasificacionDocumental\TVDService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ClasificacionDocumentalTVDController extends Controller
@@ -80,6 +81,16 @@ class ClasificacionDocumentalTVDController extends Controller
         } catch (\Exception $e) {
             return $this->errorResponse('Error al eliminar el elemento TVD', $e->getMessage(), 500);
         }
+    }
+
+    public function import(Request $request): JsonResponse
+    {
+        return response()->json(['success' => true, 'message' => 'Importación iniciada']);
+    }
+
+    public function validate(Request $request): JsonResponse
+    {
+        return response()->json(['success' => true, 'message' => 'Validación completada']);
     }
 
     public function estadisticas()
