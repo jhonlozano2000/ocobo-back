@@ -24,21 +24,21 @@ class MisGruposActivosController extends Controller
             $user = Auth::user();
 
             $grupos = MiBandejaTemp::with([
-                    'ultimaVersion.bloqueadoPor:id,nombres,apellidos',
-                    'revisores.user:id,nombres,apellidos',
-                    'firmantes.user:id,nombres,apellidos',
-                    'proyectores.user:id,nombres,apellidos',
-                    'aprobadores.user:id,nombres,apellidos',
-                    'radicadoRecibido.tercero',
-                    'radicadoEnviado.tercero',
-                    'radicadoInterno',
-                ])
+                'ultimaVersion.bloqueadoPor:id,nombres,apellidos',
+                'revisores.user:id,nombres,apellidos',
+                'firmantes.user:id,nombres,apellidos',
+                'proyectores.user:id,nombres,apellidos',
+                'aprobadores.user:id,nombres,apellidos',
+                'radicadoRecibido.tercero',
+                'radicadoEnviado.tercero',
+                'radicadoInterno',
+            ])
                 ->where('estado_grupo', 'activo')
                 ->where(function ($q) use ($user) {
                     $q->whereHas('revisores', fn($q) => $q->where('user_id', $user->id))
-                      ->orWhereHas('firmantes', fn($q) => $q->where('user_id', $user->id))
-                      ->orWhereHas('proyectores', fn($q) => $q->where('user_id', $user->id))
-                      ->orWhereHas('aprobadores', fn($q) => $q->where('user_id', $user->id));
+                        ->orWhereHas('firmantes', fn($q) => $q->where('user_id', $user->id))
+                        ->orWhereHas('proyectores', fn($q) => $q->where('user_id', $user->id))
+                        ->orWhereHas('aprobadores', fn($q) => $q->where('user_id', $user->id));
                 })
                 ->orderBy('updated_at', 'desc')
                 ->get();
@@ -167,6 +167,13 @@ class MisGruposActivosController extends Controller
         }
     }
 
+    /**
+     * Liberar el bloqueo de un documento en un grupo colaborativo.
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     * @Author: Jhon Javer Lozano Arce
+     */
     public function liberarBloqueo(Request $request, $id)
     {
         try {

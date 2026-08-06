@@ -11,7 +11,7 @@ class MiBandejaEnviadosController extends Controller
 {
     /**
      * Obtener radicados enviados asignados al usuario actual (Mi Bandeja).
-     * Filtra por los cargos del usuario a través de ventanilla_radica_enviados_responsa.
+     * Filtra por los cargos del usuario a través de ventanilla_radica_enviados_responsable.
      */
     public function misRadicados(Request $request)
     {

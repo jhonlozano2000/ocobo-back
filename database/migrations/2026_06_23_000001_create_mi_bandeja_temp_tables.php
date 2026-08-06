@@ -43,78 +43,86 @@ return new class extends Migration
         });
 
         // Responsables del grupo
-        Schema::create('mi_bandeja_temp_grupo_responsables', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('grupo_id');
-            $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('cargo_id')->nullable();
-            $table->boolean('es_custodio')->default(false);
-            $table->boolean('subio_plantilla')->default(false);
-            $table->boolean('descargo_plantilla')->default(false);
-            $table->timestamp('fechor_terminado')->nullable();
-            $table->timestamps();
+        if (!Schema::hasTable('mi_bandeja_temp_grupo_responsables')) {
+            Schema::create('mi_bandeja_temp_grupo_responsables', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('grupo_id');
+                $table->unsignedBigInteger('user_id');
+                $table->unsignedBigInteger('cargo_id')->nullable();
+                $table->boolean('es_custodio')->default(false);
+                $table->boolean('subio_plantilla')->default(false);
+                $table->boolean('descargo_plantilla')->default(false);
+                $table->timestamp('fechor_terminado')->nullable();
+                $table->timestamps();
 
-            $table->foreign('grupo_id')->references('id')->on('mi_bandeja_temp')->onDelete('cascade');
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('cargo_id')->references('id')->on('calidad_organigrama')->onDelete('set null');
-            $table->unique(['grupo_id', 'user_id']);
-            $table->index('grupo_id');
-        });
+                $table->foreign('grupo_id')->references('id')->on('mi_bandeja_temp')->onDelete('cascade');
+                $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+                $table->foreign('cargo_id')->references('id')->on('calidad_organigrama')->onDelete('set null');
+                $table->unique(['grupo_id', 'user_id']);
+                $table->index('grupo_id');
+            });
+        }
 
         // Firmantes del grupo
-        Schema::create('mi_bandeja_temp_grupo_firmantes', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('grupo_id');
-            $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('cargo_id')->nullable();
-            $table->integer('orden_firma')->default(1);
-            $table->boolean('subio_plantilla')->default(false);
-            $table->boolean('descargo_plantilla')->default(false);
-            $table->timestamp('fechor_terminado')->nullable();
-            $table->timestamp('fechor_firmado')->nullable();
-            $table->timestamps();
+        if (!Schema::hasTable('mi_bandeja_temp_grupo_firmantes')) {
+            Schema::create('mi_bandeja_temp_grupo_firmantes', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('grupo_id');
+                $table->unsignedBigInteger('user_id');
+                $table->unsignedBigInteger('cargo_id')->nullable();
+                $table->integer('orden_firma')->default(1);
+                $table->boolean('subio_plantilla')->default(false);
+                $table->boolean('descargo_plantilla')->default(false);
+                $table->timestamp('fechor_terminado')->nullable();
+                $table->timestamp('fechor_firmado')->nullable();
+                $table->timestamps();
 
-            $table->foreign('grupo_id')->references('id')->on('mi_bandeja_temp')->onDelete('cascade');
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('cargo_id')->references('id')->on('calidad_organigrama')->onDelete('set null');
-            $table->unique(['grupo_id', 'user_id']);
-            $table->index('grupo_id');
-        });
+                $table->foreign('grupo_id')->references('id')->on('mi_bandeja_temp')->onDelete('cascade');
+                $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+                $table->foreign('cargo_id')->references('id')->on('calidad_organigrama')->onDelete('set null');
+                $table->unique(['grupo_id', 'user_id']);
+                $table->index('grupo_id');
+            });
+        }
 
         // Proyectores del grupo
-        Schema::create('mi_bandeja_temp_grupo_proyectores', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('grupo_id');
-            $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('cargo_id')->nullable();
-            $table->boolean('subio_plantilla')->default(false);
-            $table->boolean('descargo_plantilla')->default(false);
-            $table->timestamp('fechor_terminado')->nullable();
-            $table->timestamps();
+        if (!Schema::hasTable('mi_bandeja_temp_grupo_proyectores')) {
+            Schema::create('mi_bandeja_temp_grupo_proyectores', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('grupo_id');
+                $table->unsignedBigInteger('user_id');
+                $table->unsignedBigInteger('cargo_id')->nullable();
+                $table->boolean('subio_plantilla')->default(false);
+                $table->boolean('descargo_plantilla')->default(false);
+                $table->timestamp('fechor_terminado')->nullable();
+                $table->timestamps();
 
-            $table->foreign('grupo_id')->references('id')->on('mi_bandeja_temp')->onDelete('cascade');
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('cargo_id')->references('id')->on('calidad_organigrama')->onDelete('set null');
-            $table->unique(['grupo_id', 'user_id']);
-            $table->index('grupo_id');
-        });
+                $table->foreign('grupo_id')->references('id')->on('mi_bandeja_temp')->onDelete('cascade');
+                $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+                $table->foreign('cargo_id')->references('id')->on('calidad_organigrama')->onDelete('set null');
+                $table->unique(['grupo_id', 'user_id']);
+                $table->index('grupo_id');
+            });
+        }
 
         // Adjuntos del grupo
-        Schema::create('mi_bandeja_temp_grupo_archi_adjuntos', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('grupo_id');
-            $table->string('archivo');
-            $table->string('nombre_original');
-            $table->string('tipo_mime');
-            $table->unsignedBigInteger('peso');
-            $table->string('hash_sha256', 64);
-            $table->unsignedBigInteger('subido_por');
-            $table->timestamps();
+        if (!Schema::hasTable('mi_bandeja_temp_grupo_archi_adjuntos')) {
+            Schema::create('mi_bandeja_temp_grupo_archi_adjuntos', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('grupo_id');
+                $table->string('archivo');
+                $table->string('nombre_original');
+                $table->string('tipo_mime');
+                $table->unsignedBigInteger('peso');
+                $table->string('hash_sha256', 64);
+                $table->unsignedBigInteger('subido_por');
+                $table->timestamps();
 
-            $table->foreign('grupo_id')->references('id')->on('mi_bandeja_temp')->onDelete('cascade');
-            $table->foreign('subido_por')->references('id')->on('users')->onDelete('cascade');
-            $table->index('grupo_id');
-        });
+                $table->foreign('grupo_id')->references('id')->on('mi_bandeja_temp')->onDelete('cascade');
+                $table->foreign('subido_por')->references('id')->on('users')->onDelete('cascade');
+                $table->index('grupo_id');
+            });
+        }
     }
 
     /**
