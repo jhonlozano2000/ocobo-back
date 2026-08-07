@@ -12,6 +12,7 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\User;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaHistorialClasificacionDocumental;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciCompartirHistorial;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciOptimizedView;
@@ -139,7 +140,7 @@ class VentanillaRadicaReciController extends Controller
                         'responsables:id,radica_reci_id,users_cargos_id,custodio,fechor_visto,created_at',
                         'responsables.userCargo:id,user_id,cargo_id',
                         'responsables.userCargo.user:id,nombres,apellidos,email',
-                        'responsables.userCargo.cargo:id,nom_organico,cod_organico,tipo',
+                        'responsables.userCargo.cargo:id,nom_organico,cod_organico,tipo,parent',
                     ])
                     ->get()
                     ->keyBy('id');
@@ -164,6 +165,7 @@ class VentanillaRadicaReciController extends Controller
                         $radicado->responsables = $informacionCompleta['responsables'];
                         $radicado->total_responsables = $informacionCompleta['total_responsables'];
                         $radicado->total_custodios = $informacionCompleta['total_custodios'];
+                        $radicado->dependencia_custodio_id = $radicadoCompleto->getDependenciaCustodioId();
                     } else {
                         // Valores por defecto simplificados (solo si no existe el radicado completo)
                         $radicado->documentos = [
@@ -181,6 +183,7 @@ class VentanillaRadicaReciController extends Controller
                         // La vista ya los retorna como enteros, solo asegurar valores por defecto
                         $radicado->total_responsables = $radicado->total_responsables ?? 0;
                         $radicado->total_custodios = $radicado->total_custodios ?? 0;
+                        $radicado->dependencia_custodio_id = null;
                     }
 
                     return $radicado;
@@ -519,6 +522,7 @@ class VentanillaRadicaReciController extends Controller
             $data['responsables'] = $responsablesInfo['responsables'];
             $data['total_responsables'] = $responsablesInfo['total_responsables'];
             $data['total_custodios'] = $responsablesInfo['total_custodios'];
+            $data['dependencia_custodio_id'] = $radicado->getDependenciaCustodioId();
             $data['historial_archivos_eliminados'] = $historialEliminados;
             $data['clasificacion'] = $clasificacionData;
             $data['clasificacion_serie'] = $serie;
@@ -773,6 +777,51 @@ class VentanillaRadicaReciController extends Controller
                         'archivo_nombre' => basename($eliminado->archivo),
                         'ruta' => $eliminado->archivo,
                         'eliminado_at' => $eliminado->deleted_at,
+                    ],
+                ];
+            }
+
+            // 10. Cambios de clasificación documental (auditoría)
+            $cambiosClasificacion = VentanillaRadicaHistorialClasificacionDocumental::with([
+                'clasificacionAnterior', 'clasificacionNueva', 'usuario'
+            ])
+                ->where('radicado_id', $id)
+                ->get();
+
+            foreach ($cambiosClasificacion as $cambio) {
+                $anterior = $cambio->clasificacionAnterior;
+                $nueva = $cambio->clasificacionNueva;
+
+                $descripcion = 'Cambio de clasificación documental';
+                if ($anterior && $nueva) {
+                    $descripcion = 'Clasificación cambiada de '.$anterior->nom.' a '.$nueva->nom;
+                } elseif ($nueva) {
+                    $descripcion = 'Clasificación asignada: '.$nueva->nom;
+                }
+
+                $eventos[] = [
+                    'fecha' => $cambio->created_at,
+                    'tipo' => 'clasificacion_cambiada',
+                    'titulo' => 'Clasificación documental',
+                    'descripcion' => $descripcion,
+                    'usuario' => $cambio->usuario ? $cambio->usuario->getInfoUsuario() : null,
+                    'icono' => 'tabler-folder',
+                    'datos' => [
+                        'clasificacion_anterior_id' => $anterior?->id,
+                        'clasificacion_anterior' => $anterior ? [
+                            'id' => $anterior->id,
+                            'cod' => $anterior->cod,
+                            'nom' => $anterior->nom,
+                            'tipo' => $anterior->tipo,
+                        ] : null,
+                        'clasificacion_nueva_id' => $nueva?->id,
+                        'clasificacion_nueva' => $nueva ? [
+                            'id' => $nueva->id,
+                            'cod' => $nueva->cod,
+                            'nom' => $nueva->nom,
+                            'tipo' => $nueva->tipo,
+                        ] : null,
+                        'motivo' => $cambio->motivo,
                     ],
                 ];
             }
@@ -1489,10 +1538,13 @@ class VentanillaRadicaReciController extends Controller
             // Validar los datos de entrada
             $request->validate([
                 'clasifica_documen_id' => 'required|integer|exists:clasificacion_documental_trd,id',
+                'motivo' => 'required|string|max:1000',
             ], [
                 'clasifica_documen_id.required' => 'La clasificación documental es obligatoria.',
                 'clasifica_documen_id.integer' => 'La clasificación documental debe ser un número entero.',
                 'clasifica_documen_id.exists' => 'La clasificación documental no es válida.',
+                'motivo.required' => 'Debe indicar el motivo del cambio de clasificación.',
+                'motivo.max' => 'El motivo no puede superar los 1000 caracteres.',
             ]);
 
             // Buscar la radicación
@@ -1502,22 +1554,21 @@ class VentanillaRadicaReciController extends Controller
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
 
-            // Verificar si algún responsable ha visto el documento
-            $responsableHaVisto = VentanillaRadicaReciResponsable::where('radica_reci_id', $id)
-                ->whereNotNull('fechor_visto')
-                ->exists();
-
-            if ($responsableHaVisto) {
-                return $this->errorResponse(
-                    'No se puede editar la clasificación documental porque al menos un responsable ya ha visto el documento',
-                    null,
-                    422
-                );
-            }
+            // Clasificación anterior (para trazabilidad)
+            $clasificacionAnteriorId = $radicacion->clasifica_documen_id;
 
             // Actualizar la clasificación documental
             $radicacion->clasifica_documen_id = $request->clasifica_documen_id;
             $radicacion->save();
+
+            // Registrar historial del cambio (auditoría)
+            VentanillaRadicaHistorialClasificacionDocumental::create([
+                'radicado_id' => $radicacion->id,
+                'clasificacion_anterior_id' => $clasificacionAnteriorId,
+                'clasificacion_nueva_id' => $request->clasifica_documen_id,
+                'motivo' => $request->motivo,
+                'user_id' => auth()->id(),
+            ]);
 
             return $this->successResponse(
                 $radicacion->fresh(['clasificacionDocumental']),

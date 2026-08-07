@@ -338,6 +338,42 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
+     * Devuelve el ID de la dependencia del responsable CUSTODIO del radicado
+     * (se obtiene subiendo en la jerarquía del organigrama hasta el nodo tipo Dependencia).
+     * Es la dependencia desde la que se carga el árbol TRD para re-clasificar.
+     *
+     * @return int|null null si no hay responsable custodio o no tiene cargo/dependencia
+     */
+    public function getDependenciaCustodioId(): ?int
+    {
+        $responsables = $this->relationLoaded('responsables')
+            ? $this->responsables
+            : $this->responsables()->get();
+
+        $custodio = $responsables->first(fn ($r) => ! empty($r->custodio));
+
+        if (! $custodio) {
+            return null;
+        }
+
+        $cargo = $custodio->userCargo?->cargo;
+
+        if (! $cargo) {
+            return null;
+        }
+
+        // La dependencia real es la MÁS CERCANA al cargo (no la raíz).
+        // getJerarquiaCompleta devuelve [raíz ... cargo]; se itera en reversa (cerca de la hoja).
+        foreach (array_reverse($cargo->getJerarquiaCompleta()) as $nodo) {
+            if (($nodo['tipo'] ?? '') === 'Dependencia') {
+                return (int) $nodo['id'];
+            }
+        }
+
+        return (int) $cargo->id;
+    }
+
+    /**
      * Scope para filtrar por estado activo.
      */
     public function scopeActivo($query)
