@@ -139,10 +139,6 @@ class FirmaElectronicaHelper
         $pdf->SetX($x + 5);
         $pdf->Cell(0, 4, utf8_decode("Firmante: {$datosFirma['nombre']} - {$datosFirma['cargo']}"), 0, 1);
 
-        $pdf->SetFont('Arial', '', 8);
-        $pdf->SetX($x + 5);
-        $pdf->Cell(0, 4, utf8_decode("Firmante: {$datosFirma['nombre']} - {$datosFirma['cargo']}"), 0, 1);
-
         $pdf->SetX($x + 5);
         $pdf->Cell(0, 4, utf8_decode("Fecha: {$datosFirma['fecha']}"), 0, 1);
 
