@@ -1758,6 +1758,15 @@ class VentanillaRadicaReciController extends Controller
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Radicado no encontrado', null, 404);
         } catch (\Exception $e) {
+            // C: mensaje claro si el SMTP no está configurado
+            if (! MailConfigHelper::isConfigured()) {
+                return $this->errorResponse(
+                    'No se pudo enviar el correo. Verifique la configuración SMTP en Otras configuraciones → Correo.',
+                    null,
+                    500
+                );
+            }
+
             return $this->errorResponse('Error al enviar la notificación', $e->getMessage(), 500);
         }
     }
