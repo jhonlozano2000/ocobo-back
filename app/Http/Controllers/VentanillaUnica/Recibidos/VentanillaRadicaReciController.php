@@ -4,6 +4,7 @@ namespace App\Http\Controllers\VentanillaUnica\Recibidos;
 
 use App\Helpers\AcuseReciboHelper;
 use App\Helpers\ArchivoHelper;
+use App\Helpers\MailConfigHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Recibidos\ListRadicadosRecibidosRequest;
 use App\Http\Requests\Ventanilla\Recibidos\StoreRadicadoReciboRequest;
@@ -13,6 +14,7 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaHistorialClasificacionDocumental;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaHistorialNotificacion;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciCompartirHistorial;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciOptimizedView;
@@ -826,6 +828,36 @@ class VentanillaRadicaReciController extends Controller
                 ];
             }
 
+            // 11. Notificaciones por correo enviadas
+            $notificaciones = VentanillaRadicaHistorialNotificacion::with('usuario')
+                ->where('radicado_id', $id)
+                ->get();
+
+            foreach ($notificaciones as $notificacion) {
+                $destinatarios = (array) $notificacion->destinatarios;
+                $descripcion = $notificacion->tipo === 'tercero'
+                    ? 'Notificación enviada al tercero'
+                    : 'Notificación por correo enviada a '.$notificacion->total_enviados.' responsable(s)';
+
+                if ($destinatarios) {
+                    $descripcion .= ' ('.implode(', ', array_slice($destinatarios, 0, 3)).')';
+                }
+
+                $eventos[] = [
+                    'fecha' => $notificacion->created_at,
+                    'tipo' => 'notificacion_enviada',
+                    'titulo' => 'Notificación enviada',
+                    'descripcion' => $descripcion,
+                    'usuario' => $notificacion->usuario ? $notificacion->usuario->getInfoUsuario() : null,
+                    'icono' => 'tabler-send',
+                    'datos' => [
+                        'tipo' => $notificacion->tipo,
+                        'destinatarios' => $destinatarios,
+                        'total_enviados' => $notificacion->total_enviados,
+                    ],
+                ];
+            }
+
             // Ordenar por fecha descendente (más reciente primero)
             usort($eventos, function ($a, $b) {
                 return $b['fecha']->getTimestamp() - $a['fecha']->getTimestamp();
@@ -1633,6 +1665,20 @@ class VentanillaRadicaReciController extends Controller
             $resultado = app(NotificacionCorrespondenciaService::class)
                 ->enviarRadicadoRecibido($radicado);
 
+            // A: Sin responsables con correo -> avisar, no éxito falso
+            if (($resultado['total_enviados'] ?? 0) === 0) {
+                return $this->errorResponse('El radicado no tiene responsables con correo para notificar', null, 422);
+            }
+
+            // D: Registrar en el historial de notificaciones
+            VentanillaRadicaHistorialNotificacion::create([
+                'radicado_id' => $radicado->id,
+                'tipo' => 'responsable',
+                'destinatarios' => $resultado['emails_enviados'] ?? [],
+                'total_enviados' => $resultado['total_enviados'] ?? 0,
+                'user_id' => auth()->id(),
+            ]);
+
             return $this->successResponse([
                 'radicado_id' => $radicado->id,
                 ...$resultado,
@@ -1640,6 +1686,15 @@ class VentanillaRadicaReciController extends Controller
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Radicado no encontrado', null, 404);
         } catch (\Exception $e) {
+            // C: mensaje claro si el SMTP no está configurado
+            if (! MailConfigHelper::isConfigured()) {
+                return $this->errorResponse(
+                    'No se pudo enviar el correo. Verifique la configuración SMTP en Otras configuraciones → Correo.',
+                    null,
+                    500
+                );
+            }
+
             return $this->errorResponse('Error al enviar las notificaciones', $e->getMessage(), 500);
         }
     }
@@ -1680,6 +1735,15 @@ class VentanillaRadicaReciController extends Controller
             $enviado = AcuseReciboHelper::enviarNotificacionConAdjuntos($radicado, true);
 
             if ($enviado) {
+                // D: Registrar en el historial de notificaciones
+                VentanillaRadicaHistorialNotificacion::create([
+                    'radicado_id' => $radicado->id,
+                    'tipo' => 'tercero',
+                    'destinatarios' => [$radicado->tercero?->email],
+                    'total_enviados' => 1,
+                    'user_id' => auth()->id(),
+                ]);
+
                 return $this->successResponse([
                     'radicado_id' => $radicado->id,
                     'email_enviado' => $radicado->tercero?->email,
