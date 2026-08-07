@@ -31,7 +31,7 @@ class AcuseReciboHelper
      * @param  string  $tipo  Tipo de correspondencia: recibida | enviada | interna
      * @return bool true si se envió, false si no aplica o hubo error
      */
-    public static function enviar(mixed $radicado, string $tipo = 'recibida'): bool
+    public static function enviar(mixed $radicado, string $tipo = 'recibida', bool $conAdjuntos = false): bool
     {
         try {
             // Configurar el mailer desde config_varias
@@ -46,10 +46,11 @@ class AcuseReciboHelper
             }
 
             Mail::to($tercero->email)
-                ->send(new AcuseReciboRadicado($radicado, $tipo));
+                ->send(new AcuseReciboRadicado($radicado, $tipo, $conAdjuntos));
 
             Log::info('Acuse de recibo enviado', [
                 'tipo' => $tipo,
+                'con_adjuntos' => $conAdjuntos,
                 'radicado_id' => $radicado->id,
                 'num_radicado' => $radicado->num_radicado ?? $radicado->id,
                 'email' => $tercero->email,

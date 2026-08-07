@@ -378,8 +378,20 @@ class VentanillaRadicaReciController extends Controller
 
             $radicado->load(['archivos', 'tercero']);
 
-            AcuseReciboHelper::enviar($radicado, 'recibida');
-            AcuseReciboHelper::enviarNotificacionConAdjuntos($radicado);
+            // Un solo acuse de recibo al remitente (con adjuntos según configuración)
+            $conAdjuntos = ConfigVarias::getValor('notificar_radicado_al_tercero', 'false') === 'true';
+            $acuseEnviado = AcuseReciboHelper::enviar($radicado, 'recibida', $conAdjuntos);
+
+            // Registrar el acuse en el historial / línea de tiempo
+            if ($acuseEnviado) {
+                VentanillaRadicaHistorialNotificacion::create([
+                    'radicado_id' => $radicado->id,
+                    'tipo' => 'acuse',
+                    'destinatarios' => [$radicado->tercero?->email],
+                    'total_enviados' => 1,
+                    'user_id' => auth()->id(),
+                ]);
+            }
 
             $this->auditVentanilla($radicado, 'created', $radicado->num_radicado);
 
@@ -835,9 +847,11 @@ class VentanillaRadicaReciController extends Controller
 
             foreach ($notificaciones as $notificacion) {
                 $destinatarios = (array) $notificacion->destinatarios;
-                $descripcion = $notificacion->tipo === 'tercero'
-                    ? 'Notificación enviada al tercero'
-                    : 'Notificación por correo enviada a '.$notificacion->total_enviados.' responsable(s)';
+                $descripcion = match ($notificacion->tipo) {
+                    'tercero' => 'Notificación enviada al tercero',
+                    'acuse' => 'Acuse de recibo enviado al remitente',
+                    default => 'Notificación por correo enviada a '.$notificacion->total_enviados.' responsable(s)',
+                };
 
                 if ($destinatarios) {
                     $descripcion .= ' ('.implode(', ', array_slice($destinatarios, 0, 3)).')';
