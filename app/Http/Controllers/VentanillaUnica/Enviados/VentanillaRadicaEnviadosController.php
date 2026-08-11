@@ -271,7 +271,7 @@ class VentanillaRadicaEnviadosController extends Controller
 
             $documentos = [
                 'archivo_principal' => $radicado->archivo_digital ? [
-                    'nombre' => basename($radicado->archivo_digital),
+                    'nombre' => $radicado->nom_origi ?: basename($radicado->archivo_digital),
                     'ruta' => $radicado->archivo_digital,
                 ] : null,
                 'total_archivos' => $radicado->archivo_digital ? 1 : 0,
@@ -702,6 +702,7 @@ class VentanillaRadicaEnviadosController extends Controller
             $radicado = VentanillaRadicaEnviados::with([
                 'usuarioCreaRadicado',
                 'usuarioSubio',
+                'archivos.usuarioSubio',
                 'responsables.userCargo.user',
                 'responsables.userCargo.cargo',
                 'firmas.userCargo.user',
@@ -745,12 +746,29 @@ class VentanillaRadicaEnviadosController extends Controller
                     'fecha' => is_object($radicado->updated_at) ? $radicado->updated_at->toIso8601String() : $radicado->updated_at,
                     'tipo' => 'archivo_digital_subido',
                     'titulo' => 'Archivo digital subido',
-                    'descripcion' => 'Se cargó el archivo digital: '.basename($radicado->archivo_digital),
+                    'descripcion' => 'Se cargó el archivo digital: '.($radicado->nom_origi ?: basename($radicado->archivo_digital)),
                     'usuario' => $radicado->usuarioSubio?->getInfoUsuario(),
                     'datos' => [
-                        'archivo_nombre' => basename($radicado->archivo_digital),
+                        'archivo_nombre' => $radicado->nom_origi ?: basename($radicado->archivo_digital),
                         'extension' => pathinfo($radicado->archivo_digital, PATHINFO_EXTENSION),
                         'ruta' => $radicado->archivo_digital,
+                    ],
+                ];
+            }
+
+            foreach ($radicado->archivos as $archivo) {
+                $eventos[] = [
+                    'fecha' => is_object($archivo->created_at) ? $archivo->created_at->toIso8601String() : $archivo->created_at,
+                    'tipo' => 'archivo_adjunto_subido',
+                    'titulo' => 'Archivo adjunto subido',
+                    'descripcion' => 'Se subió el archivo adjunto: '.($archivo->nom_origi ?: basename($archivo->archivo)),
+                    'usuario' => $archivo->usuarioSubio?->getInfoUsuario(),
+                    'datos' => [
+                        'archivo_id' => $archivo->id,
+                        'archivo_nombre' => $archivo->nom_origi ?: basename($archivo->archivo),
+                        'extension' => pathinfo($archivo->nom_origi ?: $archivo->archivo, PATHINFO_EXTENSION),
+                        'ruta' => $archivo->archivo,
+                        'fecha_subida' => $archivo->created_at,
                     ],
                 ];
             }
@@ -800,9 +818,9 @@ class VentanillaRadicaEnviadosController extends Controller
                 ];
             }
 
-            usort($eventos, fn ($a, $b) => is_object($a['fecha']) ? $a['fecha']->getTimestamp() : (is_numeric($a['fecha']) ? $a['fecha'] : strtotime($a['fecha'] ?? 'now'))
+            usort($eventos, fn ($a, $b) => (is_object($b['fecha']) ? $b['fecha']->getTimestamp() : (is_numeric($b['fecha']) ? $b['fecha'] : strtotime($b['fecha'] ?? 'now')))
                 -
-                (is_object($b['fecha']) ? $b['fecha']->getTimestamp() : (is_numeric($b['fecha']) ? $b['fecha'] : strtotime($b['fecha'] ?? 'now')))
+                (is_object($a['fecha']) ? $a['fecha']->getTimestamp() : (is_numeric($a['fecha']) ? $a['fecha'] : strtotime($a['fecha'] ?? 'now')))
             );
 
             $lineaTiempo = array_map(function ($e) {

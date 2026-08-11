@@ -71,6 +71,7 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
             $usuario = Auth::user();
             $radicado->update([
                 'archivo_digital' => $nuevoArchivo,
+                'nom_origi' => $archivo->getClientOriginalName(),
                 'hash_sha256' => $hashSha256,
                 'archivo_tipo' => $mimeType,
                 'archivo_peso' => $fileSize,
@@ -178,7 +179,7 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
                 'deleted_at' => now(),
             ]);
 
-            $radicado->update(['archivo_digital' => null, 'subido_por' => null]);
+            $radicado->update(['archivo_digital' => null, 'nom_origi' => null, 'subido_por' => null]);
             DB::commit();
 
             return $this->successResponse([
@@ -206,7 +207,7 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
             }
 
             $fileInfo = [
-                'file_name' => basename($radicado->archivo_digital),
+                'file_name' => $radicado->nom_origi ?: basename($radicado->archivo_digital),
                 'file_size' => Storage::disk(self::DISK)->size($radicado->archivo_digital),
                 'file_type' => Storage::disk(self::DISK)->mimeType($radicado->archivo_digital),
                 'uploaded_at' => $radicado->updated_at,

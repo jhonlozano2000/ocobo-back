@@ -50,11 +50,11 @@ class VentanillaRadicaEnviadosArchivos extends Model
         }
         $info = [
             'id' => $this->id,
-            'nombre' => basename($this->archivo),
+            'nombre' => $this->nom_origi ?: basename($this->archivo),
             'ruta' => $this->archivo,
             'url' => $this->getArchivoUrl(),
             'fecha_subida' => $this->created_at,
-            'extension' => pathinfo($this->archivo, PATHINFO_EXTENSION),
+            'extension' => pathinfo($this->nom_origi ?: $this->archivo, PATHINFO_EXTENSION),
         ];
         if ($incluirMetadatos) {
             try {

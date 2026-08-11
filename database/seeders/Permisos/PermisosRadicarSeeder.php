@@ -52,6 +52,7 @@ class PermisosRadicarSeeder extends Seeder
         Permission::create(['name' => 'Radicar -> Cores. Enviada -> Atualizar fechas de radicados'])->syncRoles('Administrador');
         Permission::create(['name' => 'Radicar -> Cores. Enviada -> Actualizar clasificacion de radicados'])->syncRoles('Administrador');
         Permission::create(['name' => 'Radicar -> Cores. Enviada -> Notificar Email'])->syncRoles('Administrador');
+        Permission::create(['name' => 'Radicar -> Cores. Enviada -> Firmar'])->syncRoles('Administrador');
 
         Permission::create(['name' => 'Radicar -> Cores. Interna -> Listar'])->syncRoles([$Rol1, $Rol4]);
         Permission::create(['name' => 'Radicar -> Cores. Interna -> Crear'])->syncRoles([$Rol1]);
@@ -68,6 +69,7 @@ class PermisosRadicarSeeder extends Seeder
         Permission::create(['name' => 'Radicar -> Cores. Interna -> Atualizar fechas de radicados'])->syncRoles('Administrador');
         Permission::create(['name' => 'Radicar -> Cores. Interna -> Actualizar clasificacion de radicados'])->syncRoles('Administrador');
         Permission::create(['name' => 'Radicar -> Cores. Interna -> Notificar Email'])->syncRoles('Administrador');
+        Permission::create(['name' => 'Radicar -> Cores. Interna -> Firmar'])->syncRoles('Administrador');
 
         Permission::create(['name' => 'Radicar -> PQRSF -> Listar'])->syncRoles([$Rol1, $Rol5]);
         Permission::create(['name' => 'Radicar -> PQRSF -> Crear'])->syncRoles([$Rol1, $Rol5]);
