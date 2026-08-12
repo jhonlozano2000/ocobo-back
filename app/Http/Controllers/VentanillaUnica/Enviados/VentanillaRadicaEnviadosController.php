@@ -489,7 +489,7 @@ class VentanillaRadicaEnviadosController extends Controller
                 'archivos',
             ])->findOrFail($id);
 
-            $enviado = AcuseReciboHelper::enviarNotificacionConAdjuntos($radicado, true);
+            $enviado = AcuseReciboHelper::enviarNotificacionConAdjuntos($radicado, true, 'enviada');
 
             if ($enviado) {
                 return $this->successResponse([

@@ -78,7 +78,7 @@ class AcuseReciboHelper
      * @param  bool  $skipConfigCheck  Si es true, omite la verificación de configuración (para botón manual)
      * @return bool true si se envió, false si no aplica o hubo error
      */
-    public static function enviarNotificacionConAdjuntos(mixed $radicado, bool $skipConfigCheck = false): bool
+    public static function enviarNotificacionConAdjuntos(mixed $radicado, bool $skipConfigCheck = false, string $tipo = 'recibida'): bool
     {
         try {
             // Verificar si la configuración está habilitada (solo si no es llamada manual)
@@ -94,10 +94,8 @@ class AcuseReciboHelper
             // Configurar el mailer desde config_varias
             MailConfigHelper::configureFromConfigVarias();
 
-            // Obtener el tercero
-            $tercero = $radicado->relationLoaded('tercero')
-                ? $radicado->tercero
-                : $radicado->load('tercero')->tercero;
+            // Obtener el tercero según el tipo de correspondencia
+            $tercero = static::obtenerTercero($radicado, $tipo);
 
             // Verificar que tiene email y acepta notificaciones
             if (! $tercero || empty($tercero->email) || ! $tercero->notifica_email) {
@@ -106,8 +104,13 @@ class AcuseReciboHelper
                 return false;
             }
 
-            Mail::to($tercero->email)
-                ->send(new RadicadoRecibidoNotificacionTercero($radicado));
+            if ($tipo === 'enviada') {
+                Mail::to($tercero->email)
+                    ->send(new AcuseReciboRadicado($radicado, 'enviada', true));
+            } else {
+                Mail::to($tercero->email)
+                    ->send(new RadicadoRecibidoNotificacionTercero($radicado));
+            }
 
             Log::info('Notificación con adjuntos enviada al tercero', [
                 'radicado_id' => $radicado->id,

@@ -62,7 +62,9 @@ class AcuseReciboRadicado extends Mailable implements ShouldQueue
                 'fecVenci' => $this->radicado->fec_venci
                     ? Carbon::parse($this->radicado->fec_venci)->format('d/m/Y')
                     : 'No definida',
-                'nombreTercero' => $this->radicado->tercero?->nom_razo_soci ?? 'Ciudadano',
+                'nombreTercero' => $this->tipo === 'enviada'
+                    ? ($this->radicado->terceroEnviado?->nom_razo_soci ?? 'Ciudadano')
+                    : ($this->radicado->tercero?->nom_razo_soci ?? 'Ciudadano'),
                 'adjuntosOmitidos' => $this->datosAdjuntos()['omitidos'],
             ],
         );
@@ -80,7 +82,7 @@ class AcuseReciboRadicado extends Mailable implements ShouldQueue
     private function datosAdjuntos(): array
     {
         return MailAdjuntosHelper::seleccionarAdjuntos(
-            'radicados_recibidos',
+            $this->tipo === 'enviada' ? 'radicados_enviados' : 'radicados_recibidos',
             $this->radicado->archivo_digital
                 ? ['path' => $this->radicado->archivo_digital, 'nombre' => $this->radicado->nom_origi]
                 : null,
