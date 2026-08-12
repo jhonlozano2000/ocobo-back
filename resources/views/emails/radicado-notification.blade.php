@@ -343,6 +343,20 @@
                     </div>
                 </div>
                 
+                @if(!empty($adjuntosOmitidos))
+                <div style="background-color: #fff3e0; padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #f57c00;">
+                    <p style="margin: 0 0 8px 0; color: #e65100; font-size: 14px; font-weight: 600;">⚠ Algunos archivos no se adjuntaron</p>
+                    <p style="margin: 0 0 8px 0; color: #795548; font-size: 13px;">
+                        El correo supera el tamaño máximo permitido ({{ App\Helpers\MailAdjuntosHelper::formatearPeso(App\Helpers\MailAdjuntosHelper::MAX_BYTES) }}). Los siguientes documentos permanecen disponibles en el sistema:
+                    </p>
+                    <ul style="margin: 0 0 0 18px; padding: 0; color: #4e342e; font-size: 13px;">
+                        @foreach($adjuntosOmitidos as $omitido)
+                            <li>{{ $omitido['nombre'] }} ({{ App\Helpers\MailAdjuntosHelper::formatearPeso($omitido['peso']) }})</li>
+                        @endforeach
+                    </ul>
+                </div>
+                @endif
+                
                 <!-- Action Message -->
                 <div style="background-color: #e3f2fd; padding: 20px; border-radius: 8px; margin-top: 24px; border-left: 4px solid #1976d2;">
                     <p style="margin: 0; color: #1565c0; font-size: 14px; font-weight: 500;">

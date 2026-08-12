@@ -2,14 +2,13 @@
 
 namespace App\Mail;
 
+use App\Helpers\MailAdjuntosHelper;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Storage;
 
 class RadicadoInternoNotification extends Mailable
 {
@@ -45,22 +44,24 @@ class RadicadoInternoNotification extends Mailable
             with: [
                 'radicado' => $this->radicado,
                 'tipo' => $this->tipo,
+                'adjuntosOmitidos' => $this->datosAdjuntos()['omitidos'],
             ],
         );
     }
 
     public function attachments(): array
     {
-        $attachments = [];
+        return $this->datosAdjuntos()['attachments'];
+    }
 
-        if ($this->radicado->archivo_digital && Storage::disk('ventanilla_radica_interno_archivos')->exists($this->radicado->archivo_digital)) {
-            $nombreArchivo = $this->radicado->nom_origi ?: basename($this->radicado->archivo_digital);
-            $attachments[] = Attachment::fromStorageDisk(
-                'ventanilla_radica_interno_archivos',
-                $this->radicado->archivo_digital
-            )->as($nombreArchivo);
-        }
-
-        return $attachments;
+    private function datosAdjuntos(): array
+    {
+        return MailAdjuntosHelper::seleccionarAdjuntos(
+            'ventanilla_radica_interno_archivos',
+            $this->radicado->archivo_digital
+                ? ['path' => $this->radicado->archivo_digital, 'nombre' => $this->radicado->nom_origi]
+                : null,
+            collect()
+        );
     }
 }

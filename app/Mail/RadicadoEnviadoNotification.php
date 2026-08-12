@@ -2,14 +2,13 @@
 
 namespace App\Mail;
 
+use App\Helpers\MailAdjuntosHelper;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Storage;
 
 class RadicadoEnviadoNotification extends Mailable
 {
@@ -43,34 +42,24 @@ class RadicadoEnviadoNotification extends Mailable
             with: [
                 'radicado' => $this->radicado,
                 'tipo' => $this->tipo,
+                'adjuntosOmitidos' => $this->datosAdjuntos()['omitidos'],
             ]
         );
     }
 
     public function attachments(): array
     {
-        $attachments = [];
-        $disk = 'radicados_enviados';
+        return $this->datosAdjuntos()['attachments'];
+    }
 
-        // Archivo digital principal
-        if ($this->radicado->archivo_digital && Storage::disk($disk)->exists($this->radicado->archivo_digital)) {
-            $nombreArchivo = $this->radicado->nom_origi ?: basename($this->radicado->archivo_digital);
-            $attachments[] = Attachment::fromStorageDisk(
-                $disk,
-                $this->radicado->archivo_digital
-            )->as($nombreArchivo);
-        }
-
-        // Archivos adicionales
-        if ($this->radicado->relationLoaded('archivos') && $this->radicado->archivos) {
-            foreach ($this->radicado->archivos as $archivo) {
-                if (Storage::disk($disk)->exists($archivo->archivo)) {
-                    $nombreArchivo = $archivo->nom_origi ?: basename($archivo->archivo);
-                    $attachments[] = Attachment::fromStorageDisk($disk, $archivo->archivo)->as($nombreArchivo);
-                }
-            }
-        }
-
-        return $attachments;
+    private function datosAdjuntos(): array
+    {
+        return MailAdjuntosHelper::seleccionarAdjuntos(
+            'radicados_enviados',
+            $this->radicado->archivo_digital
+                ? ['path' => $this->radicado->archivo_digital, 'nombre' => $this->radicado->nom_origi]
+                : null,
+            $this->radicado->archivos ?? collect()
+        );
     }
 }

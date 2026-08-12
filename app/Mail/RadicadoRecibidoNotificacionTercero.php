@@ -2,15 +2,14 @@
 
 namespace App\Mail;
 
+use App\Helpers\MailAdjuntosHelper;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Storage;
 
 class RadicadoRecibidoNotificacionTercero extends Mailable
 {
@@ -55,36 +54,24 @@ class RadicadoRecibidoNotificacionTercero extends Mailable
                 'codVerifica' => $this->radicado->cod_verifica,
                 'nombreTercero' => $this->radicado->tercero?->nom_razo_soci ?? 'Ciudadano',
                 'hashRadicado' => $hashRadicado,
+                'adjuntosOmitidos' => $this->datosAdjuntos()['omitidos'],
             ],
         );
     }
 
     public function attachments(): array
     {
-        $attachments = [];
+        return $this->datosAdjuntos()['attachments'];
+    }
 
-        // Archivo digital principal
-        if ($this->radicado->archivo_digital && Storage::disk('radicados_recibidos')->exists($this->radicado->archivo_digital)) {
-            $nombreArchivo = $this->radicado->nom_origi ?: basename($this->radicado->archivo_digital);
-            $attachments[] = Attachment::fromStorageDisk(
-                'radicados_recibidos',
-                $this->radicado->archivo_digital
-            )->as($nombreArchivo);
-        }
-
-        // Archivos adicionales
-        if ($this->radicado->relationLoaded('archivos') && $this->radicado->archivos) {
-            foreach ($this->radicado->archivos as $archivo) {
-                if (Storage::disk('radicados_recibidos')->exists($archivo->archivo)) {
-                    $nombreArchivo = $archivo->nom_origi ?: basename($archivo->archivo);
-                    $attachments[] = Attachment::fromStorageDisk(
-                        'radicados_recibidos',
-                        $archivo->archivo
-                    )->as($nombreArchivo);
-                }
-            }
-        }
-
-        return $attachments;
+    private function datosAdjuntos(): array
+    {
+        return MailAdjuntosHelper::seleccionarAdjuntos(
+            'radicados_recibidos',
+            $this->radicado->archivo_digital
+                ? ['path' => $this->radicado->archivo_digital, 'nombre' => $this->radicado->nom_origi]
+                : null,
+            $this->radicado->archivos ?? collect()
+        );
     }
 }

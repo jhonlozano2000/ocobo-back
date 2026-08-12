@@ -91,6 +91,18 @@
                 </ul>
             </div>
 
+            @if(!empty($adjuntosOmitidos))
+            <div class="aviso" style="background: #FFF7ED; border-color: #F57C00; color: #9A3412;">
+                <strong>Adjuntos omitidos:</strong> El correo supera el tamaño máximo permitido ({{ App\Helpers\MailAdjuntosHelper::formatearPeso(App\Helpers\MailAdjuntosHelper::MAX_BYTES) }}).
+                Los siguientes documentos no se adjuntaron y permanecen disponibles en nuestro sistema:
+                <ul style="margin: 8px 0 0 18px; padding: 0;">
+                    @foreach($adjuntosOmitidos as $omitido)
+                        <li>{{ $omitido['nombre'] }} ({{ App\Helpers\MailAdjuntosHelper::formatearPeso($omitido['peso']) }})</li>
+                    @endforeach
+                </ul>
+            </div>
+            @endif
+
             <div class="aviso">
                 <strong>Importante:</strong> Este es un acuse de recibo automático. La entidad dará respuesta dentro de los términos legales establecidos.
                 Guarde este número de radicado para hacer seguimiento a su solicitud.
