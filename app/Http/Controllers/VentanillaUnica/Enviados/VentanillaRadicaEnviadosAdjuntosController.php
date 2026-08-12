@@ -64,6 +64,7 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
                     'radica_enviado_id' => $radicado->id,
                     'subido_por' => $usuario?->id,
                     'archivo' => $rutaArchivo,
+                    'archivo_tipo' => $archivo->getMimeType(),
                     'nom_origi' => $archivo->getClientOriginalName(),
                     'archivo_peso' => $archivo->getSize(),
                     'hash_sha256' => $hashSha256,

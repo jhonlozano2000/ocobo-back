@@ -18,6 +18,7 @@ class VentanillaRadicaEnviadosArchivos extends Model
         'radica_enviado_id',
         'subido_por',
         'archivo',
+        'archivo_tipo',
         'nom_origi',
         'archivo_peso',
         'hash_sha256',
