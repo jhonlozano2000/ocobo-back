@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Generales\ListResponsablesRequest;
 use App\Http\Requests\Ventanilla\Recibidos\StoreResponsableReciboRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\Notificacion;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -78,6 +79,31 @@ class VentanillaRadicaReciResponsableController extends Controller
                 $responsable = VentanillaRadicaReciResponsable::create($data);
                 $responsablesCreados[] = $responsable->load(['usuarioCargo', 'radicado']);
                 $radicaReciId = $data['radica_reci_id'];
+
+                // Crear notificación in-app para el usuario responsable
+                $userCargo = \App\Models\ControlAcceso\UserCargo::find($data['users_cargos_id']);
+                if ($userCargo && $userCargo->user) {
+                    $radicado = VentanillaRadicaReci::find($data['radica_reci_id']);
+                    $titulo = $responsableData['custodio'] ? 'Nuevo radicado asignado (custodio)' : 'Nuevo radicado asignado';
+                    $mensaje = $radicado
+                        ? 'Se le ha asignado el radicado ' . $radicado->num_radicado . ' como responsable.'
+                        : 'Se le ha asignado un nuevo radicado como responsable.';
+
+                    Notificacion::create([
+                        'user_id' => $userCargo->user_id,
+                        'type' => 'asignacion_responsable',
+                        'title' => $titulo,
+                        'message' => $mensaje,
+                        'notifiable_type' => 'App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci',
+                        'notifiable_id' => $data['radica_reci_id'],
+                        'data' => [
+                            'radica_reci_id' => $data['radica_reci_id'],
+                            'num_radicado' => $radicado?->num_radicado,
+                            'custodio' => $responsableData['custodio'],
+                            'asignado_por' => auth()->id(),
+                        ],
+                    ]);
+                }
             }
 
             DB::commit();
@@ -232,6 +258,31 @@ class VentanillaRadicaReciResponsableController extends Controller
                     'custodio' => $responsableData['custodio'],
                 ]);
                 $responsablesCreados[] = $responsable->load(['usuarioCargo', 'radicado']);
+
+                // Crear notificación in-app para el usuario responsable
+                $userCargo = \App\Models\ControlAcceso\UserCargo::find($responsableData['users_cargos_id']);
+                if ($userCargo && $userCargo->user) {
+                    $radicado = VentanillaRadicaReci::find($radica_reci_id);
+                    $titulo = $responsableData['custodio'] ? 'Nuevo radicado asignado (custodio)' : 'Nuevo radicado asignado';
+                    $mensaje = $radicado
+                        ? 'Se le ha asignado el radicado ' . $radicado->num_radicado . ' como responsable.'
+                        : 'Se le ha asignado un nuevo radicado como responsable.';
+
+                    Notificacion::create([
+                        'user_id' => $userCargo->user_id,
+                        'type' => 'asignacion_responsable',
+                        'title' => $titulo,
+                        'message' => $mensaje,
+                        'notifiable_type' => 'App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci',
+                        'notifiable_id' => $radica_reci_id,
+                        'data' => [
+                            'radica_reci_id' => $radica_reci_id,
+                            'num_radicado' => $radicado?->num_radicado,
+                            'custodio' => $responsableData['custodio'],
+                            'asignado_por' => auth()->id(),
+                        ],
+                    ]);
+                }
             }
 
             DB::commit();
