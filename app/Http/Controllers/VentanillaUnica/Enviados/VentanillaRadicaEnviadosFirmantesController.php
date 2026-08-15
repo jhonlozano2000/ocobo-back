@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Enviados\StoreFirmanteEnviadoRequest;
 use App\Http\Requests\Ventanilla\Enviados\UpdateFirmanteEnviadoRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\Notificacion;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosFirmas;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -68,6 +70,27 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
                     'users_cargos_id' => (int) $item['users_cargos_id'],
                 ]);
                 $firmasCreadas[] = $firma->load(['userCargo.user', 'userCargo.cargo', 'radicado']);
+
+                // Crear notificación in-app para el firmante
+                $userCargo = \App\Models\ControlAcceso\UserCargo::find($item['users_cargos_id']);
+                if ($userCargo && $userCargo->user) {
+                    $radicado = VentanillaRadicaEnviados::find($radicaEnviadoId);
+                    Notificacion::create([
+                        'user_id' => $userCargo->user_id,
+                        'type' => 'asignacion_firmante',
+                        'title' => 'Firmante asignado',
+                        'message' => $radicado
+                            ? 'Se le ha asignado como firmante del radicado ' . $radicado->num_radicado . '.'
+                            : 'Se le ha asignado como firmante de un radicado.',
+                        'notifiable_type' => 'App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados',
+                        'notifiable_id' => $radicaEnviadoId,
+                        'data' => [
+                            'radica_enviado_id' => $radicaEnviadoId,
+                            'num_radicado' => $radicado?->num_radicado,
+                            'asignado_por' => auth()->id(),
+                        ],
+                    ]);
+                }
             }
 
             DB::commit();
@@ -99,6 +122,27 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
                     'users_cargos_id' => (int) $item['users_cargos_id'],
                 ]);
                 $firmasCreadas[] = $firma->load(['userCargo.user', 'userCargo.cargo', 'radicado']);
+
+                // Crear notificación in-app para el firmante
+                $userCargo = \App\Models\ControlAcceso\UserCargo::find($item['users_cargos_id']);
+                if ($userCargo && $userCargo->user) {
+                    $radicado = VentanillaRadicaEnviados::find($radica_enviado_id);
+                    Notificacion::create([
+                        'user_id' => $userCargo->user_id,
+                        'type' => 'asignacion_firmante',
+                        'title' => 'Firmante asignado',
+                        'message' => $radicado
+                            ? 'Se le ha asignado como firmante del radicado ' . $radicado->num_radicado . '.'
+                            : 'Se le ha asignado como firmante de un radicado.',
+                        'notifiable_type' => 'App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados',
+                        'notifiable_id' => $radica_enviado_id,
+                        'data' => [
+                            'radica_enviado_id' => $radica_enviado_id,
+                            'num_radicado' => $radicado?->num_radicado,
+                            'asignado_por' => auth()->id(),
+                        ],
+                    ]);
+                }
             }
 
             DB::commit();
