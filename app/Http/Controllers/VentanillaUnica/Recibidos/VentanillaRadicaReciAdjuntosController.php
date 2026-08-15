@@ -9,6 +9,7 @@ use App\Http\Requests\Ventanilla\Recibidos\UploadArchivosAdjuntosRecibidoRequest
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivo;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivoEliminado;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -178,7 +179,17 @@ class VentanillaRadicaReciAdjuntosController extends Controller
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 
+            $usuario = Auth::user();
             $archivoPath = $archivo->archivo;
+
+            // Registrar en auditoría antes de eliminar
+            VentanillaRadicaReciArchivoEliminado::create([
+                'radicado_id' => $id,
+                'archivo' => $archivoPath,
+                'deleted_by' => $usuario?->id,
+                'deleted_at' => now(),
+            ]);
+
             ArchivoHelper::eliminarArchivo($archivoPath, self::DISK);
 
             $archivo->delete();
