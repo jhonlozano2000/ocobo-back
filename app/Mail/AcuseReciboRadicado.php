@@ -65,6 +65,7 @@ class AcuseReciboRadicado extends Mailable implements ShouldQueue
                 'nombreTercero' => $this->tipo === 'enviada'
                     ? ($this->radicado->terceroEnviado?->nom_razo_soci ?? 'Ciudadano')
                     : ($this->radicado->tercero?->nom_razo_soci ?? 'Ciudadano'),
+                'hashArchivo' => $this->radicado->hash_sha256 ?? null,
                 'adjuntosOmitidos' => $this->datosAdjuntos()['omitidos'],
             ],
         );

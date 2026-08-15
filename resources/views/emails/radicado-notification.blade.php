@@ -330,6 +330,12 @@
                     <div class="radicado-subject">Documentos</div>
                     <div style="margin-top: 12px; color: #2c3e50; font-size: 14px;">
                         <div><strong>Documento digital:</strong> {{ $radicado->archivo_digital ? basename($radicado->archivo_digital) : 'No registrado' }}</div>
+                        @if(isset($hashArchivo) && $hashArchivo)
+                        <div style="margin-top: 12px; background-color: #e8f5e9; padding: 12px; border-radius: 6px; border: 1px dashed #4caf50;">
+                            <div style="font-size: 11px; font-weight: 600; color: #2e7d32; text-transform: uppercase; margin-bottom: 4px;">Hash SHA-256 (verificación de integridad)</div>
+                            <div style="font-size: 10px; font-family: monospace; word-break: break-all; color: #1b5e20;">{{ $hashArchivo }}</div>
+                        </div>
+                        @endif
                         <div style="margin-top: 8px;"><strong>Documentos anexos:</strong></div>
                         @if($radicado->archivos && $radicado->archivos->isNotEmpty())
                             <ul style="margin: 6px 0 0 18px; padding: 0;">

@@ -2170,4 +2170,24 @@ class VentanillaRadicaReciController extends Controller
             return $this->errorResponse('Error al obtener mis radicados', $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Obtener radicados enviados que responden a un radicado recibido
+     */
+    public function getEnviadosAsociados(int $radicaRecoId): JsonResponse
+    {
+        try {
+            $recibido = VentanillaRadicaReci::find($radicaRecoId);
+
+            if (! $recibido) {
+                return $this->errorResponse('Radicado recibido no encontrado', null, 404);
+            }
+
+            $enviados = $recibido->enviados()->get();
+
+            return $this->successResponse($enviados, 'Radicados enviados obtenidos exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener los radicados enviados', $e->getMessage(), 500);
+        }
+    }
 }

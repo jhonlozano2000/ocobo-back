@@ -100,6 +100,12 @@
                     <div style="margin-top: 12px; color: #2c3e50; font-size: 14px;">
                         <strong>Archivo digital:</strong> {{ $radicado->nom_origi ?: ($radicado->archivo_digital ? basename($radicado->archivo_digital) : 'No registrado') }}
                     </div>
+                    @if(isset($hashArchivo) && $hashArchivo)
+                    <div style="margin-top: 12px; background-color: #e8f5e9; padding: 12px; border-radius: 6px; border: 1px dashed #4caf50;">
+                        <div style="font-size: 11px; font-weight: 600; color: #2e7d32; text-transform: uppercase; margin-bottom: 4px;">Hash SHA-256 (verificación de integridad)</div>
+                        <div style="font-size: 10px; font-family: monospace; word-break: break-all; color: #1b5e20;">{{ $hashArchivo }}</div>
+                    </div>
+                    @endif
                 </div>
                 @if(!empty($adjuntosOmitidos))
                 <div style="background-color: #fff3e0; padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #f57c00;">

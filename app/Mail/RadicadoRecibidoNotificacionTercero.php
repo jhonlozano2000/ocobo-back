@@ -34,9 +34,6 @@ class RadicadoRecibidoNotificacionTercero extends Mailable
 
     public function content(): Content
     {
-        // Hash SHA-256 del número de radicado para verificación de integridad
-        $hashRadicado = hash('sha256', $this->radicado->num_radicado);
-
         // Fecha límite de respuesta
         $fecVenci = $this->radicado->fec_venci
             ? Carbon::parse($this->radicado->fec_venci)->format('d/m/Y')
@@ -53,7 +50,7 @@ class RadicadoRecibidoNotificacionTercero extends Mailable
                 'fecVenci' => $fecVenci,
                 'codVerifica' => $this->radicado->cod_verifica,
                 'nombreTercero' => $this->radicado->tercero?->nom_razo_soci ?? 'Ciudadano',
-                'hashRadicado' => $hashRadicado,
+                'hashArchivo' => $this->radicado->hash_sha256 ?? null,
                 'adjuntosOmitidos' => $this->datosAdjuntos()['omitidos'],
             ],
         );

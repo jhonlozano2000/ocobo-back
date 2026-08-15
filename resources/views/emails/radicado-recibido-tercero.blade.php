@@ -71,10 +71,10 @@
             </div>
             @endif
 
-            @if(isset($hashRadicado))
+            @if(isset($hashArchivo) && $hashArchivo)
             <div class="cod-verifica" style="margin-top: 12px;">
-                <p>Código de integridad SHA-256 del radicado (Ley 527/1999 — verificación electrónica)</p>
-                <strong style="font-size: 12px; letter-spacing: 1px; word-break: break-all;">{{ $hashRadicado }}</strong>
+                <p>Hash SHA-256 del documento digital (Ley 527/1999 — verificación de integridad)</p>
+                <strong style="font-size: 11px; letter-spacing: 0.5px; word-break: break-all;">{{ $hashArchivo }}</strong>
             </div>
             @endif
 

@@ -42,6 +42,7 @@ class RadicadoEnviadoNotification extends Mailable
             with: [
                 'radicado' => $this->radicado,
                 'tipo' => $this->tipo,
+                'hashArchivo' => $this->radicado->hash_sha256 ?? null,
                 'adjuntosOmitidos' => $this->datosAdjuntos()['omitidos'],
             ]
         );

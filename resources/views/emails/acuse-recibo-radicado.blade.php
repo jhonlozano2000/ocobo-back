@@ -65,6 +65,13 @@
             </div>
             @endif
 
+            @if($hashArchivo)
+            <div class="cod-verifica" style="background: #F0F4FA; border-color: #2563EB; margin-top: 12px;">
+                <p style="color: #1E40AF;">Hash SHA-256 del documento digital (Ley 527/1999 — verificación de integridad)</p>
+                <strong style="font-size: 11px; letter-spacing: 0.5px; word-break: break-all; color: #1E3A8A;">{{ $hashArchivo }}</strong>
+            </div>
+            @endif
+
             @if(!empty($adjuntosOmitidos))
             <div class="aviso" style="background: #FFF7ED; border-color: #F57C00; color: #9A3412;">
                 <strong>Adjuntos omitidos:</strong> El correo supera el tamaño máximo permitido ({{ App\Helpers\MailAdjuntosHelper::formatearPeso(App\Helpers\MailAdjuntosHelper::MAX_BYTES) }}).

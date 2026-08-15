@@ -92,6 +92,8 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
         Route::apiResource('responsables', VentanillaRadicaReciResponsableController::class)->except('create', 'edit')->middleware('can:'.$permReci.'Editar');
         Route::get('/radica-recibida/{radica_reci_id}/responsables', [VentanillaRadicaReciResponsableController::class, 'getByRadicado'])->name('radica-recibida.responsables.listar')->middleware('can:'.$permReci.'Editar');
 
+        Route::get('/radica-recibida/{radica_reci_id}/enviados', [VentanillaRadicaReciController::class, 'getEnviadosAsociados'])->name('radica-recibida.enviados.listar')->middleware('can:'.$permReci.'Mostrar');
+
         Route::get('/radica-recibida/{radica_reci_id}/pase-historial', [VentanillaRadicaReciPaseHistorialController::class, 'byRadicado'])->name('radica-recibida.pase.historial')->middleware('can:'.$permReci.'Mostrar');
 
         Route::get('/radica-recibida/{radica_reci_id}/compartir-historial', [VentanillaRadicaReciCompartirHistorialController::class, 'byRadicado'])->name('radica-recibida.compartir.historial')->middleware('can:'.$permReci.'Mostrar');
