@@ -5,6 +5,7 @@ use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosContro
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosDigitalController;
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosFirmantesController;
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosProyectoresController;
+use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosRespuestasController;
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosResponsableController;
 use App\Http\Controllers\VentanillaUnica\MetadataController;
 use Illuminate\Support\Facades\Route;
@@ -63,6 +64,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('proyectores-enviados', VentanillaRadicaEnviadosProyectoresController::class)->except('create', 'edit')->middleware('can:'.$permEnvi.'Editar');
     Route::get('/radica-enviada/{radica_enviado_id}/proyectores', [VentanillaRadicaEnviadosProyectoresController::class, 'getByRadicado'])->name('radica-enviada.proyectores.listar')->middleware('can:'.$permEnvi.'Editar');
     Route::post('/radica-enviada/{radica_enviado_id}/proyectores', [VentanillaRadicaEnviadosProyectoresController::class, 'assignToRadicado'])->name('radica-enviada.proyectores.asignar')->middleware('can:'.$permEnvi.'Editar');
+
+    Route::get('/radica-enviada/{radica_enviado_id}/recibidos', [VentanillaRadicaEnviadosRespuestasController::class, 'index'])->name('radica-enviada.recibidos.listar')->middleware('can:'.$permEnvi.'Editar');
+    Route::post('/radica-enviada/{radica_enviado_id}/recibidos', [VentanillaRadicaEnviadosRespuestasController::class, 'store'])->name('radica-enviada.recibidos.asignar')->middleware('can:'.$permEnvi.'Editar');
+    Route::delete('/radica-enviada/{radica_enviado_id}/recibidos/{recibidoId}', [VentanillaRadicaEnviadosRespuestasController::class, 'destroy'])->name('radica-enviada.recibidos.desasociar')->middleware('can:'.$permEnvi.'Editar');
 
     Route::delete('/radica-enviada', [VentanillaRadicaEnviadosController::class, 'bulkDestroy'])->name('radica-enviada.bulk-destroy')->middleware('can:'.$permEnvi.'Eliminar');
     Route::post('/radica-enviada/{id}/notificacion-tercero', [VentanillaRadicaEnviadosController::class, 'enviarNotificacionTercero'])->name('radica-enviada.notificacion-tercero')->middleware('can:'.$permEnvi.'Notificar Email');

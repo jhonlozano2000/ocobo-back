@@ -19,6 +19,7 @@ class InAppNotificationController extends Controller
             'per_page' => 'nullable|integer|min:1|max:100',
             'type' => 'nullable|string',
             'unread_only' => 'nullable|boolean',
+            'search' => 'nullable|string|max:255',
         ]);
 
         $query = Notificacion::forUser($request->user()->id)
@@ -30,6 +31,14 @@ class InAppNotificationController extends Controller
 
         if ($request->boolean('unread_only')) {
             $query->unread();
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('message', 'like', "%{$search}%");
+            });
         }
 
         $perPage = $request->input('per_page', 20);
@@ -62,5 +71,13 @@ class InAppNotificationController extends Controller
             ->update(['read_at' => now()]);
 
         return $this->successResponse(['marked' => $updated], 'Todas las notificaciones marcadas como leídas');
+    }
+
+    public function destroy(Request $request, $id): JsonResponse
+    {
+        $notification = Notificacion::forUser($request->user()->id)->findOrFail($id);
+        $notification->delete();
+
+        return $this->successResponse(null, 'Notificación eliminada exitosamente');
     }
 }

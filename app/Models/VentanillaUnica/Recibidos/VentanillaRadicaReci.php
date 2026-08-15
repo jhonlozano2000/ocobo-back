@@ -202,6 +202,19 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
+     * Obtiene los radicados enviados que responden a este radicado recibido.
+     */
+    public function enviados()
+    {
+        return $this->belongsToMany(
+            \App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados::class,
+            'ventanilla_radica_enviados_respuestas',
+            'radica_reci_id',
+            'radica_enviado_id'
+        )->withTimestamps();
+    }
+
+    /**
      * Obtiene los archivos adicionales asociados al radicado.
      */
     public function archivos()

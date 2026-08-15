@@ -2,7 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Enviados;
 
-use App\Models\ControlAcceso\UserCargo;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -14,16 +14,16 @@ class VentanillaRadicaEnviadosRespuestas extends Model
 
     protected $fillable = [
         'radica_enviado_id',
-        'users_cargos_id',
+        'radica_reci_id',
     ];
 
-    public function radicado()
+    public function radicadoEnviado()
     {
         return $this->belongsTo(VentanillaRadicaEnviados::class, 'radica_enviado_id');
     }
 
-    public function userCargo()
+    public function radicadoRecibido()
     {
-        return $this->belongsTo(UserCargo::class, 'users_cargos_id');
+        return $this->belongsTo(VentanillaRadicaReci::class, 'radica_reci_id');
     }
 }

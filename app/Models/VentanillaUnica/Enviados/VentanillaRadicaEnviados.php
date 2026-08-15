@@ -173,6 +173,16 @@ class VentanillaRadicaEnviados extends Model
         return $this->hasMany(VentanillaRadicaEnviadosRespuestas::class, 'radica_enviado_id');
     }
 
+    public function recibidos()
+    {
+        return $this->belongsToMany(
+            \App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci::class,
+            'ventanilla_radica_enviados_respuestas',
+            'radica_enviado_id',
+            'radica_reci_id'
+        )->withTimestamps();
+    }
+
     public function usuariosRespuestas()
     {
         return $this->belongsToMany(UserCargo::class, 'ventanilla_radica_enviados_respuestas', 'radica_enviado_id', 'users_cargos_id')

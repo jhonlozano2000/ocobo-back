@@ -23,6 +23,7 @@ Route::middleware('auth:sanctum')->prefix('in-app-notifications')->group(functio
     Route::get('/unread-count', [InAppNotificationController::class, 'unreadCount']);
     Route::patch('/{id}/read', [InAppNotificationController::class, 'markAsRead']);
     Route::post('/read-all', [InAppNotificationController::class, 'markAllAsRead']);
+    Route::delete('/{id}', [InAppNotificationController::class, 'destroy']);
 });
 
 // M13 — Historial de firmas electrónicas (Ley 527/1999, ISO 27001 A.8.15)
