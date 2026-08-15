@@ -183,11 +183,7 @@ class VentanillaRadicaEnviados extends Model
         )->withTimestamps();
     }
 
-    public function usuariosRespuestas()
-    {
-        return $this->belongsToMany(UserCargo::class, 'ventanilla_radica_enviados_respuestas', 'radica_enviado_id', 'users_cargos_id')
-            ->withTimestamps();
-    }
+    
 
     public function firmas()
     {
