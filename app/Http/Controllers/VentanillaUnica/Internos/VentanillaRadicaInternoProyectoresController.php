@@ -4,6 +4,7 @@ namespace App\Http\Controllers\VentanillaUnica\Internos;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\Notificacion;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoProyectores;
 use Illuminate\Http\Request;
@@ -90,6 +91,27 @@ class VentanillaRadicaInternoProyectoresController extends Controller
             DB::beginTransaction();
 
             $proyector = VentanillaRadicaInternoProyectores::create($request->validated());
+
+            // Crear notificación in-app para el proyector
+            $userCargo = \App\Models\ControlAcceso\UserCargo::find($request->validated()['users_cargos_id']);
+            if ($userCargo && $userCargo->user) {
+                $radicado = VentanillaRadicaInterno::find($request->validated()['radica_interno_id']);
+                Notificacion::create([
+                    'user_id' => $userCargo->user_id,
+                    'type' => 'asignacion_proyector',
+                    'title' => 'Proyector asignado',
+                    'message' => $radicado
+                        ? 'Se le ha asignado como proyector del radicado interno ' . $radicado->num_radicado . '.'
+                        : 'Se le ha asignado como proyector de un radicado interno.',
+                    'notifiable_type' => 'App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno',
+                    'notifiable_id' => $request->validated()['radica_interno_id'],
+                    'data' => [
+                        'radica_interno_id' => $request->validated()['radica_interno_id'],
+                        'num_radicado' => $radicado?->num_radicado,
+                        'asignado_por' => auth()->id(),
+                    ],
+                ]);
+            }
 
             DB::commit();
 
@@ -306,6 +328,26 @@ class VentanillaRadicaInternoProyectoresController extends Controller
                     'users_cargos_id' => (int) $item['users_cargos_id'],
                 ]);
                 $proyectoresCreados[] = $proyector->load(['userCargo.user', 'userCargo.cargo']);
+
+                // Crear notificación in-app para el proyector
+                $userCargo = \App\Models\ControlAcceso\UserCargo::find($item['users_cargos_id']);
+                if ($userCargo && $userCargo->user) {
+                    Notificacion::create([
+                        'user_id' => $userCargo->user_id,
+                        'type' => 'asignacion_proyector',
+                        'title' => 'Proyector asignado',
+                        'message' => $radicado
+                            ? 'Se le ha asignado como proyector del radicado interno ' . $radicado->num_radicado . '.'
+                            : 'Se le ha asignado como proyector de un radicado interno.',
+                        'notifiable_type' => 'App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno',
+                        'notifiable_id' => $radica_interno_id,
+                        'data' => [
+                            'radica_interno_id' => $radica_interno_id,
+                            'num_radicado' => $radicado?->num_radicado,
+                            'asignado_por' => auth()->id(),
+                        ],
+                    ]);
+                }
             }
 
             DB::commit();

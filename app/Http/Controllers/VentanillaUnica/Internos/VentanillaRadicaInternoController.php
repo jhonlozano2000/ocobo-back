@@ -6,6 +6,7 @@ use App\Helpers\ArchivoHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\ControlAcceso\UserCargo;
+use App\Models\Notificacion;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoResponsa;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
@@ -262,6 +263,24 @@ class VentanillaRadicaInternoController extends Controller
                             'users_cargos_id' => $cargo->id,
                             'created_at' => now(),
                         ]);
+
+                        // Crear notificación in-app para el proyector
+                        $user = \App\Models\User::find($userId);
+                        if ($user) {
+                            Notificacion::create([
+                                'user_id' => $userId,
+                                'type' => 'asignacion_proyector',
+                                'title' => 'Proyector asignado',
+                                'message' => 'Se le ha asignado como proyector del radicado interno ' . $radicado->num_radicado . '.',
+                                'notifiable_type' => 'App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno',
+                                'notifiable_id' => $radicado->id,
+                                'data' => [
+                                    'radica_interno_id' => $radicado->id,
+                                    'num_radicado' => $radicado->num_radicado,
+                                    'asignado_por' => auth()->id(),
+                                ],
+                            ]);
+                        }
                     }
                 }
             }
@@ -274,6 +293,24 @@ class VentanillaRadicaInternoController extends Controller
                         'users_id' => $id,
                         'created_at' => now(),
                     ]);
+
+                    // Crear notificación in-app para el firmante
+                    $user = \App\Models\User::find($id);
+                    if ($user) {
+                        Notificacion::create([
+                            'user_id' => $id,
+                            'type' => 'asignacion_firmante',
+                            'title' => 'Firmante asignado',
+                            'message' => 'Se le ha asignado como firmante del radicado interno ' . $radicado->num_radicado . '.',
+                            'notifiable_type' => 'App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno',
+                            'notifiable_id' => $radicado->id,
+                            'data' => [
+                                'radica_interno_id' => $radicado->id,
+                                'num_radicado' => $radicado->num_radicado,
+                                'asignado_por' => auth()->id(),
+                            ],
+                        ]);
+                    }
                 }
             }
 
