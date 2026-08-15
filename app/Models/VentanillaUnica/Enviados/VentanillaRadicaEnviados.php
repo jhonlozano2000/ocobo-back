@@ -164,7 +164,7 @@ class VentanillaRadicaEnviados extends Model
     public function usuariosResponsables()
     {
         return $this->belongsToMany(UserCargo::class, 'ventanilla_radica_enviados_responsable', 'radica_enviado_id', 'users_cargos_id')
-            ->withPivot('custodio', 'fechor_visto')
+            ->withPivot('custodio')
             ->withTimestamps();
     }
 
@@ -182,6 +182,11 @@ class VentanillaRadicaEnviados extends Model
     public function firmas()
     {
         return $this->hasMany(VentanillaRadicaEnviadosFirmas::class, 'radica_enviado_id');
+    }
+
+    public function firmasEventos()
+    {
+        return $this->morphMany(\App\Models\Transversal\FirmaEvento::class, 'documentable');
     }
 
     public function usuariosFirmas()
@@ -238,6 +243,11 @@ class VentanillaRadicaEnviados extends Model
     public function archivos()
     {
         return $this->hasMany(VentanillaRadicaEnviadosArchivos::class, 'radica_enviado_id');
+    }
+
+    public function archivosEliminados()
+    {
+        return $this->hasMany(VentanillaRadicaEnviadosArchivoEliminado::class, 'radica_enviado_id');
     }
 
     public function metadatos()

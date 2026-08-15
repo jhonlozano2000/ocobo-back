@@ -9,6 +9,7 @@ use App\Http\Requests\Ventanilla\Enviados\UploadArchivosAdjuntosEnviadoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivos;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivoEliminado;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -150,7 +151,16 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
             }
 
             $rutaArchivo = $archivo->archivo;
+            $nombreArchivo = $archivo->nom_origi ?? basename($rutaArchivo);
+
             ArchivoHelper::eliminarArchivo($rutaArchivo, self::DISK);
+
+            VentanillaRadicaEnviadosArchivoEliminado::create([
+                'radica_enviado_id' => $id,
+                'archivo' => $rutaArchivo,
+                'deleted_by' => Auth::id(),
+                'deleted_at' => now(),
+            ]);
 
             $archivo->delete();
 

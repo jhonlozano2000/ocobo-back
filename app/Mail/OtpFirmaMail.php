@@ -27,7 +27,7 @@ class OtpFirmaMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'C�digo de Seguridad para Firma Electr�nica - Ocobo SGDEA',
+            subject: "Código de Seguridad para Firma Electrónica - Ocobo SGDEA",
         );
     }
 

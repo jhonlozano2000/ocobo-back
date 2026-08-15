@@ -709,6 +709,8 @@ class VentanillaRadicaEnviadosController extends Controller
                 'firmas.userCargo.cargo',
                 'proyectores.userCargo.user',
                 'proyectores.userCargo.cargo',
+                'firmasEventos.user',
+                'archivosEliminados',
             ])->find($id);
 
             if (! $radicado) {
@@ -815,6 +817,40 @@ class VentanillaRadicaEnviadosController extends Controller
                     'descripcion' => $cargo ? 'Asignado: '.$cargo->nom_organico : 'Se asignó proyector',
                     'usuario' => $user,
                     'datos' => ['proyector_id' => $proyector->id],
+                ];
+            }
+
+            foreach ($radicado->firmasEventos as $firmaEvento) {
+                $user = $firmaEvento->user?->getInfoUsuario();
+                $nombreFirmante = $user ? trim(($user['nombres'] ?? '').' '.($user['apellidos'] ?? '')) : 'Funcionario';
+                $eventos[] = [
+                    'fecha' => $firmaEvento->fecha_firma ?? $firmaEvento->created_at,
+                    'tipo' => 'firma_electronica',
+                    'titulo' => 'Firma electrónica',
+                    'descripcion' => 'Documento firmado electrónicamente por '.$nombreFirmante,
+                    'usuario' => $user,
+                    'datos' => [
+                        'firma_evento_id' => $firmaEvento->id,
+                        'hash_firmado' => $firmaEvento->hash_firmado,
+                        'ip_address' => $firmaEvento->ip_address,
+                        'fecha_firma' => $firmaEvento->fecha_firma?->toIso8601String(),
+                    ],
+                ];
+            }
+
+            foreach ($radicado->archivosEliminados as $eliminado) {
+                $user = $eliminado->deleted_by ? \App\Models\User::find($eliminado->deleted_by)?->getInfoUsuario() : null;
+                $eventos[] = [
+                    'fecha' => $eliminado->deleted_at,
+                    'tipo' => 'archivo_eliminado',
+                    'titulo' => 'Archivo eliminado',
+                    'descripcion' => 'Se eliminó el archivo: '.basename($eliminado->archivo),
+                    'usuario' => $user,
+                    'datos' => [
+                        'archivo_nombre' => basename($eliminado->archivo),
+                        'ruta' => $eliminado->archivo,
+                        'eliminado_at' => $eliminado->deleted_at,
+                    ],
                 ];
             }
 
