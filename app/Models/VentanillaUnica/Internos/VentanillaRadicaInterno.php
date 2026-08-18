@@ -3,6 +3,7 @@
 namespace App\Models\VentanillaUnica\Internos;
 
 use App\Helpers\ArchivoHelper;
+use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\User;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
@@ -142,6 +143,22 @@ class VentanillaRadicaInterno extends Model
     }
 
     /**
+     * Respuestas (radicados recibidos asociados) de la radicación interna.
+     */
+    public function respuestas()
+    {
+        return $this->hasMany(VentanillaRadicaInternoRespuesta::class, 'radica_interno_id');
+    }
+
+    /**
+     * Historial de cambios de clasificación documental.
+     */
+    public function historialClasificacion()
+    {
+        return $this->hasMany(VentanillaRadicaInternosHistorialClasificacionDocumental::class, 'radica_interno_id');
+    }
+
+    /**
      * Archivos de la radicación interna.
      */
     public function archivos()
@@ -197,6 +214,7 @@ class VentanillaRadicaInterno extends Model
             'cod' => $clasif->cod,
             'nom' => $clasif->nom,
             'tipo' => $clasif->tipo,
+            'dependencia_id' => $clasif->dependencia_id,
             'jerarquia' => $clasif->getJerarquia(),
             'codigo_completo' => $clasif->getCodigoCompleto(),
             'nombre_completo' => $clasif->getNombreCompleto(),
@@ -218,9 +236,9 @@ class VentanillaRadicaInterno extends Model
         // Solo acceder al filesystem si se solicita explícitamente (para descarga/detalles)
         if ($incluirMetadatos) {
             try {
-                if (Storage::disk('ventanilla_radica_interno_archivos')->exists($this->archivo_digital)) {
-                    $info['tamaño'] = Storage::disk('ventanilla_radica_interno_archivos')->size($this->archivo_digital);
-                    $info['tipo'] = Storage::disk('ventanilla_radica_interno_archivos')->mimeType($this->archivo_digital);
+                if (Storage::disk('ventanilla_radica_internos_archivos')->exists($this->archivo_digital)) {
+                    $info['tamaño'] = Storage::disk('ventanilla_radica_internos_archivos')->size($this->archivo_digital);
+                    $info['tipo'] = Storage::disk('ventanilla_radica_internos_archivos')->mimeType($this->archivo_digital);
                 }
             } catch (\Exception $e) {
                 // Si hay error al obtener información del archivo, continuar sin esos datos
@@ -328,7 +346,7 @@ class VentanillaRadicaInterno extends Model
 
     public function getUrlArchivoDigital()
     {
-        return $this->getArchivoUrl('archivo_digital', 'ventanilla_radica_interno_archivos');
+        return $this->getArchivoUrl('archivo_digital', 'ventanilla_radica_internos_archivos');
     }
 
     public function getArchivoUrl(string $campo, string $disk): ?string

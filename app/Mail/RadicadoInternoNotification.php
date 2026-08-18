@@ -58,7 +58,7 @@ class RadicadoInternoNotification extends Mailable
     private function datosAdjuntos(): array
     {
         return MailAdjuntosHelper::seleccionarAdjuntos(
-            'ventanilla_radica_interno_archivos',
+            'radicados_internos',
             $this->radicado->archivo_digital
                 ? ['path' => $this->radicado->archivo_digital, 'nombre' => $this->radicado->nom_origi]
                 : null,

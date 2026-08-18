@@ -8,7 +8,8 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\Notificacion;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
-use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoResponsa;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternosHistorialClasificacionDocumental;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoResponsable;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use App\Traits\VentanillaAuditTrait;
@@ -18,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class VentanillaRadicaInternoController extends Controller
@@ -77,21 +79,35 @@ class VentanillaRadicaInternoController extends Controller
                 $responsablesInfo = $radicado->getResponsablesInfo();
 
                 $radicado->clasificacion_documental = $clasifInfo;
-                $radicado->responsables = $responsablesInfo['responsables'];
+                $radicado->setRelation('responsables', collect($responsablesInfo['responsables']));
                 $radicado->total_responsables = $responsablesInfo['total_responsables'];
                 $radicado->total_custodios = $responsablesInfo['total_custodios'];
                 $radicado->tiene_archivo_digital = ! empty($radicado->archivo_digital);
                 $radicado->estado_trabajo_info = $radicado->getEstadoTrabajoInfo();
                 $radicado->dias_para_vencer = $radicado->getDiasParaVencerAttribute();
                 $radicado->is_vencida = $radicado->isVencida();
-                $radicado->destinatarios = $radicado->destinatarios->map(function ($dest) {
+                // Explicitly include dependencia_origen (accessor not in $appends)
+                $radicado->dependencia_origen = $radicado->dependencia_origen;
+                // Transform destinatarios to match the same structure as responsables
+                $transformedDestinatarios = $radicado->destinatarios->map(function ($dest) {
+                    $user = $dest->userCargo?->user;
+                    $cargo = $dest->userCargo?->cargo;
                     return [
                         'id' => $dest->id,
-                        'user' => $dest->userCargo?->user,
-                        'cargo' => $dest->userCargo?->cargo,
+                        'user' => $user ? [
+                            'id' => $user->id,
+                            'nombres' => $user->nombres,
+                            'apellidos' => $user->apellidos,
+                            'email' => $user->email,
+                        ] : null,
+                        'cargo' => $cargo ? [
+                            'id' => $cargo->id,
+                            'nom_organico' => $cargo->nom_organico,
+                        ] : null,
                         'visto' => $dest->visto,
                     ];
                 });
+                $radicado->setRelation('destinatarios', $transformedDestinatarios);
 
                 return $radicado;
             });
@@ -220,7 +236,19 @@ class VentanillaRadicaInternoController extends Controller
                 'asunto', 'clasifica_documen_id', 'num_folios', 'num_anexos', 'descrip_anexos', 'fec_venci',
             ]));
 
-            $radicado->num_radicado = 'INT-'.date('Ymd').'-'.rand(100, 999);
+            // Generar num_radicado único con reintentos ante colisión
+            $maxIntentos = 5;
+            for ($i = 0; $i < $maxIntentos; $i++) {
+                $numRadicado = 'INT-'.date('Ymd').'-'.rand(100, 999);
+                if (! VentanillaRadicaInterno::where('num_radicado', $numRadicado)->exists()) {
+                    $radicado->num_radicado = $numRadicado;
+                    break;
+                }
+            }
+            if (empty($radicado->num_radicado)) {
+                throw new \Exception('No se pudo generar número de radicado único tras '.$maxIntentos.' intentos');
+            }
+
             $radicado->usuario_crea = auth()->id();
             $radicado->save();
 
@@ -243,7 +271,7 @@ class VentanillaRadicaInternoController extends Controller
                 foreach ($request->responsables as $resp) {
                     $cargo = UserCargo::where('user_id', $resp['user_id'])->where('estado', 1)->first();
                     if ($cargo) {
-                        DB::table('ventanilla_radica_interno_responsa')->insert([
+                        DB::table('ventanilla_radica_internos_responsa')->insert([
                             'radica_interno_id' => $radicado->id,
                             'users_cargos_id' => $cargo->id,
                             'custodio' => $resp['custodio'],
@@ -258,7 +286,7 @@ class VentanillaRadicaInternoController extends Controller
                 foreach ($request->proyectores as $userId) {
                     $cargo = UserCargo::where('user_id', $userId)->where('estado', 1)->first();
                     if ($cargo) {
-                        DB::table('ventanilla_radica_interno_proyectores')->insert([
+                        DB::table('ventanilla_radica_internos_proyectores')->insert([
                             'radica_interno_id' => $radicado->id,
                             'users_cargos_id' => $cargo->id,
                             'created_at' => now(),
@@ -340,11 +368,11 @@ class VentanillaRadicaInternoController extends Controller
             }
 
             $radicado->update($request->only([
-                'asunto', 'clasifica_documen_id', 'num_folios', 'num_anexos', 'descrip_anexos', 'fec_venci',
+                'asunto', 'clasifica_documen_id', 'num_folios', 'num_anexos', 'descrip_anexos', 'fec_docu', 'fec_venci',
             ]));
 
             $this->auditVentanilla($radicado, 'updated', $radicado->num_radicado, [
-                'campos' => array_keys($request->only(['asunto', 'clasifica_documen_id', 'num_folios', 'num_anexos', 'descrip_anexos', 'fec_venci'])),
+                'campos' => array_keys($request->only(['asunto', 'clasifica_documen_id', 'num_folios', 'num_anexos', 'descrip_anexos', 'fec_docu', 'fec_venci'])),
             ]);
 
             DB::commit();
@@ -373,7 +401,7 @@ class VentanillaRadicaInternoController extends Controller
             }
 
             if ($radicado->archivo_digital) {
-                ArchivoHelper::eliminarArchivo($radicado->archivo_digital, 'ventanilla_radica_interno_archivos');
+                ArchivoHelper::eliminarArchivo($radicado->archivo_digital, 'radicados_internos');
             }
 
             $radicado->destinatarios()->delete();
@@ -400,9 +428,11 @@ class VentanillaRadicaInternoController extends Controller
         try {
             $request->validate([
                 'clasifica_documen_id' => 'required|integer|exists:clasificacion_documental_trd,id',
+                'motivo' => 'nullable|string|max:1000',
             ], [
                 'clasifica_documen_id.required' => 'La clasificación documental es obligatoria.',
                 'clasifica_documen_id.exists' => 'La clasificación documental no es válida.',
+                'motivo.max' => 'El motivo no puede superar los 1000 caracteres.',
             ]);
 
             $radicado = VentanillaRadicaInterno::find($id);
@@ -411,7 +441,7 @@ class VentanillaRadicaInternoController extends Controller
                 return $this->errorResponse('Radicado interno no encontrado', null, 404);
             }
 
-            $responsableHaVisto = VentanillaRadicaInternoResponsa::where('radica_interno_id', $id)
+            $responsableHaVisto = VentanillaRadicaInternoResponsable::where('radica_interno_id', $id)
                 ->whereNotNull('fechor_visto')
                 ->exists();
 
@@ -423,7 +453,18 @@ class VentanillaRadicaInternoController extends Controller
                 );
             }
 
+            $clasificacionAnteriorId = $radicado->clasifica_documen_id;
+            $motivo = $request->motivo ?? 'Cambio de clasificación documental';
+
             $radicado->update(['clasifica_documen_id' => $request->clasifica_documen_id]);
+
+            VentanillaRadicaInternosHistorialClasificacionDocumental::create([
+                'radica_interno_id' => $radicado->id,
+                'clasificacion_anterior_id' => $clasificacionAnteriorId,
+                'clasificacion_nueva_id' => $request->clasifica_documen_id,
+                'motivo' => $motivo,
+                'user_id' => auth()->id(),
+            ]);
 
             return $this->successResponse(
                 $radicado->fresh(['clasificacionDocumental']),
@@ -451,6 +492,25 @@ class VentanillaRadicaInternoController extends Controller
             $resultado = app(NotificacionCorrespondenciaService::class)
                 ->enviarRadicadoInterno($radicado);
 
+            // A: Sin destinatarios con correo -> avisar, no éxito falso
+            if (($resultado['total_enviados'] ?? 0) === 0) {
+                return $this->errorResponse('El radicado no tiene responsables ni destinatarios con correo para notificar', null, 422);
+            }
+
+            // D: Registrar en el historial de notificaciones
+            try {
+                \App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoHistorialNotificacion::create([
+                    'radicado_id' => $radicado->id,
+                    'tipo' => 'interno',
+                    'destinatarios' => $resultado['emails_enviados'] ?? [],
+                    'total_enviados' => $resultado['total_enviados'] ?? 0,
+                    'user_id' => auth()->id(),
+                ]);
+            } catch (\Exception $e) {
+                // Silenciar error de historial para no romper el flujo principal
+                \Log::warning('Error registrando historial de notificación interno: ' . $e->getMessage());
+            }
+
             return $this->successResponse([
                 'radicado_id' => $radicado->id,
                 ...$resultado,
@@ -458,6 +518,15 @@ class VentanillaRadicaInternoController extends Controller
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Radicado interno no encontrado', null, 404);
         } catch (\Exception $e) {
+            // C: mensaje claro si el SMTP no está configurado
+            if (! \App\Helpers\MailConfigHelper::isConfigured()) {
+                return $this->errorResponse(
+                    'No se pudo enviar el correo. Verifique la configuración SMTP en Otras configuraciones → Correo.',
+                    null,
+                    500
+                );
+            }
+
             return $this->errorResponse('Error al enviar las notificaciones', $e->getMessage(), 500);
         }
     }
@@ -473,6 +542,9 @@ class VentanillaRadicaInternoController extends Controller
                 'responsables.userCargo.cargo',
                 'proyectores.userCargo.user',
                 'proyectores.userCargo.cargo',
+                'historialClasificacion.clasificacionAnterior',
+                'historialClasificacion.clasificacionNueva',
+                'historialClasificacion.usuario',
             ])->find($id);
 
             if (! $radicado) {
@@ -541,6 +613,45 @@ class VentanillaRadicaInternoController extends Controller
                 ];
             }
 
+            // Cambios de clasificación documental (auditoría)
+            foreach ($radicado->historialClasificacion as $cambio) {
+                $anterior = $cambio->clasificacionAnterior;
+                $nueva = $cambio->clasificacionNueva;
+
+                $descripcion = 'Cambio de clasificación documental';
+                if ($anterior && $nueva) {
+                    $descripcion = 'Clasificación cambiada de '.$anterior->nom.' a '.$nueva->nom;
+                } elseif ($nueva) {
+                    $descripcion = 'Clasificación asignada: '.$nueva->nom;
+                }
+
+                $eventos[] = [
+                    'fecha' => $cambio->created_at,
+                    'tipo' => 'clasificacion_cambiada',
+                    'titulo' => 'Clasificación documental',
+                    'descripcion' => $descripcion,
+                    'usuario' => $cambio->usuario ? trim($cambio->usuario->nombres.' '.$cambio->usuario->apellidos) : null,
+                    'icono' => 'tabler-folder',
+                    'datos' => [
+                        'clasificacion_anterior_id' => $anterior?->id,
+                        'clasificacion_anterior' => $anterior ? [
+                            'id' => $anterior->id,
+                            'cod' => $anterior->cod,
+                            'nom' => $anterior->nom,
+                            'tipo' => $anterior->tipo,
+                        ] : null,
+                        'clasificacion_nueva_id' => $nueva?->id,
+                        'clasificacion_nueva' => $nueva ? [
+                            'id' => $nueva->id,
+                            'cod' => $nueva->cod,
+                            'nom' => $nueva->nom,
+                            'tipo' => $nueva->tipo,
+                        ] : null,
+                        'motivo' => $cambio->motivo,
+                    ],
+                ];
+            }
+
             usort($eventos, fn ($a, $b) => $b['fecha']->getTimestamp() - $a['fecha']->getTimestamp());
 
             $lineaTiempo = array_map(function ($e) {
@@ -561,6 +672,78 @@ class VentanillaRadicaInternoController extends Controller
             ], 'Línea de tiempo obtenida exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener la línea de tiempo', $e->getMessage(), 500);
+        }
+    }
+
+    public function updateAsunto($id, Request $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            $request->validate(['asunto' => 'required|string|max:300']);
+
+            $radicado = VentanillaRadicaInterno::find($id);
+
+            if (! $radicado) {
+                return $this->errorResponse('Radicado interno no encontrado', null, 404);
+            }
+
+            $radicado->update(['asunto' => $request->asunto]);
+            DB::commit();
+
+            return $this->successResponse([
+                'id' => $radicado->id,
+                'asunto' => $radicado->asunto,
+                'updated_at' => $radicado->updated_at,
+            ], 'Asunto actualizado exitosamente');
+        } catch (ValidationException $e) {
+            DB::rollBack();
+
+            return $this->errorResponse('Error de validación', $e->errors(), 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return $this->errorResponse('Error al actualizar el asunto', $e->getMessage(), 500);
+        }
+    }
+
+    public function updateFechas($id, Request $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            $radicado = VentanillaRadicaInterno::find($id);
+
+            if (! $radicado) {
+                return $this->errorResponse('Radicado interno no encontrado', null, 404);
+            }
+
+            $request->validate([
+                'fec_docu' => 'nullable|date',
+            ], [
+                'fec_docu.date' => 'La fecha del documento debe ser una fecha válida',
+            ]);
+
+            if (! $request->filled('fec_docu')) {
+                return $this->errorResponse('No se proporcionó fecha para actualizar', null, 422);
+            }
+
+            $radicado->update(['fec_docu' => $request->fec_docu]);
+            DB::commit();
+
+            return $this->successResponse([
+                'id' => $radicado->id,
+                'fec_docu' => $radicado->fec_docu,
+                'updated_at' => $radicado->updated_at,
+            ], 'Fecha actualizada exitosamente');
+        } catch (ValidationException $e) {
+            DB::rollBack();
+
+            return $this->errorResponse('Error de validación', $e->errors(), 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return $this->errorResponse('Error al actualizar la fecha', $e->getMessage(), 500);
         }
     }
 
@@ -690,14 +873,24 @@ class VentanillaRadicaInternoController extends Controller
                 return $this->errorResponse('La anulación ya fue procesada', null, 400);
             }
 
+            if ($request->accion === 'rechazar') {
+                // Rechazar: limpiar la solicitud, el radicado vuelve a estado normal
+                $radicado->update([
+                    'usua_soli_anula_id' => null,
+                    'observa_soli_anula' => null,
+                ]);
+
+                return $this->successResponse($radicado, 'Anulación rechazada');
+            }
+
+            // Aprobar: registrar quién aprobó y marcar estado como anulado
             $radicado->update([
                 'usua_aprue_anula_id' => Auth::id(),
                 'observa_aprue_anula' => $request->observa_aprue_anula,
+                'estado_trabajo' => 'ANULADO',
             ]);
 
-            $mensaje = $request->accion === 'rechazar' ? 'Anulación rechazada' : 'Anulación aprobada exitosamente';
-
-            return $this->successResponse($radicado, $mensaje);
+            return $this->successResponse($radicado, 'Anulación aprobada exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al procesar la anulación', $e->getMessage(), 500);
         }
@@ -731,7 +924,24 @@ class VentanillaRadicaInternoController extends Controller
             $search = $request->get('search', '');
             $estado = $request->get('estado', '');
 
-            $query = VentanillaRadicaInterno::orderBy('created_at', 'desc');
+            $query = VentanillaRadicaInterno::where(function ($q) use ($userId) {
+                $q->where('usuario_crea', $userId)
+                    ->orWhereHas('responsables', function ($q2) use ($userId) {
+                        $q2->whereHas('userCargo', function ($q3) use ($userId) {
+                            $q3->where('user_id', $userId);
+                        });
+                    })
+                    ->orWhereHas('destinatarios', function ($q2) use ($userId) {
+                        $q2->whereHas('userCargo', function ($q3) use ($userId) {
+                            $q3->where('user_id', $userId);
+                        });
+                    })
+                    ->orWhereHas('proyectores', function ($q2) use ($userId) {
+                        $q2->whereHas('userCargo', function ($q3) use ($userId) {
+                            $q3->where('user_id', $userId);
+                        });
+                    });
+            })->orderBy('created_at', 'desc');
 
             if ($search) {
                 $query->where(function ($q) use ($search) {

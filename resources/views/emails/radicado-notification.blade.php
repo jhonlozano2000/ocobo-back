@@ -235,14 +235,20 @@
                         <div class="info-item">
                             <div class="info-label">Clasificación</div>
                             <div class="info-value">
-                                {{ $radicado->clasificacionDocumental->nombre ?? 'No especificada' }}
+                                {{ $radicado->clasificacionDocumental->nom ?? $radicado->clasificacionDocumental->nombre ?? 'No especificada' }}
                             </div>
                         </div>
                         
                         <div class="info-item">
-                            <div class="info-label">Remitente</div>
+                            <div class="info-label">Remitente / Origen</div>
                             <div class="info-value">
-                                {{ $radicado->tercero->razon_social ?? $radicado->tercero->nombres ?? 'No especificado' }}
+                                @if(isset($radicado->tercero))
+                                    {{ $radicado->tercado->razon_social ?? $radicado->tercero->nombres ?? 'No especificado' }}
+                                @elseif(isset($radicado->dependenciaOrigen))
+                                    {{ $radicado->dependenciaOrigen['nombre'] ?? $radicado->dependenciaOrigen->nom_organico ?? 'No especificado' }}
+                                @else
+                                    No especificado
+                                @endif
                             </div>
                         </div>
                         
@@ -271,17 +277,25 @@
                             </div>
                         </div>
 
+                        @if(isset($radicado->medioRecepcion))
                         <div class="info-item">
                             <div class="info-label">Medio de Recepción</div>
                             <div class="info-value">
                                 {{ $radicado->medioRecepcion->nombre ?? $radicado->medioRecepcion->descripcion ?? 'No especificado' }}
                             </div>
                         </div>
+                        @endif
 
                         <div class="info-item">
                             <div class="info-label">Usuario que Radicó</div>
                             <div class="info-value">
-                                {{ $radicado->usuarioCreaRadicado ? trim($radicado->usuarioCreaRadicado->nombres . ' ' . $radicado->usuarioCreaRadicado->apellidos) : 'No especificado' }}
+                                @if(isset($radicado->usuarioCreaRadicado))
+                                    {{ trim($radicado->usuarioCreaRadicado->nombres . ' ' . $radicado->usuarioCreaRadicado->apellidos) }}
+                                @elseif(isset($radicado->usuarioCrea))
+                                    {{ trim($radicado->usuarioCrea->nombres . ' ' . $radicado->usuarioCrea->apellidos) }}
+                                @else
+                                    No especificado
+                                @endif
                             </div>
                         </div>
 
