@@ -10,6 +10,7 @@ use App\Http\Requests\Ventanilla\Enviados\StoreRadicadoEnviadoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosHistorialClasificacionDocumental;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosResponsable;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
 use App\Services\ReportesExportService;
@@ -672,9 +673,11 @@ class VentanillaRadicaEnviadosController extends Controller
         try {
             $request->validate([
                 'clasifica_documen_id' => 'required|integer|exists:clasificacion_documental_trd,id',
+                'motivo' => 'nullable|string|max:1000',
             ], [
                 'clasifica_documen_id.required' => 'La clasificación documental es obligatoria.',
                 'clasifica_documen_id.exists' => 'La clasificación documental no es válida.',
+                'motivo.max' => 'El motivo no puede superar los 1000 caracteres.',
             ]);
 
             $radicado = VentanillaRadicaEnviados::find($id);
@@ -683,7 +686,18 @@ class VentanillaRadicaEnviadosController extends Controller
                 return $this->errorResponse('Radicado enviado no encontrado', null, 404);
             }
 
+            $clasificacionAnteriorId = $radicado->clasifica_documen_id;
+            $motivo = $request->motivo ?? 'Cambio de clasificación documental';
+
             $radicado->update(['clasifica_documen_id' => $request->clasifica_documen_id]);
+
+            VentanillaRadicaEnviadosHistorialClasificacionDocumental::create([
+                'radica_enviados_id' => $radicado->id,
+                'clasificacion_anterior_id' => $clasificacionAnteriorId,
+                'clasificacion_nueva_id' => $request->clasifica_documen_id,
+                'motivo' => $motivo,
+                'user_id' => auth()->id(),
+            ]);
 
             return $this->successResponse(
                 $radicado->fresh(['clasificacionDocumental']),
@@ -711,6 +725,9 @@ class VentanillaRadicaEnviadosController extends Controller
                 'proyectores.userCargo.cargo',
                 'firmasEventos.user',
                 'archivosEliminados',
+                'historialClasificacion.clasificacionAnterior',
+                'historialClasificacion.clasificacionNueva',
+                'historialClasificacion.usuario',
             ])->find($id);
 
             if (! $radicado) {
@@ -850,6 +867,45 @@ class VentanillaRadicaEnviadosController extends Controller
                         'archivo_nombre' => basename($eliminado->archivo),
                         'ruta' => $eliminado->archivo,
                         'eliminado_at' => $eliminado->deleted_at,
+                    ],
+                ];
+            }
+
+            // Cambios de clasificación documental (auditoría)
+            foreach ($radicado->historialClasificacion as $cambio) {
+                $anterior = $cambio->clasificacionAnterior;
+                $nueva = $cambio->clasificacionNueva;
+
+                $descripcion = 'Cambio de clasificación documental';
+                if ($anterior && $nueva) {
+                    $descripcion = 'Clasificación cambiada de '.$anterior->nom.' a '.$nueva->nom;
+                } elseif ($nueva) {
+                    $descripcion = 'Clasificación asignada: '.$nueva->nom;
+                }
+
+                $eventos[] = [
+                    'fecha' => $cambio->created_at,
+                    'tipo' => 'clasificacion_cambiada',
+                    'titulo' => 'Clasificación documental',
+                    'descripcion' => $descripcion,
+                    'usuario' => $cambio->usuario ? $cambio->usuario->getInfoUsuario() : null,
+                    'icono' => 'tabler-folder',
+                    'datos' => [
+                        'clasificacion_anterior_id' => $anterior?->id,
+                        'clasificacion_anterior' => $anterior ? [
+                            'id' => $anterior->id,
+                            'cod' => $anterior->cod,
+                            'nom' => $anterior->nom,
+                            'tipo' => $anterior->tipo,
+                        ] : null,
+                        'clasificacion_nueva_id' => $nueva?->id,
+                        'clasificacion_nueva' => $nueva ? [
+                            'id' => $nueva->id,
+                            'cod' => $nueva->cod,
+                            'nom' => $nueva->nom,
+                            'tipo' => $nueva->tipo,
+                        ] : null,
+                        'motivo' => $cambio->motivo,
                     ],
                 ];
             }

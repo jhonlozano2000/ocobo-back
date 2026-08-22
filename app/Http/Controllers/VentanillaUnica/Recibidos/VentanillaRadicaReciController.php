@@ -13,7 +13,7 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\User;
-use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaHistorialClasificacionDocumental;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciHistorialClasificacionDocumental;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaHistorialNotificacion;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciCompartirHistorial;
@@ -796,10 +796,10 @@ class VentanillaRadicaReciController extends Controller
             }
 
             // 10. Cambios de clasificación documental (auditoría)
-            $cambiosClasificacion = VentanillaRadicaHistorialClasificacionDocumental::with([
+            $cambiosClasificacion = VentanillaRadicaReciHistorialClasificacionDocumental::with([
                 'clasificacionAnterior', 'clasificacionNueva', 'usuario'
             ])
-                ->where('radicado_id', $id)
+                ->where('radica_reci_id', $id)
                 ->get();
 
             foreach ($cambiosClasificacion as $cambio) {
@@ -1584,12 +1584,11 @@ class VentanillaRadicaReciController extends Controller
             // Validar los datos de entrada
             $request->validate([
                 'clasifica_documen_id' => 'required|integer|exists:clasificacion_documental_trd,id',
-                'motivo' => 'required|string|max:1000',
+                'motivo' => 'nullable|string|max:1000',
             ], [
                 'clasifica_documen_id.required' => 'La clasificación documental es obligatoria.',
                 'clasifica_documen_id.integer' => 'La clasificación documental debe ser un número entero.',
                 'clasifica_documen_id.exists' => 'La clasificación documental no es válida.',
-                'motivo.required' => 'Debe indicar el motivo del cambio de clasificación.',
                 'motivo.max' => 'El motivo no puede superar los 1000 caracteres.',
             ]);
 
@@ -1602,17 +1601,18 @@ class VentanillaRadicaReciController extends Controller
 
             // Clasificación anterior (para trazabilidad)
             $clasificacionAnteriorId = $radicacion->clasifica_documen_id;
+            $motivo = $request->motivo ?? 'Cambio de clasificación documental';
 
             // Actualizar la clasificación documental
             $radicacion->clasifica_documen_id = $request->clasifica_documen_id;
             $radicacion->save();
 
             // Registrar historial del cambio (auditoría)
-            VentanillaRadicaHistorialClasificacionDocumental::create([
-                'radicado_id' => $radicacion->id,
+            VentanillaRadicaReciHistorialClasificacionDocumental::create([
+                'radica_reci_id' => $radicacion->id,
                 'clasificacion_anterior_id' => $clasificacionAnteriorId,
                 'clasificacion_nueva_id' => $request->clasifica_documen_id,
-                'motivo' => $request->motivo,
+                'motivo' => $motivo,
                 'user_id' => auth()->id(),
             ]);
 

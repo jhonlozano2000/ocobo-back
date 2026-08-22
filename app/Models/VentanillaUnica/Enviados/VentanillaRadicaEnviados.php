@@ -256,6 +256,11 @@ class VentanillaRadicaEnviados extends Model
         return $this->hasMany(VentanillaRadicaEnviadosArchivoEliminado::class, 'radica_enviado_id');
     }
 
+    public function historialClasificacion()
+    {
+        return $this->hasMany(VentanillaRadicaEnviadosHistorialClasificacionDocumental::class, 'radica_enviados_id');
+    }
+
     public function metadatos()
     {
         return $this->hasMany(VentanillaRadicaEnviadosMetadata::class, 'radicado_id');

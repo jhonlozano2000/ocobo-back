@@ -1,17 +1,17 @@
 <?php
 
-namespace App\Models\VentanillaUnica\Recibidos;
+namespace App\Models\VentanillaUnica\Internos;
 
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 
-class VentanillaRadicaHistorialClasificacionDocumental extends Model
+class VentanillaRadicaInternosHistorialClasificacionDocumental extends Model
 {
-    protected $table = 'ventanilla_radica_historial_clasificacion_documental';
+    protected $table = 'ventanilla_radica_internos_historial_clasifica';
 
     protected $fillable = [
-        'radicado_id',
+        'radica_interno_id',
         'clasificacion_anterior_id',
         'clasificacion_nueva_id',
         'motivo',
@@ -20,7 +20,7 @@ class VentanillaRadicaHistorialClasificacionDocumental extends Model
 
     public function radicado()
     {
-        return $this->belongsTo(VentanillaRadicaReci::class, 'radicado_id');
+        return $this->belongsTo(VentanillaRadicaInterno::class, 'radica_interno_id');
     }
 
     public function clasificacionAnterior()
