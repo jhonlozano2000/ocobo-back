@@ -7,18 +7,109 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\ConfigDiviPoli;
 use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\Gestion\GestionTercero;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsResponsable;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsPaseHistorial;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsCompartirHistorial;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsHistorialNotificacion;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsHistorialClasificacion;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsComentario;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\AbacHierarquico;
+
+/**
+ * Modelo VentanillaPqrs — PQRS del módulo Ventanilla Única
+ *
+ * Representa una PQRS (Petición, Queja, Reclamo, Sugerencia, Felicitación)
+ * con soporte completo para:
+ * - Responsables (custodio único, assignación, acuse digital)
+ * - Pases/reasignaciones con historial
+ * - Compartidos (CC) con historial
+ * - Comentarios con estructura de árbol (threaded)
+ * - Firma digital con OTP
+ * - Vencimiento con prórrogas
+ * - Estados de trámite con transiciones
+ * - Notificaciones y correspondencia
+ * - Clasificación documental con historial de cambios
+ *
+ * @property int $id
+ * @property int|null $ventanilla_radica_reci_id - Radicado recibido origen (si aplica)
+ * @property int|null $gestion_tercero_id - Tercero asociado (GestionTercero)
+ * @property int|null $clasificacion_documental_trd_id - Clasificación TRD
+ * @property int|null $config_divi_poli_id_afectado - División política del afectado
+ * @property int|null $tipo_pqrs_id - Tipo de PQRS (catálogo lista 7)
+ * @property string $prioridad - Normal|Alta|Urgente
+ * @property string $estado_tramite - Pendiente|En trámite|Respondido|Cerrado
+ * @property \Carbon\Carbon|null $fecha_vencimiento - Fecha límite de respuesta
+ * @property \Carbon\Carbon|null $fecha_vencimiento_original - Vencimiento antes de prórroga
+ * @property \Carbon\Carbon|null $fecha_respuesta - Fecha efectiva de respuesta
+ * @property bool $tiene_prorroga - Si tiene prórroga activa
+ * @property string $fallo_judicial - Sí/No
+ * @property \Carbon\Carbon|null $fechor_tramite - Fecha/hora de trámite
+ * @property string|null $observaciones
+ * @property string|null $num_docu_afectado - Número de documento del afectado
+ * @property string|null $nom_afectado - Nombre del afectado
+ * @property string|null $dir_afectado - Dirección del afectado
+ * @property string|null $tel_afectado - Teléfono del afectado
+ * @property string|null $movil_afectado - Móvil del afectado
+ * @property string|null $detalle_solicitud - Asunto/detalle de la solicitud
+ * @property string|null $modalidad - Modalidad (solo para quejas/reclamos)
+ * @property string|null $derecho_solicitado - Derecho solicitado
+ * @property string|null $area_afectada
+ * @property string|null $funcionarios_implicados
+ * @property string|null $derecho_vulnerado
+ * @property string|null $pretension
+ * @property string|null $area_mejora
+ * @property string|null $motivo_felicitacion
+ * @property string|null $autoridad_destino
+ * @property string $tipo_persona - Natural|Jurídica
+ * @property string $estado_firma - Sin firma|Pendiente OTP|Firmado
+ * @property string|null $firma_digital - Firma en base64
+ * @property \Carbon\Carbon|null $fecha_firma
+ * @property string|null $ip_firma
+ * @property bool $firmado_en_representacion
+ * @property string|null $nombre_representado
+ *
+ * @property-read \App\Models\Configuracion\UsersCargos|null $usersCargos
+ * @property-read \App\Models\Gestion\GestionTercero|null $gestionTercero
+ * @property-read \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD|null $clasificacionDocumental
+ * @property-read \App\Models\Configuracion\ConfigDiviPoli|null $diviPoliAfectado
+ * @property-read \App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci|null $ventanillaRadicaReci
+ * @property-read \Illuminate\Database\Eloquent\Collection $responsables
+ * @property-read \Illuminate\Database\Eloquent\Collection $historialPases
+ * @property-read \Illuminate\Database\Eloquent\Collection $historialCompartir
+ * @property-read \Illuminate\Database\Eloquent\Collection $comentarios
+ * @property-read \Illuminate\Database\Eloquent\Collection $archivosPqrs
+ * @property-read \Illuminate\Database\Eloquent\Collection $historialNotificaciones
+ * @property-read \Illuminate\Database\Eloquent\Collection $historialClasificacion
+ * @property-read \App\Models\VentanillaUnica\Pqrs\VentanillaPqrsResponsable|null $custodio
+ * @property-read \App\Models\VentanillaUnica\Pqrs\VentanillaPqrsResponsable|null $responsableActual
+ * @property-read int $diasRestantesVencimiento
+ * @property-read bool $vencido
+ * @property-read bool $critico
+ * @property-read bool $puedeProrrogar
+ * @property-read bool $tieneComentariosResueltos
+ * @property-read int $totalComentariosNoResueltos
+ * @property-read string $textoEstadoVencimiento
+ *
+ * @author Jhon Javer Lozano Arce
+ * @date 2026-08-20
+ */
 
 class VentanillaPqrs extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, AbacHierarquico;
 
     protected $table = 'ventanilla_pqrs';
+
+    protected const ABAC_USER_COLUMN = 'usuario_crea';
+    protected const ABAC_RESPONSABLES_RELATION = 'responsables';
 
     protected $fillable = [
         'ventanilla_radica_reci_id',
@@ -136,6 +227,41 @@ class VentanillaPqrs extends Model
     {
         return $this->hasOne(VentanillaPqrsArchivo::class, 'ventanilla_pqrs_id')
             ->where('tipo', 'digital');
+    }
+
+    public function responsables(): HasMany
+    {
+        return $this->hasMany(VentanillaPqrsResponsable::class, 'pqrs_id');
+    }
+
+    public function paseHistorial(): HasMany
+    {
+        return $this->hasMany(VentanillaPqrsPaseHistorial::class, 'pqrs_id');
+    }
+
+    public function compartirHistorial(): HasMany
+    {
+        return $this->hasMany(VentanillaPqrsCompartirHistorial::class, 'pqrs_id');
+    }
+
+    public function historialNotificaciones(): HasMany
+    {
+        return $this->hasMany(VentanillaPqrsHistorialNotificacion::class, 'pqrs_id');
+    }
+
+    public function historialClasificacion(): HasMany
+    {
+        return $this->hasMany(VentanillaPqrsHistorialClasificacion::class, 'pqrs_id');
+    }
+
+    public function comentarios(): HasMany
+    {
+        return $this->hasMany(VentanillaPqrsComentario::class, 'pqrs_id');
+    }
+
+    public function usuarioCreaRadicado(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'usuario_crea');
     }
 
     public function scopeActivas($query)
@@ -283,5 +409,35 @@ class VentanillaPqrs extends Model
             'observaciones' => $this->observaciones,
             'estado_color' => $this->getEstadoColor(),
         ];
+    }
+
+    /**
+     * Actualiza el estado de trabajo del radicado asociado basado en responsables y vencimientos.
+     * Equivalente a VentanillaRadicaReci::actualizarEstadoTrabajo()
+     */
+    public function actualizarEstadoTrabajo(): void
+    {
+        if (! $this->ventanilla_radica_reci_id) {
+            return;
+        }
+
+        $radicado = $this->radicado;
+        if (! $radicado) {
+            return;
+        }
+
+        $diasParaVencer = $this->getDiasHabilesRestantes();
+        $totalResponsables = $this->responsables()->count();
+        $totalCustodios = $this->responsables()->where('custodio', true)->count();
+
+        $nuevoEstado = match (true) {
+            $this->estado_tramite === 'Respondida' => 'finalizado',
+            $this->estado_tramite === 'Vencida' => 'vencido',
+            $diasParaVencer <= 2 && $totalResponsables > 0 => 'por_vencer',
+            $totalResponsables > 0 => 'en_proceso',
+            default => 'recibido',
+        };
+
+        $radicado->update(['estado_trabajo' => $nuevoEstado]);
     }
 }

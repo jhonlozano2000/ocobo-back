@@ -11,20 +11,59 @@ use App\Http\Resources\VentanillaUnica\PqrsResource;
 use App\Http\Traits\ApiResponseTrait;
 use App\Mail\PqrsNotificacionEmail;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsHistorialNotificacion;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsHistorialClasificacion;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsOptimizedView;
 use App\Services\ReportesExportService;
 use App\Services\VentanillaUnica\PqrsService;
 use App\Traits\AuditViewTrait;
+use App\Traits\VentanillaAuditTrait;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+
+/**
+ * Controller VentanillaPqrsController — CRUD y operaciones PQRS
+ *
+ * Controlador principal del módulo PQRS. Maneja:
+ * - CRUD completo con paginación y filtros
+ * - Cambio de estados con transiciones válidas
+ * - Prórrogas de vencimiento
+ * - Actualización parcial de asunto, fechas, clasificación
+ * - Eliminación masiva
+ * - Impresión de rótulo
+ * - Notificación por email
+ * - Firma digital con flujo OTP (solicitar → validar → guardar)
+ * - Anulación de PQRS
+ * - Estadísticas y línea de tiempo
+ * - Mis radicados (responsables del usuario)
+ * - Gestión de estados disponibles
+ * - Exportación de datos
+ *
+ * Permisos requeridos (prefijo 'Radicar -> PQRSF -> '):
+ * - Listar: index, estadisticas, lineaTiempo, estadosDisponibles, transicionesEstado, misRadicados
+ * - Crear: store
+ * - Editar: update, cambiarEstado, aplicarProrroga, updateAsunto, updateFechas, updateClasificacion, bulkDestroy
+ * - Mostrar: show, lineaTiempo
+ * - Eliminar: destroy, bulkDestroy
+ * - Imprimir Rotulo: imprimirRotulo
+ * - Notificar Email: notificarEmail
+ * - Firmar peticionario: solicitarOtpFirma, validarOtpFirma, guardarFirma
+ * - Anular: anular
+ *
+ * @author Jhon Javer Lozano Arce
+ * @date 2026-08-20
+ */
 
 class VentanillaPqrsController extends Controller
 {
-    use ApiResponseTrait, AuditViewTrait;
+    use ApiResponseTrait, AuditViewTrait, VentanillaAuditTrait;
 
     private const PERM = 'Radicar -> PQRSF -> ';
 
@@ -35,16 +74,11 @@ class VentanillaPqrsController extends Controller
         ReportesExportService $exportService
     ) {
         $this->exportService = $exportService;
-        $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'estadisticas', 'lineaTiempo']);
+        $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'estadisticas', 'lineaTiempo', 'estadosDisponibles', 'transicionesEstado', 'misRadicados']);
         $this->middleware('can:'.self::PERM.'Crear')->only(['store']);
-        $this->middleware('can:'.self::PERM.'Editar')->only(['update']);
+        $this->middleware('can:'.self::PERM.'Editar')->only(['update', 'cambiarEstado', 'aplicarProrroga', 'updateAsunto', 'updateFechas', 'updateClasificacion', 'bulkDestroy']);
         $this->middleware('can:'.self::PERM.'Mostrar')->only(['show', 'lineaTiempo']);
-        $this->middleware('can:'.self::PERM.'Eliminar')->only(['destroy']);
-        $this->middleware('can:'.self::PERM.'Cambiar Estado')->only(['cambiarEstado']);
-        $this->middleware('can:'.self::PERM.'Aplicar Prorroga')->only(['aplicarProrroga']);
-        $this->middleware('can:'.self::PERM.'Actualizar asunto')->only(['updateAsunto']);
-        $this->middleware('can:'.self::PERM.'Atualizar fechas de radicados')->only(['updateFechas']);
-        $this->middleware('can:'.self::PERM.'Actualizar clasificacion de radicados')->only(['updateClasificacion']);
+        $this->middleware('can:'.self::PERM.'Eliminar')->only(['destroy', 'bulkDestroy']);
         $this->middleware('can:'.self::PERM.'Imprimir Rotulo')->only(['imprimirRotulo']);
         $this->middleware('can:'.self::PERM.'Notificar Email')->only(['notificarEmail']);
         $this->middleware('can:'.self::PERM.'Firmar peticionario')->only(['solicitarOtpFirma', 'validarOtpFirma', 'guardarFirma']);
@@ -54,58 +88,53 @@ class VentanillaPqrsController extends Controller
     public function index(ListPqrsRequest $request): JsonResponse
     {
         try {
-            // Se filtran solo PQRS con radicado asociado (whereNotNull).
-            // Las PQRS independientes (sin radicado) se gestionan por separado.
-            $query = VentanillaPqrs::with([
-                'radicado',
-                'tercero',
-                'tipoPqrs',
-                'clasificacionDocumental',
-            ])->whereNotNull('ventanilla_radica_reci_id');
+            // Query the optimized view with ABAC hierarchical filtering
+            $query = VentanillaPqrsOptimizedView::query()
+                ->conPermisoJerarquico(auth()->user())
+                ->whereNotNull('ventanilla_radica_reci_id');
 
-            if ($request->filled('search')) {
-                $query->where(function ($q) use ($request) {
-                    $q->whereHas('radicado', function ($q) use ($request) {
-                        $q->where('num_radicado', 'like', "%{$request->search}%")
-                            ->orWhere('asunto', 'like', "%{$request->search}%");
-                    })->orWhere('nom_afectado', 'like', "%{$request->search}%")
-                        ->orWhere('num_docu_afectado', 'like', "%{$request->search}%");
-                });
-            }
+            // Apply additional filters using view model scopes
+            $query->search($request->search)
+                ->tipoPqrs($request->tipo_pqrs_id)
+                ->estadoTramite($request->estado_tramite)
+                ->prioridad($request->prioridad)
+                ->clasificacionDocumental($request->clasificacion_id)
+                ->tercero($request->gestion_tercero_id)
+                ->fechaEntre($request->fecha_desde, $request->fecha_hasta)
+                ->ordenadoPorFecha();
 
-            if ($request->filled('tipo_pqrs_id')) {
-                $query->where('tipo_pqrs_id', $request->tipo_pqrs_id);
-            }
+            $perPage = $request->get('per_page', 15);
+            $pqrs = $query->paginate($perPage);
 
-            if ($request->filled('estado_tramite')) {
-                $query->where('estado_tramite', $request->estado_tramite);
-            }
+            // Hydrate full PQRS models for the returned page IDs to get relationships
+            $ids = $pqrs->getCollection()->pluck('id')->toArray();
+            $pqrsCompletos = VentanillaPqrs::whereIn('id', $ids)
+                ->with([
+                    'radicado.tercero',
+                    'radicado.clasificacionDocumental',
+                    'radicado.responsables.userCargo.user',
+                    'radicado.responsables.userCargo.cargo',
+                    'tercero',
+                    'tipoPqrs',
+                    'clasificacionDocumental',
+                ])
+                ->get()
+                ->keyBy('id');
 
-            if ($request->filled('prioridad')) {
-                $query->where('prioridad', $request->prioridad);
-            }
-
-            if ($request->filled('clasificacion_id')) {
-                $query->where('clasificacion_documental_trd_id', $request->clasificacion_id);
-            }
-
-            if ($request->filled('gestion_tercero_id')) {
-                $query->where('gestion_tercero_id', $request->gestion_tercero_id);
-            }
-
-            if ($request->filled('fecha_desde') && $request->filled('fecha_hasta')) {
-                $query->whereBetween('fecha_vencimiento', [$request->fecha_desde, $request->fecha_hasta]);
-            }
-
-            $pqrs = $query->latest()->paginate($request->get('per_page', 15));
-
-            $pqrs->getCollection()->transform(function ($item) {
-                $item->dias_habiles_restantes = $item->getDiasHabilesRestantes();
-
+            $pqrs->getCollection()->transform(function ($item) use ($pqrsCompletos) {
+                $pqrsCompleto = $pqrsCompletos->get($item->id);
+                if ($pqrsCompleto) {
+                    $item->dias_habiles_restantes = $pqrsCompleto->getDiasHabilesRestantes();
+                    $item->estado_color = $pqrsCompleto->getEstadoColor();
+                    $item->radicado = $pqrsCompleto->radicado;
+                    $item->tercero = $pqrsCompleto->tercero;
+                    $item->tipoPqrs = $pqrsCompleto->tipoPqrs;
+                    $item->clasificacionDocumental = $pqrsCompleto->clasificacionDocumental;
+                }
                 return $item;
             });
 
-            return (new PqrsCollection($pqrs))->toResponse($request);
+            return $this->successResponse($pqrs, 'Listado de PQRS obtenido exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener el listado de PQRS', $e->getMessage(), 500);
         }
@@ -573,6 +602,7 @@ class VentanillaPqrsController extends Controller
         try {
             $request->validate([
                 'clasificacion_documental_trd_id' => 'required|exists:clasificacion_documental_trd,id',
+                'motivo' => 'required|string|max:500',
             ]);
 
             $pqrs = VentanillaPqrs::find($id);
@@ -581,12 +611,26 @@ class VentanillaPqrsController extends Controller
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
-            $pqrs->update(['clasificacion_documental_trd_id' => $request->clasificacion_documental_trd_id]);
+            $clasificacionAnteriorId = $pqrs->clasificacion_documental_trd_id;
+            $clasificacionNuevaId = $request->clasificacion_documental_trd_id;
+
+            $pqrs->update(['clasificacion_documental_trd_id' => $clasificacionNuevaId]);
+
+            // Registrar en historial de clasificación
+            VentanillaPqrsHistorialClasificacion::create([
+                'pqrs_id' => $id,
+                'clasificacion_anterior_id' => $clasificacionAnteriorId,
+                'clasificacion_nueva_id' => $clasificacionNuevaId,
+                'motivo' => $request->motivo,
+                'user_id' => auth()->id(),
+            ]);
 
             $pqrs->load('clasificacionDocumental');
 
             $this->auditVentanilla($pqrs, 'updated', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
                 'campo' => 'clasificacion_documental_trd_id',
+                'clasificacion_anterior_id' => $clasificacionAnteriorId,
+                'clasificacion_nueva_id' => $clasificacionNuevaId,
             ]);
 
             return $this->successResponse(new PqrsResource($pqrs), 'Clasificación actualizada exitosamente');
@@ -641,25 +685,61 @@ class VentanillaPqrsController extends Controller
                 'destinatario' => 'required|string|max:255',
                 'asunto' => 'required|string|max:500',
                 'mensaje' => 'required|string',
+                'tipo' => 'nullable|string|in:responsable,tercero,acuse',
             ]);
 
-            $pqrs = VentanillaPqrs::with(['radicado', 'tipoPqrs'])->find($id);
+            $pqrs = VentanillaPqrs::with(['radicado', 'tipoPqrs', 'responsables.userCargo.user'])->find($id);
 
             if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
+            }
+
+            // Obtener destinatarios: responsables + destinatario manual
+            $emails = [];
+            foreach ($pqrs->responsables as $resp) {
+                if ($resp->userCargo && $resp->userCargo->user && $resp->userCargo->user->email) {
+                    $emails[] = $resp->userCargo->user->email;
+                }
+            }
+            // Agregar el destinatario manual si no está ya en la lista
+            if (! in_array($validated['destinatario'], $emails)) {
+                $emails[] = $validated['destinatario'];
+            }
+            $emails = array_unique(array_filter($emails));
+
+            if (empty($emails)) {
+                return $this->errorResponse('No hay destinatarios válidos para enviar la notificación', null, 422);
+            }
+
+            // Verificar configuración SMTP
+            $smtpConfig = config('mail.mailers.smtp');
+            if (empty($smtpConfig['host']) || empty($smtpConfig['username'])) {
+                Log::warning('SMTP no configurado', ['pqrs_id' => $id]);
+                return $this->errorResponse('Configuración SMTP no disponible. Verifique la configuración del servidor de correo.', null, 500);
             }
 
             // Enviar email usando Mailable
             Mail::to($validated['destinatario'])
                 ->send(new PqrsNotificacionEmail($pqrs, $validated['mensaje'], $validated['asunto']));
 
+            // Registrar en historial de notificaciones
+            VentanillaPqrsHistorialNotificacion::create([
+                'pqrs_id' => $id,
+                'tipo' => $validated['tipo'] ?? 'responsable',
+                'destinatarios' => $emails,
+                'total_enviados' => count($emails),
+                'user_id' => auth()->id(),
+            ]);
+
             $this->auditVentanilla($pqrs, 'notified', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
                 'destinatario' => $validated['destinatario'],
                 'asunto' => $validated['asunto'],
+                'total_enviados' => count($emails),
             ]);
 
-            return $this->successResponse(null, 'Notificación enviada exitosamente a: '.$validated['destinatario']);
+            return $this->successResponse(['total_enviados' => count($emails)], 'Notificación enviada exitosamente a '.count($emails).' destinatario(s)');
         } catch (\Exception $e) {
+            Log::error('Error notificarEmail PQRS', ['pqrs_id' => $id, 'error' => $e->getMessage()]);
             return $this->errorResponse('Error al enviar la notificación', $e->getMessage(), 500);
         }
     }
@@ -793,6 +873,188 @@ class VentanillaPqrsController extends Controller
             return (new PqrsCollection($pqrs))->toResponse(request());
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener PQRS pendientes de firma', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Lista PQRS asignados al usuario autenticado (mis radicados).
+     */
+    public function misRadicados(ListPqrsRequest $request): JsonResponse
+    {
+        try {
+            $query = VentanillaPqrsOptimizedView::query()
+                ->conPermisoJerarquico(auth()->user())
+                ->whereNotNull('ventanilla_radica_reci_id')
+                ->whereHas('radicado.responsables', function ($q) {
+                    $q->whereHas('userCargo', function ($q) {
+                        $q->where('user_id', auth()->id());
+                    });
+                })
+                ->search($request->search)
+                ->tipoPqrs($request->tipo_pqrs_id)
+                ->estadoTramite($request->estado_tramite)
+                ->prioridad($request->prioridad)
+                ->clasificacionDocumental($request->clasificacion_id)
+                ->tercero($request->gestion_tercero_id)
+                ->fechaEntre($request->fecha_desde, $request->fecha_hasta)
+                ->ordenadoPorFecha();
+
+            $perPage = $request->get('per_page', 15);
+            $pqrs = $query->paginate($perPage);
+
+            $ids = $pqrs->getCollection()->pluck('id')->toArray();
+            $pqrsCompletos = VentanillaPqrs::whereIn('id', $ids)
+                ->with([
+                    'radicado.tercero',
+                    'radicado.clasificacionDocumental',
+                    'radicado.responsables.userCargo.user',
+                    'radicado.responsables.userCargo.cargo',
+                    'tercero',
+                    'tipoPqrs',
+                    'clasificacionDocumental',
+                ])
+                ->get()
+                ->keyBy('id');
+
+            $pqrs->getCollection()->transform(function ($item) use ($pqrsCompletos) {
+                $pqrsCompleto = $pqrsCompletos->get($item->id);
+                if ($pqrsCompleto) {
+                    $item->dias_habiles_restantes = $pqrsCompleto->getDiasHabilesRestantes();
+                    $item->estado_color = $pqrsCompleto->getEstadoColor();
+                    $item->radicado = $pqrsCompleto->radicado;
+                    $item->tercero = $pqrsCompleto->tercero;
+                    $item->tipoPqrs = $pqrsCompleto->tipoPqrs;
+                    $item->clasificacionDocumental = $pqrsCompleto->clasificacionDocumental;
+                }
+                return $item;
+            });
+
+            return $this->successResponse($pqrs, 'Mis PQRS asignados');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener mis PQRS', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Obtiene los estados disponibles para el flujo de trabajo.
+     */
+    public function estadosDisponibles(): JsonResponse
+    {
+        try {
+            $estados = [
+                ['id' => 'Pendiente', 'nombre' => 'Pendiente'],
+                ['id' => 'En Tramite', 'nombre' => 'En Trámite'],
+                ['id' => 'Respondida', 'nombre' => 'Respondida'],
+                ['id' => 'Vencida', 'nombre' => 'Vencida'],
+            ];
+
+            return $this->successResponse($estados, 'Estados disponibles');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener los estados', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Obtiene las transiciones válidas desde un estado dado.
+     */
+    public function transicionesEstado(string $estadoActual): JsonResponse
+    {
+        try {
+            $transiciones = match ($estadoActual) {
+                'Pendiente' => ['En Tramite', 'Respondida', 'Vencida'],
+                'En Tramite' => ['Respondida', 'Vencida', 'Pendiente'],
+                'Respondida' => ['En Tramite'],
+                'Vencida' => ['En Tramite', 'Respondida'],
+                default => [],
+            };
+
+            return $this->successResponse($transiciones, 'Transiciones válidas');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener las transiciones', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Elimina múltiples PQRS en lote.
+     */
+    public function bulkDestroy(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'ids' => 'required|array|min:1',
+                'ids.*' => 'integer|exists:ventanilla_pqrs,id',
+            ]);
+
+            $ids = $request->ids;
+
+            DB::beginTransaction();
+            try {
+                $eliminados = [];
+                foreach ($ids as $id) {
+                    $pqrs = VentanillaPqrs::find($id);
+                    if ($pqrs) {
+                        $numRadicado = $pqrs->radicado?->num_radicado ?? $pqrs->id;
+                        $pqrs->delete();
+                        $eliminados[] = ['id' => $id, 'num_radicado' => $numRadicado];
+
+                        $this->auditVentanilla($pqrs, 'deleted', $numRadicado, ['bulk' => true]);
+                    }
+                }
+                DB::commit();
+
+                return $this->successResponse($eliminados, count($eliminados).' PQRS eliminadas exitosamente');
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al eliminar las PQRS en lote', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Historial de notificaciones de una PQRS.
+     */
+    public function historialNotificaciones(int $id): JsonResponse
+    {
+        try {
+            $pqrs = VentanillaPqrs::find($id);
+
+            if (! $pqrs) {
+                return $this->errorResponse('PQRS no encontrada', null, 404);
+            }
+
+            $historial = VentanillaPqrsHistorialNotificacion::where('pqrs_id', $id)
+                ->with('usuario')
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return $this->successResponse($historial, 'Historial de notificaciones');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener el historial de notificaciones', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Historial de cambios de clasificación de una PQRS.
+     */
+    public function historialClasificacion(int $id): JsonResponse
+    {
+        try {
+            $pqrs = VentanillaPqrs::find($id);
+
+            if (! $pqrs) {
+                return $this->errorResponse('PQRS no encontrada', null, 404);
+            }
+
+            $historial = VentanillaPqrsHistorialClasificacion::where('pqrs_id', $id)
+                ->with(['clasificacionAnterior', 'clasificacionNueva', 'usuario'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return $this->successResponse($historial, 'Historial de clasificación');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener el historial de clasificación', $e->getMessage(), 500);
         }
     }
 }
