@@ -46,9 +46,6 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
 
         Route::post('/radica-recibida/{radicadoId}/respuestas', [RadicadoRespuestasController::class, 'store'])->name('radica-recibida.respuestas.store')->middleware('can:'.$permReci.'Crear');
         Route::put('/radica-recibida/respuestas/{id}', [RadicadoRespuestasController::class, 'update'])->name('radica-recibida.respuestas.update')->middleware('can:'.$permReci.'Editar');
-        Route::post('/radica-recibida/respuestas/{id}/lock', [RadicadoRespuestasController::class, 'adquirirLock'])->name('radica-recibida.respuestas.lock')->middleware('can:'.$permReci.'Editar');
-        Route::delete('/radica-recibida/respuestas/{id}/lock', [RadicadoRespuestasController::class, 'liberarLock'])->name('radica-recibida.respuestas.unlock')->middleware('can:'.$permReci.'Editar');
-        Route::post('/radica-recibida/respuestas/{id}/version', [RadicadoRespuestasController::class, 'guardarVersion'])->name('radica-recibida.respuestas.version')->middleware('can:'.$permReci.'Editar');
         Route::delete('/radica-recibida/respuestas/{id}', [RadicadoRespuestasController::class, 'destruir'])->name('radica-recibida.respuestas.destroy')->middleware('can:'.$permReci.'Eliminar');
 
         Route::post('/radica-recibida/{radicaReciId}/comentarios', [RadicadoComentariosController::class, 'store'])->name('radica-recibida.comentarios.store')->middleware('can:'.$permReci.'Comentar');

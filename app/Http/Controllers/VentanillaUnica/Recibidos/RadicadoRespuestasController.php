@@ -2,11 +2,9 @@
 
 namespace App\Http\Controllers\VentanillaUnica\Recibidos;
 
-use App\Events\VentanillaUnica\RespuestaEditing;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Recibidos\RadicadoRespuesta;
-use App\Models\VentanillaUnica\Recibidos\RadicadoRespuestaParticipante;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -18,7 +16,7 @@ class RadicadoRespuestasController extends Controller
     public function index(Request $request, int $radicadoId)
     {
         $respuestas = RadicadoRespuesta::where('radicado_id', $radicadoId)
-            ->with(['usuarioCrea', 'usuarioEditando', 'participantes.usuario'])
+            ->with(['usuarioCrea', 'usuarioActualiza'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -30,9 +28,7 @@ class RadicadoRespuestasController extends Controller
         $respuesta = RadicadoRespuesta::with([
             'radicado',
             'usuarioCrea',
-            'usuarioEditando',
-            'participantes.usuario',
-            'versiones' => fn ($q) => $q->orderBy('version', 'desc')->limit(10),
+            'usuarioActualiza',
         ])->findOrFail($id);
 
         return $this->successResponse($respuesta, 'Respuesta obtenida');
@@ -55,27 +51,8 @@ class RadicadoRespuestasController extends Controller
             'titulo' => $request->titulo,
             'contenido' => $request->contenido,
             'contenido_json' => $request->contenido_json,
-            'version' => 1,
-            'version_actual' => 1,
-            'estado' => 'borrador',
             'user_crea_id' => Auth::id(),
         ]);
-
-        RadicadoRespuestaParticipante::create([
-            'respuesta_id' => $respuesta->id,
-            'user_id' => Auth::id(),
-            'rol' => 'editor',
-            'puede_editar' => true,
-        ]);
-
-        try {
-            broadcast(new RespuestaEditing($respuesta, 'respuesta_creada', [
-                'user_id' => Auth::id(),
-                'user_nombre' => Auth::user()->name,
-            ]))->toOthers();
-        } catch (\Exception $e) {
-            \Log::warning('Broadcast failed on respuesta_creada: '.$e->getMessage());
-        }
 
         return $this->successResponse($respuesta, 'Respuesta creada');
     }
@@ -84,10 +61,6 @@ class RadicadoRespuestasController extends Controller
     {
         $respuesta = RadicadoRespuesta::findOrFail($id);
 
-        if (! $respuesta->puedeEditar()) {
-            return $this->errorResponse('No puedes editar esta respuesta', null, 403);
-        }
-
         $respuesta->update([
             'titulo' => $request->titulo ?? $respuesta->titulo,
             'contenido' => $request->contenido ?? $respuesta->contenido,
@@ -95,79 +68,7 @@ class RadicadoRespuestasController extends Controller
             'user_actualiza_id' => Auth::id(),
         ]);
 
-        if ($request->has('contenido') || $request->has('contenido_json')) {
-            try {
-                broadcast(new RespuestaEditing($respuesta, 'contenido_actualizado', [
-                    'user_id' => Auth::id(),
-                    'user_nombre' => Auth::user()->name,
-                ]))->toOthers();
-            } catch (\Exception $e) {
-                \Log::warning('Broadcast failed on contenido_actualizado: '.$e->getMessage());
-            }
-        }
-
         return $this->successResponse($respuesta, 'Respuesta actualizada');
-    }
-
-    public function adquirirLock(int $id)
-    {
-        $respuesta = RadicadoRespuesta::findOrFail($id);
-
-        if (! $respuesta->adquirirLock()) {
-            return $this->errorResponse('No se pudo adquirir el lock', null, 423);
-        }
-
-        $respuesta->refresh();
-
-        try {
-            broadcast(new RespuestaEditing($respuesta, 'lock_adquirido', [
-                'user_id' => Auth::id(),
-                'user_nombre' => Auth::user()->name,
-            ]))->toOthers();
-        } catch (\Exception $e) {
-            \Log::warning('Broadcast failed on lock_adquirido: '.$e->getMessage());
-        }
-
-        return $this->successResponse($respuesta, 'Lock adquirido');
-    }
-
-    public function liberarLock(int $id)
-    {
-        $respuesta = RadicadoRespuesta::findOrFail($id);
-
-        if ($respuesta->user_editando_id !== Auth::id()) {
-            return $this->errorResponse('No tienes el lock', null, 403);
-        }
-
-        $respuesta->liberarLock();
-        $respuesta->refresh();
-
-        try {
-            broadcast(new RespuestaEditing($respuesta, 'lock_liberado', [
-                'user_id' => Auth::id(),
-            ]))->toOthers();
-        } catch (\Exception $e) {
-            \Log::warning('Broadcast failed on lock_liberado: '.$e->getMessage());
-        }
-
-        return $this->successResponse($respuesta, 'Lock liberado');
-    }
-
-    public function guardarVersion(Request $request, int $id)
-    {
-        $respuesta = RadicadoRespuesta::findOrFail($id);
-
-        if (! $respuesta->puedeEditar()) {
-            return $this->errorResponse('No puedes guardar versión', null, 403);
-        }
-
-        $version = $respuesta->guardarVersion($request->cambios_resumen);
-
-        $respuesta->update([
-            'version_actual' => $respuesta->version_actual + 1,
-        ]);
-
-        return $this->successResponse($version, 'Versión guardada');
     }
 
     public function destruir(Request $id)

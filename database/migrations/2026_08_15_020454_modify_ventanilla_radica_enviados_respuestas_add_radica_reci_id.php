@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::table('ventanilla_radica_enviados_respuestas', function (Blueprint $table) {
             $table->dropForeign(['users_cargos_id']);
             $table->dropColumn('users_cargos_id');
-            $table->foreignId('radica_reci_id')->constrained('ventanilla_radica_reci')->cascadeOnDelete();
+            $table->foreignId('radica_reci_id')->constrained('ventanilla_radica_reci');
         });
     }
 
