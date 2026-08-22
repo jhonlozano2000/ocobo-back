@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class VentanillaRadicaInternoMetadataHistory extends Model
 {
-    protected $table = 'ventanilla_radica_interno_metadata_history';
+    protected $table = 'ventanilla_radica_internos_metadata_history';
 
     protected $fillable = [
         'metadata_id',

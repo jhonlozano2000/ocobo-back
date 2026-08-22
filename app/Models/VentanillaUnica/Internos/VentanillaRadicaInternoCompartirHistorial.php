@@ -11,7 +11,7 @@ class VentanillaRadicaInternoCompartirHistorial extends Model
 {
     use HasFactory;
 
-    protected $table = 'ventanilla_radica_interno_compartir_historial';
+    protected $table = 'ventanilla_radica_internos_compartir_historial';
 
     protected $fillable = [
         'radica_interno_id',

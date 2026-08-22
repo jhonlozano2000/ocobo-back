@@ -10,7 +10,7 @@ class VentanillaRadicaInternoProyectores extends Model
 {
     use HasFactory;
 
-    protected $table = 'ventanilla_radica_interno_proyectores';
+    protected $table = 'ventanilla_radica_internos_proyectores';
 
     protected $fillable = [
         'radica_interno_id',

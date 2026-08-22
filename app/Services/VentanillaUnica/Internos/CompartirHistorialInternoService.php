@@ -15,8 +15,8 @@ class CompartirHistorialInternoService
      * Registra un compartir (con copia / CC) y crea el nuevo responsable activo.
      *
      * Tabla separada de PaseHistorial. Crea un nuevo registro en
-     * ventanilla_radica_interno_responsa y un registro inmutable en
-     * ventanilla_radica_interno_compartir_historial.
+     * ventanilla_radica_internos_responsa y un registro inmutable en
+     * ventanilla_radica_internos_compartir_historial.
      */
     public function registrarCompartir(array $data): array
     {

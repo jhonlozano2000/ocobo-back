@@ -14,7 +14,7 @@ class PaseHistorialInternoService
     /**
      * Registra un pase y crea el nuevo responsable activo.
      *
-     * El usuario anterior sigue activo en ventanilla_radica_interno_responsa
+     * El usuario anterior sigue activo en ventanilla_radica_internos_responsa
      * para preservar el historial.
      */
     public function registrarPase(array $data): array

@@ -29,13 +29,13 @@ class AlertasRetencionTRDCommand extends Command
     private const TABLES = [
         'ventanilla_radica_reci_metadata',
         'ventanilla_radica_enviados_metadata',
-        'ventanilla_radica_interno_metadata',
+        'ventanilla_radica_internos_metadata',
     ];
 
     private const LABELS = [
         'ventanilla_radica_reci_metadata' => 'Recibido',
         'ventanilla_radica_enviados_metadata' => 'Enviado',
-        'ventanilla_radica_interno_metadata' => 'Interno',
+        'ventanilla_radica_internos_metadata' => 'Interno',
     ];
 
     public function handle(): int
@@ -146,14 +146,14 @@ class AlertasRetencionTRDCommand extends Command
         $responsableTabla = match ($tabla) {
             'ventanilla_radica_reci_metadata' => 'ventanilla_radica_reci_responsa',
             'ventanilla_radica_enviados_metadata' => 'ventanilla_radica_envia_responsa',
-            'ventanilla_radica_interno_metadata' => 'ventanilla_radica_interno_responsa',
+            'ventanilla_radica_internos_metadata' => 'ventanilla_radica_internos_responsa',
             default => null,
         };
 
         $radicadoColumn = match ($tabla) {
             'ventanilla_radica_reci_metadata' => 'radica_reci_id',
             'ventanilla_radica_enviados_metadata' => 'radica_enviados_id',
-            'ventanilla_radica_interno_metadata' => 'radica_interno_id',
+            'ventanilla_radica_internos_metadata' => 'radica_interno_id',
             default => null,
         };
 

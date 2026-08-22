@@ -11,7 +11,7 @@ class VentanillaRadicaInternoPaseHistorial extends Model
 {
     use HasFactory;
 
-    protected $table = 'ventanilla_radica_interno_pase_historial';
+    protected $table = 'ventanilla_radica_internos_pase_historial';
 
     protected $fillable = [
         'radica_interno_id',

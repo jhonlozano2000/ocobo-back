@@ -10,12 +10,12 @@ class VentanillaRadicaInternoArchivosEliminados extends Model
 {
     use HasFactory;
 
-    protected $table = 'ventanilla_radica_interno_archivos_eliminados';
+    protected $table = 'ventanilla_radica_internos_archivos_eliminados';
 
     protected $fillable = [
         'radica_interno_id',
         'archivo',
-        'deleted_by',
+        'eliminado_por',
         'deleted_at',
     ];
 

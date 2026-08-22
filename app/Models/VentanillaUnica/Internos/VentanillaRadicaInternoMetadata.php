@@ -12,7 +12,7 @@ class VentanillaRadicaInternoMetadata extends Model
 {
     use HasFactory;
 
-    protected $table = 'ventanilla_radica_interno_metadata';
+    protected $table = 'ventanilla_radica_internos_metadata';
 
     protected $fillable = [
         'archivo_id',

@@ -11,7 +11,7 @@ class MiBandejaInternosController extends Controller
 {
     /**
      * Obtener radicados internos asignados al usuario actual (Mi Bandeja).
-     * Filtra por los cargos del usuario a través de ventanilla_radica_interno_responsa.
+     * Filtra por los cargos del usuario a través de ventanilla_radica_internos_responsa.
      */
     public function misRadicados(Request $request)
     {

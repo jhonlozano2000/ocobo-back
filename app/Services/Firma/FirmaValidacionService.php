@@ -20,7 +20,7 @@ class FirmaValidacionService
     const DISK_MAP = [
         'radicado_recibido' => 'radicados_recibidos',
         'radicado_enviado' => 'radicados_enviados',
-        'radicado_interno' => 'ventanilla_radica_interno_archivos',
+        'radicado_interno' => 'ventanilla_radica_internos_archivos',
     ];
 
     public function validar(string $tipo, int $id): array

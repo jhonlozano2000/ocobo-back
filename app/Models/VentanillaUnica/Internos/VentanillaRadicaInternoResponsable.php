@@ -10,7 +10,7 @@ class VentanillaRadicaInternoResponsable extends Model
 {
     use HasFactory;
 
-    protected $table = 'ventanilla_radica_interno_responsa';
+    protected $table = 'ventanilla_radica_internos_responsa';
 
     protected $fillable = [
         'radica_interno_id',

@@ -12,7 +12,7 @@ class VentanillaRadicaInternoArchivos extends Model
 {
     use HasFactory;
 
-    protected $table = 'ventanilla_radica_interno_archivos';
+    protected $table = 'ventanilla_radica_internos_archivos';
 
     protected $fillable = [
         'radicado_id',
@@ -41,7 +41,7 @@ class VentanillaRadicaInternoArchivos extends Model
 
     public function getArchivoUrl(): ?string
     {
-        return ArchivoHelper::obtenerUrl($this->archivo, 'ventanilla_radica_interno_archivos');
+        return ArchivoHelper::obtenerUrl($this->archivo, 'ventanilla_radica_internos_archivos');
     }
 
     public function getInfoArchivo(bool $incluirMetadatos = false): ?array
@@ -59,9 +59,9 @@ class VentanillaRadicaInternoArchivos extends Model
         ];
         if ($incluirMetadatos) {
             try {
-                if (Storage::disk('ventanilla_radica_interno_archivos')->exists($this->archivo)) {
-                    $info['archivo_peso'] = Storage::disk('ventanilla_radica_interno_archivos')->size($this->archivo);
-                    $info['tipo'] = Storage::disk('ventanilla_radica_interno_archivos')->mimeType($this->archivo);
+                if (Storage::disk('ventanilla_radica_internos_archivos')->exists($this->archivo)) {
+                    $info['archivo_peso'] = Storage::disk('ventanilla_radica_internos_archivos')->size($this->archivo);
+                    $info['tipo'] = Storage::disk('ventanilla_radica_internos_archivos')->mimeType($this->archivo);
                 }
             } catch (\Exception $e) {
             }
