@@ -88,14 +88,19 @@ class VentanillaRadicaInternoProyectoresController extends Controller
     public function store(Request $request)
     {
         try {
+            $validated = $request->validate([
+                'radica_interno_id' => 'required|integer|exists:ventanilla_radica_internos,id',
+                'users_cargos_id' => 'required|integer|exists:users_cargos,id',
+            ]);
+
             DB::beginTransaction();
 
-            $proyector = VentanillaRadicaInternoProyectores::create($request->validated());
+            $proyector = VentanillaRadicaInternoProyectores::create($validated);
 
             // Crear notificación in-app para el proyector
-            $userCargo = \App\Models\ControlAcceso\UserCargo::find($request->validated()['users_cargos_id']);
+            $userCargo = \App\Models\ControlAcceso\UserCargo::find($validated['users_cargos_id']);
             if ($userCargo && $userCargo->user) {
-                $radicado = VentanillaRadicaInterno::find($request->validated()['radica_interno_id']);
+                $radicado = VentanillaRadicaInterno::find($validated['radica_interno_id']);
                 Notificacion::create([
                     'user_id' => $userCargo->user_id,
                     'type' => 'asignacion_proyector',
@@ -104,9 +109,9 @@ class VentanillaRadicaInternoProyectoresController extends Controller
                         ? 'Se le ha asignado como proyector del radicado interno ' . $radicado->num_radicado . '.'
                         : 'Se le ha asignado como proyector de un radicado interno.',
                     'notifiable_type' => 'App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno',
-                    'notifiable_id' => $request->validated()['radica_interno_id'],
+                    'notifiable_id' => $validated['radica_interno_id'],
                     'data' => [
-                        'radica_interno_id' => $request->validated()['radica_interno_id'],
+                        'radica_interno_id' => $validated['radica_interno_id'],
                         'num_radicado' => $radicado?->num_radicado,
                         'asignado_por' => auth()->id(),
                     ],
@@ -204,6 +209,11 @@ class VentanillaRadicaInternoProyectoresController extends Controller
     public function update($id, Request $request)
     {
         try {
+            $validated = $request->validate([
+                'radica_interno_id' => 'sometimes|integer|exists:ventanilla_radica_internos,id',
+                'users_cargos_id' => 'sometimes|integer|exists:users_cargos,id',
+            ]);
+
             DB::beginTransaction();
 
             $proyector = VentanillaRadicaInternoProyectores::find($id);
@@ -212,7 +222,7 @@ class VentanillaRadicaInternoProyectoresController extends Controller
                 return $this->errorResponse('Proyector no encontrado', null, 404);
             }
 
-            $proyector->update($request->validated());
+            $proyector->update($validated);
 
             DB::commit();
 
@@ -249,6 +259,8 @@ class VentanillaRadicaInternoProyectoresController extends Controller
     public function destroy($id)
     {
         try {
+            DB::beginTransaction();
+
             $proyector = VentanillaRadicaInternoProyectores::find($id);
 
             if (! $proyector) {

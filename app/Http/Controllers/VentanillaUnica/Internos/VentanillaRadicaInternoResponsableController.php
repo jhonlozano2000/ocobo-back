@@ -30,9 +30,16 @@ class VentanillaRadicaInternoResponsableController extends Controller
     public function store(Request $request)
     {
         try {
+            $validated = $request->validate([
+                'radica_interno_id' => 'required|integer|exists:ventanilla_radica_internos,id',
+                'users_cargos_id' => 'required|integer|exists:users_cargos,id',
+                'custodio' => 'sometimes|boolean',
+                'fechor_visto' => 'nullable|date',
+            ]);
+
             DB::beginTransaction();
 
-            $responsable = VentanillaRadicaInternoResponsable::create($request->validated());
+            $responsable = VentanillaRadicaInternoResponsable::create($validated);
 
             DB::commit();
 
@@ -62,6 +69,13 @@ class VentanillaRadicaInternoResponsableController extends Controller
     public function update($id, Request $request)
     {
         try {
+            $validated = $request->validate([
+                'radica_interno_id' => 'sometimes|integer|exists:ventanilla_radica_internos,id',
+                'users_cargos_id' => 'sometimes|integer|exists:users_cargos,id',
+                'custodio' => 'sometimes|boolean',
+                'fechor_visto' => 'nullable|date',
+            ]);
+
             DB::beginTransaction();
 
             $responsable = VentanillaRadicaInternoResponsable::find($id);
@@ -70,7 +84,7 @@ class VentanillaRadicaInternoResponsableController extends Controller
                 return $this->errorResponse('Responsable no encontrado', null, 404);
             }
 
-            $responsable->update($request->validated());
+            $responsable->update($validated);
 
             DB::commit();
 
@@ -124,6 +138,8 @@ class VentanillaRadicaInternoResponsableController extends Controller
     public function destroy($id)
     {
         try {
+            DB::beginTransaction();
+
             $responsable = VentanillaRadicaInternoResponsable::find($id);
 
             if (! $responsable) {
