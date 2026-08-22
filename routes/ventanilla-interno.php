@@ -5,7 +5,9 @@ use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoCompart
 use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoController;
 use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoDestinatariosController;
 use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoDigitalController;
+use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoFirmantesController;
 use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoPaseHistorialController;
+use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoRespuestasController;
 use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoProyectoresController;
 use App\Http\Controllers\VentanillaUnica\Internos\VentanillaRadicaInternoResponsableController;
 use Illuminate\Support\Facades\Route;
@@ -15,6 +17,8 @@ Route::middleware('auth:sanctum')->group(function () {
     $permInterno = 'Radicar -> Cores. Interna -> ';
     Route::get('/radica-interno/estadisticas', [VentanillaRadicaInternoController::class, 'estadisticas'])->name('radica-interno.estadisticas')->middleware('can:'.$permInterno.'Listar');
     Route::get('/radica-interno/pendientes-anulacion', [VentanillaRadicaInternoController::class, 'listarPendientesAnulacion'])->name('radica-interno.pendientes-anulacion')->middleware('can:Jefe de Archivo');
+    Route::put('/radica-interno/{id}/update-asunto', [VentanillaRadicaInternoController::class, 'updateAsunto'])->name('radica-interno.update-asunto')->middleware('can:'.$permInterno.'Actualizar asunto');
+    Route::put('/radica-interno/{id}/update-fechas', [VentanillaRadicaInternoController::class, 'updateFechas'])->name('radica-interno.update-fechas')->middleware('can:'.$permInterno.'Atualizar fechas de radicados');
     Route::put('/radica-interno/{id}/update-clasificacion-documental', [VentanillaRadicaInternoController::class, 'updateClasificacionDocumental'])->name('radica-interno.update-clasificacion-documental')->middleware('can:'.$permInterno.'Actualizar clasificacion de radicados');
     Route::post('/radica-interno/{id}/notificacion', [VentanillaRadicaInternoController::class, 'enviarNotificacion'])->name('radica-interno.notificacion')->middleware('can:'.$permInterno.'Notificar Email');
     Route::get('/radica-interno/{id}/linea-tiempo', [VentanillaRadicaInternoController::class, 'lineaTiempo'])->name('radica-interno.linea-tiempo')->middleware('can:'.$permInterno.'Mostrar');
@@ -64,6 +68,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('proyectores-internos', VentanillaRadicaInternoProyectoresController::class)->except('create', 'edit')->middleware('can:'.$permInterno.'Editar');
     Route::get('/radica-interno/{radica_interno_id}/proyectores', [VentanillaRadicaInternoProyectoresController::class, 'getByRadicado'])->name('radica-interno.proyectores.listar')->middleware('can:'.$permInterno.'Editar');
     Route::post('/radica-interno/{radica_interno_id}/proyectores', [VentanillaRadicaInternoProyectoresController::class, 'assignToRadicado'])->name('radica-interno.proyectores.asignar')->middleware('can:'.$permInterno.'Editar');
+
+    Route::apiResource('firmantes-internos', VentanillaRadicaInternoFirmantesController::class)->except('create', 'edit')->middleware('can:'.$permInterno.'Editar');
+    Route::get('/radica-interno/{radica_interno_id}/firmantes', [VentanillaRadicaInternoFirmantesController::class, 'getByRadicado'])->name('radica-interno.firmantes.listar')->middleware('can:'.$permInterno.'Editar');
+    Route::post('/radica-interno/{radica_interno_id}/firmantes', [VentanillaRadicaInternoFirmantesController::class, 'assignToRadicado'])->name('radica-interno.firmantes.asignar')->middleware('can:'.$permInterno.'Editar');
+
+    Route::get('/radica-interno/{radica_interno_id}/respuestas', [VentanillaRadicaInternoRespuestasController::class, 'index'])->name('radica-interno.respuestas.listar')->middleware('can:'.$permInterno.'Editar');
+    Route::get('/radica-interno/{radica_interno_id}/respuestas/disponibles', [VentanillaRadicaInternoRespuestasController::class, 'disponibles'])->name('radica-interno.respuestas.disponibles')->middleware('can:'.$permInterno.'Editar');
+    Route::post('/radica-interno/{radica_interno_id}/respuestas', [VentanillaRadicaInternoRespuestasController::class, 'store'])->name('radica-interno.respuestas.asignar')->middleware('can:'.$permInterno.'Editar');
+    Route::delete('/radica-interno/{radica_interno_id}/respuestas/{respuestaId}', [VentanillaRadicaInternoRespuestasController::class, 'destroy'])->name('radica-interno.respuestas.desasociar')->middleware('can:'.$permInterno.'Editar');
 
     Route::apiResource('destinatarios-internos', VentanillaRadicaInternoDestinatariosController::class)->except('create', 'edit')->middleware('can:'.$permInterno.'Editar');
     Route::get('/radica-interno/{radica_interno_id}/destinatarios', [VentanillaRadicaInternoDestinatariosController::class, 'getByRadicado'])->name('radica-interno.destinatarios.listar')->middleware('can:'.$permInterno.'Editar');
