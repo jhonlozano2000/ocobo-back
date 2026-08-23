@@ -7,9 +7,6 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\ConfigDiviPoli;
 use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\Gestion\GestionTercero;
-use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsResponsable;
-use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsPaseHistorial;
-use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsCompartirHistorial;
 use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsHistorialNotificacion;
 use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsHistorialClasificacion;
 use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsComentario;
@@ -88,8 +85,6 @@ use App\Traits\AbacHierarquico;
  * @property-read \Illuminate\Database\Eloquent\Collection $archivosPqrs
  * @property-read \Illuminate\Database\Eloquent\Collection $historialNotificaciones
  * @property-read \Illuminate\Database\Eloquent\Collection $historialClasificacion
- * @property-read \App\Models\VentanillaUnica\Pqrs\VentanillaPqrsResponsable|null $custodio
- * @property-read \App\Models\VentanillaUnica\Pqrs\VentanillaPqrsResponsable|null $responsableActual
  * @property-read int $diasRestantesVencimiento
  * @property-read bool $vencido
  * @property-read bool $critico
@@ -109,7 +104,8 @@ class VentanillaPqrs extends Model
     protected $table = 'ventanilla_pqrs';
 
     protected const ABAC_USER_COLUMN = 'usuario_crea';
-    protected const ABAC_RESPONSABLES_RELATION = 'responsables';
+    // Sin ABAC_RESPONSABLES_RELATION: los responsables viven en el radicado
+    // recibido asociado, no en la PQRS (el trait omite esa cláusula).
 
     /** Bypass del filtrado jerárquico ABAC: quien lista PQRS ve todos. */
     protected const ABAC_VER_TODOS_PERMISO = 'Radicar -> PQRSF -> Listar';
@@ -230,21 +226,6 @@ class VentanillaPqrs extends Model
     {
         return $this->hasOne(VentanillaPqrsArchivo::class, 'ventanilla_pqrs_id')
             ->where('tipo', 'digital');
-    }
-
-    public function responsables(): HasMany
-    {
-        return $this->hasMany(VentanillaPqrsResponsable::class, 'pqrs_id');
-    }
-
-    public function paseHistorial(): HasMany
-    {
-        return $this->hasMany(VentanillaPqrsPaseHistorial::class, 'pqrs_id');
-    }
-
-    public function compartirHistorial(): HasMany
-    {
-        return $this->hasMany(VentanillaPqrsCompartirHistorial::class, 'pqrs_id');
     }
 
     public function historialNotificaciones(): HasMany
@@ -415,8 +396,8 @@ class VentanillaPqrs extends Model
     }
 
     /**
-     * Actualiza el estado de trabajo del radicado asociado basado en responsables y vencimientos.
-     * Equivalente a VentanillaRadicaReci::actualizarEstadoTrabajo()
+     * Actualiza el estado de trabajo del radicado asociado basado en los
+     * responsables DEL RADICADO y vencimientos.
      */
     public function actualizarEstadoTrabajo(): void
     {
@@ -430,8 +411,8 @@ class VentanillaPqrs extends Model
         }
 
         $diasParaVencer = $this->getDiasHabilesRestantes();
-        $totalResponsables = $this->responsables()->count();
-        $totalCustodios = $this->responsables()->where('custodio', true)->count();
+        $totalResponsables = $radicado->responsables()->count();
+        $totalCustodios = $radicado->responsables()->where('custodio', true)->count();
 
         $nuevoEstado = match (true) {
             $this->estado_tramite === 'Respondida' => 'finalizado',

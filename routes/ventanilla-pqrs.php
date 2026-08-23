@@ -2,9 +2,6 @@
 
 use App\Http\Controllers\VentanillaUnica\Pqrs\VentanillaPqrsArchivosController;
 use App\Http\Controllers\VentanillaUnica\Pqrs\VentanillaPqrsController;
-use App\Http\Controllers\VentanillaUnica\Pqrs\VentanillaPqrsResponsableController;
-use App\Http\Controllers\VentanillaUnica\Pqrs\VentanillaPqrsPaseHistorialController;
-use App\Http\Controllers\VentanillaUnica\Pqrs\VentanillaPqrsCompartirHistorialController;
 use App\Http\Controllers\VentanillaUnica\Pqrs\VentanillaPqrsComentariosController;
 use Illuminate\Support\Facades\Route;
 
@@ -228,37 +225,15 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ═══════════════════════════════════════════════════════════════
-    // RESPONSABLES PQRS - LECTURA/GESTIÓN (throttle:api)
+    // NOTA: Responsables/Pases/Compartidos NO existen en PQRS.
+    // Viven en el RADICADO RECIBIDO asociado (flujo: radicado → PQRS).
+    // ═══════════════════════════════════════════════════════════════
+
+    // ═══════════════════════════════════════════════════════════════
+    // PQRS - LECTURA ANIDADA (throttle:api)
     // ═══════════════════════════════════════════════════════════════
 
     Route::middleware('throttle:api')->group(function () {
-        /**
-         * API Resource: pqrs-responsables
-         * GET    /api/pqrs-responsables           → index (lista con filtros)
-         * POST   /api/pqrs-responsables           → store (asignación batch multi-PQRS)
-         * GET    /api/pqrs-responsables/{id}      → show
-         * PUT    /api/pqrs-responsables/{id}      → update (cambiar custodio)
-         * DELETE /api/pqrs-responsables/{id}      → destroy
-         */
-        Route::apiResource('pqrs-responsables', VentanillaPqrsResponsableController::class)
-            ->only(['index', 'store', 'show', 'update', 'destroy']);
-
-        /**
-         * GET /api/pqrs/{pqrs_id}/responsables
-         * Lista los responsables asignados a un PQRS específico
-         * @name pqrs.responsables.listar
-         */
-        Route::get('/pqrs/{pqrs_id}/responsables', [VentanillaPqrsResponsableController::class, 'getByPqrs'])
-            ->name('pqrs.responsables.listar');
-
-        /**
-         * POST /api/pqrs-responsables/{id}/marcar-visto
-         * Registra acuse digital (fecha/hora de visualización)
-         * @name pqrs.responsables.marcar-visto
-         */
-        Route::post('/pqrs-responsables/{id}/marcar-visto', [VentanillaPqrsResponsableController::class, 'marcarVisto'])
-            ->name('pqrs.responsables.marcar-visto');
-
         /**
          * Historiales y comentarios - LECTURA (throttle:api)
          *
@@ -266,10 +241,6 @@ Route::middleware('auth:sanctum')->group(function () {
          * para evitar la colisión de parámetros {pqrs_id}/{id} en el binding posicional.
          */
         Route::prefix('pqrs/{pqrs_id}')->group(function () {
-            Route::get('pase', [VentanillaPqrsPaseHistorialController::class, 'byPqrs'])
-                ->name('pqrs.pase.index');
-            Route::get('compartir', [VentanillaPqrsCompartirHistorialController::class, 'byPqrs'])
-                ->name('pqrs.compartir.index');
             Route::get('comentarios', [VentanillaPqrsComentariosController::class, 'index'])
                 ->name('pqrs.comentarios.index');
         });
@@ -278,29 +249,14 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ═══════════════════════════════════════════════════════════════
-    // PQRS - ESCRITURA ANIDADA (throttle:radicacion)
-    // Pases, compartidos (CC), comentarios y asignación de responsables
+    // PQRS - ESCRITURA (throttle:radicacion)
     // ═══════════════════════════════════════════════════════════════
 
     Route::middleware('throttle:radicacion')->group(function () {
         /**
-         * POST /api/pqrs/{pqrs_id}/responsables
-         * Asigna responsables a un PQRS específico (endpoint alternativo)
-         * @name pqrs.responsables.assign
-         */
-        Route::post('/pqrs/{pqrs_id}/responsables', [VentanillaPqrsResponsableController::class, 'assignToPqrs'])
-            ->name('pqrs.responsables.assign');
-
-        /**
-         * POST /api/pqrs/{pqrs_id}/pase          → registra pase/reasignación
-         * POST /api/pqrs/{pqrs_id}/compartir     → comparte PQRS (CC)
          * POST /api/pqrs/{pqrs_id}/comentarios   → crea comentario/respuesta
          */
         Route::prefix('pqrs/{pqrs_id}')->group(function () {
-            Route::post('pase', [VentanillaPqrsPaseHistorialController::class, 'store'])
-                ->name('pqrs.pase.store');
-            Route::post('compartir', [VentanillaPqrsCompartirHistorialController::class, 'store'])
-                ->name('pqrs.compartir.store');
             Route::post('comentarios', [VentanillaPqrsComentariosController::class, 'store'])
                 ->name('pqrs.comentarios.store');
         });

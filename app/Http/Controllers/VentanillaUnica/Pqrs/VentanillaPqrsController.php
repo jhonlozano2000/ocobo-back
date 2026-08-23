@@ -91,7 +91,7 @@ class VentanillaPqrsController extends Controller
     public function index(ListPqrsRequest $request): JsonResponse
     {
         try {
-            // Query the optimized view with ABAC hierarchical filtering
+            // Toda PQRS nace de un radicado recibido; el filtro descarta huérfanas.
             $query = VentanillaPqrsOptimizedView::query()
                 ->conPermisoJerarquico(auth()->user())
                 ->whereNotNull('ventanilla_radica_reci_id');
@@ -885,9 +885,9 @@ class VentanillaPqrsController extends Controller
     public function misRadicados(ListPqrsRequest $request): JsonResponse
     {
         try {
+            // PQRS asignadas al usuario: los responsables viven en el RADICADO RECIBIDO asociado
             $query = VentanillaPqrsOptimizedView::query()
                 ->conPermisoJerarquico(auth()->user())
-                ->whereNotNull('ventanilla_radica_reci_id')
                 ->whereHas('radicado.responsables', function ($q) {
                     $q->whereHas('userCargo', function ($q) {
                         $q->where('user_id', auth()->id());

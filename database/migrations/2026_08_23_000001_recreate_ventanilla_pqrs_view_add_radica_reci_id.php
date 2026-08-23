@@ -105,14 +105,14 @@ return new class extends Migration
             ) archivos_count ON archivos_count.ventanilla_pqrs_id = vp.id
             LEFT JOIN (
                 SELECT
-                    pqrs_id,
+                    radica_reci_id,
                     COUNT(*) as total_responsables,
                     SUM(CASE WHEN custodio = 1 THEN 1 ELSE 0 END) as total_custodios,
-                    SUM(CASE WHEN custodio = 1 THEN 1 ELSE 0 END) as total_custodios_activos,
+                    SUM(CASE WHEN custodio = 1 AND fechor_visto IS NOT NULL THEN 1 ELSE 0 END) as total_custodios_activos,
                     MAX(fechor_visto) as ultima_visualizacion
-                FROM ventanilla_pqrs_responsables
-                GROUP BY pqrs_id
-            ) responsables_stats ON responsables_stats.pqrs_id = vp.id
+                FROM ventanilla_radica_reci_responsa
+                GROUP BY radica_reci_id
+            ) responsables_stats ON responsables_stats.radica_reci_id = vp.ventanilla_radica_reci_id
         ");
     }
 
