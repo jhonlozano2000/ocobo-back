@@ -103,40 +103,31 @@ class VentanillaPqrsResponsableController extends Controller
             $responsables = $validatedData['responsables'];
             $responsablesCreados = [];
 
+            // Precargar relaciones para evitar N+1 en el loop
+            $pqrsMap = VentanillaPqrs::with('radicado')
+                ->whereIn('id', collect($responsables)->pluck('pqrs_id')->unique())
+                ->get()
+                ->keyBy('id');
+            $cargosMap = UserCargo::with('user')
+                ->whereIn('id', collect($responsables)->pluck('users_cargos_id')->unique())
+                ->get()
+                ->keyBy('id');
+
             foreach ($responsables as $responsableData) {
-                $data = [
+                $custodio = filter_var($responsableData['custodio'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+                $responsable = VentanillaPqrsResponsable::create([
                     'pqrs_id' => (int) $responsableData['pqrs_id'],
                     'users_cargos_id' => (int) $responsableData['users_cargos_id'],
-                    'custodio' => filter_var($responsableData['custodio'] ?? false, FILTER_VALIDATE_BOOLEAN),
-                ];
-
-                $responsable = VentanillaPqrsResponsable::create($data);
+                    'custodio' => $custodio,
+                ]);
                 $responsablesCreados[] = $responsable->load(['userCargo', 'pqrs']);
 
-                // Crear notificación in-app para el usuario responsable
-                $userCargo = UserCargo::find($data['users_cargos_id']);
-                if ($userCargo && $userCargo->user) {
-                    $pqrs = VentanillaPqrs::find($data['pqrs_id']);
-                    $titulo = $responsableData['custodio'] ? 'Nuevo PQRS asignado (custodio)' : 'Nuevo PQRS asignado';
-                    $mensaje = $pqrs
-                        ? 'Se le ha asignado el PQRS ' . $pqrs->radicado?->num_radicado . ' como responsable.'
-                        : 'Se le ha asignado un nuevo PQRS como responsable.';
-
-                    \App\Models\Notificacion::create([
-                        'user_id' => $userCargo->user_id,
-                        'type' => 'asignacion_responsable_pqrs',
-                        'title' => $titulo,
-                        'message' => $mensaje,
-                        'notifiable_type' => VentanillaPqrs::class,
-                        'notifiable_id' => $data['pqrs_id'],
-                        'data' => [
-                            'pqrs_id' => $data['pqrs_id'],
-                            'num_radicado' => $pqrs?->radicado?->num_radicado,
-                            'custodio' => $responsableData['custodio'],
-                            'asignado_por' => auth()->id(),
-                        ],
-                    ]);
-                }
+                $this->notificarAsignacion(
+                    $cargosMap->get((int) $responsableData['users_cargos_id']),
+                    $pqrsMap->get((int) $responsableData['pqrs_id']),
+                    $custodio
+                );
             }
 
             DB::commit();
@@ -282,7 +273,11 @@ class VentanillaPqrsResponsableController extends Controller
     public function marcarVisto($id): JsonResponse
     {
         try {
-            $responsable = VentanillaPqrsResponsable::findOrFail($id);
+            $responsable = VentanillaPqrsResponsable::with('userCargo')->findOrFail($id);
+
+            if ((int) ($responsable->userCargo?->user_id) !== (int) auth()->id()) {
+                return $this->errorResponse('Solo el responsable asignado puede registrar su acuse digital', null, 403);
+            }
 
             if (! $responsable->marcarComoVisto()) {
                 return $this->successResponse(
@@ -316,7 +311,8 @@ class VentanillaPqrsResponsableController extends Controller
     public function assignToPqrs($pqrs_id, Request $request): JsonResponse
     {
         try {
-            if (! VentanillaPqrs::find($pqrs_id)) {
+            $pqrs = VentanillaPqrs::with('radicado')->find($pqrs_id);
+            if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrado', null, 404);
             }
 
@@ -331,38 +327,27 @@ class VentanillaPqrsResponsableController extends Controller
             $responsables = $validatedData['responsables'];
             $responsablesCreados = [];
 
+            // Precargar cargos con usuario para evitar N+1 en el loop
+            $cargosMap = UserCargo::with('user')
+                ->whereIn('id', collect($responsables)->pluck('users_cargos_id')->unique())
+                ->get()
+                ->keyBy('id');
+
             foreach ($responsables as $responsableData) {
+                $custodio = filter_var($responsableData['custodio'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
                 $responsable = VentanillaPqrsResponsable::create([
-                    'pqrs_id' => $pqrs_id,
-                    'users_cargos_id' => $responsableData['users_cargos_id'],
-                    'custodio' => $responsableData['custodio'],
+                    'pqrs_id' => (int) $pqrs_id,
+                    'users_cargos_id' => (int) $responsableData['users_cargos_id'],
+                    'custodio' => $custodio,
                 ]);
                 $responsablesCreados[] = $responsable->load(['userCargo', 'pqrs']);
 
-                // Crear notificación in-app para el usuario responsable
-                $userCargo = UserCargo::find($responsableData['users_cargos_id']);
-                if ($userCargo && $userCargo->user) {
-                    $pqrs = VentanillaPqrs::find($pqrs_id);
-                    $titulo = $responsableData['custodio'] ? 'Nuevo PQRS asignado (custodio)' : 'Nuevo PQRS asignado';
-                    $mensaje = $pqrs
-                        ? 'Se le ha asignado el PQRS ' . $pqrs->radicado?->num_radicado . ' como responsable.'
-                        : 'Se le ha asignado un nuevo PQRS como responsable.';
-
-                    \App\Models\Notificacion::create([
-                        'user_id' => $userCargo->user_id,
-                        'type' => 'asignacion_responsable_pqrs',
-                        'title' => $titulo,
-                        'message' => $mensaje,
-                        'notifiable_type' => VentanillaPqrs::class,
-                        'notifiable_id' => $pqrs_id,
-                        'data' => [
-                            'pqrs_id' => $pqrs_id,
-                            'num_radicado' => $pqrs?->radicado?->num_radicado,
-                            'custodio' => $responsableData['custodio'],
-                            'asignado_por' => auth()->id(),
-                        ],
-                    ]);
-                }
+                $this->notificarAsignacion(
+                    $cargosMap->get((int) $responsableData['users_cargos_id']),
+                    $pqrs,
+                    $custodio
+                );
             }
 
             DB::commit();
@@ -377,5 +362,38 @@ class VentanillaPqrsResponsableController extends Controller
 
             return $this->errorResponse('Error al asignar responsables', $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Crea la notificación in-app de asignación para el usuario del cargo destino.
+     *
+     * @param UserCargo|null $userCargo Cargo destino (con relación user precargada)
+     * @param VentanillaPqrs|null $pqrs PQRS asignado (con relación radicado precargada)
+     * @param bool $custodio Si la asignación es como custodio principal
+     */
+    private function notificarAsignacion(?UserCargo $userCargo, ?VentanillaPqrs $pqrs, bool $custodio): void
+    {
+        if (! $userCargo || ! $userCargo->user) {
+            return;
+        }
+
+        $numRadicado = $pqrs?->radicado?->num_radicado;
+
+        \App\Models\Notificacion::create([
+            'user_id' => $userCargo->user_id,
+            'type' => 'asignacion_responsable_pqrs',
+            'title' => $custodio ? 'Nuevo PQRS asignado (custodio)' : 'Nuevo PQRS asignado',
+            'message' => $numRadicado
+                ? 'Se le ha asignado el PQRS '.$numRadicado.' como responsable.'
+                : 'Se le ha asignado un nuevo PQRS como responsable.',
+            'notifiable_type' => VentanillaPqrs::class,
+            'notifiable_id' => $pqrs?->id,
+            'data' => [
+                'pqrs_id' => $pqrs?->id,
+                'num_radicado' => $numRadicado,
+                'custodio' => $custodio,
+                'asignado_por' => auth()->id(),
+            ],
+        ]);
     }
 }
