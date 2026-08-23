@@ -220,7 +220,11 @@ class VentanillaRadicaEnviadosResponsableController extends Controller
     public function marcarVisto($id): JsonResponse
     {
         try {
-            $responsable = VentanillaRadicaEnviadosResponsable::findOrFail($id);
+            $responsable = VentanillaRadicaEnviadosResponsable::with('userCargo')->findOrFail($id);
+
+            if ((int) ($responsable->userCargo?->user_id) !== (int) auth()->id()) {
+                return $this->errorResponse('Solo el responsable asignado puede registrar su acuse digital', null, 403);
+            }
 
             if (! $responsable->marcarComoVisto()) {
                 return $this->successResponse(

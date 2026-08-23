@@ -29,11 +29,15 @@ class VentanillaRadicaInternoResponsable extends Model
         return $this->belongsTo(UserCargo::class, 'users_cargos_id');
     }
 
-    public function marcarComoVisto(): void
+    public function marcarComoVisto(): bool
     {
         if (! $this->fechor_visto) {
             $this->update(['fechor_visto' => now()]);
+
+            return true;
         }
+
+        return false;
     }
 
     public function isCustodio(): bool

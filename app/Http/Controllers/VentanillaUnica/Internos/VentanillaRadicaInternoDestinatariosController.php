@@ -350,7 +350,11 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
     public function marcarVisto($id): JsonResponse
     {
         try {
-            $destinatario = VentanillaRadicaInternoDestinatarios::findOrFail($id);
+            $destinatario = VentanillaRadicaInternoDestinatarios::with('userCargo')->findOrFail($id);
+
+            if ((int) ($destinatario->userCargo?->user_id) !== (int) auth()->id()) {
+                return $this->errorResponse('Solo el destinatario asignado puede registrar su acuse digital', null, 403);
+            }
 
             $destinatario->marcarComoVisto();
 

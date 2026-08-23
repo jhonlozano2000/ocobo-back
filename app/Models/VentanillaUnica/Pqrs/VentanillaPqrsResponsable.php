@@ -98,11 +98,17 @@ class VentanillaPqrsResponsable extends Model
     /**
      * Marca el responsable como "visto" registrando la fecha/hora actual.
      *
-     * @return void
+     * @return bool true si se registró el acuse, false si ya estaba marcado
      */
-    public function marcarComoVisto(): void
+    public function marcarComoVisto(): bool
     {
-        $this->update(['fechor_visto' => now()]);
+        if (! $this->fechor_visto) {
+            $this->update(['fechor_visto' => now()]);
+
+            return true;
+        }
+
+        return false;
     }
 
     /**

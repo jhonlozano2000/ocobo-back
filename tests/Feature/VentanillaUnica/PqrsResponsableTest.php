@@ -196,6 +196,25 @@ class PqrsResponsableTest extends TestCase
     }
 
     /** @test */
+    public function no_puede_marcar_visto_otro_usuario()
+    {
+        $responsable = VentanillaPqrsResponsable::create([
+            'pqrs_id' => $this->pqrs->id,
+            'users_cargos_id' => $this->userCargo->id,
+            'custodio' => false,
+        ]);
+
+        // user2 tiene el mismo rol/permisos pero NO es el responsable asignado
+        $response = $this->actingAs($this->user2)
+            ->postJson("/api/ventanilla/pqrs-responsables/{$responsable->id}/marcar-visto");
+
+        $response->assertStatus(403);
+
+        $responsable->refresh();
+        $this->assertNull($responsable->fechor_visto);
+    }
+
+    /** @test */
     public function puede_eliminar_responsable()
     {
         $responsable = VentanillaPqrsResponsable::create([
