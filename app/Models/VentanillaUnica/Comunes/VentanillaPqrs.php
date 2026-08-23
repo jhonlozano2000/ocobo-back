@@ -111,6 +111,9 @@ class VentanillaPqrs extends Model
     protected const ABAC_USER_COLUMN = 'usuario_crea';
     protected const ABAC_RESPONSABLES_RELATION = 'responsables';
 
+    /** Bypass del filtrado jerárquico ABAC: quien lista PQRS ve todos. */
+    protected const ABAC_VER_TODOS_PERMISO = 'Radicar -> PQRSF -> Listar';
+
     protected $fillable = [
         'ventanilla_radica_reci_id',
         'gestion_tercero_id',

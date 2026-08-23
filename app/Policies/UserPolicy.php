@@ -14,7 +14,7 @@ class UserPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('Gestionar -> Control Acceso -> Usuarios -> Ver');
+        return $user->hasPermissionTo('Control de acceso - Usuarios -> Listar');
     }
 
     /**
@@ -22,7 +22,7 @@ class UserPolicy
      */
     public function view(User $user, User $model): bool
     {
-        return $user->hasPermissionTo('Gestionar -> Control Acceso -> Usuarios -> Ver');
+        return $user->hasPermissionTo('Control de acceso - Usuarios -> Mostrar');
     }
 
     /**
@@ -30,7 +30,7 @@ class UserPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('Gestionar -> Control Acceso -> Usuarios -> Crear');
+        return $user->hasPermissionTo('Control de acceso - Usuarios -> Crear');
     }
 
     /**
@@ -41,7 +41,7 @@ class UserPolicy
         // Un usuario no puede modificarse a sí mismo con permisos elevados
         if ($user->id === $model->id) {
             // Usuario puede actualizar su propio perfil pero no roles
-            return $user->hasPermissionTo('Gestionar -> Control Acceso -> Usuarios -> Editar');
+            return $user->hasPermissionTo('Control de acceso - Usuarios -> Editar');
         }
 
         // Verificar si intenta escalar privilegios
@@ -49,7 +49,7 @@ class UserPolicy
             return false;
         }
 
-        return $user->hasPermissionTo('Gestionar -> Control Acceso -> Usuarios -> Editar');
+        return $user->hasPermissionTo('Control de acceso - Usuarios -> Editar');
     }
 
     /**
@@ -67,7 +67,7 @@ class UserPolicy
             return false;
         }
 
-        return $user->hasPermissionTo('Gestionar -> Control Acceso -> Usuarios -> Eliminar');
+        return $user->hasPermissionTo('Control de acceso - Usuarios -> Eliminar');
     }
 
     /**
@@ -85,7 +85,7 @@ class UserPolicy
             return false;
         }
 
-        return $user->hasPermissionTo('Gestionar -> Control Acceso -> Roles -> Asignar');
+        return $user->hasPermissionTo('Control de acceso - Roles -> Editar');
     }
 
     /**
@@ -93,7 +93,7 @@ class UserPolicy
      */
     public function viewSessions(User $user): bool
     {
-        return $user->hasPermissionTo('Gestionar -> Control Acceso -> Usuarios -> Ver Sesiones');
+        return $user->hasPermissionTo('Control de acceso - Usuarios -> Mostrar');
     }
 
     /**
@@ -106,7 +106,7 @@ class UserPolicy
             return false;
         }
 
-        return $user->hasPermissionTo('Gestionar -> Control Acceso -> Usuarios -> Ver Sesiones');
+        return $user->hasPermissionTo('Control de acceso - Usuarios -> Mostrar');
     }
 
     /**

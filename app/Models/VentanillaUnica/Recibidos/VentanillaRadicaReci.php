@@ -26,6 +26,9 @@ class VentanillaRadicaReci extends Model
 
     protected const ABAC_RESPONSABLES_RELATION = 'responsables';
 
+    /** Bypass del filtrado jerárquico ABAC: quien lista Recibidos ve todos. */
+    protected const ABAC_VER_TODOS_PERMISO = 'Radicar -> Cores. Recibida -> Listar';
+
     protected $table = 'ventanilla_radica_reci';
 
     protected $fillable = [

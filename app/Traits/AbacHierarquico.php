@@ -135,15 +135,23 @@ trait AbacHierarquico
             return $query->whereRaw('1 = 0');
         }
 
-        // Si el usuario tiene permiso de ver todo, no filtrar
-        try {
-            if ($user->hasPermissionTo('Radicar -> Ver Todos')) {
-                return $query;
+        // Bypass de filtrado jerárquico: cada modelo define su permiso mediante la
+        // constante ABAC_VER_TODOS_PERMISO (ej: 'Radicar -> PQRSF -> Listar').
+        // Si el modelo no la define, se aplica siempre el filtrado jerárquico.
+        $permisoBypass = defined('static::ABAC_VER_TODOS_PERMISO')
+            ? static::ABAC_VER_TODOS_PERMISO
+            : null;
+
+        if ($permisoBypass) {
+            try {
+                if ($user->hasPermissionTo($permisoBypass)) {
+                    return $query;
+                }
+            } catch (PermissionDoesNotExist $e) {
+                Log::debug("Permiso {$permisoBypass} no existe, aplicando filtrado jerárquico", [
+                    'user_id' => $user->id,
+                ]);
             }
-        } catch (PermissionDoesNotExist $e) {
-            Log::debug('Permiso Radicar -> Ver Todos no existe, aplicando filtrado jerárquico', [
-                'user_id' => $user->id,
-            ]);
         }
 
         // Obtener todos los códigos de la jerarquía (propia + subordinados)
