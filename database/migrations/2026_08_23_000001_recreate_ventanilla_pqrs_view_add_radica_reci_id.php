@@ -6,11 +6,16 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Recrea ventanilla_pqrs_view incluyendo vp.ventanilla_radica_reci_id.
      *
-     * Crea la vista SQL optimizada para listado de PQRS
-     * Equivalente a ventanilla_radica_reci_view
-     * NOTA: PQRS no tiene usuario_crea directamente, se une al radicado asociado
+     * La vista original (2026_08_18_011456) no exponía esa columna, pero el
+     * controller (index/show/mis-radicados) filtra whereNotNull sobre ella,
+     * lo que provocaba "Unknown column 'ventanilla_radica_reci_id'".
+     *
+     * Idéntica a la definición original + la columna faltante.
+     *
+     * @author Jhon Javer Lozano Arce
+     * @date 2026-08-23
      */
     public function up(): void
     {
@@ -85,36 +90,19 @@ return new class extends Migration
 
             FROM ventanilla_pqrs vp
 
-            -- Join con radicado asociado (clave para ABAC)
             LEFT JOIN ventanilla_radica_reci vrr ON vp.ventanilla_radica_reci_id = vrr.id
-
-            -- Join con clasificación documental y su jerarquía
             LEFT JOIN clasificacion_documental_trd cd ON vp.clasificacion_documental_trd_id = cd.id
             LEFT JOIN clasificacion_documental_trd cd_parent ON cd.parent = cd_parent.id
             LEFT JOIN clasificacion_documental_trd cd_grandparent ON cd_parent.parent = cd_grandparent.id
-
-            -- Join con tercero
             LEFT JOIN gestion_terceros gt ON vp.gestion_tercero_id = gt.id
-
-            -- Join con tipo PQRS
             LEFT JOIN config_listas_detalles cld_tipo ON vp.tipo_pqrs_id = cld_tipo.id
-
-            -- Join con medio de recepción del radicado
             LEFT JOIN config_listas_detalles cld_medio ON vrr.medio_recep_id = cld_medio.id
-
-            -- Join con servidor de archivos del radicado
             LEFT JOIN config_server_archivos csa ON vrr.config_server_id = csa.id
-
-            -- Agregación de archivos
             LEFT JOIN (
-                SELECT
-                    ventanilla_pqrs_id,
-                    COUNT(*) as total
+                SELECT ventanilla_pqrs_id, COUNT(*) as total
                 FROM ventanilla_pqrs_archivos
                 GROUP BY ventanilla_pqrs_id
             ) archivos_count ON archivos_count.ventanilla_pqrs_id = vp.id
-
-            -- Agregación de responsables
             LEFT JOIN (
                 SELECT
                     pqrs_id,
@@ -133,6 +121,8 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // El rollback completo de la vista lo maneja la migración original
+        // (2026_08_18_011456) con su dropIfExists.
         DB::statement('DROP VIEW IF EXISTS ventanilla_pqrs_view');
     }
 };
