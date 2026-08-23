@@ -88,19 +88,18 @@ class PqrsPaseHistorialService
                 'tipo' => $data['tipo'] ?? VentanillaPqrsPaseHistorial::TIPO_PASE,
             ]);
 
-            // 2. Crear responsable actual (no custodio, solo responsable)
-            $responsable = VentanillaPqrsResponsable::create([
+            // 2. Crear/obtener responsable actual (evita duplicados por pqrs+userCargo)
+            $responsable = VentanillaPqrsResponsable::firstOrCreate([
                 'pqrs_id' => $data['pqrs_id'],
                 'users_cargos_id' => $usersCargosId,
+            ], [
                 'custodio' => 0,
             ]);
 
-            DB::commit();
+            // 3. Actualizar estado de trabajo del PQRS (dentro de la transacción)
+            $pqrs->actualizarEstadoTrabajo();
 
-            // 3. Actualizar estado de trabajo del PQRS
-            if ($pqrs) {
-                $pqrs->actualizarEstadoTrabajo();
-            }
+            DB::commit();
 
             return [
                 'historial' => $historial->load(['usuarioOrigen', 'usuarioDestino', 'usersCargosDestino.cargo']),

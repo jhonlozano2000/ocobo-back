@@ -228,142 +228,126 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ═══════════════════════════════════════════════════════════════
-    // RESPONSABLES PQRS
+    // RESPONSABLES PQRS - LECTURA/GESTIÓN (throttle:api)
     // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * API Resource: pqrs-responsables
-     * GET    /api/pqrs-responsables           → index (lista con filtros)
-     * POST   /api/pqrs-responsables           → store (asignación batch multi-PQRS)
-     * GET    /api/pqrs-responsables/{id}      → show
-     * PUT    /api/pqrs-responsables/{id}      → update (cambiar custodio)
-     * DELETE /api/pqrs-responsables/{id}      → destroy
-     *
-     * Endpoints adicionales:
-     */
-    Route::apiResource('pqrs-responsables', VentanillaPqrsResponsableController::class)
-        ->only(['index', 'store', 'show', 'update', 'destroy']);
-
-    /**
-     * POST /api/pqrs/{pqrs_id}/responsables
-     * Asigna responsables a un PQRS específico (endpoint alternativo)
-     * @name pqrs.responsables.assign
-     */
-    Route::post('/pqrs/{pqrs_id}/responsables', [VentanillaPqrsResponsableController::class, 'assignToPqrs'])
-        ->name('pqrs.responsables.assign');
-
-    /**
-     * POST /api/pqrs-responsables/{id}/marcar-visto
-     * Registra acuse digital (fecha/hora de visualización)
-     * @name pqrs.responsables.marcar-visto
-     */
-    Route::post('/pqrs-responsables/{id}/marcar-visto', [VentanillaPqrsResponsableController::class, 'marcarVisto'])
-        ->name('pqrs.responsables.marcar-visto');
-
-    // ═══════════════════════════════════════════════════════════════
-    // PASE HISTORIAL PQRS (prefijo: /pqrs/{pqrs_id})
-    // ═══════════════════════════════════════════════════════════════
-
-    Route::prefix('pqrs/{pqrs_id}')->group(function () {
+    Route::middleware('throttle:api')->group(function () {
         /**
-         * POST /api/pqrs/{pqrs_id}/pase
-         * Registra pase/asignación/reasignación (delega a Service)
-         * @name pqrs.pase.store
+         * API Resource: pqrs-responsables
+         * GET    /api/pqrs-responsables           → index (lista con filtros)
+         * POST   /api/pqrs-responsables           → store (asignación batch multi-PQRS)
+         * GET    /api/pqrs-responsables/{id}      → show
+         * PUT    /api/pqrs-responsables/{id}      → update (cambiar custodio)
+         * DELETE /api/pqrs-responsables/{id}      → destroy
          */
-        Route::post('pase', [VentanillaPqrsPaseHistorialController::class, 'store'])
-            ->name('pqrs.pase.store');
+        Route::apiResource('pqrs-responsables', VentanillaPqrsResponsableController::class)
+            ->only(['index', 'store', 'show', 'update', 'destroy']);
 
         /**
-         * GET /api/pqrs/{pqrs_id}/pase
-         * Historial completo de pases del PQRS (orden desc por fecha)
-         * @name pqrs.pase.index
+         * GET /api/pqrs/{pqrs_id}/responsables
+         * Lista los responsables asignados a un PQRS específico
+         * @name pqrs.responsables.listar
          */
-        Route::get('pase', [VentanillaPqrsPaseHistorialController::class, 'byPqrs'])
-            ->name('pqrs.pase.index');
-
-        // ═══════════════════════════════════════════════════════════════
-        // COMPARTIR HISTORIAL PQRS (CC)
-        // ═══════════════════════════════════════════════════════════════
+        Route::get('/pqrs/{pqrs_id}/responsables', [VentanillaPqrsResponsableController::class, 'getByPqrs'])
+            ->name('pqrs.responsables.listar');
 
         /**
-         * POST /api/pqrs/{pqrs_id}/compartir
-         * Comparte PQRS (copia de conocimiento, no transfiere responsabilidad)
-         * @name pqrs.compartir.store
+         * POST /api/pqrs-responsables/{id}/marcar-visto
+         * Registra acuse digital (fecha/hora de visualización)
+         * @name pqrs.responsables.marcar-visto
          */
-        Route::post('compartir', [VentanillaPqrsCompartirHistorialController::class, 'store'])
-            ->name('pqrs.compartir.store');
+        Route::post('/pqrs-responsables/{id}/marcar-visto', [VentanillaPqrsResponsableController::class, 'marcarVisto'])
+            ->name('pqrs.responsables.marcar-visto');
 
         /**
-         * GET /api/pqrs/{pqrs_id}/compartir
-         * Historial de compartidos del PQRS
-         * @name pqrs.compartir.index
-         */
-        Route::get('compartir', [VentanillaPqrsCompartirHistorialController::class, 'byPqrs'])
-            ->name('pqrs.compartir.index');
-
-        // ═══════════════════════════════════════════════════════════════
-        // COMENTARIOS PQRS (Threaded)
-        // ═══════════════════════════════════════════════════════════════
-
-        /**
-         * GET    /api/pqrs/{pqrs_id}/comentarios           → index (lista con árbol)
-         * POST   /api/pqrs/{pqrs_id}/comentarios           → store (crear comentario/respuesta)
+         * Historiales y comentarios - LECTURA (throttle:api)
          *
-         * Nota: show/update/resolver/destroy usan rutas planas /api/pqrs/comentarios/{id}
+         * Nota: comentarios show usa ruta plana /api/pqrs/comentarios/{id}
          * para evitar la colisión de parámetros {pqrs_id}/{id} en el binding posicional.
          */
-        Route::get('comentarios', [VentanillaPqrsComentariosController::class, 'index'])
-            ->name('pqrs.comentarios.index');
-        Route::post('comentarios', [VentanillaPqrsComentariosController::class, 'store'])
-            ->name('pqrs.comentarios.store');
+        Route::prefix('pqrs/{pqrs_id}')->group(function () {
+            Route::get('pase', [VentanillaPqrsPaseHistorialController::class, 'byPqrs'])
+                ->name('pqrs.pase.index');
+            Route::get('compartir', [VentanillaPqrsCompartirHistorialController::class, 'byPqrs'])
+                ->name('pqrs.compartir.index');
+            Route::get('comentarios', [VentanillaPqrsComentariosController::class, 'index'])
+                ->name('pqrs.comentarios.index');
+        });
+        Route::get('pqrs/comentarios/{id}', [VentanillaPqrsComentariosController::class, 'show'])
+            ->name('pqrs.comentarios.show');
     });
 
     // ═══════════════════════════════════════════════════════════════
-    // COMENTARIOS PQRS - RUTAS PLANAS (Threaded)
+    // PQRS - ESCRITURA ANIDADA (throttle:radicacion)
+    // Pases, compartidos (CC), comentarios y asignación de responsables
     // ═══════════════════════════════════════════════════════════════
 
-    /**
-     * GET    /api/pqrs/comentarios/{id}             → show (con respuestas anidadas)
-     * PUT    /api/pqrs/comentarios/{id}             → update (solo autor, no resuelto)
-     * POST   /api/pqrs/comentarios/{id}/resolver    → resolver (marcar resuelto)
-     * DELETE /api/pqrs/comentarios/{id}             → destroy (solo autor, sin respuestas)
-     */
-    Route::get('pqrs/comentarios/{id}', [VentanillaPqrsComentariosController::class, 'show'])
-        ->name('pqrs.comentarios.show');
-    Route::put('pqrs/comentarios/{id}', [VentanillaPqrsComentariosController::class, 'update'])
-        ->name('pqrs.comentarios.update');
-    Route::post('pqrs/comentarios/{id}/resolver', [VentanillaPqrsComentariosController::class, 'resolver'])
-        ->name('pqrs.comentarios.resolver');
-    Route::delete('pqrs/comentarios/{id}', [VentanillaPqrsComentariosController::class, 'destroy'])
-        ->name('pqrs.comentarios.destroy');
-
-    // ═══════════════════════════════════════════════════════════════
-    // ARCHIVOS PQRS (prefijo: /pqrs/{id})
-    // ═══════════════════════════════════════════════════════════════
-
-    Route::prefix('pqrs/{id}')->group(function () {
+    Route::middleware('throttle:radicacion')->group(function () {
         /**
-         * GET    /api/pqrs/{id}/archivos                    → listar (lista archivos)
-         * POST   /api/pqrs/{id}/archivos/digital/upload     → subirDigital (archivo principal)
-         * GET    /api/pqrs/{id}/archivos/digital/descargar  → descargarDigital
-         * DELETE /api/pqrs/{id}/archivos/digital/eliminar   → eliminarDigital
-         * POST   /api/pqrs/{id}/archivos/adjuntos/upload    → subirAdjuntos (anexos)
-         * GET    /api/pqrs/{id}/archivos/{archivoId}/descargar → descargarAdjunto
-         * DELETE /api/pqrs/{id}/archivos/{archivoId}/eliminar → eliminarAdjunto
+         * POST /api/pqrs/{pqrs_id}/responsables
+         * Asigna responsables a un PQRS específico (endpoint alternativo)
+         * @name pqrs.responsables.assign
          */
-        Route::get('archivos', [VentanillaPqrsArchivosController::class, 'listar'])
-            ->name('pqrs.archivos.listar');
-        Route::post('archivos/digital/upload', [VentanillaPqrsArchivosController::class, 'subirDigital'])
-            ->name('pqrs.archivos.digital.upload');
-        Route::get('archivos/digital/descargar', [VentanillaPqrsArchivosController::class, 'descargarDigital'])
-            ->name('pqrs.archivos.digital.descargar');
-        Route::delete('archivos/digital/eliminar', [VentanillaPqrsArchivosController::class, 'eliminarDigital'])
-            ->name('pqrs.archivos.digital.eliminar');
-        Route::post('archivos/adjuntos/upload', [VentanillaPqrsArchivosController::class, 'subirAdjuntos'])
-            ->name('pqrs.archivos.adjuntos.upload');
-        Route::get('archivos/{archivoId}/descargar', [VentanillaPqrsArchivosController::class, 'descargarAdjunto'])
-            ->name('pqrs.archivos.adjuntos.descargar');
-        Route::delete('archivos/{archivoId}/eliminar', [VentanillaPqrsArchivosController::class, 'eliminarAdjunto'])
-            ->name('pqrs.archivos.adjuntos.eliminar');
+        Route::post('/pqrs/{pqrs_id}/responsables', [VentanillaPqrsResponsableController::class, 'assignToPqrs'])
+            ->name('pqrs.responsables.assign');
+
+        /**
+         * POST /api/pqrs/{pqrs_id}/pase          → registra pase/reasignación
+         * POST /api/pqrs/{pqrs_id}/compartir     → comparte PQRS (CC)
+         * POST /api/pqrs/{pqrs_id}/comentarios   → crea comentario/respuesta
+         */
+        Route::prefix('pqrs/{pqrs_id}')->group(function () {
+            Route::post('pase', [VentanillaPqrsPaseHistorialController::class, 'store'])
+                ->name('pqrs.pase.store');
+            Route::post('compartir', [VentanillaPqrsCompartirHistorialController::class, 'store'])
+                ->name('pqrs.compartir.store');
+            Route::post('comentarios', [VentanillaPqrsComentariosController::class, 'store'])
+                ->name('pqrs.comentarios.store');
+        });
+
+        /**
+         * Comentarios PQRS - escritura sobre rutas planas:
+         * PUT    /api/pqrs/comentarios/{id}             → update (solo autor, no resuelto)
+         * POST   /api/pqrs/comentarios/{id}/resolver    → resolver (marcar resuelto)
+         * DELETE /api/pqrs/comentarios/{id}             → destroy (solo autor, sin respuestas)
+         */
+        Route::put('pqrs/comentarios/{id}', [VentanillaPqrsComentariosController::class, 'update'])
+            ->name('pqrs.comentarios.update');
+        Route::post('pqrs/comentarios/{id}/resolver', [VentanillaPqrsComentariosController::class, 'resolver'])
+            ->name('pqrs.comentarios.resolver');
+        Route::delete('pqrs/comentarios/{id}', [VentanillaPqrsComentariosController::class, 'destroy'])
+            ->name('pqrs.comentarios.destroy');
+    });
+
+    // ═══════════════════════════════════════════════════════════════
+    // ARCHIVOS PQRS - SUBIDAS (throttle:uploads, patrón Recibidos)
+    // ═══════════════════════════════════════════════════════════════
+
+    Route::middleware('throttle:uploads')->group(function () {
+        Route::prefix('pqrs/{id}')->group(function () {
+            Route::post('archivos/digital/upload', [VentanillaPqrsArchivosController::class, 'subirDigital'])
+                ->name('pqrs.archivos.digital.upload');
+            Route::post('archivos/adjuntos/upload', [VentanillaPqrsArchivosController::class, 'subirAdjuntos'])
+                ->name('pqrs.archivos.adjuntos.upload');
+        });
+    });
+
+    // ═══════════════════════════════════════════════════════════════
+    // ARCHIVOS PQRS - CONSULTA Y ELIMINACIÓN (throttle:api)
+    // ═══════════════════════════════════════════════════════════════
+
+    Route::middleware('throttle:api')->group(function () {
+        Route::prefix('pqrs/{id}')->group(function () {
+            Route::get('archivos', [VentanillaPqrsArchivosController::class, 'listar'])
+                ->name('pqrs.archivos.listar');
+            Route::get('archivos/digital/descargar', [VentanillaPqrsArchivosController::class, 'descargarDigital'])
+                ->name('pqrs.archivos.digital.descargar');
+            Route::delete('archivos/digital/eliminar', [VentanillaPqrsArchivosController::class, 'eliminarDigital'])
+                ->name('pqrs.archivos.digital.eliminar');
+            Route::get('archivos/{archivoId}/descargar', [VentanillaPqrsArchivosController::class, 'descargarAdjunto'])
+                ->name('pqrs.archivos.adjuntos.descargar');
+            Route::delete('archivos/{archivoId}/eliminar', [VentanillaPqrsArchivosController::class, 'eliminarAdjunto'])
+                ->name('pqrs.archivos.adjuntos.eliminar');
+        });
     });
 });

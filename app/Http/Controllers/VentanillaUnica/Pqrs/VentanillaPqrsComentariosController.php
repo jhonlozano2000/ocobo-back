@@ -18,11 +18,9 @@ use Illuminate\Support\Facades\DB;
  * selección de texto, y marcado de resuelto. Permisos granulares por acción:
  * crear, editar, eliminar, resolver.
  *
- * Permisos:
+ * Permisos (patrón módulo Recibidos):
  * - Mostrar: 'Radicar -> PQRSF -> Mostrar' (index, show)
- * - Crear: 'Radicar -> PQRSF -> Comentar Crear' (store)
- * - Editar: 'Radicar -> PQRSF -> Comentar Editar' (update, resolver)
- * - Eliminar: 'Radicar -> PQRSF -> Comentar Eliminar' (destroy)
+ * - Comentar: 'Radicar -> PQRSF -> Comentar' (store, update, resolver, destroy)
  *
  * @author Jhon Javer Lozano Arce
  * @date 2026-08-20
@@ -37,9 +35,7 @@ class VentanillaPqrsComentariosController extends Controller
     public function __construct()
     {
         $this->middleware('can:' . self::PERM . 'Mostrar')->only(['index', 'show']);
-        $this->middleware('can:' . self::PERM_COMENTARIOS . 'Crear')->only(['store']);
-        $this->middleware('can:' . self::PERM_COMENTARIOS . 'Editar')->only(['update', 'resolver']);
-        $this->middleware('can:' . self::PERM_COMENTARIOS . 'Eliminar')->only(['destroy']);
+        $this->middleware('can:' . self::PERM_COMENTARIOS)->only(['store', 'update', 'resolver', 'destroy']);
     }
 
     /**
@@ -185,7 +181,7 @@ class VentanillaPqrsComentariosController extends Controller
 
     /**
      * Marca un comentario como resuelto.
-     * Requiere permiso 'Comentar Editar'.
+     * Requiere permiso 'Comentar'.
      *
      * @param int $id ID del comentario
      * @return JsonResponse Comentario con resuelto=true, resuelto_por, fecha_resolucion

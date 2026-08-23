@@ -86,19 +86,18 @@ class PqrsCompartirHistorialService
                 'usuario_destino_id' => $userCargo->user_id,
             ]);
 
-            // 2. Crear responsable (no custodio) para dar acceso de lectura
-            $responsable = VentanillaPqrsResponsable::create([
+            // 2. Crear/obtener responsable de lectura (evita duplicados por pqrs+userCargo)
+            $responsable = VentanillaPqrsResponsable::firstOrCreate([
                 'pqrs_id' => $data['pqrs_id'],
                 'users_cargos_id' => $usersCargosId,
+            ], [
                 'custodio' => 0,
             ]);
 
-            DB::commit();
+            // 3. Actualizar estado de trabajo del PQRS (dentro de la transacción)
+            $pqrs->actualizarEstadoTrabajo();
 
-            // 3. Actualizar estado de trabajo del PQRS
-            if ($pqrs) {
-                $pqrs->actualizarEstadoTrabajo();
-            }
+            DB::commit();
 
             return [
                 'historial' => $historial->load(['usuarioOrigen', 'usuarioDestino', 'usersCargosDestino.cargo']),

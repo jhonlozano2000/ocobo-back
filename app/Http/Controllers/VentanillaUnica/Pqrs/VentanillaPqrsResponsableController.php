@@ -65,7 +65,7 @@ class VentanillaPqrsResponsableController extends Controller
             $query->orderBy('created_at', 'desc');
 
             if ($request->filled('per_page')) {
-                $perPage = $request->per_page;
+                $perPage = min((int) $request->per_page, 100);
                 $responsables = $query->paginate($perPage);
             } else {
                 $responsables = $query->get();
@@ -142,6 +142,10 @@ class VentanillaPqrsResponsableController extends Controller
             DB::commit();
 
             return $this->successResponse($responsablesCreados, 'Responsables asignados exitosamente', 201);
+        } catch (ValidationException $e) {
+            DB::rollBack();
+
+            return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -205,6 +209,10 @@ class VentanillaPqrsResponsableController extends Controller
                 $responsable->load(['userCargo', 'pqrs']),
                 'Responsable actualizado exitosamente'
             );
+        } catch (ValidationException $e) {
+            DB::rollBack();
+
+            return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -308,6 +316,10 @@ class VentanillaPqrsResponsableController extends Controller
     public function assignToPqrs($pqrs_id, Request $request): JsonResponse
     {
         try {
+            if (! VentanillaPqrs::find($pqrs_id)) {
+                return $this->errorResponse('PQRS no encontrado', null, 404);
+            }
+
             DB::beginTransaction();
 
             $validatedData = $request->validate([

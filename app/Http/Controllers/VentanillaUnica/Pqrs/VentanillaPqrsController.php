@@ -74,11 +74,14 @@ class VentanillaPqrsController extends Controller
         ReportesExportService $exportService
     ) {
         $this->exportService = $exportService;
-        $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'estadisticas', 'lineaTiempo', 'estadosDisponibles', 'transicionesEstado', 'misRadicados']);
+        $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'estadisticas', 'lineaTiempo', 'estadosDisponibles', 'transicionesEstado', 'misRadicados', 'export']);
         $this->middleware('can:'.self::PERM.'Crear')->only(['store']);
-        $this->middleware('can:'.self::PERM.'Editar')->only(['update', 'cambiarEstado', 'aplicarProrroga', 'updateAsunto', 'updateFechas', 'updateClasificacion', 'bulkDestroy']);
+        $this->middleware('can:'.self::PERM.'Editar')->only(['update', 'cambiarEstado', 'aplicarProrroga', 'bulkDestroy']);
         $this->middleware('can:'.self::PERM.'Mostrar')->only(['show', 'lineaTiempo']);
         $this->middleware('can:'.self::PERM.'Eliminar')->only(['destroy', 'bulkDestroy']);
+        $this->middleware('can:'.self::PERM.'Actualizar asunto')->only(['updateAsunto']);
+        $this->middleware('can:'.self::PERM.'Atualizar fechas de radicados')->only(['updateFechas']);
+        $this->middleware('can:'.self::PERM.'Actualizar clasificacion de radicados')->only(['updateClasificacion']);
         $this->middleware('can:'.self::PERM.'Imprimir Rotulo')->only(['imprimirRotulo']);
         $this->middleware('can:'.self::PERM.'Notificar Email')->only(['notificarEmail']);
         $this->middleware('can:'.self::PERM.'Firmar peticionario')->only(['solicitarOtpFirma', 'validarOtpFirma', 'guardarFirma']);
