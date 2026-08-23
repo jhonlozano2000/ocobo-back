@@ -111,8 +111,9 @@ class VentanillaPqrsOptimizedView extends Model
             return $query->whereRaw('1=0');
         }
 
-        // Permiso "Ver Todos" - bypass total
-        if ($user->hasPermissionTo('Radicar -> Ver Todos')) {
+        // Bypass total de filtrado jerárquico: quien puede listar PQRS ve todos
+        // (el módulo PQRS no usa permiso separado "Ver Todos" como otros módulos)
+        if ($user->hasPermissionTo('Radicar -> PQRSF -> Listar')) {
             return $query;
         }
 
