@@ -21,6 +21,8 @@
         <env name="APP_ENV" value="testing"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_DRIVER" value="array"/>
+        <!-- BD exclusiva de pruebas: NUNCA tocar la BD de desarrollo ocobo_back -->
+        <env name="DB_DATABASE" value="ocobo_back_testing"/>
         <!-- <env name="DB_CONNECTION" value="sqlite"/> -->
         <!-- <env name="DB_DATABASE" value=":memory:"/> -->
         <env name="MAIL_MAILER" value="array"/>
