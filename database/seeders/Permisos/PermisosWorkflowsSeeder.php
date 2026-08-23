@@ -24,6 +24,7 @@ class PermisosWorkflowsSeeder extends Seeder
             'Workflows -> Tareas -> Editar',
             'Workflows -> Tareas -> Eliminar',
             'Workflows -> Tareas -> Asignar',
+            'Workflows -> Archivos -> Ver',
             'Workflows -> Archivos -> Subir',
             'Workflows -> Archivos -> Descargar',
             'Workflows -> Archivos -> Eliminar',

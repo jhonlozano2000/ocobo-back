@@ -36,6 +36,11 @@ class PermisosRadicarSeeder extends Seeder
         Permission::create(['name' => 'Radicar -> Cores. Recibida -> Actualizar clasificacion de radicados'])->syncRoles('Administrador');
         Permission::create(['name' => 'Radicar -> Cores. Recibida -> Notificar Email'])->syncRoles('Administrador');
         Permission::create(['name' => 'Radicar -> Cores. Recibida -> Firmar'])->syncRoles('Administrador');
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Comentar'])->syncRoles([$Rol1, $Rol2]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> ComentarCrear'])->syncRoles([$Rol1, $Rol2]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> ComentarEditar'])->syncRoles([$Rol1, $Rol2]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> ComentarEliminar'])->syncRoles([$Rol1, $Rol2]);
+        Permission::create(['name' => 'Radicar -> Cores. Recibida -> Sincronizar'])->syncRoles('Administrador');
 
         Permission::create(['name' => 'Radicar -> Cores. Enviada -> Listar'])->syncRoles([$Rol1, $Rol3]);
         Permission::create(['name' => 'Radicar -> Cores. Enviada -> Crear'])->syncRoles([$Rol1]);
