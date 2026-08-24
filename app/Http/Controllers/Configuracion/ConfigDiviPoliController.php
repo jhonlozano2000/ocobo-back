@@ -29,6 +29,8 @@ class ConfigDiviPoliController extends Controller
 
             return $this->successResponse($data, 'Listado de divisiones políticas obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
         }
     }
@@ -47,6 +49,8 @@ class ConfigDiviPoliController extends Controller
                 201
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al crear', $e->getMessage(), 500);
         }
     }
@@ -62,6 +66,8 @@ class ConfigDiviPoliController extends Controller
                 'División política encontrada exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener', $e->getMessage(), 500);
         }
     }
@@ -79,6 +85,8 @@ class ConfigDiviPoliController extends Controller
                 'División política actualizada exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar', $e->getMessage(), 500);
         }
     }
@@ -99,6 +107,8 @@ class ConfigDiviPoliController extends Controller
 
             return $this->successResponse(null, 'División política eliminada exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar', $e->getMessage(), 500);
         }
     }
@@ -114,6 +124,8 @@ class ConfigDiviPoliController extends Controller
                 'Listado de países obtenido exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener países', $e->getMessage(), 500);
         }
     }
@@ -129,6 +141,8 @@ class ConfigDiviPoliController extends Controller
                 'Listado de departamentos obtenido exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener departamentos', $e->getMessage(), 500);
         }
     }
@@ -144,6 +158,8 @@ class ConfigDiviPoliController extends Controller
                 'Listado de municipios obtenido exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener municipios', $e->getMessage(), 500);
         }
     }
@@ -170,6 +186,8 @@ class ConfigDiviPoliController extends Controller
                 'Listado de divisiones políticas obtenido exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
         }
     }
@@ -185,6 +203,8 @@ class ConfigDiviPoliController extends Controller
                 'Estadísticas obtenidas exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
         }
     }
@@ -200,6 +220,8 @@ class ConfigDiviPoliController extends Controller
                 'Estructura jerárquica de países obtenida exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener estructura', $e->getMessage(), 500);
         }
     }
@@ -223,6 +245,8 @@ class ConfigDiviPoliController extends Controller
                 'División política con ancestros obtenida exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             \Log::error('cargarRecursivo error: '.$e->getMessage());
 
             return $this->errorResponse('Error al obtener división política', $e->getMessage(), 500);

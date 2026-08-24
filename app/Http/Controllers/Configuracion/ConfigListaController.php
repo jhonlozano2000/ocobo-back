@@ -32,6 +32,8 @@ class ConfigListaController extends Controller
 
             return $this->successResponse($listas, 'Listado de listas obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado de listas', $e->getMessage(), 500);
         }
     }
@@ -50,6 +52,8 @@ class ConfigListaController extends Controller
                 201
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al crear la lista', $e->getMessage(), 500);
         }
     }
@@ -99,6 +103,8 @@ class ConfigListaController extends Controller
                 'Lista encontrada exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener la lista', $e->getMessage(), 500);
         }
     }
@@ -120,6 +126,8 @@ class ConfigListaController extends Controller
                 'Lista actualizada exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar la lista', $e->getMessage(), 500);
         }
     }
@@ -227,6 +235,8 @@ class ConfigListaController extends Controller
 
             return $this->successResponse($resultados, 'Listas con detalles obtenidas exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener las listas con detalles', $e->getMessage(), 500);
         }
     }
@@ -244,6 +254,8 @@ class ConfigListaController extends Controller
 
             return $this->successResponse($listas, 'Listas obtenidas exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             \Log::error('listaCabeza error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
             return $this->errorResponse('Error al obtener las listas', $e->getMessage(), 500);
@@ -266,6 +278,8 @@ class ConfigListaController extends Controller
 
             return $this->successResponse(null, 'Lista eliminada exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar la lista', $e->getMessage(), 500);
         }
     }

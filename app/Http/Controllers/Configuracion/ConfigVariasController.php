@@ -39,6 +39,8 @@ class ConfigVariasController extends Controller
         } catch (ValidationException $e) {
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
         }
     }
@@ -52,6 +54,8 @@ class ConfigVariasController extends Controller
 
             return $this->successResponse($config, 'Configuración creada exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al crear', $e->getMessage(), 500);
         }
     }
@@ -71,6 +75,8 @@ class ConfigVariasController extends Controller
                 ? $this->successResponse($config, 'Configuración actualizada exitosamente')
                 : $this->errorResponse('Configuración no encontrada', null, 404);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar', $e->getMessage(), 500);
         }
     }
@@ -90,6 +96,8 @@ class ConfigVariasController extends Controller
         } catch (ValidationException $e) {
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar configuraciones', $e->getMessage(), 500);
         }
     }
@@ -102,6 +110,8 @@ class ConfigVariasController extends Controller
                 'descripcion' => 'Define si la numeración de radicados es unificada o por ventanilla',
             ], 'Configuración de numeración unificada obtenida exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener', $e->getMessage(), 500);
         }
     }
@@ -116,6 +126,8 @@ class ConfigVariasController extends Controller
 
             return $this->successResponse([self::KEY_NUMERACION_UNIFICADA => $value], 'Configuración de numeración unificada actualizada exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar', $e->getMessage(), 500);
         }
     }
