@@ -179,7 +179,7 @@ class ComentarioController extends Controller
      * Resuelve un comentario y sus respuestas.
      *
      * Marca como resuelto un comentario y todas sus respuestas.
-     * Requiere permiso 'gestionar-comentarios'.
+     * Autorización: usuarios con permiso de edición sobre el documento.
      *
      * @param  Request  $request  Solicitud
      * @param  Comentario  $comentario  Comentario
@@ -205,6 +205,19 @@ class ComentarioController extends Controller
         return response()->json(['message' => 'Comentario resuelto']);
     }
 
+    /**
+     * Desmarca un comentario previamente resuelto.
+     *
+     * Autorización: usuarios con permiso de edición sobre el documento.
+     *
+     * @param  Request  $request  Solicitud
+     * @param  Comentario  $comentario  Comentario
+     * @return JsonResponse Confirmación
+     *
+     * @author Jhon Javer Lozano Arce
+     *
+     * @date 2026-08-24
+     */
     public function desresolver(Request $request, Comentario $comentario): JsonResponse
     {
         if (! $request->user()->can('editar', $comentario->documento)) {

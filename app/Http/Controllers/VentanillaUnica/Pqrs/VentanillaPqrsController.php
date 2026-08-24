@@ -944,6 +944,13 @@ class VentanillaPqrsController extends Controller
      * Resuelve las listas de config_listas POR NOMBRE (no por ID, que varía
      * entre entornos): Tipos de PQRS, Prioridad PQRS, Modalidad PQRS,
      * Tipos de Recepción y Tipos de solicitud. Devuelve solo detalles activos.
+     *
+     * @return JsonResponse Catálogos agrupados por clave:
+     *   tipos_pqrs, prioridades, modalidades, medios_recepcion, tipos_solicitud
+     *
+     * @author Jhon Javer Lozano Arce
+     *
+     * @date 2026-08-24
      */
     public function catalogos(): JsonResponse
     {

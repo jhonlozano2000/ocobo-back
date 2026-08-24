@@ -110,7 +110,18 @@ class OfiArchivoTransferenciaController extends Controller
     }
 
     /**
-     * Aprueba o rechaza una transferencia.
+     * Aprueba o rechaza una transferencia documental (Acuerdo AGN 004/2019).
+     *
+     * Máquina de estados: solo transferencias 'pendiente' pueden decidirse;
+     * las ya aprobadas/rechazadas son inmutables. El rechazo exige observaciones.
+     *
+     * @param  Request  $request  Solicitud con estado (aprobada|rechazada) y observaciones opcionales
+     * @param  int  $id  ID de la transferencia
+     * @return JsonResponse Transferencia actualizada o error 422 si transición inválida
+     *
+     * @author Jhon Javer Lozano Arce
+     *
+     * @date 2026-08-24
      */
     public function aprobarTransferencia(Request $request, $id)
     {
