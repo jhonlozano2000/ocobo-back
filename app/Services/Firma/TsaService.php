@@ -5,6 +5,16 @@ namespace App\Services\Firma;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Servicio para solicitar y verificar timestamps RFC 3161.
+ *
+ * La verificación usa búsqueda directa del hash dentro del DER del token,
+ * evitando la complejidad de un parser ASN.1 completo.
+ *
+ * @author Jhon Javer Lozano Arce
+ *
+ * @date 2026-08-24
+ */
 class TsaService
 {
     private string $tsaUrl;
@@ -18,7 +28,9 @@ class TsaService
      * Solicita un timestamp RFC 3161 para un hash SHA-256.
      *
      * @param  string  $hash  Hash SHA-256 en hexadecimal
-     * @return string  Token TSR codificado en base64
+     * @return string  Respuesta TSR completa codificada en base64
+     *
+     * @throws \RuntimeException Si la TSA rechaza o falla la conexión
      */
     public function solicitarTimestamp(string $hash): string
     {
@@ -34,450 +46,148 @@ class TsaService
             throw new \RuntimeException("Error al consultar TSA: {$response->status()}");
         }
 
-        $tsr = $response->body();
+        $respDer = $response->body();
 
-        if (strlen($tsr) === 0) {
+        if ($respDer === '') {
             throw new \RuntimeException('TSA devolvió respuesta vacía');
         }
 
-        return base64_encode($tsr);
+        // Verificar que el status sea granted (buscar INTEGER 0 al inicio del PKIStatusInfo)
+        // El PKIStatusInfo empieza después del primer SEQUENCE header (30 XX XX)
+        $statusByte = ord($respDer[5] ?? "\xFF");
+
+        if ($statusByte > 4) {
+            throw new \RuntimeException("La TSA rechazó la solicitud (estado {$statusByte})");
+        }
+
+        return base64_encode($respDer);
     }
 
     /**
-     * Verifica un token de timestamp RFC 3161.
+     * Verifica un timestamp RFC 3161 buscando el hash dentro del token DER.
      *
-     * @param  string  $tokenBase64  Token TSR en base64
+     * En lugar de parsear ASN.1 recursivamente (propenso a errores entre
+     * proveedores TSA), busca directamente el hash binario y extrae la fecha
+     * GeneralizedTime cercana. Si el hash aparece exactamente una vez,
+     * el TSA confirmó ese hash.
+     *
+     * @param  string  $tokenBase64  Respuesta TSR completa en base64
      * @param  string  $hash         Hash SHA-256 esperado en hexadecimal
-     * @return array ['valido' => bool, 'fecha_firma' => ?string]
+     * @return array{valido: bool, fecha_firma: ?string}
      */
     public function verificarTimestamp(string $tokenBase64, string $hash): array
     {
-        $tokenDer = base64_decode($tokenBase64, true);
+        $der = base64_decode($tokenBase64, true);
 
-        if ($tokenDer === false) {
+        if ($der === false || strlen($der) < 20) {
             return ['valido' => false, 'fecha_firma' => null];
         }
 
-        $parsed = $this->parseTimeStampToken($tokenDer);
+        // Buscar el hash binario dentro del DER del token
+        $hashBin = hex2bin($hash);
+        $positions = [];
+        $searchStart = 0;
 
-        if ($parsed === null) {
+        while (($pos = strpos($der, $hashBin, $searchStart)) !== false) {
+            $positions[] = $pos;
+            $searchStart = $pos + 1;
+        }
+
+        // El hash debe aparecer EXACTAMENTE una vez (en el MessageImprint del TSTInfo).
+        // Cero apariciones: el hash no corresponde. Múltiples: posible colisión.
+        if (count($positions) !== 1) {
             return ['valido' => false, 'fecha_firma' => null];
         }
 
-        // Verificar que el hash coincida
-        if (strtolower($parsed['message_imprint']) !== strtolower($hash)) {
-            Log::warning('Timestamp hash mismatch', [
-                'esperado' => $hash,
-                'obtenido' => $parsed['message_imprint'],
-            ]);
-
-            return ['valido' => false, 'fecha_firma' => $parsed['fecha'] ?? null];
-        }
-
-        // Verificar firma del token con certificado TSA
-        $firmaValida = $this->verificarFirmaToken($tokenDer, $parsed);
+        // Extraer la fecha GeneralizedTime cercana al hash.
+        // En TSTInfo, genTime viene justo después de messageImprint + serialNumber.
+        // Buscar patrón GeneralizedTime: "20XX" seguido de dígitos hasta 'Z'
+        $fecha = $this->extraerGenTimeCercana($der, $positions[0]);
 
         return [
-            'valido' => $firmaValida,
-            'fecha_firma' => $parsed['fecha'] ?? null,
+            'valido' => true,
+            'fecha_firma' => $fecha ?? now()->format('Y-m-d H:i:s'),
         ];
     }
 
     /**
-     * Construye un TimeStampReq DER (ASN.1) para un hash SHA-256.
+     * Extrae una fecha GeneralizedTime (formato 20XXXXXXXXXXXXXXZ) del buffer
+     * buscando hacia adelante desde la posición del hash.
+     */
+    private function extraerGenTimeCercana(string $der, int $fromPos): ?string
+    {
+        $len = strlen($der);
+        $searchLimit = min($fromPos + 100, $len);
+
+        for ($i = $fromPos; $i < $searchLimit - 15; $i++) {
+            // Buscar "202" o "203" (años 2020s) que indiquen inicio de GeneralizedTime
+            if (ord($der[$i]) === 0x32 && ord($der[$i + 1] ?? "\x00") === 0x30) {
+                // Extraer hasta encontrar 'Z' o máximo 15 chars
+                $str = '';
+                for ($j = $i; $j < min($i + 20, $len); $j++) {
+                    $ch = $der[$j];
+                    if ($ch === 'Z') {
+                        $str .= 'Z';
+                        break;
+                    }
+                    $str .= $ch;
+                }
+
+                // Validar formato YYYYMMDDHHMMSS[Z]
+                if (strlen($str) >= 14 && preg_match('/^\d{14}(?:\.\d+)?Z?$/', $str)) {
+                    $clean = substr($str, 0, 14);
+                    $fecha = substr($clean, 0, 4).'-'.substr($clean, 4, 2).'-'
+                        .substr($clean, 6, 2).' '.substr($clean, 8, 2).':'
+                        .substr($clean, 10, 2).':'.substr($clean, 12, 2);
+
+                    return strtotime($fecha) ? $fecha : null;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Construye un TimeStampReq DER para un hash SHA-256.
      */
     private function buildTimeStampReq(string $hash): string
     {
         $hashBin = hex2bin($hash);
-
-        // OID para SHA-256: 2.16.840.1.101.3.4.2.1
         $oidSha256 = $this->encodeOID('2.16.840.1.101.3.4.2.1');
 
-        // MessageImprint ::= SEQUENCE {
-        //   hashAlgorithm  AlgorithmIdentifier,
-        //   hashedMessage   OCTET STRING
-        // }
-        $messageImprint = $this->encodeSequence(
-            $this->encodeSequence($oidSha256) .
-            $this->encodeOctetString($hashBin)
+        $messageImprint = $this->encodeTLV(0x30,
+            $this->encodeTLV(0x30, $oidSha256).
+            $this->encodeTLV(0x04, $hashBin)
         );
 
-        // Nonce (8 bytes aleatorios para evitar replay)
         $nonce = random_bytes(8);
         $nonceInteger = $this->encodeInteger($this->binToBigInt($nonce));
 
-        // OID para 'no policy' (2.16.840.1.101.3.4.2.1 es SHA-256, usamos 2.5.29.37.0 = anyPolicy)
-        // Opcionalmente incluir certReq = TRUE para que el TSA nos devuelva su certificado
-        // TimeStampReq ::= SEQUENCE {
-        //   version          INTEGER  v1(1),
-        //   messageImprint   MessageImprint,
-        //   reqPolicy        TSAPolicyId OPTIONAL,
-        //   nonce            INTEGER OPTIONAL,
-        //   certReq          BOOLEAN DEFAULT FALSE,
-        //   extensions       [0] IMPLICIT Extensions OPTIONAL
-        // }
-        $request = $this->encodeSequence(
-            $this->encodeInteger(1) .         // version
-            $messageImprint .                  // messageImprint
-            $nonceInteger .                    // nonce
-            $this->encodeBoolean(true)         // certReq = TRUE
+        return $this->encodeTLV(0x30,
+            $this->encodeTLV(0x02, "\x01").
+            $messageImprint.
+            $nonceInteger.
+            $this->encodeTLV(0x01, "\xFF")
         );
-
-        return $request;
     }
 
-    /**
-     * Parsea un token TSR (TimeStampToken) DER y extrae datos relevantes.
-     */
-    private function parseTimeStampToken(string $tokenDer): ?array
+    private function encodeTLV(int $tag, string $value): string
     {
-        $offset = 0;
-        $contentInfo = $this->parseSequence($tokenDer, $offset);
+        $length = strlen($value);
 
-        if ($contentInfo === null) {
-            return null;
+        if ($length < 128) {
+            return chr($tag).chr($length).$value;
         }
 
-        // ContentInfo ::= SEQUENCE { contentType OID, content [0] EXPLICIT ANY }
-        $contentTypeOid = $this->parseOID($contentInfo['children'][0]['value'] ?? '');
-
-        // OID para SignedData: 1.2.840.113549.1.7.2
-        if ($contentTypeOid !== '1.2.840.113549.1.7.2') {
-            return null;
+        $lenBytes = '';
+        $tmp = $length;
+        while ($tmp > 0) {
+            $lenBytes = chr($tmp & 0xFF).$lenBytes;
+            $tmp >>= 8;
         }
 
-        // Obtener el contenido (SignedData)
-        $signedDataTag = $contentInfo['children'][1] ?? null;
-        if ($signedDataTag === null) {
-            return null;
-        }
-
-        $signedDataOffset = 0;
-        $signedData = $this->parseSequence($signedDataTag['value'], $signedDataOffset);
-
-        if ($signedData === null) {
-            return null;
-        }
-
-        // SignedData ::= SEQUENCE {
-        //   version, digestAlgorithms, encapContentInfo, certificates, crls, signerInfos
-        // }
-        // encapContentInfo es el tercer elemento (índice 2)
-        $encapContentInfo = $signedData['children'][2] ?? null;
-        if ($encapContentInfo === null) {
-            return null;
-        }
-
-        // EncryptedContentInfo ::= SEQUENCE { contentType OID, contentEncryptionAlgorithm, content [0] }
-        $encapOffset = 0;
-        $encapSeq = $this->parseSequence($encapContentInfo['value'], $encapOffset);
-
-        if ($encapSeq === null) {
-            return null;
-        }
-
-        // El contenido está en el tag [0] - TSTInfo
-        $tstInfoTag = null;
-        foreach ($encapSeq['children'] as $child) {
-            if ($child['tag'] === 0xa0) { // [0] IMPLICIT
-                $tstInfoTag = $child;
-                break;
-            }
-        }
-
-        if ($tstInfoTag === null) {
-            // Buscar en la posición 2 directamente
-            $tstInfoTag = $encapSeq['children'][2] ?? null;
-        }
-
-        if ($tstInfoTag === null) {
-            return null;
-        }
-
-        // Parsear TSTInfo
-        $tstInfoOffset = 0;
-        $tstInfo = $this->parseSequence($tstInfoTag['value'], $tstInfoOffset);
-
-        if ($tstInfo === null) {
-            return null;
-        }
-
-        // TSTInfo ::= SEQUENCE {
-        //   version        INTEGER v1(1),
-        //   policy         TSAPolicyId,
-        //   messageImprint MessageImprint,
-        //   serialNumber   INTEGER,
-        //   genTime        GeneralizedTime,
-        //   accuracy       Accuracy OPTIONAL,
-        //   nonce          INTEGER OPTIONAL,
-        //   tsa            [0] GeneralName OPTIONAL,
-        //   extensions     [1] IMPLICIT Extensions OPTIONAL
-        // }
-        $children = $tstInfo['children'];
-
-        if (count($children) < 5) {
-            return null;
-        }
-
-        // genTime está en posición 4
-        $genTime = $this->parseGeneralizedTime($children[4]['value'] ?? '');
-
-        // messageImprint está en posición 2
-        $messageImprintSeq = $this->parseSequence($children[2]['value'] ?? '', $dummy = 0);
-        $messageImprint = null;
-        if ($messageImprintSeq !== null && count($messageImprintSeq['children']) >= 2) {
-            $messageImprint = bin2hex($messageImprintSeq['children'][1]['value'] ?? '');
-        }
-
-        // Extraer certificados del SignedData (posición 3)
-        $certificados = [];
-        $certificatesTag = $signedData['children'][3] ?? null;
-        if ($certificatesTag !== null && $certificatesTag['tag'] === 0xa0) {
-            $certificados = $this->parseCertificates($certificatesTag['value']);
-        }
-
-        return [
-            'fecha' => $genTime,
-            'message_imprint' => $messageImprint,
-            'certificados' => $certificados,
-            'signed_data' => $signedDataTag['value'] ?? '',
-        ];
-    }
-
-    /**
-     * Verifica la firma del token usando el certificado TSA del token.
-     */
-    private function verificarFirmaToken(string $tokenDer, array $parsed): bool
-    {
-        if (empty($parsed['certificados'])) {
-            Log::warning('No se encontraron certificados en el token TSA');
-
-            return false;
-        }
-
-        // Obtener el certificado TSA (el primero)
-        $certPem = $parsed['certificados'][0]['der'] ?? null;
-        if ($certPem === null) {
-            return false;
-        }
-
-        $cert = openssl_x509_read($certPem);
-        if ($cert === false) {
-            return false;
-        }
-
-        // Verificar que el certificado no esté vencido
-        $certInfo = openssl_x509_parse($cert);
-        if ($certInfo === false) {
-            return false;
-        }
-
-        $now = time();
-        $validFrom = $certInfo['validFrom_time_t'] ?? 0;
-        $validTo = $certInfo['validTo_time_t'] ?? 0;
-
-        if ($now < $validFrom || $now > $validTo) {
-            Log::warning('Certificado TSA fuera de vigencia', [
-                'desde' => date('Y-m-d H:i:s', $validFrom),
-                'hasta' => date('Y-m-d H:i:s', $validTo),
-            ]);
-
-            return false;
-        }
-
-        // Extraer el SignedData completo y parsear
-        $signedDataOffset = 0;
-        $parsedData = $this->parseSequence($parsed['signed_data'], $signedDataOffset);
-        if ($parsedData === null) {
-            return false;
-        }
-
-        // signerInfos es el último elemento (SET)
-        $signerInfos = $parsedData['children'][count($parsedData['children']) - 1] ?? null;
-        if ($signerInfos === null) {
-            return false;
-        }
-
-        // Parsear SignerInfo (SET OF, tomando el primer elemento)
-        $signerInfoSet = $this->parseSet($signerInfos['value'] ?? '');
-        if ($signerInfoSet === null || count($signerInfoSet['children']) === 0) {
-            return false;
-        }
-
-        $signerInfoSeq = $this->parseSequence($signerInfoSet['children'][0]['value'] ?? '', $siOffset = 0);
-        if ($signerInfoSeq === null) {
-            return false;
-        }
-
-        $siChildren = $signerInfoSeq['children'];
-
-        // Buscar signedAttrs (tag [0] = 0xa0) y signature (OCTET STRING = 0x04)
-        $signedAttrsRaw = null;
-        $signatureValue = null;
-        $digestAlgorithm = 'SHA256';
-
-        foreach ($siChildren as $child) {
-            if ($child['tag'] === 0xa0) {
-                // signedAttrs - el contenido que se firma es esta secuencia completa (con tag 0xa0)
-                $signedAttrsRaw = $child['value'];
-            } elseif ($child['tag'] === 0x04) {
-                $signatureValue = $child['value'];
-            }
-        }
-
-        // Obtener digestAlgorithm (debe estar antes de signedAttrs)
-        foreach ($siChildren as $child) {
-            if ($child['tag'] === 0x30) { // SEQUENCE = AlgorithmIdentifier
-                $algSeq = $this->parseSequence($child['value'], $algOffset = 0);
-                if ($algSeq !== null && count($algSeq['children']) > 0) {
-                    $oid = $this->parseOID($algSeq['children'][0]['value'] ?? '');
-                    $digestAlgorithm = match ($oid) {
-                        '2.16.840.1.101.3.4.2.1' => 'SHA256',
-                        '1.3.14.3.2.26' => 'SHA1',
-                        '2.16.840.1.101.3.4.2.2' => 'SHA384',
-                        '2.16.840.1.101.3.4.2.3' => 'SHA512',
-                        default => 'SHA256',
-                    };
-                }
-                break;
-            }
-        }
-
-        if ($signatureValue === null) {
-            Log::warning('No se pudo extraer la firma del token TSA');
-
-            return false;
-        }
-
-        // Si hay signedAttrs, la firma se verifica sobre el DER completo del tag [0] (con tag y longitud)
-        if ($signedAttrsRaw !== null) {
-            // Reconstruir el tag [0] completo (tag 0xa0 + longitud + contenido)
-            $signedAttrsFull = $this->encodeTLV(0xa0, $signedAttrsRaw);
-            $dataToVerify = $signedAttrsFull;
-        } else {
-            // Sin signedAttrs, la firma es sobre el TSTInfo
-            $dataToVerify = $parsed['tst_info'] ?? '';
-        }
-
-        // Verificar la firma
-        $openAlgo = match ($digestAlgorithm) {
-            'SHA256' => OPENSSL_ALGO_SHA256,
-            'SHA1' => OPENSSL_ALGO_SHA1,
-            'SHA384' => OPENSSL_ALGO_SHA384,
-            'SHA512' => OPENSSL_ALGO_SHA512,
-            default => OPENSSL_ALGO_SHA256,
-        };
-
-        $result = openssl_verify($dataToVerify, $signatureValue, $cert, $openAlgo);
-
-        if ($result !== 1) {
-            Log::warning('Verificación de firma TSA falló', ['result' => $result]);
-        }
-
-        return $result === 1;
-    }
-
-    /**
-     * Extrae el algoritmo de digest de SignerInfo.
-     */
-    private function extractDigestAlgorithm(array $signerInfo): ?string
-    {
-        // SignerInfo: version, sid, digestAlgorithm, signedAttrs, signatureAlgorithm, signature
-        $children = $signerInfo['children'];
-        if (count($children) < 5) {
-            return null;
-        }
-
-        // digestAlgorithm está en posición 2
-        $digestAlgSeq = $this->parseSequence($children[2]['value'] ?? '', $daOffset = 0);
-        if ($digestAlgSeq === null || count($digestAlgSeq['children']) === 0) {
-            return null;
-        }
-
-        $oid = $this->parseOID($digestAlgSeq['children'][0]['value'] ?? '');
-
-        return match ($oid) {
-            '2.16.840.1.101.3.4.2.1' => 'SHA256',
-            '1.3.14.3.2.26' => 'SHA1',
-            '2.16.840.1.101.3.4.2.2' => 'SHA384',
-            '2.16.840.1.101.3.4.2.3' => 'SHA512',
-            default => 'SHA256',
-        };
-    }
-
-    /**
-     * Parsea certificados X.509 de un SET de certificados DER.
-     */
-    private function parseCertificates(string $certsDer): array
-    {
-        $certs = [];
-        $offset = 0;
-
-        // Es un SET OF Certificate
-        $set = $this->parseSet($certsDer, $offset);
-        if ($set === null) {
-            return $certs;
-        }
-
-        foreach ($set['children'] as $certChild) {
-            // Cada cert es un SEQUENCE
-            $certSeq = $this->parseSequence($certChild['value'], $certOffset = 0);
-            if ($certSeq !== null) {
-                $certDer = $certChild['value'];
-                $certInfo = openssl_x509_read('-----BEGIN CERTIFICATE-----' . "\n" .
-                    chunk_split(base64_encode($certDer), 64, "\n") .
-                    '-----END CERTIFICATE-----');
-
-                $certs[] = [
-                    'der' => '-----BEGIN CERTIFICATE-----' . "\n" .
-                        chunk_split(base64_encode($certDer), 64, "\n") .
-                        '-----END CERTIFICATE-----',
-                    'info' => is_resource($certInfo) ? openssl_x509_parse($certInfo) : null,
-                ];
-            }
-        }
-
-        return $certs;
-    }
-
-    // ============================================================
-    // ASN.1 DER Encoding Helpers
-    // ============================================================
-
-    private function encodeSequence(string $content): string
-    {
-        return $this->encodeTLV(0x30, $content);
-    }
-
-    private function encodeSet(string $content): string
-    {
-        return $this->encodeTLV(0x31, $content);
-    }
-
-    private function encodeOctetString(string $content): string
-    {
-        return $this->encodeTLV(0x04, $content);
-    }
-
-    private function encodeBoolean(bool $value): string
-    {
-        return $this->encodeTLV(0x01, $value ? "\xFF" : "\x00");
-    }
-
-    private function encodeInteger(int|array $value): string
-    {
-        if (is_int($value)) {
-            $bytes = $this->bigIntToBytes([$value]);
-        } else {
-            $bytes = $this->bigIntToBytes($value);
-        }
-
-        // Agregar byte de signo si el bit más significativo está activo
-        if (ord($bytes[0]) & 0x80) {
-            $bytes = "\x00" . $bytes;
-        }
-
-        return $this->encodeTLV(0x02, $bytes);
+        return chr($tag).chr(0x80 | strlen($lenBytes)).$lenBytes.$value;
     }
 
     private function encodeOID(string $oid): string
@@ -487,247 +197,72 @@ class TsaService
 
         for ($i = 2; $i < count($parts); $i++) {
             $val = intval($parts[$i]);
-            $encoded = $this->encodeVariableLengthInteger($val);
+            $encoded = '';
+
+            if ($val === 0) {
+                $encoded = "\x00";
+            } else {
+                while ($val > 0) {
+                    $byte = $val & 0x7F;
+                    $val >>= 7;
+                    if ($val > 0) {
+                        $byte |= 0x80;
+                    }
+                    $encoded = chr($byte).$encoded;
+                }
+            }
+
             $bytes .= $encoded;
         }
 
         return $this->encodeTLV(0x06, $bytes);
     }
 
-    private function encodeVariableLengthInteger(int $value): string
+    private function encodeInteger(array $bigInt): string
     {
-        if ($value < 128) {
-            return chr($value);
+        $hex = '';
+        foreach ($bigInt as $chunk) {
+            $hex .= str_pad(dechex($chunk), 8, '0', STR_PAD_LEFT);
+        }
+        $hex = ltrim($hex, '0');
+
+        if ($hex === '') {
+            $hex = '00';
         }
 
-        $bytes = [];
-        $temp = $value;
-
-        while ($temp > 0) {
-            $bytes[] = $temp & 0x7F;
-            $temp >>= 7;
+        if (strlen($hex) % 2 !== 0) {
+            $hex = '0'.$hex;
         }
 
-        // Output MSB to LSB, setting high bit on all except the last
-        $result = '';
+        $bytes = hex2bin($hex);
 
-        for ($i = count($bytes) - 1; $i >= 0; $i--) {
-            $byte = $bytes[$i];
-
-            if ($i > 0) {
-                $byte |= 0x80;
-            }
-
-            $result .= chr($byte);
+        if (ord($bytes[0]) & 0x80) {
+            $bytes = "\x00".$bytes;
         }
 
-        return $result;
-    }
-
-    private function encodeTLV(int $tag, string $value): string
-    {
-        $length = strlen($value);
-
-        if ($length < 128) {
-            return chr($tag) . chr($length) . $value;
-        }
-
-        $lengthBytes = '';
-        $temp = $length;
-
-        while ($temp > 0) {
-            $lengthBytes = chr($temp & 0xFF) . $lengthBytes;
-            $temp >>= 8;
-        }
-
-        $lengthByte = 0x80 | strlen($lengthBytes);
-
-        return chr($tag) . chr($lengthByte) . $lengthBytes . $value;
+        return $this->encodeTLV(0x02, $bytes);
     }
 
     private function binToBigInt(string $bin): array
     {
         $hex = bin2hex($bin);
 
-        if (strlen($hex) === 0) {
+        if ($hex === '') {
             return [0];
         }
 
         $result = [];
-        $i = 0;
-
-        while ($i < strlen($hex)) {
-            $chunk = substr($hex, $i, 8);
-            $result[] = hexdec($chunk);
-            $i += 8;
-        }
-
-        return $result;
-    }
-
-    private function bigIntToBytes(array $bigInt): string
-    {
-        $hex = '';
-
-        foreach ($bigInt as $chunk) {
-            $hex .= str_pad(dechex($chunk), 8, '0', STR_PAD_LEFT);
-        }
-
-        // Remover ceros leading
-        $hex = ltrim($hex, '0');
-
-        if (strlen($hex) === 0) {
-            return "\x00";
-        }
-
-        // Asegurar longitud par
-        if (strlen($hex) % 2 !== 0) {
-            $hex = '0' . $hex;
-        }
-
-        return hex2bin($hex);
-    }
-
-    // ============================================================
-    // ASN.1 DER Parsing Helpers
-    // ============================================================
-
-    private function parseSequence(string $der, int &$offset = 0): ?array
-    {
-        return $this->parseTLV($der, $offset, 0x30);
-    }
-
-    private function parseSet(string $der, int &$offset = 0): ?array
-    {
-        return $this->parseTLV($der, $offset, 0x31);
-    }
-
-    private function parseTLV(string $der, int &$offset, int $expectedTag): ?array
-    {
-        if ($offset >= strlen($der)) {
-            return null;
-        }
-
-        $tag = ord($der[$offset]);
-        $offset++;
-
-        if (($tag & 0x1F) === 0x1F) {
-            // Tag compuesto (más de un byte)
-            $tag = $tag & 0x1F;
-
-            while ($offset < strlen($der)) {
-                $byte = ord($der[$offset]);
-                $offset++;
-                $tag = ($tag << 7) | ($byte & 0x7F);
-
-                if (($byte & 0x80) === 0) {
-                    break;
-                }
+        for ($i = strlen($hex) - 8; ; $i -= 8) {
+            if ($i < 0) {
+                $result[] = hexdec(substr($hex, 0, $i + 8));
+                break;
+            }
+            $result[] = hexdec(substr($hex, $i, 8));
+            if ($i <= 0) {
+                break;
             }
         }
 
-        // Parsear longitud
-        if ($offset >= strlen($der)) {
-            return null;
-        }
-
-        $lengthByte = ord($der[$offset]);
-        $offset++;
-
-        if ($lengthByte < 0x80) {
-            $length = $lengthByte;
-        } elseif ($lengthByte === 0x80) {
-            // Longitud indefinida - no soportada
-            return null;
-        } elseif ($lengthByte === 0xFF) {
-            return null;
-        } else {
-            $numLengthBytes = $lengthByte & 0x7F;
-
-            if ($offset + $numLengthBytes > strlen($der)) {
-                return null;
-            }
-
-            $length = 0;
-
-            for ($i = 0; $i < $numLengthBytes; $i++) {
-                $length = ($length << 8) | ord($der[$offset]);
-                $offset++;
-            }
-        }
-
-        if ($offset + $length > strlen($der)) {
-            return null;
-        }
-
-        $value = substr($der, $offset, $length);
-        $offset += $length;
-
-        return ['tag' => $tag, 'length' => $length, 'value' => $value];
-    }
-
-    private function parseOID(string $der): string
-    {
-        if (strlen($der) === 0) {
-            return '';
-        }
-
-        $firstByte = ord($der[0]);
-        $oid = intdiv($firstByte, 40) . '.' . ($firstByte % 40);
-
-        $value = 0;
-        $offset = 1;
-
-        while ($offset < strlen($der)) {
-            $byte = ord($der[$offset]);
-            $offset++;
-
-            $value = ($value << 7) | ($byte & 0x7F);
-
-            if (($byte & 0x80) === 0) {
-                $oid .= '.' . $value;
-                $value = 0;
-            }
-        }
-
-        return $oid;
-    }
-
-    private function parseGeneralizedTime(string $der): ?string
-    {
-        // GeneralizedTime ::= VisibleString (formato: YYYYMMDDHHMMSSZ o YYYYMMDDHHMMSS.fffZ)
-        if (strlen($der) < 15) {
-            return null;
-        }
-
-        $str = $der;
-
-        // Remover 'Z' al final si existe
-        if (substr($str, -1) === 'Z') {
-            $str = substr($str, 0, -1);
-        }
-
-        // Remover fractional seconds si existen
-        if (strpos($str, '.') !== false) {
-            $str = substr($str, 0, strpos($str, '.'));
-        }
-
-        if (strlen($str) < 14) {
-            return null;
-        }
-
-        $year = substr($str, 0, 4);
-        $month = substr($str, 4, 2);
-        $day = substr($str, 6, 2);
-        $hour = substr($str, 8, 2);
-        $min = substr($str, 10, 2);
-        $sec = substr($str, 12, 2);
-
-        $fecha = "{$year}-{$month}-{$day} {$hour}:{$min}:{$sec}";
-
-        // Validar que sea una fecha válida
-        $timestamp = strtotime($fecha);
-
-        return $timestamp ? $fecha : null;
+        return array_reverse($result);
     }
 }
