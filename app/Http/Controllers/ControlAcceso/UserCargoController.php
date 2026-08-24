@@ -116,6 +116,8 @@ class UserCargoController extends Controller
 
             return $this->successResponse($data, 'Lista de asignaciones de cargos obtenida exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener las asignaciones de cargos', $e->getMessage(), 500);
         }
     }
@@ -189,6 +191,8 @@ class UserCargoController extends Controller
                 'Cargo asignado exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar el cargo', $e->getMessage(), 500);
@@ -285,6 +289,8 @@ class UserCargoController extends Controller
 
             return $this->successResponse($data, 'Cargo finalizado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al finalizar el cargo', $e->getMessage(), 500);
@@ -350,6 +356,8 @@ class UserCargoController extends Controller
 
             return $this->successResponse($data, 'Cargo activo del usuario obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el cargo activo del usuario', $e->getMessage(), 500);
         }
     }
@@ -401,6 +409,8 @@ class UserCargoController extends Controller
 
             return $this->successResponse($data, 'Historial de cargos del usuario obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el historial del usuario', $e->getMessage(), 500);
         }
     }
@@ -471,6 +481,8 @@ class UserCargoController extends Controller
 
             return $this->successResponse($data, 'Usuarios del cargo obtenidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener los usuarios del cargo', $e->getMessage(), 500);
         }
     }
@@ -554,6 +566,8 @@ class UserCargoController extends Controller
 
             return $this->successResponse($estadisticas, 'Estadísticas de asignaciones obtenidas exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
         }
     }
@@ -617,6 +631,8 @@ class UserCargoController extends Controller
 
             return $this->successResponse($data, 'Lista de cargos obtenida exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener los cargos disponibles', $e->getMessage(), 500);
         }
     }
@@ -659,6 +675,8 @@ class UserCargoController extends Controller
                 'Asignación encontrada exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Asignación no encontrada', null, 404);
         }
     }

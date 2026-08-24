@@ -96,6 +96,8 @@ class UserSedeController extends Controller
 
             return $this->successResponse($relaciones, 'Listado de relaciones usuario-sede obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado de relaciones usuario-sede', $e->getMessage(), 500);
         }
     }
@@ -172,6 +174,8 @@ class UserSedeController extends Controller
                 201
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al crear la relación usuario-sede', $e->getMessage(), 500);
@@ -228,6 +232,8 @@ class UserSedeController extends Controller
                 'Relación usuario-sede encontrada exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener la relación usuario-sede', $e->getMessage(), 500);
         }
     }
@@ -295,6 +301,8 @@ class UserSedeController extends Controller
                 'Relación usuario-sede actualizada exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar la relación usuario-sede', $e->getMessage(), 500);
@@ -333,6 +341,8 @@ class UserSedeController extends Controller
 
             return $this->successResponse(null, 'Relación usuario-sede eliminada exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar la relación usuario-sede', $e->getMessage(), 500);
@@ -388,6 +398,8 @@ class UserSedeController extends Controller
 
             return $this->successResponse($sedes, 'Sedes del usuario obtenidas exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener las sedes del usuario', $e->getMessage(), 500);
         }
     }
@@ -504,6 +516,8 @@ class UserSedeController extends Controller
 
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al sincronizar las sedes del usuario', $e->getMessage(), 500);
@@ -559,6 +573,8 @@ class UserSedeController extends Controller
 
             return $this->successResponse($usuarios, 'Usuarios de la sede obtenidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener los usuarios de la sede', $e->getMessage(), 500);
         }
     }

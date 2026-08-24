@@ -60,15 +60,20 @@ Route::middleware(['throttle:config-operations', 'auth:sanctum'])->group(functio
     /**
      * Roles y permisos
      */
-    Route::get('/roles/estadisticas', [RoleController::class, 'estadisticas'])->name('roles.estadisticas');
-    Route::resource('/roles', RoleController::class)->except('create', 'edit');
-    Route::get('/roles-usuarios', [RoleController::class, 'rolesConUsuarios']);
-    Route::get('/roles-y-permisos', [RoleController::class, 'listRolesPermisos'])->name('roles.permisos.show');
+    $permRoles = 'Control de acceso - Roles -> ';
+    Route::get('/roles/estadisticas', [RoleController::class, 'estadisticas'])->name('roles.estadisticas')->middleware('can:'.$permRoles.'Listar');
+    Route::get('/roles', [RoleController::class, 'index'])->name('roles.index')->middleware('can:'.$permRoles.'Listar');
+    Route::post('/roles', [RoleController::class, 'store'])->name('roles.store')->middleware('can:'.$permRoles.'Crear');
+    Route::get('/roles/{role}', [RoleController::class, 'show'])->name('roles.show')->middleware('can:'.$permRoles.'Mostrar');
+    Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update')->middleware('can:'.$permRoles.'Editar');
+    Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy')->middleware('can:'.$permRoles.'Eliminar');
+    Route::get('/roles-usuarios', [RoleController::class, 'rolesConUsuarios'])->middleware('can:'.$permRoles.'Listar');
+    Route::get('/roles-y-permisos', [RoleController::class, 'listRolesPermisos'])->name('roles.permisos.show')->middleware('can:'.$permRoles.'Listar');
 
     /**
      * Permisos
      */
-    Route::get('/permisos', [RoleController::class, 'listPermisos'])->name('permisos.show');
+    Route::get('/permisos', [RoleController::class, 'listPermisos'])->name('permisos.show')->middleware('can:'.$permRoles.'Listar');
 
     /**
      * Sesiones de usuario

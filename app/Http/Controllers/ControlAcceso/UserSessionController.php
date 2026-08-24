@@ -93,6 +93,8 @@ class UserSessionController extends Controller
 
             return $this->successResponse($formattedSessions, 'Sesiones obtenidas exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener las sesiones', $e->getMessage(), 500);
         }
     }
@@ -174,6 +176,8 @@ class UserSessionController extends Controller
 
             return $this->successResponse($formattedSessions, 'Sesiones del usuario obtenidas exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener las sesiones', $e->getMessage(), 500);
         }
     }
@@ -217,6 +221,8 @@ class UserSessionController extends Controller
 
             return $this->successResponse(null, 'Sesión eliminada exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar la sesión', $e->getMessage(), 500);
         }
     }

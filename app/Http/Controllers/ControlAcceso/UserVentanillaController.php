@@ -88,6 +88,8 @@ class UserVentanillaController extends Controller
 
             return $this->successResponse($asignaciones, 'Listado de asignaciones de ventanillas obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado de asignaciones', $e->getMessage(), 500);
         }
     }
@@ -166,6 +168,8 @@ class UserVentanillaController extends Controller
                 201
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al crear la asignación', $e->getMessage(), 500);
@@ -221,6 +225,8 @@ class UserVentanillaController extends Controller
                 'Asignación encontrada exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener la asignación', $e->getMessage(), 500);
         }
     }
@@ -301,6 +307,8 @@ class UserVentanillaController extends Controller
                 'Asignación actualizada exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar la asignación', $e->getMessage(), 500);
@@ -339,6 +347,8 @@ class UserVentanillaController extends Controller
 
             return $this->successResponse(null, 'Asignación eliminada exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar la asignación', $e->getMessage(), 500);
@@ -505,6 +515,8 @@ class UserVentanillaController extends Controller
 
             return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
         }
     }

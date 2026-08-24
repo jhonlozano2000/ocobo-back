@@ -34,6 +34,8 @@ class UserController extends Controller
 
             return $this->successResponse($users, 'Listado de usuarios obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
         }
     }
@@ -58,6 +60,8 @@ class UserController extends Controller
                 201
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al crear el usuario', $e->getMessage(), 500);
         }
     }
@@ -76,6 +80,8 @@ class UserController extends Controller
 
             return $this->successResponse($user, 'Usuario encontrado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el usuario', $e->getMessage(), 500);
         }
     }
@@ -103,6 +109,8 @@ class UserController extends Controller
                 'Usuario actualizado exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar el usuario', $e->getMessage(), 500);
         }
     }
@@ -119,6 +127,8 @@ class UserController extends Controller
 
             return $this->successResponse(null, 'Usuario eliminado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar el usuario', $e->getMessage(), 500);
         }
     }
@@ -134,6 +144,8 @@ class UserController extends Controller
                 'Estadísticas obtenidas exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
         }
     }
@@ -152,6 +164,8 @@ class UserController extends Controller
                 'Perfil actualizado exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar el perfil', $e->getMessage(), 500);
         }
     }
@@ -183,6 +197,8 @@ class UserController extends Controller
         } catch (ValidationException $e) {
             return $this->errorResponse('Datos de validación incorrectos', $e->errors(), 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar la contraseña', $e->getMessage().' - '.$e->getFile().':'.$e->getLine(), 500);
         }
     }
@@ -208,6 +224,8 @@ class UserController extends Controller
                 ],
             ], 'Perfil completo obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el perfil', $e->getMessage(), 500);
         }
     }
@@ -242,6 +260,8 @@ class UserController extends Controller
                 'permisos_por_modulo' => $permisosPorModulo->toArray(),
             ], 'Permisos obtenidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener permisos', $e->getMessage(), 500);
         }
     }
@@ -300,6 +320,8 @@ class UserController extends Controller
                 'cambios' => $cambios->sortByDesc('fecha')->values(),
             ], 'Historial obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener historial', $e->getMessage(), 500);
         }
     }
@@ -319,6 +341,8 @@ class UserController extends Controller
                 'total' => $user->sessions()->count(),
             ], 'Conexiones obtenidas exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener conexiones', $e->getMessage(), 500);
         }
     }
@@ -350,6 +374,8 @@ class UserController extends Controller
                 'created_at' => $user->created_at,
             ], 'Actividad obtenida exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener actividad', $e->getMessage(), 500);
         }
     }
@@ -365,6 +391,8 @@ class UserController extends Controller
 
             return $this->successResponse($cargo, 'Cargo obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener cargo', $e->getMessage(), 500);
         }
     }
