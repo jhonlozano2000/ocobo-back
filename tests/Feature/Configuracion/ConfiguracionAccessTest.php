@@ -32,7 +32,24 @@ class ConfiguracionAccessTest extends TestCase
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
+        $permisos = [
+            'Config - División política -> Listar',
+            'Config - Listas -> Listar',
+            'Config - Sedes -> Listar',
+            'Config - Servidor de almacenamiento -> Listar',
+            'Config - Otras configuraciones -> Listar',
+            'Config - Calendario -> Listar',
+        ];
+
+        foreach ($permisos as $p) {
+            Permission::firstOrCreate(['name' => $p]);
+        }
+
+        $rol = Role::firstOrCreate(['name' => 'Configurador']);
+        $rol->givePermissionTo($permisos);
+
         $this->user = User::factory()->create();
+        $this->user->assignRole($rol);
     }
 
     /** @test */
