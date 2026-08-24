@@ -8,6 +8,7 @@ use Database\Seeders\Permisos\PermisosClasificacionDocumentalSeeder;
 use Database\Seeders\Permisos\PermisosConfiguracionSeeder;
 use Database\Seeders\Permisos\PermisosControlAccesoSeeder;
 use Database\Seeders\Permisos\PermisosDigitalizacionSeeder;
+use Database\Seeders\Permisos\PermisosGestionArchivoSeeder;
 use Database\Seeders\Permisos\PermisosGestionSeeder;
 use Database\Seeders\Permisos\PermisosMiBandejaSeeder;
 use Database\Seeders\Permisos\PermisosMiBandejaTempSeeder;
@@ -52,6 +53,7 @@ class PermisoConsistenciaTest extends TestCase
             PermisosConfiguracionSeeder::class,
             PermisosCalidadSeeder::class,
             PermisosGestionSeeder::class,
+            PermisosGestionArchivoSeeder::class,
             PermisosDigitalizacionSeeder::class,
             PermisosReportesSeeder::class,
             PermisosOtrosSeeder::class,
