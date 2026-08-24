@@ -79,6 +79,8 @@ class OfiArchivoExpedienteController extends Controller
             );
 
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al abrir el expediente', $e->getMessage(), 500);
@@ -100,6 +102,8 @@ class OfiArchivoExpedienteController extends Controller
             return $this->successResponse($expediente, 'Expediente obtenido exitosamente');
 
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el expediente', $e->getMessage(), 500);
         }
     }
@@ -142,6 +146,8 @@ class OfiArchivoExpedienteController extends Controller
             );
 
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar el expediente', $e->getMessage(), 500);
         }
     }
@@ -194,6 +200,8 @@ class OfiArchivoExpedienteController extends Controller
             );
 
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al cerrar el expediente', $e->getMessage(), 500);
@@ -230,6 +238,8 @@ class OfiArchivoExpedienteController extends Controller
             return $this->successResponse($expedientes, 'Listado de expedientes obtenido');
 
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
         }
     }
@@ -292,6 +302,8 @@ class OfiArchivoExpedienteController extends Controller
             );
 
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al incorporar el documento', $e->getMessage(), 500);
@@ -403,6 +415,8 @@ class OfiArchivoExpedienteController extends Controller
             );
 
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al subir los archivos', $e->getMessage(), 500);
@@ -493,6 +507,8 @@ class OfiArchivoExpedienteController extends Controller
                 ->header('Content-Disposition', 'inline; filename="Indice_Expediente_'.$expediente->numero_expediente.'.pdf"');
 
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al generar el índice del expediente', $e->getMessage(), 500);
         }
     }
@@ -517,6 +533,8 @@ class OfiArchivoExpedienteController extends Controller
 
             return $this->successResponse(null, 'Documento eliminado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar el documento', $e->getMessage(), 500);
         }
     }

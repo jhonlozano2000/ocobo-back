@@ -50,6 +50,8 @@ class OfiArchivoPlantillaDocumentoController extends Controller
 
             return $this->successResponse($plantillas, 'Listado de plantillas obtenido');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
         }
     }
@@ -68,6 +70,8 @@ class OfiArchivoPlantillaDocumentoController extends Controller
                 201
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al subir la plantilla', $e->getMessage(), 500);
         }
     }
@@ -80,6 +84,8 @@ class OfiArchivoPlantillaDocumentoController extends Controller
                 'Detalle de plantilla obtenido'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener la plantilla', $e->getMessage(), 500);
         }
     }
@@ -98,6 +104,8 @@ class OfiArchivoPlantillaDocumentoController extends Controller
                 'Plantilla actualizada exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar la plantilla', $e->getMessage(), 500);
         }
     }
@@ -109,6 +117,8 @@ class OfiArchivoPlantillaDocumentoController extends Controller
 
             return $this->successResponse(null, 'Plantilla desactivada exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al desactivar la plantilla', $e->getMessage(), 500);
         }
     }
@@ -124,6 +134,8 @@ class OfiArchivoPlantillaDocumentoController extends Controller
 
             return response()->download($filePath, $plantilla->nombre_original);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al descargar la plantilla', $e->getMessage(), 500);
         }
     }
@@ -140,6 +152,8 @@ class OfiArchivoPlantillaDocumentoController extends Controller
                 'integridad_ok' => $integridad,
             ], $integridad ? 'Integridad verificada correctamente' : 'El archivo ha sido modificado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al verificar integridad', $e->getMessage(), 500);
         }
     }
@@ -169,6 +183,8 @@ class OfiArchivoPlantillaDocumentoController extends Controller
 
             return $this->successResponse($stats, 'Estadísticas de plantillas obtenidas');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
         }
     }

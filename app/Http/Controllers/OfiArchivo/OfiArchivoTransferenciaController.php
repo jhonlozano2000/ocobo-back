@@ -58,6 +58,8 @@ class OfiArchivoTransferenciaController extends Controller
 
             return $this->successResponse($transferencias, 'Listado de transferencias obtenido');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener transferencias', $e->getMessage(), 500);
         }
     }
@@ -99,6 +101,8 @@ class OfiArchivoTransferenciaController extends Controller
                 201
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al registrar la transferencia', $e->getMessage(), 500);
@@ -115,10 +119,27 @@ class OfiArchivoTransferenciaController extends Controller
             'observaciones' => 'nullable|string|max:1000',
         ]);
 
+        // Rechazo exige observaciones (trazabilidad AGN 004/2019)
+        if ($request->estado === 'rechazada' && trim((string) $request->observaciones) === '') {
+            return $this->errorResponse('Las observaciones son obligatorias al rechazar la transferencia', null, 422);
+        }
+
         try {
             DB::beginTransaction();
 
             $transferencia = OfiArchivoTransferencia::findOrFail($id);
+
+            // Máquina de estados: una transferencia ya decidida es inmutable
+            if (in_array($transferencia->estado, ['aprobada', 'rechazada'], true)) {
+                DB::rollBack();
+
+                return $this->errorResponse(
+                    "La transferencia ya fue {$transferencia->estado} y no puede modificarse",
+                    null,
+                    422
+                );
+            }
+
             $transferencia->update([
                 'estado' => $request->estado,
                 'observaciones' => $request->observaciones,
@@ -135,6 +156,8 @@ class OfiArchivoTransferenciaController extends Controller
                 'Transferencia '.($request->estado === 'aprobada' ? 'aprobada' : 'rechazada')
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al procesar la transferencia', $e->getMessage(), 500);
@@ -163,6 +186,8 @@ class OfiArchivoTransferenciaController extends Controller
 
             return $this->successResponse($eliminaciones, 'Listado de eliminaciones obtenido');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener eliminaciones', $e->getMessage(), 500);
         }
     }
@@ -210,6 +235,8 @@ class OfiArchivoTransferenciaController extends Controller
                 201
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al registrar la eliminación', $e->getMessage(), 500);
@@ -232,6 +259,8 @@ class OfiArchivoTransferenciaController extends Controller
 
             return $this->successResponse($stats, 'Estadísticas obtenidas');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
         }
     }

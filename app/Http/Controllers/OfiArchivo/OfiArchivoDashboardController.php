@@ -38,6 +38,8 @@ class OfiArchivoDashboardController extends Controller
 
             return $this->successResponse($stats, 'Estadísticas del dashboard obtenidas');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
         }
     }

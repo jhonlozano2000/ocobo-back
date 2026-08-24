@@ -17,6 +17,7 @@ use Database\Seeders\Permisos\PermisosClasificacionDocumentalSeeder as PermisosP
 use Database\Seeders\Permisos\PermisosConfiguracionSeeder;
 use Database\Seeders\Permisos\PermisosControlAccesoSeeder;
 use Database\Seeders\Permisos\PermisosDigitalizacionSeeder;
+use Database\Seeders\Permisos\PermisosGestionArchivoSeeder;
 use Database\Seeders\Permisos\PermisosGestionSeeder;
 use Database\Seeders\Permisos\PermisosMiBandejaSeeder;
 use Database\Seeders\Permisos\PermisosMiBandejaTempSeeder;
@@ -57,6 +58,7 @@ class DatabaseSeeder extends Seeder
         $this->call(PermisosConfiguracionSeeder::class);
         $this->call(PermisosCalidadSeeder::class);
         $this->call(PermisosGestionSeeder::class);
+        $this->call(PermisosGestionArchivoSeeder::class);
         $this->call(PermisosDigitalizacionSeeder::class);
         $this->call(PermisosReportesSeeder::class);
         $this->call(PermisosOtrosSeeder::class);

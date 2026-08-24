@@ -60,16 +60,18 @@ Route::post('/2fa/verify', [App\Http\Controllers\Auth\TwoFactorController::class
 
 // ==========================================
 // RUTAS DE GESTIÓN DE ARCHIVO (ISO 27001)
-Route::middleware('auth:sanctum')->prefix('archivo')->group(function () {
-    Route::get('/expedientes', [OfiArchivoExpedienteController::class, 'index']);
-    Route::post('/expedientes', [OfiArchivoExpedienteController::class, 'store']);
-    Route::post('/expedientes/{id}/incorporar', [OfiArchivoExpedienteController::class, 'incorporarDocumento']);
-    Route::get('/expedientes/{id}', [OfiArchivoExpedienteController::class, 'show']);
-    Route::put('/expedientes/{id}', [OfiArchivoExpedienteController::class, 'update']);
-    Route::post('/expedientes/{id}/cerrar', [OfiArchivoExpedienteController::class, 'cerrarExpediente']);
-    Route::post('/expedientes/{id}/archivos', [OfiArchivoExpedienteController::class, 'subirArchivos']);
-    Route::post('/expedientes/{expedienteId}/documentos/{documentoId}/soft-delete', [OfiArchivoExpedienteController::class, 'softDeleteDocumento']);
-    Route::get('/expedientes/{id}/indice', [OfiArchivoExpedienteController::class, 'generarIndicePdf']);
+$permExp = 'Gestion de Archivo -> Expedientes -> ';
+
+Route::middleware('auth:sanctum')->prefix('archivo')->group(function () use ($permExp) {
+    Route::get('/expedientes', [OfiArchivoExpedienteController::class, 'index'])->middleware('can:'.$permExp.'Ver');
+    Route::post('/expedientes', [OfiArchivoExpedienteController::class, 'store'])->middleware('can:'.$permExp.'Crear');
+    Route::post('/expedientes/{id}/incorporar', [OfiArchivoExpedienteController::class, 'incorporarDocumento'])->middleware('can:'.$permExp.'Incorporar');
+    Route::get('/expedientes/{id}', [OfiArchivoExpedienteController::class, 'show'])->middleware('can:'.$permExp.'Ver');
+    Route::put('/expedientes/{id}', [OfiArchivoExpedienteController::class, 'update'])->middleware('can:'.$permExp.'Editar');
+    Route::post('/expedientes/{id}/cerrar', [OfiArchivoExpedienteController::class, 'cerrarExpediente'])->middleware('can:'.$permExp.'Cerrar');
+    Route::post('/expedientes/{id}/archivos', [OfiArchivoExpedienteController::class, 'subirArchivos'])->middleware('can:'.$permExp.'Incorporar');
+    Route::post('/expedientes/{expedienteId}/documentos/{documentoId}/soft-delete', [OfiArchivoExpedienteController::class, 'softDeleteDocumento'])->middleware('can:'.$permExp.'Editar');
+    Route::get('/expedientes/{id}/indice', [OfiArchivoExpedienteController::class, 'generarIndicePdf'])->middleware('can:'.$permExp.'Ver');
 
     // RUTAS DE GESTIÓN DE TERCEROS (VISTA 360)
     Route::get('/terceros/{identificacion}/historial', [GestionTerceroController::class, 'showHistory']);

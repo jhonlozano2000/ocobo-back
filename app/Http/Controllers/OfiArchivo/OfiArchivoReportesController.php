@@ -55,6 +55,8 @@ class OfiArchivoReportesController extends Controller
 
             return $this->successResponse($reporte, 'Reporte generado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al generar el reporte', $e->getMessage(), 500);
         }
     }
@@ -117,6 +119,8 @@ class OfiArchivoReportesController extends Controller
 
             return $this->successResponse($stats, 'Estadísticas obtenidas');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
         }
     }
