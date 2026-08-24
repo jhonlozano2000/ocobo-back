@@ -37,6 +37,8 @@ class VentanillaRadicaEnviadosRespuestasController extends Controller
 
             return $this->successResponse($recibidos, 'Radicaados recibidos obtenidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener los radicados recibidos', $e->getMessage(), 500);
         }
     }
@@ -80,6 +82,8 @@ class VentanillaRadicaEnviadosRespuestasController extends Controller
         } catch (ValidationException $e) {
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al asociar los radicados recibidos', $e->getMessage(), 500);
         }
     }
@@ -108,6 +112,8 @@ class VentanillaRadicaEnviadosRespuestasController extends Controller
 
             return $this->successResponse($recibidos, 'Radicado recibido desasociado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al desasociar el radicado recibido', $e->getMessage(), 500);
         }
     }

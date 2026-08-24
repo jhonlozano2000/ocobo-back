@@ -42,6 +42,8 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
 
             return $this->successResponse($proyectores, 'Listado de proyectores obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado de proyectores', $e->getMessage(), 500);
         }
     }
@@ -97,6 +99,8 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
 
             return $this->successResponse($proyectoresCreados, 'Proyectores asignados exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar proyectores', $e->getMessage(), 500);
@@ -153,6 +157,8 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
 
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar proyectores', $e->getMessage(), 500);
@@ -170,6 +176,8 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
 
             return $this->successResponse($proyector, 'Proyector encontrado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el proyector', $e->getMessage(), 500);
         }
     }
@@ -199,6 +207,8 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
                 'Proyector actualizado exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar el proyector', $e->getMessage(), 500);
@@ -222,6 +232,8 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
 
             return $this->successResponse(null, 'Proyector eliminado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar el proyector', $e->getMessage(), 500);
@@ -249,6 +261,8 @@ class VentanillaRadicaEnviadosProyectoresController extends Controller
 
             return $this->successResponse($proyectoresData, 'Proyectores del radicado obtenidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener los proyectores', $e->getMessage(), 500);
         }
     }

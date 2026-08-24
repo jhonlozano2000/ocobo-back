@@ -119,6 +119,8 @@ class VentanillaRadicaEnviadosController extends Controller
 
             return $this->successResponse($radicados, 'Listado de radicados enviados obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado de radicados enviados', $e->getMessage(), 500);
         }
     }
@@ -231,6 +233,8 @@ class VentanillaRadicaEnviadosController extends Controller
                 201
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al crear el radicado enviado', $e->getMessage(), 500);
@@ -338,6 +342,8 @@ class VentanillaRadicaEnviadosController extends Controller
 
             return $this->successResponse($data, 'Radicado enviado encontrado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el radicado enviado', $e->getMessage(), 500);
         }
     }
@@ -366,6 +372,8 @@ class VentanillaRadicaEnviadosController extends Controller
                 'Radicado enviado actualizado exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar el radicado enviado', $e->getMessage(), 500);
@@ -402,6 +410,8 @@ class VentanillaRadicaEnviadosController extends Controller
 
             return $this->successResponse(null, 'Radicado enviado eliminado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar el radicado enviado', $e->getMessage(), 500);
@@ -456,6 +466,8 @@ class VentanillaRadicaEnviadosController extends Controller
                     $radicado->delete();
                     $eliminados++;
                 } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
                     $fallidos++;
                     $errores[] = ['id' => $id, 'error' => $e->getMessage()];
                 }
@@ -478,6 +490,8 @@ class VentanillaRadicaEnviadosController extends Controller
         } catch (ValidationException $e) {
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar radicaciones', $e->getMessage(), 500);
         }
     }
@@ -507,6 +521,8 @@ class VentanillaRadicaEnviadosController extends Controller
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Radicado no encontrado', null, 404);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al enviar la notificación', $e->getMessage(), 500);
         }
     }
@@ -563,6 +579,8 @@ class VentanillaRadicaEnviadosController extends Controller
 
             return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
         }
     }
@@ -592,6 +610,8 @@ class VentanillaRadicaEnviadosController extends Controller
 
             return $this->successResponse($radicados, 'Radicados enviados obtenidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener los radicados enviados', $e->getMessage(), 500);
         }
     }
@@ -622,6 +642,8 @@ class VentanillaRadicaEnviadosController extends Controller
 
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar el asunto', $e->getMessage(), 500);
@@ -662,6 +684,8 @@ class VentanillaRadicaEnviadosController extends Controller
 
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar la fecha', $e->getMessage(), 500);
@@ -706,6 +730,8 @@ class VentanillaRadicaEnviadosController extends Controller
         } catch (ValidationException $e) {
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar la clasificación documental', $e->getMessage(), 500);
         }
     }
@@ -945,6 +971,8 @@ class VentanillaRadicaEnviadosController extends Controller
                 'eventos' => $lineaTiempo,
             ], 'Línea de tiempo obtenida exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener la línea de tiempo', $e->getMessage(), 500);
         }
     }
@@ -973,6 +1001,8 @@ class VentanillaRadicaEnviadosController extends Controller
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Radicado enviado no encontrado', null, 404);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al enviar las notificaciones', $e->getMessage(), 500);
         }
     }
@@ -1110,6 +1140,8 @@ class VentanillaRadicaEnviadosController extends Controller
                 'query' => $searchTerm,
             ], 'Búsqueda realizada exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error en la búsqueda', $e->getMessage(), 500);
         }
     }
@@ -1190,6 +1222,8 @@ class VentanillaRadicaEnviadosController extends Controller
 
             return $this->successResponse($radicado, 'Solicitud de anulación creada exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al solicitar la anulación', $e->getMessage(), 500);
         }
     }
@@ -1229,6 +1263,8 @@ class VentanillaRadicaEnviadosController extends Controller
 
             return $this->successResponse($radicado, $mensaje);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al procesar la anulación', $e->getMessage(), 500);
         }
     }
@@ -1247,6 +1283,8 @@ class VentanillaRadicaEnviadosController extends Controller
 
             return $this->successResponse($radicados, 'Radicados pendientes de anulación obtenidos');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al listar pendientes', $e->getMessage(), 500);
         }
     }
@@ -1278,6 +1316,8 @@ class VentanillaRadicaEnviadosController extends Controller
 
             return $this->successResponse($radicados, 'Mis radicados obtenidos');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener mis radicados', $e->getMessage(), 500);
         }
     }
@@ -1293,6 +1333,8 @@ class VentanillaRadicaEnviadosController extends Controller
 
             return $this->successResponse($radicado, 'Estado actualizado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al cambiar el estado', $e->getMessage(), 500);
         }
     }

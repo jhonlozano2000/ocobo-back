@@ -91,6 +91,8 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
 
             return $this->successResponse($archivosSubidos, 'Archivos adicionales subidos exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al subir archivos adicionales', $e->getMessage(), 500);
         }
     }
@@ -114,6 +116,8 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
 
             return $this->successResponse($archivos, 'Archivos adicionales obtenidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener archivos adicionales', $e->getMessage(), 500);
         }
     }
@@ -135,6 +139,8 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
 
             return Storage::disk(self::DISK)->download($archivo->archivo);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al descargar el archivo', $e->getMessage(), 500);
         }
     }
@@ -166,6 +172,8 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
 
             return $this->successResponse(null, 'Archivo adicional eliminado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar el archivo adicional', $e->getMessage(), 500);
         }
     }

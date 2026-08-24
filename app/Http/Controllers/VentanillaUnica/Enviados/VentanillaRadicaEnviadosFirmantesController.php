@@ -42,6 +42,8 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
 
             return $this->successResponse($firmas, 'Listado de firmantes obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado de firmantes', $e->getMessage(), 500);
         }
     }
@@ -97,6 +99,8 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
 
             return $this->successResponse($firmasCreadas, 'Firmantes asignados exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar firmantes', $e->getMessage(), 500);
@@ -153,6 +157,8 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
 
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar firmantes', $e->getMessage(), 500);
@@ -170,6 +176,8 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
 
             return $this->successResponse($firma, 'Firmante encontrado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el firmante', $e->getMessage(), 500);
         }
     }
@@ -199,6 +207,8 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
                 'Firmante actualizado exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar el firmante', $e->getMessage(), 500);
@@ -222,6 +232,8 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
 
             return $this->successResponse(null, 'Firmante eliminado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar el firmante', $e->getMessage(), 500);
@@ -249,6 +261,8 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
 
             return $this->successResponse($firmasData, 'Firmantes del radicado obtenidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener los firmantes', $e->getMessage(), 500);
         }
     }
