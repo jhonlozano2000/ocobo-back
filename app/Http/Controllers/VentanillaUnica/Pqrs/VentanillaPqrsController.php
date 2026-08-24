@@ -74,7 +74,7 @@ class VentanillaPqrsController extends Controller
         ReportesExportService $exportService
     ) {
         $this->exportService = $exportService;
-        $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'estadisticas', 'lineaTiempo', 'estadosDisponibles', 'transicionesEstado', 'misRadicados', 'export']);
+        $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'estadisticas', 'lineaTiempo', 'estadosDisponibles', 'transicionesEstado', 'misRadicados', 'export', 'catalogos']);
         $this->middleware('can:'.self::PERM.'Crear')->only(['store']);
         $this->middleware('can:'.self::PERM.'Editar')->only(['update', 'cambiarEstado', 'aplicarProrroga', 'bulkDestroy']);
         $this->middleware('can:'.self::PERM.'Mostrar')->only(['show', 'lineaTiempo']);
@@ -935,6 +935,41 @@ class VentanillaPqrsController extends Controller
             return $this->successResponse($pqrs, 'Mis PQRS asignados');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al obtener mis PQRS', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Catálogos paramétricos del formulario PQRS.
+     *
+     * Resuelve las listas de config_listas POR NOMBRE (no por ID, que varía
+     * entre entornos): Tipos de PQRS, Prioridad PQRS, Modalidad PQRS,
+     * Tipos de Recepción y Tipos de solicitud. Devuelve solo detalles activos.
+     */
+    public function catalogos(): JsonResponse
+    {
+        try {
+            $mapa = [
+                'tipos_pqrs' => 'Tipos de PQRS',
+                'prioridades' => 'Prioridad PQRS',
+                'modalidades' => 'Modalidad PQRS',
+                'medios_recepcion' => 'Tipos de Recepción',
+                'tipos_solicitud' => 'Tipos de solicitud',
+            ];
+
+            $catalogos = [];
+
+            foreach ($mapa as $clave => $nombreLista) {
+                $catalogos[$clave] = DB::table('config_listas_detalles as cld')
+                    ->join('config_listas as cl', 'cld.lista_id', '=', 'cl.id')
+                    ->where('cl.nombre', $nombreLista)
+                    ->where('cld.estado', 1)
+                    ->orderBy('cld.id')
+                    ->get(['cld.id', 'cld.nombre', 'cld.codigo']);
+            }
+
+            return $this->successResponse($catalogos, 'Catálogos PQRS obtenidos exitosamente');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error al obtener los catálogos PQRS', $e->getMessage(), 500);
         }
     }
 

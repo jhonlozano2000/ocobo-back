@@ -57,6 +57,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/pqrs', [VentanillaPqrsController::class, 'index'])->name('pqrs.index');
 
         /**
+         * GET /api/pqrs-catalogos
+         * Catálogos del formulario PQRS por NOMBRE de lista (Tipos, Prioridad,
+         * Modalidad, Medios Recepción, Tipos Solicitud). URI fuera de /pqrs/{id}
+         * para evitar colisión con pqrs.show.
+         */
+        Route::get('/pqrs-catalogos', [VentanillaPqrsController::class, 'catalogos'])->name('pqrs.catalogos');
+
+        /**
          * GET /api/pqrs/export
          * Exporta listado de PQRS a Excel/CSV
          * @name pqrs.export
