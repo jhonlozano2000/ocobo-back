@@ -42,6 +42,8 @@ class MisInstanciasController extends Controller
 
             return $this->successResponse($instancias, 'Mis instancias obtenidas correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener instancias', $e->getMessage());
         }
     }

@@ -40,6 +40,8 @@ class TareaChecklistController extends Controller
                 'Checklists obtenidos correctamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener checklists', $e->getMessage());
         }
     }
@@ -54,6 +56,8 @@ class TareaChecklistController extends Controller
             $checklist = $tarea->checklists()->create($request->validated());
             return $this->successResponse($checklist, 'Ítem agregado correctamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al agregar ítem', $e->getMessage());
         }
     }
@@ -68,6 +72,8 @@ class TareaChecklistController extends Controller
             $checklist->update($request->validated());
             return $this->successResponse($checklist->fresh(), 'Ítem actualizado correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar ítem', $e->getMessage());
         }
     }
@@ -82,6 +88,8 @@ class TareaChecklistController extends Controller
             $checklist->delete();
             return $this->successResponse(null, 'Ítem eliminado correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar ítem', $e->getMessage());
         }
     }
@@ -104,6 +112,8 @@ class TareaChecklistController extends Controller
             $this->tareaService->reordenarChecklist($tarea, $data['orden']);
             return $this->successResponse(null, 'Checklists reordenados correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al reordenar checklists', $e->getMessage());
         }
     }

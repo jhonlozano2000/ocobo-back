@@ -39,6 +39,8 @@ class FirmaValidacionController extends Controller
             ]);
             return $this->errorResponse($e->getMessage(), null, 404);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             Log::error('Error inesperado en validación de firma', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

@@ -34,6 +34,8 @@ class WorkFlowArchivoController extends Controller
             );
             return $this->successResponse($archivos, 'Archivos obtenidos correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener archivos', $e->getMessage());
         }
     }
@@ -58,6 +60,8 @@ class WorkFlowArchivoController extends Controller
             );
             return $this->successResponse($archivo, 'Archivo subido correctamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al subir archivo', $e->getMessage());
         }
     }
@@ -79,6 +83,8 @@ class WorkFlowArchivoController extends Controller
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return $this->errorResponse('Archivo no encontrado', null, 404);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al descargar archivo', $e->getMessage());
         }
     }
@@ -89,6 +95,8 @@ class WorkFlowArchivoController extends Controller
             $this->archivoService->eliminar($archivoId);
             return $this->successResponse(null, 'Archivo eliminado correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar archivo', $e->getMessage());
         }
     }

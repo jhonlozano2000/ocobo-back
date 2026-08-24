@@ -38,6 +38,8 @@ class FirmaController extends Controller
                 'message' => 'Código de seguridad enviado a su correo ('.$user->email.').',
             ]);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return response()->json([
                 'success' => false,
                 'message' => 'Error al enviar el correo: '.$e->getMessage(),
@@ -99,6 +101,8 @@ class FirmaController extends Controller
                 'message' => 'Documento firmado exitosamente.',
             ]);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return response()->json([
                 'success' => false,
                 'message' => 'Error al registrar la firma: '.$e->getMessage(),

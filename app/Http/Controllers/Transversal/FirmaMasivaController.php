@@ -155,6 +155,8 @@ class FirmaMasivaController extends Controller
             ];
 
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             Log::error('Error en firma masiva', [

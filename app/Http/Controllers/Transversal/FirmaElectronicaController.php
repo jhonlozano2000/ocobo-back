@@ -88,6 +88,8 @@ class FirmaElectronicaController extends Controller
 
             return $this->successResponse(null, "Código OTP enviado al correo del funcionario {$nombreDestino}");
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             Log::error('Error al enviar OTP de firma', [
                 'user_id' => Auth::id(),
                 'error' => $e->getMessage(),
@@ -189,6 +191,8 @@ class FirmaElectronicaController extends Controller
             return $this->successResponse($evento, 'Documento firmado electrónicamente con éxito');
 
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             Log::error('Error en proceso de firma electrónica', [

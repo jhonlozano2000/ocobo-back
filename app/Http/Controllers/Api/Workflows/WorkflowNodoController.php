@@ -29,6 +29,8 @@ class WorkflowNodoController extends Controller
                 ->get();
             return $this->successResponse($nodos, 'Nodos obtenidos correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener nodos', $e->getMessage());
         }
     }
@@ -49,6 +51,8 @@ class WorkflowNodoController extends Controller
             $nodo = WorkflowNodo::create($data);
             return $this->successResponse($nodo, 'Nodo creado correctamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al crear nodo', $e->getMessage());
         }
     }
@@ -60,6 +64,8 @@ class WorkflowNodoController extends Controller
             $nodo->update($request->validated());
             return $this->successResponse($nodo, 'Nodo actualizado correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar nodo', $e->getMessage());
         }
     }
@@ -71,6 +77,8 @@ class WorkflowNodoController extends Controller
             $nodo->delete();
             return $this->successResponse(null, 'Nodo eliminado correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar nodo', $e->getMessage());
         }
     }

@@ -36,6 +36,8 @@ class WorkflowController extends Controller
             $workflows = $this->workflowService->listar(request()->all());
             return $this->successResponse($workflows, 'Flujos obtenidos correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener flujos', $e->getMessage());
         }
     }
@@ -46,6 +48,8 @@ class WorkflowController extends Controller
             $workflow = $this->workflowService->crear($request->validated());
             return $this->successResponse($workflow, 'Flujo creado correctamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al crear flujo', $e->getMessage());
         }
     }
@@ -56,6 +60,8 @@ class WorkflowController extends Controller
             $workflow = $this->workflowService->obtenerConRelaciones($id);
             return $this->successResponse($workflow, 'Flujo obtenido correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener flujo', $e->getMessage(), 404);
         }
     }
@@ -66,6 +72,8 @@ class WorkflowController extends Controller
             $workflow = $this->workflowService->actualizar($id, $request->validated());
             return $this->successResponse($workflow, 'Flujo actualizado correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar flujo', $e->getMessage());
         }
     }
@@ -76,6 +84,8 @@ class WorkflowController extends Controller
             $this->workflowService->eliminar($id);
             return $this->successResponse(null, 'Flujo eliminado correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar flujo', $e->getMessage());
         }
     }
@@ -86,6 +96,8 @@ class WorkflowController extends Controller
             $workflow = $this->workflowService->duplicar($id);
             return $this->successResponse($workflow, 'Flujo duplicado correctamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al duplicar flujo', $e->getMessage());
         }
     }
@@ -97,6 +109,8 @@ class WorkflowController extends Controller
             $workflow = $this->workflowService->cambiarEstado($id, $request['estado']);
             return $this->successResponse($workflow, 'Estado actualizado correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al cambiar estado', $e->getMessage());
         }
     }
@@ -112,6 +126,8 @@ class WorkflowController extends Controller
             );
             return $this->successResponse($workflow, 'Canvas guardado correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al guardar canvas', $e->getMessage());
         }
     }
