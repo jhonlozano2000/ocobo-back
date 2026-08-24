@@ -22,6 +22,8 @@ class VentanillaRadicaInternoArchivosEliminadosController extends Controller
 
             return $this->successResponse($archivos, 'Archivos eliminados obtenidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener los archivos eliminados', $e->getMessage(), 500);
         }
     }
@@ -40,6 +42,8 @@ class VentanillaRadicaInternoArchivosEliminadosController extends Controller
 
             return $this->successResponse($archivo, 'Archivo eliminado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar el archivo', $e->getMessage(), 500);
@@ -60,6 +64,8 @@ class VentanillaRadicaInternoArchivosEliminadosController extends Controller
 
             return $this->successResponse($archivo, 'Archivo encontrado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el archivo', $e->getMessage(), 500);
         }
     }
@@ -75,6 +81,8 @@ class VentanillaRadicaInternoArchivosEliminadosController extends Controller
 
             return $this->successResponse($archivo, 'Historial de eliminaciones obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el historial de eliminaciones', $e->getMessage(), 500);
         }
     }

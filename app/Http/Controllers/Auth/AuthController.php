@@ -258,6 +258,8 @@ class AuthController extends Controller
 
             Mail::to($request->email)->send(new PasswordResetMail($resetUrl));
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al enviar el correo. Intenta de nuevo más tarde.', null, 500);
         }
 

@@ -111,6 +111,8 @@ class RadicadoComentariosController extends Controller
                 201
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->apiResponseError('Error al crear comentario: ' . $e->getMessage(), 500);
         }
     }
@@ -140,6 +142,8 @@ class RadicadoComentariosController extends Controller
 
             return $this->apiResponseSuccess($comentario->getInfo(), 'Comentario actualizado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->apiResponseError('Error al actualizar: ' . $e->getMessage(), 500);
         }
     }
@@ -161,6 +165,8 @@ class RadicadoComentariosController extends Controller
 
             return $this->apiResponseSuccess($comentario->getInfo(), 'Comentario resuelto');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->apiResponseError('Error al resolver: ' . $e->getMessage(), 500);
         }
     }
@@ -185,6 +191,8 @@ class RadicadoComentariosController extends Controller
 
             return $this->apiResponseSuccess(null, 'Comentario eliminado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->apiResponseError('Error al eliminar: ' . $e->getMessage(), 500);
         }
     }

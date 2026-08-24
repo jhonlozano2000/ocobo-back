@@ -35,6 +35,8 @@ class ReportesController extends Controller
 
             return response()->json(['success' => true, 'data' => $data]);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
@@ -64,6 +66,8 @@ class ReportesController extends Controller
                 'csv' => $this->export->exportarCSV($data, $nombre, $columnas),
             };
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
@@ -172,6 +176,8 @@ class ReportesController extends Controller
                 'data' => $item,
             ]);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return response()->json([
                 'success' => false,
                 'message' => 'Error al ejecutar reporte: ' . $e->getMessage(),

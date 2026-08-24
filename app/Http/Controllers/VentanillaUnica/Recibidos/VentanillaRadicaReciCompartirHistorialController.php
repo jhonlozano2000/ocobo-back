@@ -34,6 +34,8 @@ class VentanillaRadicaReciCompartirHistorialController extends Controller
 
             return $this->successResponse($result, 'Radicado compartido exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al compartir el radicado', $e->getMessage(), 500);
         }
     }
@@ -55,6 +57,8 @@ class VentanillaRadicaReciCompartirHistorialController extends Controller
 
             return $this->successResponse($historial, 'Historial de compartir obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el historial de compartir', $e->getMessage(), 500);
         }
     }

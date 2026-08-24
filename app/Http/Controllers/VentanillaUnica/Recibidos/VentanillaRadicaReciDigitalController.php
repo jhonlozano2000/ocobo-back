@@ -109,6 +109,8 @@ class VentanillaRadicaReciDigitalController extends Controller
                     ]);
                 }
             } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
                 Log::warning('OCR falló pero no afecta upload', [
                     'radicado_id' => $radicado->id,
                     'error' => $e->getMessage(),
@@ -139,6 +141,8 @@ class VentanillaRadicaReciDigitalController extends Controller
                 'ocr_aplicado' => ! empty($ocrText),
             ], 'Archivo subido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al subir el archivo', $e->getMessage(), 500);
@@ -163,6 +167,8 @@ class VentanillaRadicaReciDigitalController extends Controller
 
             return Storage::disk(self::DISK)->download($radicado->archivo_digital);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al descargar el archivo', $e->getMessage(), 500);
         }
     }
@@ -207,6 +213,8 @@ class VentanillaRadicaReciDigitalController extends Controller
                 'deleted_at' => now(),
             ], 'Archivo eliminado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar el archivo', $e->getMessage(), 500);
@@ -242,6 +250,8 @@ class VentanillaRadicaReciDigitalController extends Controller
 
             return $this->successResponse($fileInfo, 'Información del archivo obtenida exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener información del archivo', $e->getMessage(), 500);
         }
     }
@@ -264,6 +274,8 @@ class VentanillaRadicaReciDigitalController extends Controller
                 'archivo' => $radicado->nom_origi ?? basename($radicado->archivo_digital),
             ], 'OCR obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener OCR', $e->getMessage(), 500);
         }
     }
@@ -309,6 +321,8 @@ class VentanillaRadicaReciDigitalController extends Controller
 
             return $this->errorResponse('No se pudo extraer texto del documento', null, 500);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al re-aplicar OCR', $e->getMessage(), 500);
         }
     }
@@ -331,6 +345,8 @@ class VentanillaRadicaReciDigitalController extends Controller
 
             return $this->successResponse($historial, 'Historial de eliminaciones obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el historial', $e->getMessage(), 500);
         }
     }

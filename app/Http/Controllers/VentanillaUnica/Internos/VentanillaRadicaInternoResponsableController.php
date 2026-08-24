@@ -23,6 +23,8 @@ class VentanillaRadicaInternoResponsableController extends Controller
 
             return $this->successResponse($responsables, 'Listado de responsables obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado de responsables', $e->getMessage(), 500);
         }
     }
@@ -45,6 +47,8 @@ class VentanillaRadicaInternoResponsableController extends Controller
 
             return $this->successResponse($responsable, 'Responsable creado exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al crear el responsable', $e->getMessage(), 500);
@@ -62,6 +66,8 @@ class VentanillaRadicaInternoResponsableController extends Controller
 
             return $this->successResponse($responsable, 'Responsable encontrado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el responsable', $e->getMessage(), 500);
         }
     }
@@ -90,6 +96,8 @@ class VentanillaRadicaInternoResponsableController extends Controller
 
             return $this->successResponse($responsable, 'Responsable actualizado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar el responsable', $e->getMessage(), 500);
@@ -131,6 +139,8 @@ class VentanillaRadicaInternoResponsableController extends Controller
 
             return $this->successResponse($data, 'Listado de responsables obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado de responsables', $e->getMessage(), 500);
         }
     }
@@ -152,6 +162,8 @@ class VentanillaRadicaInternoResponsableController extends Controller
 
             return $this->successResponse(null, 'Responsable eliminado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar el responsable', $e->getMessage(), 500);
@@ -194,6 +206,8 @@ class VentanillaRadicaInternoResponsableController extends Controller
 
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar responsables', $e->getMessage(), 500);
@@ -223,6 +237,8 @@ class VentanillaRadicaInternoResponsableController extends Controller
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Responsable no encontrado', null, 404);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al registrar el acuse digital', $e->getMessage(), 500);
         }
     }

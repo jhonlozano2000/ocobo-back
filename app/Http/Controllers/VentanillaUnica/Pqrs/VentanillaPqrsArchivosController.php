@@ -122,6 +122,8 @@ class VentanillaPqrsArchivosController extends Controller
                 'file_url' => ArchivoHelper::obtenerUrl($nuevoArchivo, self::DISK),
             ], 'Archivo digital subido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al subir archivo digital', $e->getMessage(), 500);
@@ -147,6 +149,8 @@ class VentanillaPqrsArchivosController extends Controller
 
             return Storage::disk(self::DISK)->download($archivo->path, $archivo->nombre_original);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al descargar archivo', $e->getMessage(), 500);
         }
     }
@@ -173,6 +177,8 @@ class VentanillaPqrsArchivosController extends Controller
 
             return $this->successResponse(null, 'Archivo digital eliminado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar archivo digital', $e->getMessage(), 500);
@@ -251,6 +257,8 @@ class VentanillaPqrsArchivosController extends Controller
 
             return $this->successResponse($archivosSubidos, 'Archivos adjuntos subidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al subir archivos adjuntos', $e->getMessage(), 500);
@@ -282,6 +290,8 @@ class VentanillaPqrsArchivosController extends Controller
 
             return Storage::disk(self::ADJUNTOS_DISK)->download($archivo->archivo, $nombreOriginal);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al descargar archivo', $e->getMessage(), 500);
         }
     }
@@ -316,6 +326,8 @@ class VentanillaPqrsArchivosController extends Controller
 
             return $this->successResponse(null, 'Archivo adjunto eliminado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar archivo adjunto', $e->getMessage(), 500);
@@ -356,6 +368,8 @@ class VentanillaPqrsArchivosController extends Controller
 
             return $this->successResponse($archivos, 'Archivos obtenidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener archivos', $e->getMessage(), 500);
         }
     }

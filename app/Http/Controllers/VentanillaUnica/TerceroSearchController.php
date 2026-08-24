@@ -51,6 +51,8 @@ class TerceroSearchController extends Controller
                 'divi_poli_id' => $tercero->divi_poli_id,
             ], 'Tercero encontrado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse(
                 'Error al buscar el tercero',
                 $e->getMessage(),

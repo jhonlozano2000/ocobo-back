@@ -135,6 +135,8 @@ class VentanillaPqrsComentariosController extends Controller
                 201
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al crear comentario', $e->getMessage(), 500);
         }
     }
@@ -175,6 +177,8 @@ class VentanillaPqrsComentariosController extends Controller
 
             return $this->successResponse($comentario->getInfo(), 'Comentario actualizado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar', $e->getMessage(), 500);
         }
     }
@@ -203,6 +207,8 @@ class VentanillaPqrsComentariosController extends Controller
 
             return $this->successResponse($comentario->getInfo(), 'Comentario resuelto');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al resolver', $e->getMessage(), 500);
         }
     }
@@ -234,6 +240,8 @@ class VentanillaPqrsComentariosController extends Controller
 
             return $this->successResponse(null, 'Comentario eliminado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar', $e->getMessage(), 500);
         }
     }

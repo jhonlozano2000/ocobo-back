@@ -33,6 +33,8 @@ class CalidadOrganigramaController extends Controller
 
             return $this->successResponse($organigrama, 'Organigrama obtenido correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             \Log::error('Organigrama index error: '.$e->getMessage());
 
             return $this->errorResponse('Error al obtener el organigrama', $e->getMessage(), 500);
@@ -49,6 +51,8 @@ class CalidadOrganigramaController extends Controller
 
             return $this->successResponse($organigrama, 'Nodo creado correctamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al crear el nodo', $e->getMessage(), 500);
         }
     }
@@ -63,6 +67,8 @@ class CalidadOrganigramaController extends Controller
 
             return $this->successResponse($organigrama, 'Nodo obtenido correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el nodo', $e->getMessage(), 500);
         }
     }
@@ -77,6 +83,8 @@ class CalidadOrganigramaController extends Controller
 
             return $this->successResponse($organigrama, 'Nodo actualizado correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar el nodo', $e->getMessage(), 500);
         }
     }
@@ -93,6 +101,8 @@ class CalidadOrganigramaController extends Controller
 
             return $this->successResponse(null, 'Nodo eliminado correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar el nodo', $e->getMessage(), 500);
         }
     }
@@ -108,6 +118,8 @@ class CalidadOrganigramaController extends Controller
 
             return $this->successResponse($dependencias, 'Lista de dependencias obtenida');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener las dependencias', $e->getMessage(), 500);
         }
     }
@@ -123,6 +135,8 @@ class CalidadOrganigramaController extends Controller
 
             return $this->successResponse($oficinas, 'Lista de oficinas con sus respectivos cargos obtenida correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener las oficinas', $e->getMessage(), 500);
         }
     }
@@ -138,6 +152,8 @@ class CalidadOrganigramaController extends Controller
                 'Estadísticas obtenidas exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
         }
     }

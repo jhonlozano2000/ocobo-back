@@ -70,6 +70,8 @@ class PermisosVentanillaUnicaController extends Controller
 
             return $this->successResponse(null, 'Permisos asignados exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar permisos', $e->getMessage(), 500);
@@ -142,6 +144,8 @@ class PermisosVentanillaUnicaController extends Controller
 
             return $this->successResponse($ventanillas, 'Ventanillas permitidas obtenidas exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener las ventanillas permitidas', $e->getMessage(), 500);
         }
     }
@@ -202,6 +206,8 @@ class PermisosVentanillaUnicaController extends Controller
 
             return $this->successResponse($usuarios, 'Usuarios permitidos obtenidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener los usuarios permitidos', $e->getMessage(), 500);
         }
     }
@@ -252,6 +258,8 @@ class PermisosVentanillaUnicaController extends Controller
 
             return $this->successResponse(null, 'Permisos revocados exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al revocar permisos', $e->getMessage(), 500);

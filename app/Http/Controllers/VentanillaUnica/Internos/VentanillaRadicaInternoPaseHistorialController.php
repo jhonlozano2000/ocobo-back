@@ -34,6 +34,8 @@ class VentanillaRadicaInternoPaseHistorialController extends Controller
 
             return $this->successResponse($result, 'Pase registrado exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al registrar el pase', $e->getMessage(), 500);
         }
     }
@@ -55,6 +57,8 @@ class VentanillaRadicaInternoPaseHistorialController extends Controller
 
             return $this->successResponse($historial, 'Historial de pases obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el historial de pases', $e->getMessage(), 500);
         }
     }

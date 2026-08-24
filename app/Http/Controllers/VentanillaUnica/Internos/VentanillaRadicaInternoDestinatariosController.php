@@ -52,6 +52,8 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             return $this->successResponse($destinatarios, 'Listado de destinatarios obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado de destinatarios', $e->getMessage(), 500);
         }
     }
@@ -100,6 +102,8 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             return $this->successResponse($destinatario, 'Destinatario creado exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al crear el destinatario', $e->getMessage(), 500);
@@ -147,6 +151,8 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             return $this->successResponse($destinatario, 'Destinatario encontrado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el destinatario', $e->getMessage(), 500);
         }
     }
@@ -195,6 +201,8 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             return $this->successResponse($data, 'Listado de destinatarios obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado de destinatarios', $e->getMessage(), 500);
         }
     }
@@ -256,6 +264,8 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             return $this->successResponse($destinatario, 'Destinatario actualizado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar el destinatario', $e->getMessage(), 500);
@@ -301,6 +311,8 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             return $this->successResponse(null, 'Destinatario eliminado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar el destinatario', $e->getMessage(), 500);
@@ -341,6 +353,8 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar destinatarios', $e->getMessage(), 500);
@@ -365,6 +379,8 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Destinatario no encontrado', null, 404);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al registrar el acuse digital', $e->getMessage(), 500);
         }
     }

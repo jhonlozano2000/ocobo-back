@@ -103,6 +103,8 @@ class VentanillaRadicaReciAdjuntosController extends Controller
 
             return $this->successResponse($archivosSubidos, 'Archivos adicionales subidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al subir archivos', $e->getMessage(), 500);
         }
     }
@@ -132,6 +134,8 @@ class VentanillaRadicaReciAdjuntosController extends Controller
 
             return $this->successResponse($archivos, 'Archivos obtenidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener archivos', $e->getMessage(), 500);
         }
     }
@@ -159,6 +163,8 @@ class VentanillaRadicaReciAdjuntosController extends Controller
 
             return \Storage::disk(self::DISK)->download($archivo->archivo, $nombreOriginal);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al descargar', $e->getMessage(), 500);
         }
     }
@@ -197,6 +203,8 @@ class VentanillaRadicaReciAdjuntosController extends Controller
 
             return $this->successResponse(null, 'Archivo eliminado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar archivo', $e->getMessage(), 500);

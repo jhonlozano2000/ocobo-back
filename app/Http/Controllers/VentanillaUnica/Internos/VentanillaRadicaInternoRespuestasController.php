@@ -51,6 +51,8 @@ class VentanillaRadicaInternoRespuestasController extends Controller
 
             return $this->successResponse($respuestasData, 'Respuestas obtenidas exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener las respuestas', $e->getMessage(), 500);
         }
     }
@@ -80,6 +82,8 @@ class VentanillaRadicaInternoRespuestasController extends Controller
 
             return $this->successResponse($disponibles, 'Radicados internos disponibles');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener disponibles', $e->getMessage(), 500);
         }
     }
@@ -129,6 +133,8 @@ class VentanillaRadicaInternoRespuestasController extends Controller
         } catch (ValidationException $e) {
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al asociar respuestas', $e->getMessage(), 500);
         }
     }
@@ -157,6 +163,8 @@ class VentanillaRadicaInternoRespuestasController extends Controller
 
             return $this->successResponse($respuestas, 'Respuesta desasociada exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al desasociar la respuesta', $e->getMessage(), 500);
         }
     }

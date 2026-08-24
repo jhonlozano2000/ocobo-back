@@ -43,6 +43,8 @@ class ClasificacionDocumentalTRDController extends Controller
 
             return $this->successResponse($trd, 'TRD obtenidas exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener las TRD', $e->getMessage(), 500);
         }
     }
@@ -54,6 +56,8 @@ class ClasificacionDocumentalTRDController extends Controller
 
             return $this->successResponse($trd, 'Elemento TRD creado exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al crear el elemento TRD', $e->getMessage(), 500);
         }
     }
@@ -74,6 +78,8 @@ class ClasificacionDocumentalTRDController extends Controller
 
             return $this->successResponse($trd, 'Elemento TRD obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el elemento TRD', $e->getMessage(), 500);
         }
     }
@@ -89,6 +95,8 @@ class ClasificacionDocumentalTRDController extends Controller
 
             return $this->successResponse($trd, 'Elemento TRD actualizado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar el elemento TRD', $e->getMessage(), 500);
         }
     }
@@ -102,6 +110,8 @@ class ClasificacionDocumentalTRDController extends Controller
 
             return $this->successResponse(null, 'Elemento TRD eliminado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar el elemento TRD', $e->getMessage(), 500);
         }
     }
@@ -114,6 +124,8 @@ class ClasificacionDocumentalTRDController extends Controller
                 'Estadísticas totales obtenidas exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener estadísticas totales', $e->getMessage(), 500);
         }
     }
@@ -135,6 +147,8 @@ class ClasificacionDocumentalTRDController extends Controller
                 'Estadísticas obtenidas exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
         }
     }
@@ -165,6 +179,8 @@ class ClasificacionDocumentalTRDController extends Controller
                 'total_elementos' => ClasificacionDocumentalTRD::where('dependencia_id', $id)->count(),
             ], 'Elementos TRD obtenidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener elementos TRD', $e->getMessage(), 500);
         }
     }
@@ -180,6 +196,8 @@ class ClasificacionDocumentalTRDController extends Controller
 
             return Storage::download($rutaArchivo, 'Ocobo - Plantilla TRD.xlsx');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al descargar la plantilla', $e->getMessage(), 500);
         }
     }
@@ -191,6 +209,8 @@ class ClasificacionDocumentalTRDController extends Controller
 
             return $this->successResponse($filePath, 'TRD importada exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al importar TRD', $e->getMessage(), 500);
         }
     }
@@ -229,6 +249,8 @@ class ClasificacionDocumentalTRDController extends Controller
 
             return $this->successResponse($estadisticas, 'Estadísticas por dependencias obtenidas exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener estadísticas por dependencias', $e->getMessage(), 500);
         }
     }
@@ -258,6 +280,8 @@ class ClasificacionDocumentalTRDController extends Controller
                 'jerarquia' => $info['jerarquia'],
             ], 'Días de vencimiento obtenidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener días de vencimiento', $e->getMessage(), 500);
         }
     }

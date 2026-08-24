@@ -74,6 +74,8 @@ class EmailRadicadosController extends Controller
                 'Listado de correos radicados obtenido exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse(
                 'Error al obtener el listado de correos radicados',
                 $e->getMessage(),
@@ -95,6 +97,8 @@ class EmailRadicadosController extends Controller
                 'Sincronización de correos ejecutada exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             $message = $e->getMessage();
 
             if (str_contains($message, 'incompleta') || str_contains($message, 'host, usuario')) {
@@ -148,6 +152,8 @@ class EmailRadicadosController extends Controller
         } catch (ModelNotFoundException) {
             return $this->errorResponse('Correo radicado no encontrado', null, 404);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse(
                 'Error al obtener el correo radicado',
                 $e->getMessage(),
@@ -235,6 +241,8 @@ class EmailRadicadosController extends Controller
 
             return $this->errorResponse('Correo radicado no encontrado', null, 404);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             \Log::error('EmailRadicadosController: Exception:', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
@@ -293,6 +301,8 @@ class EmailRadicadosController extends Controller
         } catch (ModelNotFoundException) {
             return $this->errorResponse('Correo radicado no encontrado', null, 404);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse(
                 'Error al generar el rótulo',
                 $e->getMessage(),
@@ -336,6 +346,8 @@ class EmailRadicadosController extends Controller
         } catch (ModelNotFoundException) {
             return $this->errorResponse('Correo radicado no encontrado', null, 404);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             $message = $e->getMessage();
 
             if (str_contains($message, 'SMTP') || str_contains($message, 'mail')) {
@@ -374,6 +386,8 @@ class EmailRadicadosController extends Controller
                 'total' => $total,
             ], 'Estadísticas obtenidas exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse(
                 'Error al obtener las estadísticas',
                 $e->getMessage(),
@@ -395,6 +409,8 @@ class EmailRadicadosController extends Controller
         } catch (ModelNotFoundException) {
             return $this->errorResponse('Correo radicado no encontrado', null, 404);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse(
                 'Error al eliminar el correo radicado',
                 $e->getMessage(),

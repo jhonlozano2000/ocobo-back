@@ -139,6 +139,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse($pqrs, 'Listado de PQRS obtenido exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el listado de PQRS', $e->getMessage(), 500);
         }
     }
@@ -268,6 +270,8 @@ class VentanillaPqrsController extends Controller
                 201
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             \Log::error('ERROR PQRS Store', [
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
@@ -303,6 +307,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse(new PqrsResource($pqrs), 'Detalle de PQRS');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener la PQRS', $e->getMessage(), 500);
         }
     }
@@ -326,6 +332,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse(new PqrsResource($pqrs), 'PQRS actualizada exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar la PQRS', $e->getMessage(), 500);
         }
     }
@@ -347,6 +355,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse(null, 'PQRS eliminada exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar la PQRS', $e->getMessage(), 500);
         }
     }
@@ -369,6 +379,8 @@ class VentanillaPqrsController extends Controller
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('PQRS no encontrada', null, 404);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al cambiar el estado', $e->getMessage(), 500);
         }
     }
@@ -389,6 +401,8 @@ class VentanillaPqrsController extends Controller
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('PQRS no encontrada', null, 404);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al aplicar la prórroga', $e->getMessage(), 500);
         }
     }
@@ -400,6 +414,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse($estadisticas, 'Estadísticas de PQRS');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
         }
     }
@@ -543,6 +559,8 @@ class VentanillaPqrsController extends Controller
                 'eventos' => $eventos,
             ], 'Línea de tiempo de PQRS');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener la línea de tiempo', $e->getMessage(), 500);
         }
     }
@@ -568,6 +586,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse(new PqrsResource($pqrs), 'Detalle de solicitud actualizado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar el detalle', $e->getMessage(), 500);
         }
     }
@@ -596,6 +616,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse(new PqrsResource($pqrs), 'Fechas actualizadas exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar las fechas', $e->getMessage(), 500);
         }
     }
@@ -638,6 +660,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse(new PqrsResource($pqrs), 'Clasificación actualizada exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar la clasificación', $e->getMessage(), 500);
         }
     }
@@ -677,6 +701,8 @@ class VentanillaPqrsController extends Controller
 
             return $pdf->stream('rotulo-'.($radicado?->num_radicado ?? $pqrs->id).'.pdf');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al generar el rótulo', $e->getMessage(), 500);
         }
     }
@@ -742,6 +768,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse(['total_enviados' => count($emails)], 'Notificación enviada exitosamente a '.count($emails).' destinatario(s)');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             Log::error('Error notificarEmail PQRS', ['pqrs_id' => $id, 'error' => $e->getMessage()]);
             return $this->errorResponse('Error al enviar la notificación', $e->getMessage(), 500);
         }
@@ -769,6 +797,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse(null, 'Código OTP enviado al correo del usuario');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al solicitar el OTP', $e->getMessage(), 500);
         }
     }
@@ -799,6 +829,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse(['valido' => true], 'OTP validado correctamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al validar el OTP', $e->getMessage(), 500);
         }
     }
@@ -833,6 +865,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse(new PqrsResource($pqrs), 'PQRS firmada electrónicamente con éxito');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al guardar la firma', $e->getMessage(), 500);
         }
     }
@@ -861,6 +895,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse(new PqrsResource($pqrs), 'PQRS anulada exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al anular la PQRS', $e->getMessage(), 500);
         }
     }
@@ -875,6 +911,8 @@ class VentanillaPqrsController extends Controller
 
             return (new PqrsCollection($pqrs))->toResponse(request());
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener PQRS pendientes de firma', $e->getMessage(), 500);
         }
     }
@@ -934,6 +972,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse($pqrs, 'Mis PQRS asignados');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener mis PQRS', $e->getMessage(), 500);
         }
     }
@@ -976,6 +1016,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse($catalogos, 'Catálogos PQRS obtenidos exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener los catálogos PQRS', $e->getMessage(), 500);
         }
     }
@@ -995,6 +1037,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse($estados, 'Estados disponibles');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener los estados', $e->getMessage(), 500);
         }
     }
@@ -1015,6 +1059,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse($transiciones, 'Transiciones válidas');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener las transiciones', $e->getMessage(), 500);
         }
     }
@@ -1049,10 +1095,14 @@ class VentanillaPqrsController extends Controller
 
                 return $this->successResponse($eliminados, count($eliminados).' PQRS eliminadas exitosamente');
             } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
                 DB::rollBack();
                 throw $e;
             }
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar las PQRS en lote', $e->getMessage(), 500);
         }
     }
@@ -1076,6 +1126,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse($historial, 'Historial de notificaciones');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el historial de notificaciones', $e->getMessage(), 500);
         }
     }
@@ -1099,6 +1151,8 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse($historial, 'Historial de clasificación');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener el historial de clasificación', $e->getMessage(), 500);
         }
     }
