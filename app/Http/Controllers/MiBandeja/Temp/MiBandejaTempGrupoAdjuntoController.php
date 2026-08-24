@@ -10,6 +10,7 @@ use App\Models\MiBandeja\MiBandejaTempGrupoArchiAdjunto;
 use App\Helpers\ArchivoHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Storage;
 class MiBandejaTempGrupoAdjuntoController extends Controller
 {
     use ApiResponseTrait;
+    use AutorizaGrupoColaborativo;
 
     private const DISK = 'mi_bandeja_temp';
     private const PERM = 'Mi Bandeja - Grupos Colaborativos -> ';
@@ -41,7 +43,7 @@ class MiBandejaTempGrupoAdjuntoController extends Controller
     public function index($grupoId)
     {
         try {
-            $grupo = \App\Models\MiBandeja\MiBandejaTemp::find($grupoId);
+            $grupo = $this->autorizarGrupo($grupoId);
 
             if (! $grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
@@ -51,6 +53,8 @@ class MiBandejaTempGrupoAdjuntoController extends Controller
 
             return $this->successResponse($adjuntos, 'Adjuntos del grupo');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener adjuntos', $e->getMessage(), 500);
         }
     }
@@ -65,7 +69,7 @@ class MiBandejaTempGrupoAdjuntoController extends Controller
     public function store(\App\Http\Requests\MiBandeja\StoreGrupoAdjuntoRequest $request, $grupoId)
     {
         try {
-            $grupo = \App\Models\MiBandeja\MiBandejaTemp::find($grupoId);
+            $grupo = $this->autorizarGrupo($grupoId);
 
             if (! $grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
@@ -93,6 +97,8 @@ class MiBandejaTempGrupoAdjuntoController extends Controller
 
             return $this->successResponse($adjunto, 'Adjunto subido exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al subir adjunto', $e->getMessage(), 500);
         }
     }
@@ -122,6 +128,8 @@ class MiBandejaTempGrupoAdjuntoController extends Controller
 
             return $this->successResponse(null, 'Adjunto eliminado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar adjunto', $e->getMessage(), 500);
         }
     }
@@ -148,6 +156,8 @@ class MiBandejaTempGrupoAdjuntoController extends Controller
 
             return Storage::disk(self::DISK)->download($adjunto->archivo, $adjunto->nombre_original);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al descargar adjunto', $e->getMessage(), 500);
         }
     }

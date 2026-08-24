@@ -11,15 +11,17 @@ use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempNota;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
 
 class MiBandejaTempNotaController extends Controller
 {
     use ApiResponseTrait;
+    use AutorizaGrupoColaborativo;
 
     public function index($grupoId)
     {
         try {
-            $grupo = MiBandejaTemp::find($grupoId);
+            $grupo = $this->autorizarGrupo($grupoId);
 
             if (!$grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
@@ -29,6 +31,8 @@ class MiBandejaTempNotaController extends Controller
 
             return $this->successResponse($notas, 'Notas del grupo');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener notas', $e->getMessage(), 500);
         }
     }
@@ -36,7 +40,7 @@ class MiBandejaTempNotaController extends Controller
     public function store(StoreNotaRequest $request, $grupoId)
     {
         try {
-            $grupo = MiBandejaTemp::find($grupoId);
+            $grupo = $this->autorizarGrupo($grupoId);
 
             if (!$grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
@@ -53,6 +57,8 @@ class MiBandejaTempNotaController extends Controller
             try {
                 event(new NotaCreada($nota));
             } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
                 \Illuminate\Support\Facades\Log::warning('NotaCreada broadcast failed', [
                     'nota_id' => $nota->id,
                     'error' => $e->getMessage(),
@@ -61,6 +67,8 @@ class MiBandejaTempNotaController extends Controller
 
             return $this->successResponse($nota, 'Nota creada exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al crear nota', $e->getMessage(), 500);
         }
     }
@@ -85,6 +93,8 @@ class MiBandejaTempNotaController extends Controller
                     (bool) $request->typing
                 ));
             } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
                 \Illuminate\Support\Facades\Log::warning('NotaTyping broadcast failed', [
                     'grupo_id' => $grupoId,
                     'error' => $e->getMessage(),
@@ -93,6 +103,8 @@ class MiBandejaTempNotaController extends Controller
 
             return $this->successResponse(null, 'Typing signal sent');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al enviar señal de escritura', $e->getMessage(), 500);
         }
     }

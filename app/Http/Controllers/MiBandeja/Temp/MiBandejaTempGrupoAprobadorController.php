@@ -9,9 +9,12 @@ use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempGrupoAprobador;
 use Illuminate\Http\Request;
 
+use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
+
 class MiBandejaTempGrupoAprobadorController extends Controller
 {
     use ApiResponseTrait;
+    use AutorizaGrupoColaborativo;
 
     private const PERM = 'Mi Bandeja - Grupos Colaborativos -> ';
 
@@ -23,7 +26,7 @@ class MiBandejaTempGrupoAprobadorController extends Controller
     public function index($grupoId)
     {
         try {
-            $grupo = MiBandejaTemp::find($grupoId);
+            $grupo = $this->autorizarGrupo($grupoId);
 
             if (! $grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
@@ -33,6 +36,8 @@ class MiBandejaTempGrupoAprobadorController extends Controller
 
             return $this->successResponse($aprobadores, 'Aprobadores del grupo');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener aprobadores', $e->getMessage(), 500);
         }
     }
@@ -40,7 +45,7 @@ class MiBandejaTempGrupoAprobadorController extends Controller
     public function store(StoreGrupoAprobadorRequest $request, $grupoId)
     {
         try {
-            $grupo = MiBandejaTemp::find($grupoId);
+            $grupo = $this->autorizarGrupo($grupoId);
 
             if (! $grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
@@ -60,6 +65,8 @@ class MiBandejaTempGrupoAprobadorController extends Controller
 
             return $this->successResponse($aprobador, 'Aprobador agregado exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al agregar aprobador', $e->getMessage(), 500);
         }
     }
@@ -79,6 +86,8 @@ class MiBandejaTempGrupoAprobadorController extends Controller
 
             return $this->successResponse($aprobador, 'Aprobador actualizado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar aprobador', $e->getMessage(), 500);
         }
     }
@@ -96,6 +105,8 @@ class MiBandejaTempGrupoAprobadorController extends Controller
 
             return $this->successResponse(null, 'Aprobador eliminado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar aprobador', $e->getMessage(), 500);
         }
     }
@@ -117,6 +128,8 @@ class MiBandejaTempGrupoAprobadorController extends Controller
 
             return $this->successResponse($aprobador, 'Aprobador marcado como terminado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al marcar como terminado', $e->getMessage(), 500);
         }
     }

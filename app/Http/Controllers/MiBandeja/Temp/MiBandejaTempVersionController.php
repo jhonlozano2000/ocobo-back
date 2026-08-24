@@ -8,16 +8,19 @@ use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempArchivoVersion;
 use Illuminate\Support\Facades\Storage;
 
+use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
+
 class MiBandejaTempVersionController extends Controller
 {
     use ApiResponseTrait;
+    use AutorizaGrupoColaborativo;
 
     private const DISK = 'plantillas_grupos';
 
     public function index($grupoId)
     {
         try {
-            $grupo = MiBandejaTemp::find($grupoId);
+            $grupo = $this->autorizarGrupo($grupoId);
 
             if (!$grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
@@ -27,6 +30,8 @@ class MiBandejaTempVersionController extends Controller
 
             return $this->successResponse($versiones, 'Versiones del grupo');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener versiones', $e->getMessage(), 500);
         }
     }
@@ -46,6 +51,8 @@ class MiBandejaTempVersionController extends Controller
 
             return Storage::disk(self::DISK)->download($version->ruta_completa, $version->nombre_original);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al descargar versión', $e->getMessage(), 500);
         }
     }

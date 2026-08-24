@@ -160,6 +160,8 @@ class DocumentoController extends Controller
                 $request->user()->nombres
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             \Log::warning('Broadcast UsuarioConectado falló: '.$e->getMessage());
         }
 
@@ -294,6 +296,8 @@ class DocumentoController extends Controller
                     $request->user()->id
                 );
             } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
                 \Log::warning('Broadcast falló en sincronizar: '.$e->getMessage());
             }
 

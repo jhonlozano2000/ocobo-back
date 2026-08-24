@@ -12,6 +12,7 @@ use App\Rules\MagicMime;
 use App\Services\MiBandeja\GrupoColaborativoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\Auth;
 class MiBandejaTempController extends Controller
 {
     use ApiResponseTrait;
+    use AutorizaGrupoColaborativo;
 
     private const PERM = 'Mi Bandeja - Grupos Colaborativos -> ';
 
@@ -54,17 +56,22 @@ class MiBandejaTempController extends Controller
                 'aprobadores.user.cargo',
                 'adjuntos',
             ])
-            ->whereHas('revisores', function ($q) use ($userId) {
-                $q->where('user_id', $userId);
-            })
-            ->orWhereHas('firmantes', function ($q) use ($userId) {
-                $q->where('user_id', $userId);
-            })
-            ->orWhereHas('proyectores', function ($q) use ($userId) {
-                $q->where('user_id', $userId);
-            })
-            ->orWhereHas('aprobadores', function ($q) use ($userId) {
-                $q->where('user_id', $userId);
+            // Visibilidad: creador O cualquier miembro. Agrupado para que los
+            // orWhere no rompan los filtros de búsqueda/estado.
+            ->where(function ($q) use ($userId) {
+                $q->where('usua_crea_id', $userId)
+                    ->orWhereHas('revisores', function ($sq) use ($userId) {
+                        $sq->where('user_id', $userId);
+                    })
+                    ->orWhereHas('firmantes', function ($sq) use ($userId) {
+                        $sq->where('user_id', $userId);
+                    })
+                    ->orWhereHas('proyectores', function ($sq) use ($userId) {
+                        $sq->where('user_id', $userId);
+                    })
+                    ->orWhereHas('aprobadores', function ($sq) use ($userId) {
+                        $sq->where('user_id', $userId);
+                    });
             })
             ->orderBy('created_at', 'desc');
 
@@ -83,6 +90,8 @@ class MiBandejaTempController extends Controller
 
             return $this->successResponse($grupos, 'Grupos colaborativos obtenidos');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener grupos', $e->getMessage(), 500);
         }
     }
@@ -109,6 +118,8 @@ class MiBandejaTempController extends Controller
                 201
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al crear grupo', $e->getMessage(), 500);
         }
     }
@@ -121,22 +132,22 @@ class MiBandejaTempController extends Controller
      */
     public function show($id)
     {
+        $grupo = $this->autorizarGrupo($id);
+
         try {
-            $grupo = MiBandejaTemp::with([
+            $grupo->load([
                 'revisores.user.cargo',
                 'firmantes.user.cargo',
                 'proyectores.user.cargo',
                 'aprobadores.user.cargo',
                 'adjuntos',
                 'creadoPor',
-            ])->find($id);
-
-            if (! $grupo) {
-                return $this->errorResponse('Grupo no encontrado', null, 404);
-            }
+            ]);
 
             return $this->successResponse($grupo, 'Detalle del grupo');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener grupo', $e->getMessage(), 500);
         }
     }
@@ -150,13 +161,9 @@ class MiBandejaTempController extends Controller
      */
     public function update(UpdateMiBandejaTempRequest $request, $id)
     {
+        $grupo = $this->autorizarGrupo($id);
+
         try {
-            $grupo = MiBandejaTemp::find($id);
-
-            if (! $grupo) {
-                return $this->errorResponse('Grupo no encontrado', null, 404);
-            }
-
             $grupo->update($request->validated());
 
             return $this->successResponse(
@@ -164,6 +171,8 @@ class MiBandejaTempController extends Controller
                 'Grupo actualizado exitosamente'
             );
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar grupo', $e->getMessage(), 500);
         }
     }
@@ -176,13 +185,9 @@ class MiBandejaTempController extends Controller
      */
     public function destroy($id)
     {
+        $grupo = $this->autorizarGrupo($id, soloCreador: true);
+
         try {
-            $grupo = MiBandejaTemp::find($id);
-
-            if (! $grupo) {
-                return $this->errorResponse('Grupo no encontrado', null, 404);
-            }
-
             if ($grupo->estado_grupo === 'activo') {
                 return $this->errorResponse('No se puede eliminar un grupo activo. Anúlelo primero.', null, 422);
             }
@@ -191,6 +196,8 @@ class MiBandejaTempController extends Controller
 
             return $this->successResponse(null, 'Grupo eliminado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar grupo', $e->getMessage(), 500);
         }
     }
@@ -200,13 +207,9 @@ class MiBandejaTempController extends Controller
      */
     public function checkOut($id)
     {
+        $grupo = $this->autorizarGrupo($id);
+
         try {
-            $grupo = MiBandejaTemp::find($id);
-
-            if (!$grupo) {
-                return $this->errorResponse('Grupo no encontrado', null, 404);
-            }
-
             $resultado = $this->grupoService->checkOut($grupo, Auth::user());
 
             return response()->download(
@@ -217,6 +220,8 @@ class MiBandejaTempController extends Controller
         } catch (\RuntimeException $e) {
             return $this->errorResponse($e->getMessage(), null, 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al descargar documento', $e->getMessage(), 500);
         }
     }
@@ -226,13 +231,9 @@ class MiBandejaTempController extends Controller
      */
     public function checkIn(CheckInRequest $request, $id)
     {
+        $grupo = $this->autorizarGrupo($id);
+
         try {
-            $grupo = MiBandejaTemp::find($id);
-
-            if (!$grupo) {
-                return $this->errorResponse('Grupo no encontrado', null, 404);
-            }
-
             $version = $this->grupoService->checkIn(
                 $grupo,
                 Auth::user(),
@@ -246,6 +247,8 @@ class MiBandejaTempController extends Controller
         } catch (\RuntimeException $e) {
             return $this->errorResponse($e->getMessage(), null, 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al subir documento', $e->getMessage(), 500);
         }
     }
@@ -260,11 +263,7 @@ class MiBandejaTempController extends Controller
                 'archivo' => ['required', 'file', 'mimes:docx,doc,pdf,odt,dotx,xlsx,xls,pptx,ppt,txt,csv,jpeg,jpg,png,gif', 'max:51200', new MagicMime],
             ]);
 
-            $grupo = MiBandejaTemp::find($id);
-
-            if (!$grupo) {
-                return $this->errorResponse('Grupo no encontrado', null, 404);
-            }
+            $grupo = $this->autorizarGrupo($id);
 
             if ($grupo->versiones()->count() > 0) {
                 return $this->errorResponse('El grupo ya tiene un documento. Use check-in para actualizar.', null, 422);
@@ -285,6 +284,8 @@ class MiBandejaTempController extends Controller
 
             return $this->successResponse($version, 'Documento subido exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al subir documento', $e->getMessage(), 500);
         }
     }
@@ -298,14 +299,12 @@ class MiBandejaTempController extends Controller
      */
     public function enviarTramite(Request $request, $id)
     {
-        try {
-            $grupo = MiBandejaTemp::with([
-                'revisores', 'firmantes', 'proyectores', 'aprobadores', 'adjuntos'
-            ])->find($id);
+        $grupo = $this->autorizarGrupo($id);
 
-            if (! $grupo) {
-                return $this->errorResponse('Grupo no encontrado', null, 404);
-            }
+        try {
+            $grupo->load([
+                'revisores', 'firmantes', 'proyectores', 'aprobadores', 'adjuntos'
+            ]);
 
             $grupoActualizado = $this->grupoService->enviarTramite(
                 $grupo,
@@ -316,6 +315,8 @@ class MiBandejaTempController extends Controller
         } catch (\RuntimeException $e) {
             return $this->errorResponse($e->getMessage(), null, 422);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al enviar a trámite', $e->getMessage(), 500);
         }
     }
@@ -325,19 +326,17 @@ class MiBandejaTempController extends Controller
      */
     public function anular($id)
     {
+        $grupo = $this->autorizarGrupo($id, soloCreador: true);
+
         try {
-            $grupo = MiBandejaTemp::find($id);
-
-            if (!$grupo) {
-                return $this->errorResponse('Grupo no encontrado', null, 404);
-            }
-
             $this->grupoService->anular($grupo, Auth::user());
 
             return $this->successResponse(null, 'Grupo anulado exitosamente');
         } catch (\RuntimeException $e) {
             return $this->errorResponse($e->getMessage(), null, 403);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al anular grupo', $e->getMessage(), 500);
         }
     }
@@ -347,13 +346,9 @@ class MiBandejaTempController extends Controller
      */
     public function marcarTerminado(Request $request, $id)
     {
+        $grupo = $this->autorizarGrupo($id);
+
         try {
-            $grupo = MiBandejaTemp::find($id);
-
-            if (! $grupo) {
-                return $this->errorResponse('Grupo no encontrado', null, 404);
-            }
-
             $resultado = $this->grupoService->marcarCumplido($grupo, Auth::user());
 
             $grupo->load(['revisores', 'firmantes', 'proyectores', 'aprobadores']);
@@ -369,6 +364,8 @@ class MiBandejaTempController extends Controller
         } catch (\RuntimeException $e) {
             return $this->errorResponse($e->getMessage(), null, 403);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al marcar como terminado', $e->getMessage(), 500);
         }
     }

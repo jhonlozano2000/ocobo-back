@@ -54,6 +54,8 @@ class DocumentoImportController extends Controller
                 'message' => $e->getMessage(),
             ], 400);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return response()->json([
                 'message' => 'Error al importar el documento',
                 'error' => config('app.debug') ? $e->getMessage() : 'Error interno',
@@ -81,6 +83,8 @@ class DocumentoImportController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return response()->json([
                 'message' => 'Error al importar el documento',
                 'error' => config('app.debug') ? $e->getMessage() : 'Error interno',

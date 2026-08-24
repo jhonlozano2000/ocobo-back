@@ -13,9 +13,12 @@ use Illuminate\Http\Request;
  * Controlador para gestionar firmantes de grupos colaborativos temporales.
  * Permite agregar, actualizar, eliminar, marcar como terminado y firmar documentos.
  */
+use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
+
 class MiBandejaTempGrupoFirmanteController extends Controller
 {
     use ApiResponseTrait;
+    use AutorizaGrupoColaborativo;
 
     private const PERM = 'Mi Bandeja - Grupos Colaborativos -> ';
 
@@ -37,7 +40,7 @@ class MiBandejaTempGrupoFirmanteController extends Controller
     public function index($grupoId)
     {
         try {
-            $grupo = \App\Models\MiBandeja\MiBandejaTemp::find($grupoId);
+            $grupo = $this->autorizarGrupo($grupoId);
 
             if (! $grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
@@ -47,6 +50,8 @@ class MiBandejaTempGrupoFirmanteController extends Controller
 
             return $this->successResponse($firmantes, 'Firmantes del grupo');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener firmantes', $e->getMessage(), 500);
         }
     }
@@ -61,7 +66,7 @@ class MiBandejaTempGrupoFirmanteController extends Controller
     public function store(\App\Http\Requests\MiBandeja\StoreGrupoFirmanteRequest $request, $grupoId)
     {
         try {
-            $grupo = \App\Models\MiBandeja\MiBandejaTemp::find($grupoId);
+            $grupo = $this->autorizarGrupo($grupoId);
 
             if (! $grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
@@ -82,6 +87,8 @@ class MiBandejaTempGrupoFirmanteController extends Controller
 
             return $this->successResponse($firmante, 'Firmante agregado exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al agregar firmante', $e->getMessage(), 500);
         }
     }
@@ -109,6 +116,8 @@ class MiBandejaTempGrupoFirmanteController extends Controller
 
             return $this->successResponse($firmante, 'Firmante actualizado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar firmante', $e->getMessage(), 500);
         }
     }
@@ -133,6 +142,8 @@ class MiBandejaTempGrupoFirmanteController extends Controller
 
             return $this->successResponse(null, 'Firmante eliminado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar firmante', $e->getMessage(), 500);
         }
     }
@@ -161,6 +172,8 @@ class MiBandejaTempGrupoFirmanteController extends Controller
 
             return $this->successResponse($firmante, 'Firmante marcado como terminado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al marcar como terminado', $e->getMessage(), 500);
         }
     }
@@ -187,6 +200,8 @@ class MiBandejaTempGrupoFirmanteController extends Controller
 
             return $this->successResponse($firmante, 'Firma registrada');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al registrar firma', $e->getMessage(), 500);
         }
     }

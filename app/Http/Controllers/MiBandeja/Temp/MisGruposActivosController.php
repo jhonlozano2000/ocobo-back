@@ -8,10 +8,12 @@ use App\Models\MiBandeja\MiBandejaTemp;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
 
 class MisGruposActivosController extends Controller
 {
     use ApiResponseTrait;
+    use AutorizaGrupoColaborativo;
 
     public function __construct()
     {
@@ -163,6 +165,8 @@ class MisGruposActivosController extends Controller
 
             return $this->successResponse($data, 'Grupos activos del usuario');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener grupos activos', $e->getMessage(), 500);
         }
     }
@@ -178,7 +182,7 @@ class MisGruposActivosController extends Controller
     {
         try {
             $user = $request->user();
-            $grupo = MiBandejaTemp::find($id);
+            $grupo = $this->autorizarGrupo($id);
 
             if (!$grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
@@ -189,6 +193,8 @@ class MisGruposActivosController extends Controller
 
             return $this->successResponse(null, 'Documento liberado exitosamente');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al liberar documento', $e->getMessage(), 500);
         }
     }

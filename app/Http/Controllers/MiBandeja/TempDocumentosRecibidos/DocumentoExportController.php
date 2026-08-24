@@ -42,6 +42,8 @@ class DocumentoExportController extends Controller
             ])->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return response()->json([
                 'message' => 'Error al exportar el documento',
                 'error' => $e->getMessage(),

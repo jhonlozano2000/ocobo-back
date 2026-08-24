@@ -13,9 +13,12 @@ use Illuminate\Http\Request;
  * Controlador para gestionar proyectores de grupos colaborativos temporales.
  * Permite agregar, actualizar, eliminar y marcar como terminado a los proyectores.
  */
+use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
+
 class MiBandejaTempGrupoProyectorController extends Controller
 {
     use ApiResponseTrait;
+    use AutorizaGrupoColaborativo;
 
     private const PERM = 'Mi Bandeja - Grupos Colaborativos -> ';
 
@@ -37,7 +40,7 @@ class MiBandejaTempGrupoProyectorController extends Controller
     public function index($grupoId)
     {
         try {
-            $grupo = \App\Models\MiBandeja\MiBandejaTemp::find($grupoId);
+            $grupo = $this->autorizarGrupo($grupoId);
 
             if (! $grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
@@ -47,6 +50,8 @@ class MiBandejaTempGrupoProyectorController extends Controller
 
             return $this->successResponse($proyectores, 'Proyectores del grupo');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener proyectores', $e->getMessage(), 500);
         }
     }
@@ -61,7 +66,7 @@ class MiBandejaTempGrupoProyectorController extends Controller
     public function store(\App\Http\Requests\MiBandeja\StoreGrupoProyectorRequest $request, $grupoId)
     {
         try {
-            $grupo = \App\Models\MiBandeja\MiBandejaTemp::find($grupoId);
+            $grupo = $this->autorizarGrupo($grupoId);
 
             if (! $grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
@@ -81,6 +86,8 @@ class MiBandejaTempGrupoProyectorController extends Controller
 
             return $this->successResponse($proyector, 'Proyector agregado exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al agregar proyector', $e->getMessage(), 500);
         }
     }
@@ -108,6 +115,8 @@ class MiBandejaTempGrupoProyectorController extends Controller
 
             return $this->successResponse($proyector, 'Proyector actualizado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar proyector', $e->getMessage(), 500);
         }
     }
@@ -132,6 +141,8 @@ class MiBandejaTempGrupoProyectorController extends Controller
 
             return $this->successResponse(null, 'Proyector eliminado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar proyector', $e->getMessage(), 500);
         }
     }
@@ -160,6 +171,8 @@ class MiBandejaTempGrupoProyectorController extends Controller
 
             return $this->successResponse($proyector, 'Proyector marcado como terminado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al marcar como terminado', $e->getMessage(), 500);
         }
     }

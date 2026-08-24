@@ -9,9 +9,12 @@ use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempGrupoRevisor;
 use Illuminate\Http\Request;
 
+use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
+
 class MiBandejaTempGrupoRevisorController extends Controller
 {
     use ApiResponseTrait;
+    use AutorizaGrupoColaborativo;
 
     private const PERM = 'Mi Bandeja - Grupos Colaborativos -> ';
 
@@ -23,7 +26,7 @@ class MiBandejaTempGrupoRevisorController extends Controller
     public function index($grupoId)
     {
         try {
-            $grupo = MiBandejaTemp::find($grupoId);
+            $grupo = $this->autorizarGrupo($grupoId);
 
             if (! $grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
@@ -33,6 +36,8 @@ class MiBandejaTempGrupoRevisorController extends Controller
 
             return $this->successResponse($revisores, 'Revisores del grupo');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener revisores', $e->getMessage(), 500);
         }
     }
@@ -40,7 +45,7 @@ class MiBandejaTempGrupoRevisorController extends Controller
     public function store(StoreGrupoRevisorRequest $request, $grupoId)
     {
         try {
-            $grupo = MiBandejaTemp::find($grupoId);
+            $grupo = $this->autorizarGrupo($grupoId);
 
             if (! $grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
@@ -60,6 +65,8 @@ class MiBandejaTempGrupoRevisorController extends Controller
 
             return $this->successResponse($revisor, 'Revisor agregado exitosamente', 201);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al agregar revisor', $e->getMessage(), 500);
         }
     }
@@ -79,6 +86,8 @@ class MiBandejaTempGrupoRevisorController extends Controller
 
             return $this->successResponse($revisor, 'Revisor actualizado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al actualizar revisor', $e->getMessage(), 500);
         }
     }
@@ -96,6 +105,8 @@ class MiBandejaTempGrupoRevisorController extends Controller
 
             return $this->successResponse(null, 'Revisor eliminado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al eliminar revisor', $e->getMessage(), 500);
         }
     }
@@ -117,6 +128,8 @@ class MiBandejaTempGrupoRevisorController extends Controller
 
             return $this->successResponse($revisor, 'Revisor marcado como terminado');
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al marcar como terminado', $e->getMessage(), 500);
         }
     }

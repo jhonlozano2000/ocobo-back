@@ -194,7 +194,9 @@ class ComentarioController extends Controller
      */
     public function resolver(Request $request, Comentario $comentario): JsonResponse
     {
-        if (! $request->user()->can('gestionar-comentarios')) {
+        // Gate 'gestionar-comentarios' no existía (siempre 403). Ahora: quien
+        // puede editar el documento puede resolver comentarios en él.
+        if (! $request->user()->can('editar', $comentario->documento)) {
             return response()->json(['message' => 'No tienes permiso para resolver comentarios'], 403);
         }
 
@@ -205,7 +207,7 @@ class ComentarioController extends Controller
 
     public function desresolver(Request $request, Comentario $comentario): JsonResponse
     {
-        if (! $request->user()->can('gestionar-comentarios')) {
+        if (! $request->user()->can('editar', $comentario->documento)) {
             return response()->json(['message' => 'No tienes permiso para gestionar comentarios'], 403);
         }
 

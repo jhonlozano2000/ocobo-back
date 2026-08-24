@@ -45,6 +45,8 @@ class MiBandejaRecibidosController extends Controller
                 'data' => $radicados,
             ]);
         } catch (\Exception $e) {
+        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return response()->json([
                 'status' => false,
                 'message' => 'Error al obtener mis radicados',
