@@ -8,38 +8,25 @@ use Illuminate\Support\Facades\Route;
  *
  * Prefix aplicado desde RouteServiceProvider: /api/calidad
  * Rutas finales: /api/calidad/organigrama/*
- */
-
-/**
- * Rate limiting específico para Calidad
+ *
+ * @author Jhon Javer Lozano Arce
+ *
+ * @date 2026-08-24
  */
 Route::middleware('auth:sanctum')->group(function () {
 
-    /**
-     * Organigrama - Gestión completa
-     * Rutas: /api/calidad/organigrama/*
-     */
     Route::prefix('organigrama')->name('calidad.organigrama.')->group(function () {
-        // Rutas específicas del organigrama (deben ir ANTES del resource)
-        // Listar solo dependencias
-        Route::get('/dependencias', [CalidadOrganigramaController::class, 'listDependencias'])->name('dependencias');
+        $p = 'Calidad - Organigrama -> ';
 
-        // Listar oficinas con cargos
-        Route::get('/oficinas', [CalidadOrganigramaController::class, 'listOficinas'])->name('oficinas');
+        Route::get('/dependencias', [CalidadOrganigramaController::class, 'listDependencias'])->name('dependencias')->middleware('can:'.$p.'Listar');
+        Route::get('/oficinas', [CalidadOrganigramaController::class, 'listOficinas'])->name('oficinas')->middleware('can:'.$p.'Listar');
+        Route::get('/estadisticas', [CalidadOrganigramaController::class, 'estadisticas'])->name('estadisticas')->middleware('can:'.$p.'Listar');
 
-        // Ruta para estadísticas
-        Route::get('/estadisticas', [CalidadOrganigramaController::class, 'estadisticas'])->name('estadisticas');
-
-        // Rutas principales del organigrama (debe ir DESPUÉS de las rutas específicas)
-        Route::apiResource('', CalidadOrganigramaController::class)
-            ->parameters(['' => 'organigrama'])
-            ->names([
-                'index' => 'index',
-                'store' => 'store',
-                'show' => 'show',
-                'update' => 'update',
-                'destroy' => 'destroy',
-            ])->except('create', 'edit');
+        Route::get('/', [CalidadOrganigramaController::class, 'index'])->name('index')->middleware('can:'.$p.'Listar');
+        Route::post('/', [CalidadOrganigramaController::class, 'store'])->name('store')->middleware('can:'.$p.'Crear');
+        Route::get('/{organigrama}', [CalidadOrganigramaController::class, 'show'])->name('show')->middleware('can:'.$p.'Mostrar');
+        Route::put('/{organigrama}', [CalidadOrganigramaController::class, 'update'])->name('update')->middleware('can:'.$p.'Editar');
+        Route::delete('/{organigrama}', [CalidadOrganigramaController::class, 'destroy'])->name('destroy')->middleware('can:'.$p.'Eliminar');
     });
 
-}); // Fin throttle
+});
