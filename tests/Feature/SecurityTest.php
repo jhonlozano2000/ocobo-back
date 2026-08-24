@@ -25,7 +25,7 @@ class SecurityTest extends TestCase
     /** @test */
     public function unauthenticated_cannot_access_api(): void
     {
-        $response = $this->getJson('/api/ventanilla/recibidos');
+        $response = $this->getJson('/api/workflows/mis-tareas');
         $response->assertStatus(401);
     }
 
@@ -35,7 +35,7 @@ class SecurityTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->getJson('/api/ventanilla/recibidos');
+            ->getJson('/api/getme');
 
         $response->assertStatus(200);
     }
@@ -43,7 +43,7 @@ class SecurityTest extends TestCase
     /** @test */
     public function cors_headers_present(): void
     {
-        $response = $this->getJson('/api/ventanilla/recibidos', [
+        $response = $this->getJson('/api/workflows/mis-tareas', [
             'Origin' => 'http://localhost:3000',
         ]);
 

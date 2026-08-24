@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 /**
  * Rate limiting específico para Control de Acceso
  */
-Route::middleware('throttle:config-operations')->group(function () {
+Route::middleware(['throttle:config-operations', 'auth:sanctum'])->group(function () {
     /**
      * Perfil y autenticación de usuario
      */

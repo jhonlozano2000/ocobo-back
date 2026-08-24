@@ -178,7 +178,7 @@ class VentanillaRadicaReciOptimizedView extends Model
 
         // Bypass total de filtrado jerárquico: quien puede listar Recibidos ve todos
         try {
-            if ($user->hasPermissionTo('Radicar -> Cores. Recibida -> Listar')) {
+            if ($user->hasPermissionTo('Radicar -> Cores. Recibida -> Ver Todos')) {
                 return $query;
             }
         } catch (PermissionDoesNotExist $e) {

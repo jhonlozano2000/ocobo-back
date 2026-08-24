@@ -41,11 +41,10 @@ class VentanillaRadicaReciController extends Controller
 
     private const PERM = 'Radicar -> Cores. Recibida -> ';
 
-    protected ReportesExportService $exportService;
-
-    public function __construct(ReportesExportService $exportService)
-    {
-        $this->exportService = $exportService;
+    public function __construct(
+        protected ReportesExportService $exportService,
+        protected PqrsService $pqrsService,
+    ) {
         $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'listarRadicados', 'estadisticas', 'export']);
         $this->middleware('can:'.self::PERM.'Crear')->only(['store']);
         $this->middleware('can:'.self::PERM.'Mostrar')->only(['show', 'lineaTiempo']);
@@ -350,7 +349,6 @@ class VentanillaRadicaReciController extends Controller
             ]);
 
             if (! empty($validatedData['crear_pqrs']) && $validatedData['crear_pqrs']) {
-                $pqrsService = new PqrsService;
                 $datosPqrs = [
                     'tipo_pqrs_id' => $validatedData['tipo_pqrs_id'],
                     'prioridad' => $validatedData['prioridad'] ?? 'Normal',
@@ -358,7 +356,7 @@ class VentanillaRadicaReciController extends Controller
                     'observaciones' => $validatedData['observaciones_pqrs'] ?? null,
                     'clasificacion_documental_trd_id' => $validatedData['clasifica_documen_id'],
                 ];
-                $pqrsCreada = $pqrsService->crearDesdeRadicado($radicado->id, $datosPqrs);
+                $pqrsCreada = $this->pqrsService->crearDesdeRadicado($radicado->id, $datosPqrs);
 
                 \Log::info('DEBUG PQRS - creación exitosa', [
                     'pqrs_id' => $pqrsCreada->id ?? 'NULL',

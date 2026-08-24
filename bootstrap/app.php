@@ -63,6 +63,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ShareErrorsFromSession::class,
             VerifyCsrfToken::class,
             SubstituteBindings::class,
+            SecurityHeadersMiddleware::class,
         ]);
 
         $middleware->group('api', [
