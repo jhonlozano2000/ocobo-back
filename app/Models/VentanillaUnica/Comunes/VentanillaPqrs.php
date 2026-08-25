@@ -25,7 +25,6 @@ use App\Traits\AbacHierarquico;
  * - Responsables (custodio único, assignación, acuse digital)
  * - Pases/reasignaciones con historial
  * - Compartidos (CC) con historial
- * - Comentarios con estructura de árbol (threaded)
  * - Firma digital con OTP
  * - Vencimiento con prórrogas
  * - Estados de trámite con transiciones
@@ -78,7 +77,6 @@ use App\Traits\AbacHierarquico;
  * @property-read \Illuminate\Database\Eloquent\Collection $responsables
  * @property-read \Illuminate\Database\Eloquent\Collection $historialPases
  * @property-read \Illuminate\Database\Eloquent\Collection $historialCompartir
- * @property-read \Illuminate\Database\Eloquent\Collection $comentarios
  * @property-read \Illuminate\Database\Eloquent\Collection $archivosPqrs
  * @property-read \Illuminate\Database\Eloquent\Collection $historialNotificaciones
  * @property-read \Illuminate\Database\Eloquent\Collection $historialClasificacion
@@ -86,8 +84,6 @@ use App\Traits\AbacHierarquico;
  * @property-read bool $vencido
  * @property-read bool $critico
  * @property-read bool $puedeProrrogar
- * @property-read bool $tieneComentariosResueltos
- * @property-read int $totalComentariosNoResueltos
  * @property-read string $textoEstadoVencimiento
  *
  * @author Jhon Javer Lozano Arce

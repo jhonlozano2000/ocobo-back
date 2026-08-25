@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\VentanillaUnica\MetadataController;
-use App\Http\Controllers\VentanillaUnica\Recibidos\RadicadoComentariosController;
 use App\Http\Controllers\VentanillaUnica\Recibidos\RadicadoRespuestasController;
 use App\Http\Controllers\VentanillaUnica\Recibidos\VentanillaRadicaReciAdjuntosController;
 use App\Http\Controllers\VentanillaUnica\Recibidos\VentanillaRadicaReciCompartirHistorialController;
@@ -48,11 +47,6 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
         Route::put('/radica-recibida/respuestas/{id}', [RadicadoRespuestasController::class, 'update'])->name('radica-recibida.respuestas.update')->middleware('can:'.$permReci.'Editar');
         Route::delete('/radica-recibida/respuestas/{id}', [RadicadoRespuestasController::class, 'destruir'])->name('radica-recibida.respuestas.destroy')->middleware('can:'.$permReci.'Eliminar');
 
-        Route::post('/radica-recibida/{radicaReciId}/comentarios', [RadicadoComentariosController::class, 'store'])->name('radica-recibida.comentarios.store')->middleware('can:'.$permReci.'Comentar');
-        Route::put('/radica-recibida/comentarios/{id}', [RadicadoComentariosController::class, 'update'])->name('radica-recibida.comentarios.update')->middleware('can:'.$permReci.'Comentar');
-        Route::post('/radica-recibida/comentarios/{id}/resolver', [RadicadoComentariosController::class, 'resolver'])->name('radica-recibida.comentarios.resolver')->middleware('can:'.$permReci.'Comentar');
-        Route::delete('/radica-recibida/comentarios/{id}', [RadicadoComentariosController::class, 'destroy'])->name('radica-recibida.comentarios.destroy')->middleware('can:'.$permReci.'Comentar');
-
         Route::post('/radica-recibida/{radica_reci_id}/responsables', [VentanillaRadicaReciResponsableController::class, 'assignToRadicado'])->name('radica-recibida.responsables.asignar')->middleware('can:'.$permReci.'Editar');
 
         Route::post('/radica-recibida/{radica_reci_id}/pase', [VentanillaRadicaReciPaseHistorialController::class, 'store'])->name('radica-recibida.pase.registrar')->middleware('can:'.$permReci.'Editar');
@@ -71,8 +65,6 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
     Route::middleware('throttle:search')->group(function () use ($permReci) {
         Route::get('/radica-recibida/{radicadoId}/respuestas', [RadicadoRespuestasController::class, 'index'])->name('radica-recibida.respuestas.index')->middleware('can:'.$permReci.'Listar');
         Route::get('/radica-recibida/respuestas/{id}', [RadicadoRespuestasController::class, 'show'])->name('radica-recibida.respuestas.show')->middleware('can:'.$permReci.'Mostrar');
-        Route::get('/radica-recibida/{radicaReciId}/comentarios', [RadicadoComentariosController::class, 'index'])->name('radica-recibida.comentarios.index')->middleware('can:'.$permReci.'Mostrar');
-        Route::get('/radica-recibida/comentarios/{id}', [RadicadoComentariosController::class, 'show'])->name('radica-recibida.comentarios.show')->middleware('can:'.$permReci.'Mostrar');
         Route::get('/radica-recibida/{id}/archivos/digital/', [VentanillaRadicaReciDigitalController::class, 'getFileInfo'])->name('radica-recibida.archivos.digital.info')->middleware('can:'.$permReci.'Mostrar');
         Route::get('/radica-recibida/{id}/archivos/digital/download', [VentanillaRadicaReciDigitalController::class, 'download'])->name('radica-recibida.archivos.digital.download')->middleware('can:'.$permReci.'Mostrar');
         Route::get('/radica-recibida/{id}/archivos/digital/ocr', [VentanillaRadicaReciDigitalController::class, 'getOcr'])->name('radica-recibida.archivos.digital.ocr')->middleware('can:'.$permReci.'Mostrar');

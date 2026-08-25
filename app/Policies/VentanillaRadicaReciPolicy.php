@@ -127,22 +127,6 @@ class VentanillaRadicaReciPolicy
     }
 
     /**
-     * Determina si el usuario puede comentar en un radicado.
-     */
-    public function comentar(User $user, VentanillaRadicaReci $radicado): bool
-    {
-        return $user->hasPermissionTo('Radicar -> Cores. Recibida -> Comentar');
-    }
-
-    /**
-     * Determina si el usuario puede ver comentarios.
-     */
-    public function verComentarios(User $user, VentanillaRadicaReci $radicado): bool
-    {
-        return $user->hasPermissionTo('Radicar -> Cores. Recibida -> Mostrar');
-    }
-
-    /**
      * Determina si el usuario puede notificar por email.
      */
     public function notificarEmail(User $user, VentanillaRadicaReci $radicado): bool

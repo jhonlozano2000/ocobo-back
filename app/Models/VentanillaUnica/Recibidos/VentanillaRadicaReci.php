@@ -226,17 +226,6 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Obtiene los comentarios asociados al radicado.
-     */
-    public function comentarios()
-    {
-        return $this->hasMany(VentanillaRadicaReciComentario::class, 'radica_reci_id')
-            ->whereNull('parent_id')
-            ->with(['respuestas', 'usuario'])
-            ->orderBy('created_at', 'desc');
-    }
-
-    /**
      * Obtiene el historial de archivos eliminados del radicado.
      */
     public function archivosEliminados()
