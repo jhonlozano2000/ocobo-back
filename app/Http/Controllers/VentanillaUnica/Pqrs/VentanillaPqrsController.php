@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\VentanillaUnica\Pqrs;
 
+use App\Helpers\MailConfigHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Pqrs\ListPqrsRequest;
 use App\Http\Requests\Ventanilla\Pqrs\StorePqrsRequest;
@@ -712,9 +713,11 @@ class VentanillaPqrsController extends Controller
         try {
             $validated = $request->validate([
                 'modo' => 'required|string|in:todos,responsables,remitente',
-                'asunto' => 'required|string|max:500',
-                'mensaje' => 'required|string',
             ]);
+
+            // El asunto y el cuerpo del correo los genera la plantilla del
+            // Mailable (misma práctica que las notificaciones de radicados
+            // recibidos/enviados/internos); la UI solo elige a quién notificar.
 
             $pqrs = VentanillaPqrs::with(['radicado.tercero', 'tipoPqrs', 'responsables.userCargo.user'])->find($id);
 
@@ -747,16 +750,17 @@ class VentanillaPqrsController extends Controller
                 return $this->errorResponse('No hay destinatarios válidos para enviar la notificación', null, 422);
             }
 
-            // Verificar configuración SMTP
-            $smtpConfig = config('mail.mailers.smtp');
-            if (empty($smtpConfig['host']) || empty($smtpConfig['username'])) {
+            // Configurar SMTP desde config_varias (paridad con recibidos/enviados/internos)
+            MailConfigHelper::configureFromConfigVarias();
+            if (! MailConfigHelper::isConfigured()) {
                 Log::warning('SMTP no configurado', ['pqrs_id' => $id]);
-                return $this->errorResponse('Configuración SMTP no disponible. Verifique la configuración del servidor de correo.', null, 500);
+
+                return $this->errorResponse('No se pudo enviar el correo. Verifique la configuración SMTP en Otras configuraciones → Correo.', null, 500);
             }
 
             // Enviar email a todos los destinatarios usando Mailable
             Mail::to($emails)
-                ->send(new PqrsNotificacionEmail($pqrs, $validated['mensaje'], $validated['asunto']));
+                ->send(new PqrsNotificacionEmail($pqrs));
 
             // Registrar en historial de notificaciones del radicado (fuente única)
             VentanillaRadicaHistorialNotificacion::create([
@@ -769,7 +773,6 @@ class VentanillaPqrsController extends Controller
 
             $this->auditVentanilla($pqrs, 'notified', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
                 'modo' => $validated['modo'],
-                'asunto' => $validated['asunto'],
                 'total_enviados' => count($emails),
             ]);
 
