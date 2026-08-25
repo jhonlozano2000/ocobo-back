@@ -721,17 +721,18 @@ class VentanillaPqrsController extends Controller
             // Mailable; si la UI envía asunto/mensaje se usan como
             // personalización opcional sobre la plantilla.
 
-            $pqrs = VentanillaPqrs::with(['radicado.tercero', 'tipoPqrs', 'responsables.userCargo.user'])->find($id);
+            $pqrs = VentanillaPqrs::with(['radicado.tercero', 'tipoPqrs', 'radicado.responsables.userCargo.user'])->find($id);
 
             if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
-            // Destinatarios según el modo seleccionado en el modal
+            // Destinatarios según el modo seleccionado en el modal.
+            // Los responsables viven en el radicado recibido asociado.
             $emails = [];
 
             if (in_array($validated['modo'], ['todos', 'responsables'], true)) {
-                foreach ($pqrs->responsables as $resp) {
+                foreach ($pqrs->radicado?->responsables ?? [] as $resp) {
                     if ($resp->userCargo && $resp->userCargo->user && $resp->userCargo->user->email) {
                         $emails[] = $resp->userCargo->user->email;
                     }
