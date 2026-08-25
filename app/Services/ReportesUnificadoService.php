@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
-use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrs;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoPrestamo;
 use App\Models\OfiArchivo\OfiArchivoTransferencia;
@@ -80,11 +80,11 @@ class ReportesUnificadoService
             'expedientes' => [
                 'model' => OfiArchivoExpediente::class,
                 'label' => 'Expedientes',
-                'columnas' => ['ID', 'Número', 'Nombre', 'Estado', 'Fecha Apertura', 'Usuario Apertura'],
+                'columnas' => ['ID', 'NÃºmero', 'Nombre', 'Estado', 'Fecha Apertura', 'Usuario Apertura'],
                 'map' => function ($item) {
                     return [
                         'ID' => $item->id,
-                        'Número' => $item->numero_expediente,
+                        'NÃºmero' => $item->numero_expediente,
                         'Nombre' => $item->nombre_expediente,
                         'Estado' => $item->estado ?? 'Abierto',
                         'Fecha Apertura' => $item->fecha_apertura?->format('Y-m-d'),
@@ -94,14 +94,14 @@ class ReportesUnificadoService
             ],
             'prestamos' => [
                 'model' => OfiArchivoPrestamo::class,
-                'label' => 'Préstamos',
-                'columnas' => ['ID', 'Solicitante', 'Fecha Préstamo', 'Devolución Esperada', 'Estado'],
+                'label' => 'PrÃ©stamos',
+                'columnas' => ['ID', 'Solicitante', 'Fecha PrÃ©stamo', 'DevoluciÃ³n Esperada', 'Estado'],
                 'map' => function ($item) {
                     return [
                         'ID' => $item->id,
                         'Solicitante' => $item->solicitante?->name ?? 'N/A',
-                        'Fecha Préstamo' => $item->fecha_prestamo?->format('Y-m-d'),
-                        'Devolución Esperada' => $item->fecha_devolucion_esperada?->format('Y-m-d') ?? 'N/A',
+                        'Fecha PrÃ©stamo' => $item->fecha_prestamo?->format('Y-m-d'),
+                        'DevoluciÃ³n Esperada' => $item->fecha_devolucion_esperada?->format('Y-m-d') ?? 'N/A',
                         'Estado' => $item->estado ?? 'Activo',
                     ];
                 },
@@ -127,7 +127,7 @@ class ReportesUnificadoService
     public function generarUnificado(string $modulo, array $filtros = []): array
     {
         if (!isset($this->modulos[$modulo])) {
-            throw new \InvalidArgumentException("Módulo no válido: $modulo");
+            throw new \InvalidArgumentException("MÃ³dulo no vÃ¡lido: $modulo");
         }
 
         $config = $this->modulos[$modulo];
@@ -148,9 +148,9 @@ class ReportesUnificadoService
 
         $resumen = [
             'Total' => $total,
-            'Módulo' => $config['label'],
-            'Página' => $page,
-            'Por página' => $perPage,
+            'MÃ³dulo' => $config['label'],
+            'PÃ¡gina' => $page,
+            'Por pÃ¡gina' => $perPage,
         ];
 
         if (!empty($filtros['desde'])) {
@@ -218,3 +218,4 @@ class ReportesUnificadoService
         };
     }
 }
+

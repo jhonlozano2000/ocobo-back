@@ -10,7 +10,7 @@ use App\Models\ControlAcceso\UserCargo;
 use App\Models\Gestion\GestionTercero;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\User;
-use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrs;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use App\Traits\AbacHierarquico;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,7 +26,7 @@ class VentanillaRadicaReci extends Model
 
     protected const ABAC_RESPONSABLES_RELATION = 'responsables';
 
-    /** Bypass del filtrado jerárquico ABAC: quien lista Recibidos ve todos. */
+    /** Bypass del filtrado jerÃ¡rquico ABAC: quien lista Recibidos ve todos. */
     protected const ABAC_VER_TODOS_PERMISO = 'Radicar -> Cores. Recibida -> Ver Todos';
 
     protected $table = 'ventanilla_radica_reci';
@@ -92,8 +92,8 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Clasificación documental (recursiva: Serie > SubSerie > TipoDocumento).
-     * Para cargar con jerarquía completa usar: load(['clasificacionDocumental' => fn($q) => $q->with(['parent' => fn($q) => $q->with('parent')])])
+     * ClasificaciÃ³n documental (recursiva: Serie > SubSerie > TipoDocumento).
+     * Para cargar con jerarquÃ­a completa usar: load(['clasificacionDocumental' => fn($q) => $q->with(['parent' => fn($q) => $q->with('parent')])])
      */
     public function clasificacionDocumental()
     {
@@ -101,7 +101,7 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Carga clasificación documental con jerarquía completa (evita N+1 en getJerarquia).
+     * Carga clasificaciÃ³n documental con jerarquÃ­a completa (evita N+1 en getJerarquia).
      */
     public function loadClasificacionConJerarquia()
     {
@@ -109,7 +109,7 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Obtiene la clasificación documental con su jerarquía recursiva.
+     * Obtiene la clasificaciÃ³n documental con su jerarquÃ­a recursiva.
      */
     public function getClasificacionDocumentalInfo(): ?array
     {
@@ -179,7 +179,7 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Relación con PQRS (si este radicado fue convertido a PQRS).
+     * RelaciÃ³n con PQRS (si este radicado fue convertido a PQRS).
      */
     public function pqrs()
     {
@@ -187,7 +187,7 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Obtiene los responsables asignados a esta radicación.
+     * Obtiene los responsables asignados a esta radicaciÃ³n.
      */
     public function responsables()
     {
@@ -195,7 +195,7 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Obtiene los usuarios responsables a través de la tabla pivot con users_cargos.
+     * Obtiene los usuarios responsables a travÃ©s de la tabla pivot con users_cargos.
      */
     public function usuariosResponsables()
     {
@@ -234,14 +234,14 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Obtiene información completa de documentos relacionados (archivo principal y adicionales).
+     * Obtiene informaciÃ³n completa de documentos relacionados (archivo principal y adicionales).
      * Optimizado para usar relaciones ya cargadas con eager loading.
      *
-     * @param  bool  $incluirMetadatos  Si es true, incluye tamaño y tipo MIME de cada archivo
+     * @param  bool  $incluirMetadatos  Si es true, incluye tamaÃ±o y tipo MIME de cada archivo
      */
     public function getDocumentosRelacionados(bool $incluirMetadatos = false): array
     {
-        // Cachear usuario que subió archivo (se usa dos veces)
+        // Cachear usuario que subiÃ³ archivo (se usa dos veces)
         $usuarioSubio = $this->getInfoUsuarioSubio();
 
         // Archivo principal
@@ -253,10 +253,10 @@ class VentanillaRadicaReci extends Model
             }
         }
 
-        // Archivos adicionales (usar relación ya cargada si existe, sino cargar)
+        // Archivos adicionales (usar relaciÃ³n ya cargada si existe, sino cargar)
         $archivosRelacion = $this->relationLoaded('archivos') ? $this->archivos : $this->archivos()->get();
 
-        // Pre-inicializar collection (optimización de memoria)
+        // Pre-inicializar collection (optimizaciÃ³n de memoria)
         $archivosAdicionales = collect();
 
         foreach ($archivosRelacion as $archivo) {
@@ -267,7 +267,7 @@ class VentanillaRadicaReci extends Model
             }
         }
 
-        // Calcular totales optimizado (evitar múltiples llamadas a count)
+        // Calcular totales optimizado (evitar mÃºltiples llamadas a count)
         $countArchivosAdicionales = $archivosAdicionales->count();
         $totalArchivos = ($archivoPrincipal ? 1 : 0) + $countArchivosAdicionales;
         $tieneArchivosAdicionales = $countArchivosAdicionales > 0;
@@ -285,19 +285,19 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Obtiene información completa de responsables relacionados.
+     * Obtiene informaciÃ³n completa de responsables relacionados.
      * Optimizado para usar relaciones ya cargadas con eager loading.
-     * Opcionalmente usa totales de la vista si están disponibles (para evitar recálculo).
+     * Opcionalmente usa totales de la vista si estÃ¡n disponibles (para evitar recÃ¡lculo).
      *
-     * @param  int|null  $totalResponsablesDesdeVista  Total desde la vista SQL (opcional, evita recálculo)
-     * @param  int|null  $totalCustodiosDesdeVista  Total desde la vista SQL (opcional, evita recálculo)
+     * @param  int|null  $totalResponsablesDesdeVista  Total desde la vista SQL (opcional, evita recÃ¡lculo)
+     * @param  int|null  $totalCustodiosDesdeVista  Total desde la vista SQL (opcional, evita recÃ¡lculo)
      */
     public function getResponsablesInfo(?int $totalResponsablesDesdeVista = null, ?int $totalCustodiosDesdeVista = null): array
     {
-        // Usar relación ya cargada si existe, sino cargar
+        // Usar relaciÃ³n ya cargada si existe, sino cargar
         $responsablesRelacion = $this->relationLoaded('responsables') ? $this->responsables : $this->responsables()->with(['userCargo.user', 'userCargo.cargo'])->get();
 
-        // Pre-inicializar collection (optimización de memoria)
+        // Pre-inicializar collection (optimizaciÃ³n de memoria)
         $responsablesInfo = collect();
         $totalCustodios = 0;
 
@@ -312,7 +312,7 @@ class VentanillaRadicaReci extends Model
             }
         }
 
-        // Usar totales de la vista si están disponibles (más eficiente)
+        // Usar totales de la vista si estÃ¡n disponibles (mÃ¡s eficiente)
         // Evitar count() si ya tenemos el valor de la vista
         $countResponsablesInfo = $responsablesInfo->count();
         $totalResponsablesFinal = $totalResponsablesDesdeVista ?? $countResponsablesInfo;
@@ -326,10 +326,10 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Obtiene toda la información relacionada del radicado (documentos, responsables, usuarios).
-     * Opcionalmente acepta totales desde la vista para evitar recálculos.
+     * Obtiene toda la informaciÃ³n relacionada del radicado (documentos, responsables, usuarios).
+     * Opcionalmente acepta totales desde la vista para evitar recÃ¡lculos.
      *
-     * @param  bool  $incluirMetadatosArchivos  Si es true, incluye tamaño y tipo en documentos
+     * @param  bool  $incluirMetadatosArchivos  Si es true, incluye tamaÃ±o y tipo en documentos
      * @param  int|null  $totalResponsablesDesdeVista  Total desde la vista SQL (opcional)
      * @param  int|null  $totalCustodiosDesdeVista  Total desde la vista SQL (opcional)
      */
@@ -344,8 +344,8 @@ class VentanillaRadicaReci extends Model
 
     /**
      * Devuelve el ID de la dependencia del responsable CUSTODIO del radicado
-     * (se obtiene subiendo en la jerarquía del organigrama hasta el nodo tipo Dependencia).
-     * Es la dependencia desde la que se carga el árbol TRD para re-clasificar.
+     * (se obtiene subiendo en la jerarquÃ­a del organigrama hasta el nodo tipo Dependencia).
+     * Es la dependencia desde la que se carga el Ã¡rbol TRD para re-clasificar.
      *
      * @return int|null null si no hay responsable custodio o no tiene cargo/dependencia
      */
@@ -367,8 +367,8 @@ class VentanillaRadicaReci extends Model
             return null;
         }
 
-        // La dependencia real es la MÁS CERCANA al cargo (no la raíz).
-        // getJerarquiaCompleta devuelve [raíz ... cargo]; se itera en reversa (cerca de la hoja).
+        // La dependencia real es la MÃS CERCANA al cargo (no la raÃ­z).
+        // getJerarquiaCompleta devuelve [raÃ­z ... cargo]; se itera en reversa (cerca de la hoja).
         foreach (array_reverse($cargo->getJerarquiaCompleta()) as $nodo) {
             if (($nodo['tipo'] ?? '') === 'Dependencia') {
                 return (int) $nodo['id'];
@@ -411,7 +411,7 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Scope para radicados próximos a vencer (en los próximos N días).
+     * Scope para radicados prÃ³ximos a vencer (en los prÃ³ximos N dÃ­as).
      */
     public function scopeProximosAVencer($query, int $dias = 5)
     {
@@ -419,9 +419,9 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Actualiza el estado de trabajo del radicado según las reglas:
+     * Actualiza el estado de trabajo del radicado segÃºn las reglas:
      * - VENCIDO: si fec_venci < hoy
-     * - POR_VENCER: si fec_venci está próximo a vencer (5 días)
+     * - POR_VENCER: si fec_venci estÃ¡ prÃ³ximo a vencer (5 dÃ­as)
      * - EN_PROCESO: si tiene responsables asignados
      * - RECIBIDO: en caso contrario
      */
@@ -439,7 +439,7 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Calcula el estado de trabajo correspondiente según las reglas del negocio.
+     * Calcula el estado de trabajo correspondiente segÃºn las reglas del negocio.
      */
     public function calcularEstadoTrabajo(): string
     {
@@ -459,7 +459,7 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Obtiene el color y información del estado de trabajo actual.
+     * Obtiene el color y informaciÃ³n del estado de trabajo actual.
      */
     public function getEstadoTrabajoInfo(): array
     {
@@ -469,7 +469,7 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Verifica si la radicación tiene archivos.
+     * Verifica si la radicaciÃ³n tiene archivos.
      */
     public function tieneArchivoDigital()
     {
@@ -477,7 +477,7 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Verifica si la radicación tiene archivos (digital o adicionales).
+     * Verifica si la radicaciÃ³n tiene archivos (digital o adicionales).
      */
     public function tieneArchivos()
     {
@@ -485,7 +485,7 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Obtiene los días restantes para el vencimiento.
+     * Obtiene los dÃ­as restantes para el vencimiento.
      */
     public function getDiasParaVencerAttribute()
     {
@@ -497,7 +497,7 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Verifica si la radicación está vencida.
+     * Verifica si la radicaciÃ³n estÃ¡ vencida.
      */
     public function isVencida()
     {
@@ -509,7 +509,7 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Obtiene la URL del archivo asociado a la radicación.
+     * Obtiene la URL del archivo asociado a la radicaciÃ³n.
      *
      * @return string|null
      */
@@ -530,7 +530,7 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Obtiene información del archivo asociado a la radicación.
+     * Obtiene informaciÃ³n del archivo asociado a la radicaciÃ³n.
      *
      * @return array|null
      */
@@ -544,14 +544,14 @@ class VentanillaRadicaReci extends Model
             'nombre' => $this->nom_origi ?: basename($this->archivo_digital),
             'ruta' => $this->archivo_digital,
             'url' => $this->getUrlArchivoDigital(),
-            'tamaño' => $this->archivo_peso ?: Storage::disk('radicados_recibidos')->size($this->archivo_digital),
+            'tamaÃ±o' => $this->archivo_peso ?: Storage::disk('radicados_recibidos')->size($this->archivo_digital),
             'tipo' => $this->archivo_tipo ?: Storage::disk('radicados_recibidos')->mimeType($this->archivo_digital),
             'extension' => pathinfo($this->archivo_digital, PATHINFO_EXTENSION),
         ];
     }
 
     /**
-     * Obtiene información formateada del usuario que creó el radicado.
+     * Obtiene informaciÃ³n formateada del usuario que creÃ³ el radicado.
      */
     public function getInfoUsuarioCrea(): ?array
     {
@@ -563,7 +563,7 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Obtiene información formateada del usuario que subió el archivo.
+     * Obtiene informaciÃ³n formateada del usuario que subiÃ³ el archivo.
      */
     public function getInfoUsuarioSubio(): ?array
     {
@@ -575,8 +575,8 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Obtiene información básica de un archivo (sin acceder al filesystem).
-     * Los metadatos del archivo (tamaño, tipo) se obtienen solo al descargar/ver detalles.
+     * Obtiene informaciÃ³n bÃ¡sica de un archivo (sin acceder al filesystem).
+     * Los metadatos del archivo (tamaÃ±o, tipo) se obtienen solo al descargar/ver detalles.
      *
      * @param  string  $campo  Nombre del atributo del archivo
      * @param  string  $disk  Nombre del disco
@@ -602,18 +602,19 @@ class VentanillaRadicaReci extends Model
             $info['ocr_aplicado'] = (bool) $this->ocr_aplicado;
         }
 
-        // Solo acceder al filesystem si se solicita explícitamente (para descarga/detalles)
+        // Solo acceder al filesystem si se solicita explÃ­citamente (para descarga/detalles)
         if ($incluirMetadatos) {
             try {
                 if (Storage::disk($disk)->exists($rutaArchivo)) {
-                    $info['tamaño'] = Storage::disk($disk)->size($rutaArchivo);
+                    $info['tamaÃ±o'] = Storage::disk($disk)->size($rutaArchivo);
                     $info['tipo'] = Storage::disk($disk)->mimeType($rutaArchivo);
                 }
             } catch (\Exception $e) {
-                // Si hay error al obtener información del archivo, continuar sin esos datos
+                // Si hay error al obtener informaciÃ³n del archivo, continuar sin esos datos
             }
         }
 
         return $info;
     }
 }
+

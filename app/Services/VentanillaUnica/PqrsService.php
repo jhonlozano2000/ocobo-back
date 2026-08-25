@@ -7,7 +7,7 @@ use App\Mail\OtpFirmaMail;
 use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\Gestion\GestionTercero;
 use App\Models\Transversal\FirmaEvento;
-use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrs;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -144,7 +144,7 @@ class PqrsService
         $pqrs = VentanillaPqrs::with('tipoPqrs')->findOrFail($pqrsId);
 
         if ($pqrs->tiene_prorroga) {
-            throw new \Exception('Esta PQRS ya tiene una prórroga aplicada.');
+            throw new \Exception('Esta PQRS ya tiene una prÃ³rroga aplicada.');
         }
 
         $pqrs->aplicarProrroga();
@@ -234,7 +234,7 @@ class PqrsService
     }
 
     /**
-     * Genera un OTP de 6 dígitos y lo envía al correo del usuario para firmar PQRS.
+     * Genera un OTP de 6 dÃ­gitos y lo envÃ­a al correo del usuario para firmar PQRS.
      */
     public function solicitarOtpFirma($user, VentanillaPqrs $pqrs): bool
     {
@@ -266,7 +266,7 @@ class PqrsService
     }
 
     /**
-     * Registra la firma electrónica de un PQRS.
+     * Registra la firma electrÃ³nica de un PQRS.
      */
     public function guardarFirma(VentanillaPqrs $pqrs, array $data, $user): VentanillaPqrs
     {
@@ -328,3 +328,4 @@ class PqrsService
             ->paginate(15);
     }
 }
+

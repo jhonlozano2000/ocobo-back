@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Transversal;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrs;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Http\JsonResponse;
@@ -26,7 +26,7 @@ class NotificacionesController extends Controller
     }
 
     /**
-     * Retorna el conteo de documentos próximos a vencer o ya vencidos
+     * Retorna el conteo de documentos prÃ³ximos a vencer o ya vencidos
      * asignados al usuario autenticado.
      */
     public function pendientes(): JsonResponse
@@ -39,7 +39,7 @@ class NotificacionesController extends Controller
         $hoy = now()->toDateString();
         $en3dias = now()->addDays(3)->toDateString();
 
-        // ── Recibidos ─────────────────────────────────────────────
+        // â”€â”€ Recibidos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         $recibidosVencidos = VentanillaRadicaReci::whereHas('responsables', fn ($q) => $q->whereIn('users_cargos_id', $userCargoIds))
             ->whereIn('estado_trabajo', ['Pendiente', 'En Proceso'])
             ->whereDate('fec_venci', '<', $hoy)
@@ -51,7 +51,7 @@ class NotificacionesController extends Controller
             ->whereDate('fec_venci', '<=', $en3dias)
             ->count();
 
-        // ── Enviados ──────────────────────────────────────────────
+        // â”€â”€ Enviados â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         $enviadosVencidos = VentanillaRadicaEnviados::whereHas('responsables', fn ($q) => $q->whereIn('users_cargos_id', $userCargoIds))
             ->whereIn('estado_trabajo', ['Pendiente', 'En Proceso'])
             ->whereNotNull('fec_venci')
@@ -65,7 +65,7 @@ class NotificacionesController extends Controller
             ->whereDate('fec_venci', '<=', $en3dias)
             ->count();
 
-        // ── PQRS ──────────────────────────────────────────────────
+        // â”€â”€ PQRS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         $pqrsVencidas = VentanillaPqrs::whereHas('radicado.responsables', fn ($q) => $q->whereIn('users_cargos_id', $userCargoIds))
             ->whereIn('estado_tramite', ['Pendiente', 'En Tramite'])
             ->whereDate('fecha_vencimiento', '<', $hoy)
@@ -97,3 +97,4 @@ class NotificacionesController extends Controller
         ], 'Alertas de vencimiento');
     }
 }
+

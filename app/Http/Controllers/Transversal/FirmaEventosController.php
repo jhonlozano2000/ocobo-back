@@ -7,15 +7,15 @@ use App\Http\Resources\Transversal\MisFirmasResource;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Transversal\FirmaEvento;
 use Illuminate\Http\Request;
-use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrs;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Http\JsonResponse;
 
 /**
- * Controlador para consultar el historial de firmas electrónicas.
- * Normativa: Ley 527/1999 (Firma Electrónica), ISO 27001 A.8.15 (Logging).
+ * Controlador para consultar el historial de firmas electrÃ³nicas.
+ * Normativa: Ley 527/1999 (Firma ElectrÃ³nica), ISO 27001 A.8.15 (Logging).
  */
 class FirmaEventosController extends Controller
 {
@@ -27,7 +27,7 @@ class FirmaEventosController extends Controller
     }
 
     /**
-     * Retorna el historial de firmas electrónicas de un documento específico.
+     * Retorna el historial de firmas electrÃ³nicas de un documento especÃ­fico.
      *
      * @param  string  $tipo  reci|enviados|interno|pqrs
      * @param  int  $documentoId  ID del documento firmado
@@ -37,7 +37,7 @@ class FirmaEventosController extends Controller
         $modelClass = $this->resolverModelo($tipo);
 
         if (! $modelClass) {
-            return $this->errorResponse('Tipo de documento no válido. Use: reci, enviados, interno, pqrs', null, 422);
+            return $this->errorResponse('Tipo de documento no vÃ¡lido. Use: reci, enviados, interno, pqrs', null, 422);
         }
 
         $eventos = FirmaEvento::where('documentable_type', $modelClass)
@@ -61,7 +61,7 @@ class FirmaEventosController extends Controller
             'documento_id' => $documentoId,
             'total_firmas' => $eventos->count(),
             'firmas' => $eventos,
-        ], 'Historial de firmas electrónicas');
+        ], 'Historial de firmas electrÃ³nicas');
     }
 
     public function misFirmas(Request $request): JsonResponse
@@ -114,3 +114,4 @@ class FirmaEventosController extends Controller
         };
     }
 }
+

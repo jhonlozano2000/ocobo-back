@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Transversal\FirmaEvento;
-use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrs;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\OfiArchivo\OfiArchivoPrestamo;
@@ -128,9 +128,9 @@ class DashboardGlobalController extends Controller
 
         foreach ($prestamos as $pr) {
             $items[] = [
-                'tipo' => 'Préstamo Vencido',
+                'tipo' => 'PrÃ©stamo Vencido',
                 'referencia' => "P-{$pr->id}",
-                'descripcion' => "Préstamo #{$pr->id}",
+                'descripcion' => "PrÃ©stamo #{$pr->id}",
                 'fecha_vencimiento' => $pr->fecha_devolucion_esperada?->format('Y-m-d'),
                 'dias_restantes' => now()->diffInDays($pr->fecha_devolucion_esperada, false),
             ];
@@ -141,3 +141,4 @@ class DashboardGlobalController extends Controller
         return $items;
     }
 }
+

@@ -11,7 +11,7 @@ use App\Http\Resources\VentanillaUnica\PqrsCollection;
 use App\Http\Resources\VentanillaUnica\PqrsResource;
 use App\Http\Traits\ApiResponseTrait;
 use App\Mail\PqrsNotificacionEmail;
-use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrs;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciHistorialClasificacionDocumental;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaHistorialNotificacion;
 use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsOptimizedView;
@@ -30,22 +30,22 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 /**
- * Controller VentanillaPqrsController — CRUD y operaciones PQRS
+ * Controller VentanillaPqrsController â€” CRUD y operaciones PQRS
  *
- * Controlador principal del módulo PQRS. Maneja:
- * - CRUD completo con paginación y filtros
- * - Cambio de estados con transiciones válidas
- * - Prórrogas de vencimiento
- * - Actualización parcial de asunto, fechas, clasificación
- * - Eliminación masiva
- * - Impresión de rótulo
- * - Notificación por email
- * - Firma digital con flujo OTP (solicitar → validar → guardar)
- * - Anulación de PQRS
- * - Estadísticas y línea de tiempo
+ * Controlador principal del mÃ³dulo PQRS. Maneja:
+ * - CRUD completo con paginaciÃ³n y filtros
+ * - Cambio de estados con transiciones vÃ¡lidas
+ * - PrÃ³rrogas de vencimiento
+ * - ActualizaciÃ³n parcial de asunto, fechas, clasificaciÃ³n
+ * - EliminaciÃ³n masiva
+ * - ImpresiÃ³n de rÃ³tulo
+ * - NotificaciÃ³n por email
+ * - Firma digital con flujo OTP (solicitar â†’ validar â†’ guardar)
+ * - AnulaciÃ³n de PQRS
+ * - EstadÃ­sticas y lÃ­nea de tiempo
  * - Mis radicados (responsables del usuario)
- * - Gestión de estados disponibles
- * - Exportación de datos
+ * - GestiÃ³n de estados disponibles
+ * - ExportaciÃ³n de datos
  *
  * Permisos requeridos (prefijo 'Radicar -> PQRSF -> '):
  * - Listar: index, estadisticas, lineaTiempo, estadosDisponibles, transicionesEstado, misRadicados
@@ -92,7 +92,7 @@ class VentanillaPqrsController extends Controller
     public function index(ListPqrsRequest $request): JsonResponse
     {
         try {
-            // Toda PQRS nace de un radicado recibido; el filtro descarta huérfanas.
+            // Toda PQRS nace de un radicado recibido; el filtro descarta huÃ©rfanas.
             $query = VentanillaPqrsOptimizedView::query()
                 ->conPermisoJerarquico(auth()->user())
                 ->whereNotNull('ventanilla_radica_reci_id');
@@ -397,14 +397,14 @@ class VentanillaPqrsController extends Controller
 
             return $this->successResponse(
                 new PqrsResource($pqrs),
-                'Prórroga aplicada. Nuevo vencimiento: '.$pqrs->fecha_vencimiento->format('Y-m-d')
+                'PrÃ³rroga aplicada. Nuevo vencimiento: '.$pqrs->fecha_vencimiento->format('Y-m-d')
             );
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('PQRS no encontrada', null, 404);
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
         if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
-            return $this->errorResponse('Error al aplicar la prórroga', $e->getMessage(), 500);
+            return $this->errorResponse('Error al aplicar la prÃ³rroga', $e->getMessage(), 500);
         }
     }
 
@@ -413,11 +413,11 @@ class VentanillaPqrsController extends Controller
         try {
             $estadisticas = $this->pqrsService->getEstadisticas();
 
-            return $this->successResponse($estadisticas, 'Estadísticas de PQRS');
+            return $this->successResponse($estadisticas, 'EstadÃ­sticas de PQRS');
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
         if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
-            return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
+            return $this->errorResponse('Error al obtener las estadÃ­sticas', $e->getMessage(), 500);
         }
     }
 
@@ -441,7 +441,7 @@ class VentanillaPqrsController extends Controller
 
             $eventos = [];
 
-            // ── Eventos del radicado recibido asociado ──
+            // â”€â”€ Eventos del radicado recibido asociado â”€â”€
             $radicado = $pqrs->radicado;
             if ($radicado) {
                 // Radicado creado
@@ -449,7 +449,7 @@ class VentanillaPqrsController extends Controller
                     'fecha' => $radicado->created_at->toIso8601String(),
                     'tipo' => 'radicado_creado',
                     'titulo' => 'Radicado creado',
-                    'descripcion' => 'Se creó el radicado '.$radicado->num_radicado,
+                    'descripcion' => 'Se creÃ³ el radicado '.$radicado->num_radicado,
                     'datos' => [
                         'num_radicado' => $radicado->num_radicado,
                         'radicado_id' => $radicado->id,
@@ -462,7 +462,7 @@ class VentanillaPqrsController extends Controller
                         'fecha' => $radicado->updated_at->toIso8601String(),
                         'tipo' => 'archivo_digital_subido',
                         'titulo' => 'Archivo digital subido',
-                        'descripcion' => 'Se cargó el archivo digital principal: '.basename($radicado->archivo_digital),
+                        'descripcion' => 'Se cargÃ³ el archivo digital principal: '.basename($radicado->archivo_digital),
                         'usuario' => $radicado->usuarioSubio ? $radicado->usuarioSubio->getInfoUsuario() : null,
                         'datos' => [
                             'archivo_nombre' => basename($radicado->archivo_digital),
@@ -483,8 +483,8 @@ class VentanillaPqrsController extends Controller
                         'tipo' => 'responsable_asignado',
                         'titulo' => 'Responsable asignado',
                         'descripcion' => $cargo
-                            ? 'Se asignó como responsable'.($responsable->custodio ? ' (custodio)' : '').': '.$cargo->nom_organico
-                            : 'Se asignó un responsable',
+                            ? 'Se asignÃ³ como responsable'.($responsable->custodio ? ' (custodio)' : '').': '.$cargo->nom_organico
+                            : 'Se asignÃ³ un responsable',
                         'usuario' => $user,
                         'datos' => [
                             'responsable_id' => $responsable->id,
@@ -498,7 +498,7 @@ class VentanillaPqrsController extends Controller
                         'fecha' => $archivo->created_at->toIso8601String(),
                         'tipo' => 'adjunto_subido',
                         'titulo' => 'Archivo adjunto subido',
-                        'descripcion' => 'Se subió el archivo: '.$archivo->nom_origi,
+                        'descripcion' => 'Se subiÃ³ el archivo: '.$archivo->nom_origi,
                         'usuario' => $archivo->usuarioSubido ? $archivo->usuarioSubido->getInfoUsuario() : null,
                         'datos' => [
                             'nombre' => $archivo->nom_origi,
@@ -508,12 +508,12 @@ class VentanillaPqrsController extends Controller
                 }
             }
 
-            // ── Eventos propios del PQRS ──
+            // â”€â”€ Eventos propios del PQRS â”€â”€
             $eventos[] = [
                 'fecha' => $pqrs->created_at->toIso8601String(),
                 'tipo' => 'pqrs_creada',
                 'titulo' => 'PQRS creada',
-                'descripcion' => 'Se creó la PQRS tipo '.($pqrs->tipoPqrs?->nombre ?? 'desconocido'),
+                'descripcion' => 'Se creÃ³ la PQRS tipo '.($pqrs->tipoPqrs?->nombre ?? 'desconocido'),
                 'datos' => [
                     'id' => $pqrs->id,
                     'estado_tramite' => $pqrs->estado_tramite,
@@ -527,7 +527,7 @@ class VentanillaPqrsController extends Controller
                     'fecha' => $pqrs->fecha_respuesta->toIso8601String(),
                     'tipo' => 'pqrs_respondida',
                     'titulo' => 'PQRS respondida',
-                    'descripcion' => 'Se registró respuesta a la PQRS',
+                    'descripcion' => 'Se registrÃ³ respuesta a la PQRS',
                     'datos' => [
                         'fecha_respuesta' => $pqrs->fecha_respuesta->format('Y-m-d H:i:s'),
                     ],
@@ -538,8 +538,8 @@ class VentanillaPqrsController extends Controller
                 $eventos[] = [
                     'fecha' => $pqrs->updated_at->toIso8601String(),
                     'tipo' => 'prorroga_aplicada',
-                    'titulo' => 'Prórroga aplicada',
-                    'descripcion' => 'Se extendió la fecha de vencimiento',
+                    'titulo' => 'PrÃ³rroga aplicada',
+                    'descripcion' => 'Se extendiÃ³ la fecha de vencimiento',
                     'datos' => [
                         'nueva_fecha_vencimiento' => $pqrs->fecha_vencimiento?->format('Y-m-d'),
                     ],
@@ -558,11 +558,11 @@ class VentanillaPqrsController extends Controller
                 ],
                 'total_eventos' => count($eventos),
                 'eventos' => $eventos,
-            ], 'Línea de tiempo de PQRS');
+            ], 'LÃ­nea de tiempo de PQRS');
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
         if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
-            return $this->errorResponse('Error al obtener la línea de tiempo', $e->getMessage(), 500);
+            return $this->errorResponse('Error al obtener la lÃ­nea de tiempo', $e->getMessage(), 500);
         }
     }
 
@@ -642,7 +642,7 @@ class VentanillaPqrsController extends Controller
 
             $pqrs->update(['clasificacion_documental_trd_id' => $clasificacionNuevaId]);
 
-            // Registrar en historial de clasificación del radicado (fuente única)
+            // Registrar en historial de clasificaciÃ³n del radicado (fuente Ãºnica)
             VentanillaRadicaReciHistorialClasificacionDocumental::create([
                 'radica_reci_id' => $pqrs->ventanilla_radica_reci_id,
                 'clasificacion_anterior_id' => $clasificacionAnteriorId,
@@ -659,11 +659,11 @@ class VentanillaPqrsController extends Controller
                 'clasificacion_nueva_id' => $clasificacionNuevaId,
             ]);
 
-            return $this->successResponse(new PqrsResource($pqrs), 'Clasificación actualizada exitosamente');
+            return $this->successResponse(new PqrsResource($pqrs), 'ClasificaciÃ³n actualizada exitosamente');
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
         if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
-            return $this->errorResponse('Error al actualizar la clasificación', $e->getMessage(), 500);
+            return $this->errorResponse('Error al actualizar la clasificaciÃ³n', $e->getMessage(), 500);
         }
     }
 
@@ -704,7 +704,7 @@ class VentanillaPqrsController extends Controller
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
         if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
-            return $this->errorResponse('Error al generar el rótulo', $e->getMessage(), 500);
+            return $this->errorResponse('Error al generar el rÃ³tulo', $e->getMessage(), 500);
         }
     }
 
@@ -716,8 +716,8 @@ class VentanillaPqrsController extends Controller
             ]);
 
             // El asunto y el cuerpo del correo los genera la plantilla del
-            // Mailable (misma práctica que las notificaciones de radicados
-            // recibidos/enviados/internos); la UI solo elige a quién notificar.
+            // Mailable (misma prÃ¡ctica que las notificaciones de radicados
+            // recibidos/enviados/internos); la UI solo elige a quiÃ©n notificar.
 
             $pqrs = VentanillaPqrs::with(['radicado.tercero', 'tipoPqrs', 'responsables.userCargo.user'])->find($id);
 
@@ -725,7 +725,7 @@ class VentanillaPqrsController extends Controller
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
-            // Destinatarios según el modo seleccionado en el modal
+            // Destinatarios segÃºn el modo seleccionado en el modal
             $emails = [];
 
             if (in_array($validated['modo'], ['todos', 'responsables'], true)) {
@@ -747,7 +747,7 @@ class VentanillaPqrsController extends Controller
             $emails = array_values(array_unique(array_filter($emails)));
 
             if (empty($emails)) {
-                return $this->errorResponse('No hay destinatarios válidos para enviar la notificación', null, 422);
+                return $this->errorResponse('No hay destinatarios vÃ¡lidos para enviar la notificaciÃ³n', null, 422);
             }
 
             // Configurar SMTP desde config_varias (paridad con recibidos/enviados/internos)
@@ -755,14 +755,14 @@ class VentanillaPqrsController extends Controller
             if (! MailConfigHelper::isConfigured()) {
                 Log::warning('SMTP no configurado', ['pqrs_id' => $id]);
 
-                return $this->errorResponse('No se pudo enviar el correo. Verifique la configuración SMTP en Otras configuraciones → Correo.', null, 500);
+                return $this->errorResponse('No se pudo enviar el correo. Verifique la configuraciÃ³n SMTP en Otras configuraciones â†’ Correo.', null, 500);
             }
 
             // Enviar email a todos los destinatarios usando Mailable
             Mail::to($emails)
                 ->send(new PqrsNotificacionEmail($pqrs));
 
-            // Registrar en historial de notificaciones del radicado (fuente única)
+            // Registrar en historial de notificaciones del radicado (fuente Ãºnica)
             VentanillaRadicaHistorialNotificacion::create([
                 'radicado_id' => $pqrs->ventanilla_radica_reci_id,
                 'tipo' => $validated['modo'],
@@ -776,17 +776,17 @@ class VentanillaPqrsController extends Controller
                 'total_enviados' => count($emails),
             ]);
 
-            return $this->successResponse(['total_enviados' => count($emails)], 'Notificación enviada exitosamente a '.count($emails).' destinatario(s)');
+            return $this->successResponse(['total_enviados' => count($emails)], 'NotificaciÃ³n enviada exitosamente a '.count($emails).' destinatario(s)');
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
         if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             Log::error('Error notificarEmail PQRS', ['pqrs_id' => $id, 'error' => $e->getMessage()]);
-            return $this->errorResponse('Error al enviar la notificación', $e->getMessage(), 500);
+            return $this->errorResponse('Error al enviar la notificaciÃ³n', $e->getMessage(), 500);
         }
     }
 
     /**
-     * Solicita un código OTP para firmar una PQRS electrónicamente.
+     * Solicita un cÃ³digo OTP para firmar una PQRS electrÃ³nicamente.
      */
     public function solicitarOtpFirma(int $id): JsonResponse
     {
@@ -805,7 +805,7 @@ class VentanillaPqrsController extends Controller
 
             $this->pqrsService->solicitarOtpFirma($user, $pqrs);
 
-            return $this->successResponse(null, 'Código OTP enviado al correo del usuario');
+            return $this->successResponse(null, 'CÃ³digo OTP enviado al correo del usuario');
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
         if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
@@ -814,7 +814,7 @@ class VentanillaPqrsController extends Controller
     }
 
     /**
-     * Valida el código OTP para firmar una PQRS.
+     * Valida el cÃ³digo OTP para firmar una PQRS.
      */
     public function validarOtpFirma(Request $request, int $id): JsonResponse
     {
@@ -834,7 +834,7 @@ class VentanillaPqrsController extends Controller
             $valido = $this->pqrsService->validarOtpFirma($user, $request->otp, $pqrs);
 
             if (! $valido) {
-                return $this->errorResponse('Código OTP inválido o expirado', null, 403);
+                return $this->errorResponse('CÃ³digo OTP invÃ¡lido o expirado', null, 403);
             }
 
             return $this->successResponse(['valido' => true], 'OTP validado correctamente');
@@ -846,7 +846,7 @@ class VentanillaPqrsController extends Controller
     }
 
     /**
-     * Guarda la firma electrónica de una PQRS.
+     * Guarda la firma electrÃ³nica de una PQRS.
      */
     public function guardarFirma(Request $request, int $id): JsonResponse
     {
@@ -873,7 +873,7 @@ class VentanillaPqrsController extends Controller
 
             $this->auditVentanilla($pqrs, 'signed', $pqrs->radicado?->num_radicado ?? $pqrs->id);
 
-            return $this->successResponse(new PqrsResource($pqrs), 'PQRS firmada electrónicamente con éxito');
+            return $this->successResponse(new PqrsResource($pqrs), 'PQRS firmada electrÃ³nicamente con Ã©xito');
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
         if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
@@ -989,13 +989,13 @@ class VentanillaPqrsController extends Controller
     }
 
     /**
-     * Catálogos paramétricos del formulario PQRS.
+     * CatÃ¡logos paramÃ©tricos del formulario PQRS.
      *
-     * Resuelve las listas de config_listas POR NOMBRE (no por ID, que varía
+     * Resuelve las listas de config_listas POR NOMBRE (no por ID, que varÃ­a
      * entre entornos): Tipos de PQRS, Prioridad PQRS, Modalidad PQRS,
-     * Tipos de Recepción y Tipos de solicitud. Devuelve solo detalles activos.
+     * Tipos de RecepciÃ³n y Tipos de solicitud. Devuelve solo detalles activos.
      *
-     * @return JsonResponse Catálogos agrupados por clave:
+     * @return JsonResponse CatÃ¡logos agrupados por clave:
      *   tipos_pqrs, prioridades, modalidades, medios_recepcion, tipos_solicitud
      *
      * @author Jhon Javer Lozano Arce
@@ -1009,7 +1009,7 @@ class VentanillaPqrsController extends Controller
                 'tipos_pqrs' => 'Tipos de PQRS',
                 'prioridades' => 'Prioridad PQRS',
                 'modalidades' => 'Modalidad PQRS',
-                'medios_recepcion' => 'Tipos de Recepción',
+                'medios_recepcion' => 'Tipos de RecepciÃ³n',
                 'tipos_solicitud' => 'Tipos de solicitud',
             ];
 
@@ -1024,11 +1024,11 @@ class VentanillaPqrsController extends Controller
                     ->get(['cld.id', 'cld.nombre', 'cld.codigo']);
             }
 
-            return $this->successResponse($catalogos, 'Catálogos PQRS obtenidos exitosamente');
+            return $this->successResponse($catalogos, 'CatÃ¡logos PQRS obtenidos exitosamente');
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
         if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
-            return $this->errorResponse('Error al obtener los catálogos PQRS', $e->getMessage(), 500);
+            return $this->errorResponse('Error al obtener los catÃ¡logos PQRS', $e->getMessage(), 500);
         }
     }
 
@@ -1040,7 +1040,7 @@ class VentanillaPqrsController extends Controller
         try {
             $estados = [
                 ['id' => 'Pendiente', 'nombre' => 'Pendiente'],
-                ['id' => 'En Tramite', 'nombre' => 'En Trámite'],
+                ['id' => 'En Tramite', 'nombre' => 'En TrÃ¡mite'],
                 ['id' => 'Respondida', 'nombre' => 'Respondida'],
                 ['id' => 'Vencida', 'nombre' => 'Vencida'],
             ];
@@ -1054,7 +1054,7 @@ class VentanillaPqrsController extends Controller
     }
 
     /**
-     * Obtiene las transiciones válidas desde un estado dado.
+     * Obtiene las transiciones vÃ¡lidas desde un estado dado.
      */
     public function transicionesEstado(string $estadoActual): JsonResponse
     {
@@ -1067,7 +1067,7 @@ class VentanillaPqrsController extends Controller
                 default => [],
             };
 
-            return $this->successResponse($transiciones, 'Transiciones válidas');
+            return $this->successResponse($transiciones, 'Transiciones vÃ¡lidas');
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
         if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
@@ -1076,7 +1076,7 @@ class VentanillaPqrsController extends Controller
     }
 
     /**
-     * Elimina múltiples PQRS en lote.
+     * Elimina mÃºltiples PQRS en lote.
      */
     public function bulkDestroy(Request $request): JsonResponse
     {
@@ -1143,7 +1143,7 @@ class VentanillaPqrsController extends Controller
     }
 
     /**
-     * Historial de cambios de clasificación de una PQRS.
+     * Historial de cambios de clasificaciÃ³n de una PQRS.
      */
     public function historialClasificacion(int $id): JsonResponse
     {
@@ -1159,11 +1159,12 @@ class VentanillaPqrsController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            return $this->successResponse($historial, 'Historial de clasificación');
+            return $this->successResponse($historial, 'Historial de clasificaciÃ³n');
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
         if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
-            return $this->errorResponse('Error al obtener el historial de clasificación', $e->getMessage(), 500);
+            return $this->errorResponse('Error al obtener el historial de clasificaciÃ³n', $e->getMessage(), 500);
         }
     }
 }
+
