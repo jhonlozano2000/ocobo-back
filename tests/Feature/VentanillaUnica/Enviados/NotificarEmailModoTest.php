@@ -55,11 +55,11 @@ class NotificarEmailModoTest extends TestCase
     }
 
     /** @test */
-    public function rechaza_sin_asunto(): void
+    public function rechaza_sin_modo(): void
     {
         $res = $this->actingAs($this->user)
             ->postJson('/api/ventanilla/pqrs/999/notificar-email', [
-                'modo' => 'todos',
+                'asunto' => 'Test',
                 'mensaje' => 'Mensaje',
             ]);
 

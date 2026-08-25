@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Models\VentanillaUnica\Pqrs\VentanillaPqrs;
+use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -27,4 +27,3 @@ class MarcarPqrsVencidas implements ShouldQueue
         }
     }
 }
-

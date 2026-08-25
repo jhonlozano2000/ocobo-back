@@ -2,7 +2,7 @@
 
 namespace App\Mail;
 
-use App\Models\VentanillaUnica\Pqrs\VentanillaPqrs;
+use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -32,7 +32,7 @@ class PqrsNotificacionEmail extends Mailable
         $numRadicado = $this->pqrs->radicado?->num_radicado ?? 'N/A';
 
         return new Envelope(
-            subject: $this->asuntoPersonalizado ?? "NotificaciÃ³n {$tipo} - Radicado {$numRadicado}",
+            subject: $this->asuntoPersonalizado ?? "Notificación {$tipo} - Radicado {$numRadicado}",
         );
     }
 
@@ -52,4 +52,3 @@ class PqrsNotificacionEmail extends Mailable
         return [];
     }
 }
-
