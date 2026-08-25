@@ -711,30 +711,37 @@ class VentanillaPqrsController extends Controller
     {
         try {
             $validated = $request->validate([
-                'destinatario' => 'required|string|max:255',
+                'modo' => 'required|string|in:todos,responsables,remitente',
                 'asunto' => 'required|string|max:500',
                 'mensaje' => 'required|string',
-                'tipo' => 'nullable|string|in:responsable,tercero,acuse',
             ]);
 
-            $pqrs = VentanillaPqrs::with(['radicado', 'tipoPqrs', 'responsables.userCargo.user'])->find($id);
+            $pqrs = VentanillaPqrs::with(['radicado.tercero', 'tipoPqrs', 'responsables.userCargo.user'])->find($id);
 
             if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
-            // Obtener destinatarios: responsables + destinatario manual
+            // Destinatarios según el modo seleccionado en el modal
             $emails = [];
-            foreach ($pqrs->responsables as $resp) {
-                if ($resp->userCargo && $resp->userCargo->user && $resp->userCargo->user->email) {
-                    $emails[] = $resp->userCargo->user->email;
+
+            if (in_array($validated['modo'], ['todos', 'responsables'], true)) {
+                foreach ($pqrs->responsables as $resp) {
+                    if ($resp->userCargo && $resp->userCargo->user && $resp->userCargo->user->email) {
+                        $emails[] = $resp->userCargo->user->email;
+                    }
                 }
             }
-            // Agregar el destinatario manual si no está ya en la lista
-            if (! in_array($validated['destinatario'], $emails)) {
-                $emails[] = $validated['destinatario'];
+
+            if (in_array($validated['modo'], ['todos', 'remitente'], true)) {
+                $emailRemitente = $pqrs->radicado?->tercero?->email;
+
+                if ($emailRemitente) {
+                    $emails[] = $emailRemitente;
+                }
             }
-            $emails = array_unique(array_filter($emails));
+
+            $emails = array_values(array_unique(array_filter($emails)));
 
             if (empty($emails)) {
                 return $this->errorResponse('No hay destinatarios válidos para enviar la notificación', null, 422);
@@ -747,21 +754,21 @@ class VentanillaPqrsController extends Controller
                 return $this->errorResponse('Configuración SMTP no disponible. Verifique la configuración del servidor de correo.', null, 500);
             }
 
-            // Enviar email usando Mailable
-            Mail::to($validated['destinatario'])
+            // Enviar email a todos los destinatarios usando Mailable
+            Mail::to($emails)
                 ->send(new PqrsNotificacionEmail($pqrs, $validated['mensaje'], $validated['asunto']));
 
             // Registrar en historial de notificaciones del radicado (fuente única)
             VentanillaRadicaHistorialNotificacion::create([
                 'radicado_id' => $pqrs->ventanilla_radica_reci_id,
-                'tipo' => $validated['tipo'] ?? 'responsable',
+                'tipo' => $validated['modo'],
                 'destinatarios' => $emails,
                 'total_enviados' => count($emails),
                 'user_id' => auth()->id(),
             ]);
 
             $this->auditVentanilla($pqrs, 'notified', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
-                'destinatario' => $validated['destinatario'],
+                'modo' => $validated['modo'],
                 'asunto' => $validated['asunto'],
                 'total_enviados' => count($emails),
             ]);
