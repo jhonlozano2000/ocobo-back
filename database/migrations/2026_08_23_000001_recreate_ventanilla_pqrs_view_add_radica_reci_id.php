@@ -98,11 +98,11 @@ return new class extends Migration
             LEFT JOIN config_listas_detalles cld_tipo ON vp.tipo_pqrs_id = cld_tipo.id
             LEFT JOIN config_listas_detalles cld_medio ON vrr.medio_recep_id = cld_medio.id
             LEFT JOIN config_server_archivos csa ON vrr.config_server_id = csa.id
-            LEFT JOIN (
-                SELECT ventanilla_pqrs_id, COUNT(*) as total
-                FROM ventanilla_pqrs_archivos
-                GROUP BY ventanilla_pqrs_id
-            ) archivos_count ON archivos_count.ventanilla_pqrs_id = vp.id
+                LEFT JOIN (
+                    SELECT radicado_id, COUNT(*) as total
+                    FROM ventanilla_radica_reci_archivos
+                    GROUP BY radicado_id
+                ) archivos_count ON archivos_count.radicado_id = vp.ventanilla_radica_reci_id
             LEFT JOIN (
                 SELECT
                     radica_reci_id,

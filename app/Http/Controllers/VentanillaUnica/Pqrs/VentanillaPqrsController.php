@@ -11,8 +11,8 @@ use App\Http\Resources\VentanillaUnica\PqrsResource;
 use App\Http\Traits\ApiResponseTrait;
 use App\Mail\PqrsNotificacionEmail;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
-use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsHistorialNotificacion;
-use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsHistorialClasificacion;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciHistorialClasificacionDocumental;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaHistorialNotificacion;
 use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsOptimizedView;
 use App\Services\ReportesExportService;
 use App\Services\VentanillaUnica\PqrsService;
@@ -641,9 +641,9 @@ class VentanillaPqrsController extends Controller
 
             $pqrs->update(['clasificacion_documental_trd_id' => $clasificacionNuevaId]);
 
-            // Registrar en historial de clasificación
-            VentanillaPqrsHistorialClasificacion::create([
-                'pqrs_id' => $id,
+            // Registrar en historial de clasificación del radicado (fuente única)
+            VentanillaRadicaReciHistorialClasificacionDocumental::create([
+                'radica_reci_id' => $pqrs->ventanilla_radica_reci_id,
                 'clasificacion_anterior_id' => $clasificacionAnteriorId,
                 'clasificacion_nueva_id' => $clasificacionNuevaId,
                 'motivo' => $request->motivo,
@@ -751,9 +751,9 @@ class VentanillaPqrsController extends Controller
             Mail::to($validated['destinatario'])
                 ->send(new PqrsNotificacionEmail($pqrs, $validated['mensaje'], $validated['asunto']));
 
-            // Registrar en historial de notificaciones
-            VentanillaPqrsHistorialNotificacion::create([
-                'pqrs_id' => $id,
+            // Registrar en historial de notificaciones del radicado (fuente única)
+            VentanillaRadicaHistorialNotificacion::create([
+                'radicado_id' => $pqrs->ventanilla_radica_reci_id,
                 'tipo' => $validated['tipo'] ?? 'responsable',
                 'destinatarios' => $emails,
                 'total_enviados' => count($emails),
@@ -1119,7 +1119,7 @@ class VentanillaPqrsController extends Controller
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
-            $historial = VentanillaPqrsHistorialNotificacion::where('pqrs_id', $id)
+            $historial = VentanillaRadicaHistorialNotificacion::where('radicado_id', $pqrs->ventanilla_radica_reci_id)
                 ->with('usuario')
                 ->orderBy('created_at', 'desc')
                 ->get();
@@ -1144,7 +1144,7 @@ class VentanillaPqrsController extends Controller
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
-            $historial = VentanillaPqrsHistorialClasificacion::where('pqrs_id', $id)
+            $historial = VentanillaRadicaReciHistorialClasificacionDocumental::where('radica_reci_id', $pqrs->ventanilla_radica_reci_id)
                 ->with(['clasificacionAnterior', 'clasificacionNueva', 'usuario'])
                 ->orderBy('created_at', 'desc')
                 ->get();

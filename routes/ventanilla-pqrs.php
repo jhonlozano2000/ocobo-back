@@ -1,8 +1,6 @@
 <?php
 
-use App\Http\Controllers\VentanillaUnica\Pqrs\VentanillaPqrsArchivosController;
 use App\Http\Controllers\VentanillaUnica\Pqrs\VentanillaPqrsController;
-use App\Http\Controllers\VentanillaUnica\Pqrs\VentanillaPqrsComentariosController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -13,8 +11,9 @@ use Illuminate\Support\Facades\Route;
  * - Responsables (asignación, custodia, acuse digital)
  * - Historial de pases/reasignaciones
  * - Historial de compartidos (CC)
- * - Comentarios threaded con respuestas
- * - Archivos (digital y adjuntos)
+ *
+ * Comentarios y archivos se gestionan sobre el radicado recibido asociado
+ * vía /api/radica-recibida/* (fuente única de esos datos).
  *
  * Middleware global: auth:sanctum (autenticación via Laravel Sanctum)
  * Rate limiting: throttle:radicacion (escritura) / throttle:api (lectura)
@@ -238,80 +237,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // ═══════════════════════════════════════════════════════════════
 
     // ═══════════════════════════════════════════════════════════════
-    // PQRS - LECTURA ANIDADA (throttle:api)
+    // NOTA: Comentarios y archivos de PQRS viven en el radicado recibido
+    // (ventanilla_radica_reci_*). Se gestionan vía /api/radica-recibida/*.
     // ═══════════════════════════════════════════════════════════════
-
-    Route::middleware('throttle:api')->group(function () {
-        /**
-         * Historiales y comentarios - LECTURA (throttle:api)
-         *
-         * Nota: comentarios show usa ruta plana /api/pqrs/comentarios/{id}
-         * para evitar la colisión de parámetros {pqrs_id}/{id} en el binding posicional.
-         */
-        Route::prefix('pqrs/{pqrs_id}')->group(function () {
-            Route::get('comentarios', [VentanillaPqrsComentariosController::class, 'index'])
-                ->name('pqrs.comentarios.index');
-        });
-        Route::get('pqrs/comentarios/{id}', [VentanillaPqrsComentariosController::class, 'show'])
-            ->name('pqrs.comentarios.show');
-    });
-
-    // ═══════════════════════════════════════════════════════════════
-    // PQRS - ESCRITURA (throttle:radicacion)
-    // ═══════════════════════════════════════════════════════════════
-
-    Route::middleware('throttle:radicacion')->group(function () {
-        /**
-         * POST /api/pqrs/{pqrs_id}/comentarios   → crea comentario/respuesta
-         */
-        Route::prefix('pqrs/{pqrs_id}')->group(function () {
-            Route::post('comentarios', [VentanillaPqrsComentariosController::class, 'store'])
-                ->name('pqrs.comentarios.store');
-        });
-
-        /**
-         * Comentarios PQRS - escritura sobre rutas planas:
-         * PUT    /api/pqrs/comentarios/{id}             → update (solo autor, no resuelto)
-         * POST   /api/pqrs/comentarios/{id}/resolver    → resolver (marcar resuelto)
-         * DELETE /api/pqrs/comentarios/{id}             → destroy (solo autor, sin respuestas)
-         */
-        Route::put('pqrs/comentarios/{id}', [VentanillaPqrsComentariosController::class, 'update'])
-            ->name('pqrs.comentarios.update');
-        Route::post('pqrs/comentarios/{id}/resolver', [VentanillaPqrsComentariosController::class, 'resolver'])
-            ->name('pqrs.comentarios.resolver');
-        Route::delete('pqrs/comentarios/{id}', [VentanillaPqrsComentariosController::class, 'destroy'])
-            ->name('pqrs.comentarios.destroy');
-    });
-
-    // ═══════════════════════════════════════════════════════════════
-    // ARCHIVOS PQRS - SUBIDAS (throttle:uploads, patrón Recibidos)
-    // ═══════════════════════════════════════════════════════════════
-
-    Route::middleware('throttle:uploads')->group(function () {
-        Route::prefix('pqrs/{id}')->group(function () {
-            Route::post('archivos/digital/upload', [VentanillaPqrsArchivosController::class, 'subirDigital'])
-                ->name('pqrs.archivos.digital.upload');
-            Route::post('archivos/adjuntos/upload', [VentanillaPqrsArchivosController::class, 'subirAdjuntos'])
-                ->name('pqrs.archivos.adjuntos.upload');
-        });
-    });
-
-    // ═══════════════════════════════════════════════════════════════
-    // ARCHIVOS PQRS - CONSULTA Y ELIMINACIÓN (throttle:api)
-    // ═══════════════════════════════════════════════════════════════
-
-    Route::middleware('throttle:api')->group(function () {
-        Route::prefix('pqrs/{id}')->group(function () {
-            Route::get('archivos', [VentanillaPqrsArchivosController::class, 'listar'])
-                ->name('pqrs.archivos.listar');
-            Route::get('archivos/digital/descargar', [VentanillaPqrsArchivosController::class, 'descargarDigital'])
-                ->name('pqrs.archivos.digital.descargar');
-            Route::delete('archivos/digital/eliminar', [VentanillaPqrsArchivosController::class, 'eliminarDigital'])
-                ->name('pqrs.archivos.digital.eliminar');
-            Route::get('archivos/{archivoId}/descargar', [VentanillaPqrsArchivosController::class, 'descargarAdjunto'])
-                ->name('pqrs.archivos.adjuntos.descargar');
-            Route::delete('archivos/{archivoId}/eliminar', [VentanillaPqrsArchivosController::class, 'eliminarAdjunto'])
-                ->name('pqrs.archivos.adjuntos.eliminar');
-        });
-    });
 });

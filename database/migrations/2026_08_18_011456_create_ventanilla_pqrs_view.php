@@ -105,14 +105,14 @@ return new class extends Migration
             -- Join con servidor de archivos del radicado
             LEFT JOIN config_server_archivos csa ON vrr.config_server_id = csa.id
 
-            -- Agregación de archivos
+            -- Agregación de archivos (viven en el radicado recibido)
             LEFT JOIN (
                 SELECT
-                    ventanilla_pqrs_id,
+                    radicado_id,
                     COUNT(*) as total
-                FROM ventanilla_pqrs_archivos
-                GROUP BY ventanilla_pqrs_id
-            ) archivos_count ON archivos_count.ventanilla_pqrs_id = vp.id
+                FROM ventanilla_radica_reci_archivos
+                GROUP BY radicado_id
+            ) archivos_count ON archivos_count.radicado_id = vp.ventanilla_radica_reci_id
 
             -- Agregación de responsables
             LEFT JOIN (

@@ -33,7 +33,7 @@ class StoreWorkFlowArchivoRequest extends SanitizedFormRequest
             $modelo = match ($type) {
                 'nodo' => WorkflowNodo::class,
                 'instancia' => WorkflowInstancia::class,
-                'workflow', default => Workflow::class,
+                default => Workflow::class,
             };
 
             if (!$modelo::where('id', $id)->exists()) {

@@ -7,9 +7,6 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\ConfigDiviPoli;
 use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\Gestion\GestionTercero;
-use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsHistorialNotificacion;
-use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsHistorialClasificacion;
-use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsComentario;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -215,32 +212,6 @@ class VentanillaPqrs extends Model
     public function divisionPoliticaAfectado(): BelongsTo
     {
         return $this->belongsTo(ConfigDiviPoli::class, 'config_divi_poli_id_afectado');
-    }
-
-    public function archivos()
-    {
-        return $this->hasMany(VentanillaPqrsArchivo::class, 'ventanilla_pqrs_id');
-    }
-
-    public function archivoDigital()
-    {
-        return $this->hasOne(VentanillaPqrsArchivo::class, 'ventanilla_pqrs_id')
-            ->where('tipo', 'digital');
-    }
-
-    public function historialNotificaciones(): HasMany
-    {
-        return $this->hasMany(VentanillaPqrsHistorialNotificacion::class, 'pqrs_id');
-    }
-
-    public function historialClasificacion(): HasMany
-    {
-        return $this->hasMany(VentanillaPqrsHistorialClasificacion::class, 'pqrs_id');
-    }
-
-    public function comentarios(): HasMany
-    {
-        return $this->hasMany(VentanillaPqrsComentario::class, 'pqrs_id');
     }
 
     public function usuarioCreaRadicado(): BelongsTo
