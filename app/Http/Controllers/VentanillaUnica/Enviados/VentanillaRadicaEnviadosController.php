@@ -1254,14 +1254,24 @@ class VentanillaRadicaEnviadosController extends Controller
                 return $this->errorResponse('La anulación ya fue procesada', null, 400);
             }
 
+            if ($request->accion === 'rechazar') {
+                // Rechazar: limpiar la solicitud, el radicado vuelve a estado normal
+                $radicado->update([
+                    'usua_soli_anula_id' => null,
+                    'observa_soli_anula' => null,
+                ]);
+
+                return $this->successResponse($radicado, 'Anulación rechazada');
+            }
+
+            // Aprobar: registrar quién aprobó y marcar estado como anulado
             $radicado->update([
                 'usua_aprue_anula_id' => Auth::id(),
                 'observa_aprue_anula' => $request->observa_aprue_anula,
+                'estado_trabajo' => 'ANULADO',
             ]);
 
-            $mensaje = $request->accion === 'rechazar' ? 'Anulación rechazada' : 'Anulación aprobada exitosamente';
-
-            return $this->successResponse($radicado, $mensaje);
+            return $this->successResponse($radicado, 'Anulación aprobada exitosamente');
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
         if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
@@ -1277,7 +1287,7 @@ class VentanillaRadicaEnviadosController extends Controller
         try {
             $radicados = VentanillaRadicaEnviados::whereNotNull('usua_soli_anula_id')
                 ->whereNull('usua_aprue_anula_id')
-                ->with(['usuarioCrea', 'tercero', 'usuario_soli_anula'])
+                ->with(['usuarioCreaRadicado', 'tercero', 'usuario_soli_anula'])
                 ->orderBy('updated_at', 'desc')
                 ->get();
 

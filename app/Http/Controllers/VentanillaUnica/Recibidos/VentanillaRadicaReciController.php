@@ -2135,17 +2135,20 @@ class VentanillaRadicaReciController extends Controller
             }
 
             if ($request->accion === 'rechazar') {
+                // Rechazar: limpiar la solicitud, el radicado vuelve a estado normal
                 $radicado->update([
-                    'usua_aprue_anula_id' => Auth::id(),
-                    'observa_aprue_anula' => $request->observa_aprue_anula,
+                    'usua_soli_anula_id' => null,
+                    'observa_soli_anula' => null,
                 ]);
 
                 return $this->successResponse($radicado, 'Anulación rechazada');
             }
 
+            // Aprobar: registrar quién aprobó y marcar estado como anulado
             $radicado->update([
                 'usua_aprue_anula_id' => Auth::id(),
                 'observa_aprue_anula' => $request->observa_aprue_anula,
+                'estado_trabajo' => 'ANULADO',
             ]);
 
             return $this->successResponse($radicado, 'Anulación aprobada exitosamente');
@@ -2164,7 +2167,7 @@ class VentanillaRadicaReciController extends Controller
         try {
             $radicados = VentanillaRadicaReci::whereNotNull('usua_soli_anula_id')
                 ->whereNull('usua_aprue_anula_id')
-                ->with(['usuarioCrea', 'tercero', 'usuario_soli_anula'])
+                ->with(['usuarioCreaRadicado', 'tercero', 'usuario_soli_anula'])
                 ->orderBy('updated_at', 'desc')
                 ->get();
 
