@@ -215,15 +215,15 @@ class OfiArchivoExpedienteController extends Controller
             $query = OfiArchivoExpediente::with(['dependencia', 'serieTrd', 'usuarioApertura']);
 
             // Filtros opcionales
-            if ($request->has('dependencia_id')) {
+            if ($request->filled('dependencia_id')) {
                 $query->where('dependencia_id', $request->dependencia_id);
             }
 
-            if ($request->has('serie_trd_id')) {
+            if ($request->filled('serie_trd_id')) {
                 $query->where('serie_trd_id', $request->serie_trd_id);
             }
 
-            if ($request->has('search')) {
+            if ($request->filled('search')) {
                 $query->where(function ($q) use ($request) {
                     $q->where('numero_expediente', 'like', "%{$request->search}%")
                         ->orWhere('nombre_expediente', 'like', "%{$request->search}%");
@@ -287,9 +287,13 @@ class OfiArchivoExpedienteController extends Controller
                 'expediente_id' => $expedienteId,
                 'documentable_id' => $request->documentable_id,
                 'documentable_type' => $modelClass,
+                'tipo_documental' => $request->detalle ?: 'Documento incorporado',
+                'asunto' => $request->detalle ?: 'Documento incorporado',
                 'detalle' => $request->detalle,
                 'usuario_id' => Auth::id(),
                 'fecha_incorporacion' => now(),
+                'orden' => 0,
+                'fecha_documento' => now()->toDateString(),
             ]);
 
             DB::commit();
@@ -388,7 +392,7 @@ class OfiArchivoExpedienteController extends Controller
                 $doc = OfiArchivoExpedienteDocumento::create([
                     'expediente_id' => $expedienteId,
                     'tipo' => $request->tipo,
-                    'tipo_documental' => $request->tipo_documental,
+                    'tipo_documental' => $request->tipo_documental ?? ($request->tipo === 'expediente_completo' ? 'Expediente completo' : 'Documento'),
                     'detalle' => implode(' | ', $detalleParts),
                     'usuario_id' => Auth::id(),
                     'archivo_path' => $uploadData['path'],
@@ -399,6 +403,7 @@ class OfiArchivoExpedienteController extends Controller
                     'fecha_documento' => now()->toDateString(),
                     'asunto' => $request->tipo_documental ?? 'Archivo de expediente',
                     'activo' => true,
+                    'orden' => 0,
                 ]);
 
                 $documentosCreados[] = $doc;
