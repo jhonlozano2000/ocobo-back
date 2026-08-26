@@ -85,9 +85,7 @@ class OfiArchivoPrestamoController extends Controller
 
             $expediente = OfiArchivoExpediente::findOrFail($request->expediente_id);
 
-            if ($expediente->estado !== 'Abierto') {
-                DB::rollBack();
-
+            if ($expediente->estado !== 'abierto') {
                 return $this->errorResponse('No se puede prestar un expediente que no está abierto', null, 422);
             }
 

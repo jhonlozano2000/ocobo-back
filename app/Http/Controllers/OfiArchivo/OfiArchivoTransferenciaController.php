@@ -142,8 +142,6 @@ class OfiArchivoTransferenciaController extends Controller
 
             // Máquina de estados: una transferencia ya decidida es inmutable
             if (in_array($transferencia->estado, ['aprobada', 'rechazada'], true)) {
-                DB::rollBack();
-
                 return $this->errorResponse(
                     "La transferencia ya fue {$transferencia->estado} y no puede modificarse",
                     null,
@@ -222,9 +220,7 @@ class OfiArchivoTransferenciaController extends Controller
 
             $expediente = OfiArchivoExpediente::findOrFail($request->expediente_id);
 
-            if ($expediente->estado !== 'Cerrado') {
-                DB::rollBack();
-
+            if ($expediente->estado !== 'cerrado') {
                 return $this->errorResponse('Solo se pueden eliminar expedientes cerrados', null, 422);
             }
 

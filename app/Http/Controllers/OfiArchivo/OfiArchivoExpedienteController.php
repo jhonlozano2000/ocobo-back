@@ -40,7 +40,7 @@ class OfiArchivoExpedienteController extends Controller
             'nombre_expediente' => 'required|string|max:300',
             'dependencia_id' => 'required|exists:calidad_organigrama,id',
             'serie_trd_id' => 'required|exists:clasificacion_documental_trd,id',
-            'deposito' => 'nullable|string|max:100',
+            'ubicacion_fisica' => 'nullable|string|max:200',
             'caja' => 'nullable|string|max:50',
             'carpeta' => 'nullable|string|max:50',
             'folios_fisicos' => 'nullable|integer|min:0',
@@ -58,15 +58,16 @@ class OfiArchivoExpedienteController extends Controller
             $expediente = OfiArchivoExpediente::create([
                 'numero_expediente' => $numeroExpediente,
                 'nombre_expediente' => $request->nombre_expediente,
+                'anio' => (int) now()->year,
                 'dependencia_id' => $request->dependencia_id,
                 'serie_trd_id' => $request->serie_trd_id,
-                'estado' => 'Abierto',
-                'fecha_apertura' => now(),
-                'deposito' => $request->deposito,
+                'estado' => 'abierto',
+                'fecha_apertura' => now()->toDateString(),
+                'ubicacion_fisica' => $request->ubicacion_fisica,
                 'caja' => $request->caja,
                 'carpeta' => $request->carpeta,
                 'folios_fisicos' => $request->folios_fisicos ?? 0,
-                'observacion_1' => $request->observaciones_generales,
+                'observaciones_generales' => $request->observaciones_generales,
                 'usuario_apertura_id' => Auth::id(),
             ]);
 
@@ -114,7 +115,7 @@ class OfiArchivoExpedienteController extends Controller
             'nombre_expediente' => 'nullable|string|max:300',
             'dependencia_id' => 'nullable|exists:calidad_organigrama,id',
             'serie_trd_id' => 'nullable|exists:clasificacion_documental_trd,id',
-            'deposito' => 'nullable|string|max:100',
+            'ubicacion_fisica' => 'nullable|string|max:200',
             'caja' => 'nullable|string|max:50',
             'carpeta' => 'nullable|string|max:50',
             'folios_fisicos' => 'nullable|integer|min:0',
@@ -128,15 +129,12 @@ class OfiArchivoExpedienteController extends Controller
                 'nombre_expediente',
                 'dependencia_id',
                 'serie_trd_id',
-                'deposito',
+                'ubicacion_fisica',
                 'caja',
                 'carpeta',
                 'folios_fisicos',
+                'observaciones_generales',
             ]));
-
-            if ($request->has('observaciones_generales')) {
-                $fields['observacion_1'] = $request->observaciones_generales;
-            }
 
             $expediente->update($fields);
 
@@ -163,7 +161,7 @@ class OfiArchivoExpedienteController extends Controller
 
             $expediente = OfiArchivoExpediente::findOrFail($id);
 
-            if ($expediente->estado !== 'Abierto') {
+            if ($expediente->estado !== 'abierto') {
                 return $this->errorResponse('Solo se pueden cerrar expedientes en estado abierto', null, 422);
             }
 
@@ -185,7 +183,7 @@ class OfiArchivoExpedienteController extends Controller
             $hashIndice = hash('sha256', json_encode($indice));
 
             $expediente->update([
-                'estado' => 'Cerrado',
+                'estado' => 'cerrado',
                 'fecha_cierre' => now(),
                 'hash_indice' => $hashIndice,
                 'motivo_cierre' => $request->motivo_cierre,
@@ -261,7 +259,7 @@ class OfiArchivoExpedienteController extends Controller
 
             $expediente = OfiArchivoExpediente::findOrFail($expedienteId);
 
-            if ($expediente->estado !== 'Abierto') {
+            if ($expediente->estado !== 'abierto') {
                 return $this->errorResponse('No se pueden incorporar documentos a un expediente cerrado o transferido', null, 422);
             }
 
@@ -334,7 +332,7 @@ class OfiArchivoExpedienteController extends Controller
 
             $expediente = OfiArchivoExpediente::findOrFail($expedienteId);
 
-            if ($expediente->estado !== 'Abierto') {
+            if ($expediente->estado !== 'abierto') {
                 return $this->errorResponse('No se pueden subir archivos a un expediente cerrado o transferido', null, 422);
             }
 
@@ -452,12 +450,12 @@ class OfiArchivoExpedienteController extends Controller
             $pdf->SetFont('Arial', 'B', 14);
 
             // Encabezado AGN
-            $pdf->Cell(0, 10, utf8_decode('ÍNDICE ELECTRÓNICO DE EXPEDIENTE - SGDEA OCOBO'), 0, 1, 'C');
+            $pdf->Cell(0, 10, mb_convert_encoding('ÍNDICE ELECTRÓNICO DE EXPEDIENTE - SGDEA OCOBO', 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
             $pdf->SetFont('Arial', '', 10);
-            $pdf->Cell(0, 8, utf8_decode("Dependencia: {$expediente->dependencia->nom_organico}"), 0, 1);
-            $pdf->Cell(0, 8, utf8_decode("Serie/Subserie: {$expediente->serieTrd->nombre}"), 0, 1);
-            $pdf->Cell(0, 8, utf8_decode("No. Expediente: {$expediente->numero_expediente} | Nombre: {$expediente->nombre_expediente}"), 0, 1);
-            $pdf->Cell(0, 8, utf8_decode('Fecha de Apertura: '.$expediente->fecha_apertura->format('Y-m-d')), 0, 1);
+            $pdf->Cell(0, 8, mb_convert_encoding("Dependencia: {$expediente->dependencia->nom_organico}", 'ISO-8859-1', 'UTF-8'), 0, 1);
+            $pdf->Cell(0, 8, mb_convert_encoding("Serie/Subserie: {$expediente->serieTrd->nombre}", 'ISO-8859-1', 'UTF-8'), 0, 1);
+            $pdf->Cell(0, 8, mb_convert_encoding("No. Expediente: {$expediente->numero_expediente} | Nombre: {$expediente->nombre_expediente}", 'ISO-8859-1', 'UTF-8'), 0, 1);
+            $pdf->Cell(0, 8, mb_convert_encoding('Fecha de Apertura: '.$expediente->fecha_apertura->format('Y-m-d'), 'ISO-8859-1', 'UTF-8'), 0, 1);
             $pdf->Ln(5);
 
             // Cabecera de la tabla de documentos
@@ -487,8 +485,8 @@ class OfiArchivoExpedienteController extends Controller
                 // Escribir fila
                 $pdf->Cell(15, 8, $doc->numero_folio, 1, 0, 'C');
                 $pdf->Cell(35, 8, $doc->fecha_incorporacion->format('Y-m-d'), 1, 0, 'C');
-                $pdf->Cell(50, 8, utf8_decode($tipo), 1, 0, 'L');
-                $pdf->Cell(80, 8, utf8_decode($asunto), 1, 0, 'L');
+                $pdf->Cell(50, 8, mb_convert_encoding($tipo, 'ISO-8859-1', 'UTF-8'), 1, 0, 'L');
+                $pdf->Cell(80, 8, mb_convert_encoding($asunto, 'ISO-8859-1', 'UTF-8'), 1, 0, 'L');
 
                 // Hash truncado si es muy largo, pero usualmente 64 chars caben en 95mm a tamaño 8
                 $pdf->Cell(95, 8, $hash, 1, 1, 'L');
@@ -497,8 +495,8 @@ class OfiArchivoExpedienteController extends Controller
             // Pie de página de certificación
             $pdf->Ln(10);
             $pdf->SetFont('Arial', 'I', 8);
-            $pdf->Cell(0, 5, utf8_decode('Documento generado automáticamente por el Sistema de Gestión Documental OCOBO.'), 0, 1, 'C');
-            $pdf->Cell(0, 5, utf8_decode('Este índice electrónico garantiza la integridad inalterable del expediente físico y digital.'), 0, 1, 'C');
+            $pdf->Cell(0, 5, mb_convert_encoding('Documento generado automáticamente por el Sistema de Gestión Documental OCOBO.', 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
+            $pdf->Cell(0, 5, mb_convert_encoding('Este índice electrónico garantiza la integridad inalterable del expediente físico y digital.', 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
 
             $contenidoPdf = $pdf->Output('S');
 
@@ -519,23 +517,28 @@ class OfiArchivoExpedienteController extends Controller
     public function softDeleteDocumento($expedienteId, $documentoId)
     {
         try {
+            DB::beginTransaction();
+
             $doc = OfiArchivoExpedienteDocumento::with('expediente')
                 ->where('expediente_id', $expedienteId)
                 ->findOrFail($documentoId);
 
-            // Eliminar archivo del storage
+            // Primero actualizar DB, luego eliminar archivo
+            $doc->delete();
+
             if ($doc->archivo_path) {
                 ArchivoHelper::eliminarArchivo($doc->archivo_path, 'archivo_expedientes');
             }
 
-            // Eliminar registro de la BD (físico, no lógico)
-            $doc->forceDelete();
+            DB::commit();
 
             return $this->successResponse(null, 'Documento eliminado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
-            return $this->errorResponse('Error al eliminar el documento', $e->getMessage(), 500);
+            if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            DB::rollBack();
+
+            return $this->errorResponse('Error al eliminar el documento', null, 500);
         }
     }
 }

@@ -64,7 +64,7 @@ class PlantillaDocumentoService
 
         try {
             $updateData = [
-                'nombre' => $data['nombre'] ?? $plantilla->nombre_original,
+                'nombre_original' => $data['nombre'] ?? $plantilla->nombre_original,
                 'descripcion' => $data['descripcion'] ?? $plantilla->descripcion,
                 'fecha_vencimiento' => array_key_exists('fecha_vencimiento', $data)
                     ? $data['fecha_vencimiento']

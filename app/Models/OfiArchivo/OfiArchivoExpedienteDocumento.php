@@ -49,6 +49,7 @@ class OfiArchivoExpedienteDocumento extends Model
         static::creating(function ($doc) {
             $ultimoFolio = self::where('expediente_id', $doc->expediente_id)
                 ->where('activo', true)
+                ->lockForUpdate()
                 ->max('numero_folio') ?? 0;
             $doc->numero_folio = $ultimoFolio + 1;
 
@@ -61,9 +62,7 @@ class OfiArchivoExpedienteDocumento extends Model
             $doc->expediente->increment('total_folios_elec');
         });
 
-        static::deleted(function ($doc) {
-            $doc->expediente->decrement('total_folios_elec');
-        });
+        // No hay boot deleted: delete() override maneja el decremento
     }
 
     /**
