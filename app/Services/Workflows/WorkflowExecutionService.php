@@ -95,6 +95,18 @@ class WorkflowExecutionService
                 ->where('nodo_id', $nodoId)
                 ->firstOrFail();
 
+            // Solo se puede ejecutar el nodo ACTUAL de la instancia
+            // (evita saltar directo al nodo fin o ejecutar nodos futuros)
+            if ($instancia->nodo_actual_id !== $nodoId) {
+                throw new StateTransitionException(
+                    'El nodo '.$nodoId.' no es el nodo actual de la instancia'
+                );
+            }
+
+            if ($nodoInstancia->estado === 'completado') {
+                throw new StateTransitionException('Este nodo ya fue ejecutado');
+            }
+
             $siguienteNodo = $this->determinarSiguienteNodo($instanciaId, $nodoId, $resultado);
 
             $resultadoFinal = $resultado;
@@ -170,13 +182,22 @@ class WorkflowExecutionService
     {
         return DB::transaction(function () use ($instanciaId, $estado) {
             $instancia = WorkflowInstancia::findOrFail($instanciaId);
+
+            // Solo instancias en curso pueden detenerse/cancelarse
+            if ($instancia->estado !== 'en_curso') {
+                throw new StateTransitionException(
+                    "La instancia está {$instancia->estado}, solo 'en_curso' puede detenerse"
+                );
+            }
+
+            $estadoAnterior = $instancia->getOriginal('estado');
             $instancia->update(['estado' => $estado]);
 
             $this->auditService->registrar(
                 'instancia.' . $estado,
                 $instancia->workflow_id,
                 $instancia->id,
-                ['estado_anterior' => $instancia->getOriginal('estado')]
+                ['estado_anterior' => $estadoAnterior]
             );
 
             $this->notificationService->notificarInstanciaAvanzada(

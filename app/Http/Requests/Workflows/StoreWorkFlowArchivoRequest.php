@@ -30,14 +30,31 @@ class StoreWorkFlowArchivoRequest extends SanitizedFormRequest
             $type = $this->input('archivable_type');
             $id = $this->input('archivable_id');
 
+            if (! $type || ! $id) {
+                return;
+            }
+
+            // El {workflow} de la ruta manda: el archivable debe pertenecerle
+            $workflowId = (int) $this->route('workflow');
+
             $modelo = match ($type) {
                 'nodo' => WorkflowNodo::class,
                 'instancia' => WorkflowInstancia::class,
                 default => Workflow::class,
             };
 
-            if (!$modelo::where('id', $id)->exists()) {
-                $validator->errors()->add('archivable_id', "El {$type} especificado no existe");
+            $query = $modelo::where('id', $id);
+
+            if ($type !== 'workflow') {
+                $query->where('workflow_id', $workflowId);
+            } elseif ((int) $id !== $workflowId) {
+                $validator->errors()->add('archivable_id', 'El archivo pertenece a otro workflow');
+
+                return;
+            }
+
+            if (! $query->exists()) {
+                $validator->errors()->add('archivable_id', "El {$type} especificado no existe en este workflow");
             }
         });
     }

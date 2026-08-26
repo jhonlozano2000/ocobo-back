@@ -229,7 +229,8 @@ class WorkFlowTareaService
     {
         $vencidas = WorkFlowTarea::with('nodo:id,workflow_id')
             ->where('nodo_id', $nodoId)
-            ->whereIn('estado', ['pendiente', 'en_curso'])
+            // Solo en_curso puede transitar a vencida (máquina de estados)
+            ->where('estado', 'en_curso')
             ->whereNotNull('fecha_limite')
             ->where('fecha_limite', '<', now())
             ->get(['id', 'nodo_id', 'instancia_id', 'estado', 'responsable_usuario_id', 'titulo']);
@@ -252,7 +253,10 @@ class WorkFlowTareaService
     {
         $fechaLimiteStr = $tarea->fecha_limite?->toDateTimeString();
 
-        if (WorkflowEstadoMachine::necesitaVencimiento($tarea->estado, $fechaLimiteStr)) {
+        // La transición a vencida debe ser legal según la máquina de estados
+        if (WorkflowEstadoMachine::puedeTransitar($tarea->estado, 'vencida')
+            && WorkflowEstadoMachine::necesitaVencimiento($tarea->estado, $fechaLimiteStr)
+        ) {
             $estadoAnterior = $tarea->estado;
             $tarea->update(['estado' => 'vencida']);
 

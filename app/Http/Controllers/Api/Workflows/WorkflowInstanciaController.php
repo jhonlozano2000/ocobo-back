@@ -103,6 +103,8 @@ class WorkflowInstanciaController extends Controller
                 $request['estado'] ?? 'detenida'
             );
             return $this->successResponse($instancia, 'Instancia detenida correctamente');
+        } catch (\App\Exceptions\Workflows\WorkflowException $e) {
+            return $this->errorResponse($e->getMessage(), null, $e->getStatusCode());
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
         if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }

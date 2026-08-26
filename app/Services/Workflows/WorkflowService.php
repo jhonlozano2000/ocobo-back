@@ -139,9 +139,17 @@ class WorkflowService
             }
 
             foreach ($original->conexiones as $conexion) {
+                // Saltar conexiones huérfanas (nodos eliminados del canvas)
+                $origenId = $mapaNodos[$conexion->nodo_origen_id] ?? null;
+                $destinoId = $mapaNodos[$conexion->nodo_destino_id] ?? null;
+
+                if (! $origenId || ! $destinoId) {
+                    continue;
+                }
+
                 $copia->conexiones()->create([
-                    'nodo_origen_id' => $mapaNodos[$conexion->nodo_origen_id],
-                    'nodo_destino_id' => $mapaNodos[$conexion->nodo_destino_id],
+                    'nodo_origen_id' => $origenId,
+                    'nodo_destino_id' => $destinoId,
                     'etiqueta' => $conexion->etiqueta,
                     'condicion_json' => $conexion->condicion_json,
                 ]);
@@ -180,6 +188,15 @@ class WorkflowService
     {
         return DB::transaction(function () use ($workflowId, $nodos, $conexiones) {
             $workflow = Workflow::findOrFail($workflowId);
+
+            // No permitir reescribir el canvas si hay instancias en curso
+            // (rompería nodo_actual_id y workflow_nodos_instancia)
+            if ($workflow->instancias()->where('estado', 'en_curso')->exists()) {
+                throw new \Symfony\Component\HttpKernel\Exception\HttpException(
+                    422,
+                    'No se puede modificar el canvas: el workflow tiene instancias en curso'
+                );
+            }
 
             WorkflowNodo::where('workflow_id', $workflowId)->delete();
             WorkflowConexion::where('workflow_id', $workflowId)->delete();

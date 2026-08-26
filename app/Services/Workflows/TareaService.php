@@ -266,7 +266,8 @@ class TareaService
     {
         $vencidas = Tarea::with('responsables:id')
             ->where('workflow_id', $workflowId)
-            ->whereIn('estado', ['pendiente', 'en_curso'])
+            // Solo en_curso puede transitar a vencida (máquina de estados)
+            ->where('estado', 'en_curso')
             ->whereNotNull('fecha_limite')
             ->where('fecha_limite', '<', now())
             ->get(['id', 'nombre', 'workflow_id']);
@@ -289,7 +290,8 @@ class TareaService
                 $q->whereHas('propietarios', fn($q) => $q->where('user_id', $userId))
                   ->orWhereHas('responsables', fn($q) => $q->where('user_id', $userId));
             })
-            ->whereIn('estado', ['pendiente', 'en_curso'])
+            // Solo en_curso puede transitar a vencida (máquina de estados)
+            ->where('estado', 'en_curso')
             ->whereNotNull('fecha_limite')
             ->where('fecha_limite', '<', now())
             ->get(['id', 'nombre', 'workflow_id']);
@@ -307,7 +309,10 @@ class TareaService
 
     public function verificarVencimientoAlCargar(Tarea $tarea): Tarea
     {
-        if (WorkflowEstadoMachine::necesitaVencimiento($tarea->estado, $tarea->fecha_limite)) {
+        // La transición a vencida debe ser legal según la máquina de estados
+        if (WorkflowEstadoMachine::puedeTransitar($tarea->estado, 'vencida')
+            && WorkflowEstadoMachine::necesitaVencimiento($tarea->estado, $tarea->fecha_limite)
+        ) {
             $tarea->update(['estado' => 'vencida']);
 
             $this->auditService->registrar(
