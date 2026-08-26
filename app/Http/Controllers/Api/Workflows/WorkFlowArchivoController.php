@@ -69,7 +69,7 @@ class WorkFlowArchivoController extends Controller
     public function download(int $workflowId, int $archivoId)
     {
         try {
-            $ruta = $this->archivoService->obtenerRuta($archivoId);
+            $ruta = $this->archivoService->obtenerRuta($workflowId, $archivoId);
 
             if (!Storage::disk($ruta['disk'])->exists($ruta['path'])) {
                 return $this->errorResponse('El archivo no existe en el servidor', null, 404);
@@ -92,8 +92,10 @@ class WorkFlowArchivoController extends Controller
     public function destroy(int $workflowId, int $archivoId)
     {
         try {
-            $this->archivoService->eliminar($archivoId);
+            $this->archivoService->eliminar($workflowId, $archivoId);
             return $this->successResponse(null, 'Archivo eliminado correctamente');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->errorResponse('Archivo no encontrado en este workflow', null, 404);
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
         if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }

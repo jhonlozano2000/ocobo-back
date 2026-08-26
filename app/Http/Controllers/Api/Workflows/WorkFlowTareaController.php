@@ -63,7 +63,7 @@ class WorkFlowTareaController extends Controller
     public function show(int $workflowId, int $nodoId, int $tareaId)
     {
         try {
-            $tarea = \App\Models\Workflows\WorkFlowTarea::with(['responsable:id,name', 'checklists'])
+            $tarea = \App\Models\Workflows\WorkFlowTarea::with(['responsable:id,nombres,apellidos', 'checklists'])
                 ->where('nodo_id', $nodoId)
                 ->findOrFail($tareaId);
             $tarea = $this->tareaService->verificarVencimientoAlCargar($tarea);

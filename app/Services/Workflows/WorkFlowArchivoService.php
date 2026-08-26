@@ -20,7 +20,7 @@ class WorkFlowArchivoService
     public function listar(int $workflowId, ?string $archivableType = null, ?int $archivableId = null): Collection
     {
         $query = WorkFlowArchivo::where('workflow_id', $workflowId)
-            ->with('uploader:id,name');
+            ->with('uploader:id,nombres,apellidos');
 
         if ($archivableType && $archivableId) {
             $query->where('archivable_type', $archivableType)
@@ -38,15 +38,21 @@ class WorkFlowArchivoService
         string $categoria = 'adjunto'
     ): WorkFlowArchivo {
         return DB::transaction(function () use ($archivo, $workflowId, $archivableType, $archivableId, $categoria) {
-            $archivoSeguro = ArchivoHelper::validarArchivoSeguro(
-                $archivo,
-                ArchivoHelper::MIMES_PERMITIDOS
-            );
+            $archivoSeguro = ArchivoHelper::validarArchivoSeguro($archivo);
 
-            $metadatos = ArchivoHelper::guardarArchivoConHash(
-                $archivo,
-                self::DISK
-            );
+            if (! ($archivoSeguro['valido'] ?? false)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'archivo' => [$archivoSeguro['error'] ?? 'Archivo no permitido'],
+                ]);
+            }
+
+            $metadatos = ArchivoHelper::guardarUploadedConHash($archivo, self::DISK);
+
+            if (! $metadatos) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'archivo' => ['No se pudo almacenar el archivo'],
+                ]);
+            }
 
             $almacenado = WorkFlowArchivo::create([
                 'workflow_id' => $workflowId,
@@ -79,10 +85,11 @@ class WorkFlowArchivoService
         });
     }
 
-    public function eliminar(int $id): void
+    public function eliminar(int $workflowId, int $id): void
     {
-        DB::transaction(function () use ($id) {
-            $archivo = WorkFlowArchivo::findOrFail($id);
+        DB::transaction(function () use ($workflowId, $id) {
+            // Scope por workflow: evita IDOR cross-workflow
+            $archivo = WorkFlowArchivo::where('workflow_id', $workflowId)->findOrFail($id);
 
             ArchivoHelper::eliminarArchivo($archivo->ruta_almacenada, $archivo->disk);
 
@@ -97,9 +104,10 @@ class WorkFlowArchivoService
         });
     }
 
-    public function obtenerRuta(int $id): array
+    public function obtenerRuta(int $workflowId, int $id): array
     {
-        $archivo = WorkFlowArchivo::findOrFail($id);
+        // Scope por workflow: evita IDOR cross-workflow
+        $archivo = WorkFlowArchivo::where('workflow_id', $workflowId)->findOrFail($id);
 
         return [
             'disk' => $archivo->disk,

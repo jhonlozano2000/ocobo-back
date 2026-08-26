@@ -25,7 +25,7 @@ class MisInstanciasController extends Controller
             $instancias = WorkflowInstancia::with([
                 'workflow:id,nombre',
                 'nodoActual:id,titulo',
-                'usuarioEjecuta:id,name',
+                'usuarioEjecuta:id,nombres,apellidos',
             ])
                 ->where('usuario_ejecuta_id', $userId)
                 ->orWhereIn('id', function ($q) use ($userId) {

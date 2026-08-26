@@ -43,19 +43,24 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('workflows/{workflow}/nodos/{nodo}/tareas', [WorkFlowTareaController::class, 'index']);
     Route::post('workflows/{workflow}/nodos/{nodo}/tareas', [WorkFlowTareaController::class, 'store']);
+    // reordenar ANTES de {tarea} para que no lo sombree el binding
+    Route::put('workflows/{workflow}/nodos/{nodo}/tareas/reordenar', [WorkFlowTareaController::class, 'reordenar']);
     Route::get('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}', [WorkFlowTareaController::class, 'show']);
     Route::put('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}', [WorkFlowTareaController::class, 'update']);
-    Route::delete('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}', [WorkFlowTareaController::class, 'destroy']);
+    Route::delete('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}', [WorkFlowTareaController::class, 'destroy'])
+        ->whereNumber('tarea');
     Route::post('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/asignar', [WorkFlowTareaController::class, 'asignar']);
     Route::patch('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/estado', [WorkFlowTareaController::class, 'cambiarEstado']);
-    Route::put('workflows/{workflow}/nodos/{nodo}/tareas/reordenar', [WorkFlowTareaController::class, 'reordenar']);
 
     // Checklist items (System B — scoped to WorkFlowTarea)
     Route::get('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists', [WorkFlowTareaChecklistController::class, 'index']);
     Route::post('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists', [WorkFlowTareaChecklistController::class, 'store']);
-    Route::put('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists/{checklist}', [WorkFlowTareaChecklistController::class, 'update']);
-    Route::delete('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists/{checklist}', [WorkFlowTareaChecklistController::class, 'destroy']);
+    // reordenar ANTES de {checklist}
     Route::put('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists/reordenar', [WorkFlowTareaChecklistController::class, 'reordenar']);
+    Route::put('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists/{checklist}', [WorkFlowTareaChecklistController::class, 'update'])
+        ->whereNumber('checklist');
+    Route::delete('workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists/{checklist}', [WorkFlowTareaChecklistController::class, 'destroy'])
+        ->whereNumber('checklist');
 
     Route::get('workflows/{workflow}/archivos', [WorkFlowArchivoController::class, 'index']);
     Route::post('workflows/{workflow}/archivos', [WorkFlowArchivoController::class, 'store']);
@@ -69,9 +74,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Tareas (module-level, not nodo-level)
     Route::get('{workflow}/tareas', [TareaController::class, 'index']);
     Route::post('tareas', [TareaController::class, 'store']);
+    // reordenar ANTES de {checklist}
+    Route::put('tareas/{tarea}/checklists/reordenar', [TareaChecklistController::class, 'reordenar']);
     Route::get('tareas/{tarea}', [TareaController::class, 'show']);
     Route::put('tareas/{tarea}', [TareaController::class, 'update']);
-    Route::delete('tareas/{tarea}', [TareaController::class, 'destroy']);
+    Route::delete('tareas/{tarea}', [TareaController::class, 'destroy'])->whereNumber('tarea');
     Route::post('tareas/{tarea}/completar', [TareaController::class, 'completar']);
     Route::post('tareas/{tarea}/iniciar', [TareaController::class, 'iniciar']);
     Route::post('tareas/{tarea}/cancelar', [TareaController::class, 'cancelar']);
@@ -80,7 +87,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Checklist items (scoped to parent tarea)
     Route::get('tareas/{tarea}/checklists', [TareaChecklistController::class, 'index']);
     Route::post('tareas/{tarea}/checklists', [TareaChecklistController::class, 'store']);
-    Route::put('tareas/{tarea}/checklists/{checklist}', [TareaChecklistController::class, 'update']);
-    Route::delete('tareas/{tarea}/checklists/{checklist}', [TareaChecklistController::class, 'destroy']);
-    Route::put('tareas/{tarea}/checklists/reordenar', [TareaChecklistController::class, 'reordenar']);
+    Route::put('tareas/{tarea}/checklists/{checklist}', [TareaChecklistController::class, 'update'])
+        ->whereNumber('checklist');
+    Route::delete('tareas/{tarea}/checklists/{checklist}', [TareaChecklistController::class, 'destroy'])
+        ->whereNumber('checklist');
 });

@@ -22,7 +22,7 @@ class WorkFlowTareaService
     public function listar(int $nodoId, ?int $instanciaId = null): Collection
     {
         $query = WorkFlowTarea::where('nodo_id', $nodoId)
-            ->with('responsable:id,name');
+            ->with('responsable:id,nombres,apellidos');
 
         if ($instanciaId) {
             $query->where('instancia_id', $instanciaId);
@@ -73,7 +73,7 @@ class WorkFlowTareaService
                 ['tarea_id' => $tarea->id, 'titulo' => $tarea->titulo]
             );
 
-            return $tarea->load('responsable:id,name')->load('checklists');
+            return $tarea->load('responsable:id,nombres,apellidos')->load('checklists');
         });
     }
 
@@ -130,7 +130,7 @@ class WorkFlowTareaService
                 ['tarea_id' => $tarea->id, 'titulo' => $tarea->titulo]
             );
 
-            return $tarea->load('responsable:id,name')->load('checklists');
+            return $tarea->load('responsable:id,nombres,apellidos')->load('checklists');
         });
     }
 
@@ -160,7 +160,7 @@ class WorkFlowTareaService
             }
 
             return WorkFlowTarea::where('nodo_id', $nodoId)
-                ->with('responsable:id,name')
+                ->with('responsable:id,nombres,apellidos')
                 ->orderBy('orden')
                 ->orderBy('created_at')
                 ->get();
@@ -182,7 +182,7 @@ class WorkFlowTareaService
 
             $this->notificationService->notificarTareaAsignadaSistemaB($tarea, $responsableUserId);
 
-            return $tarea->load('responsable:id,name');
+            return $tarea->load('responsable:id,nombres,apellidos');
         });
     }
 
@@ -221,7 +221,7 @@ class WorkFlowTareaService
                 ['tarea_id' => $tarea->id, 'estado_anterior' => $estadoAnterior]
             );
 
-            return $tarea->load('responsable:id,name')->load('checklists');
+            return $tarea->load('responsable:id,nombres,apellidos')->load('checklists');
         });
     }
 
@@ -265,7 +265,7 @@ class WorkFlowTareaService
 
             $this->notificationService->notificarWorkFlowTareaVencida($tarea);
 
-            return $tarea->fresh('responsable:id,name');
+            return $tarea->fresh('responsable:id,nombres,apellidos');
         }
 
         return $tarea;

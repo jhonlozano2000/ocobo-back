@@ -27,12 +27,12 @@ class TareaController extends Controller
     public function __construct(
         private readonly TareaService $tareaService
     ) {
+        // Abilities "no-modelo" (viewAny/create/misTareas) sí funcionan con la clase.
+        // Las de instancia (view/update/delete) se autorizan dentro de cada método
+        // para que la Policy reciba el MODELO, no el nombre de la clase.
         $this->middleware('can:misTareas,' . Tarea::class)->only(['misTareas']);
         $this->middleware('can:viewAny,' . Tarea::class)->only(['index']);
         $this->middleware('can:create,' . Tarea::class)->only(['store']);
-        $this->middleware('can:view,' . Tarea::class)->only(['show']);
-        $this->middleware('can:update,' . Tarea::class)->only(['update']);
-        $this->middleware('can:delete,' . Tarea::class)->only(['destroy']);
     }
 
     /**
@@ -91,6 +91,7 @@ class TareaController extends Controller
     public function show(Tarea $tarea)
     {
         try {
+            $this->authorize('view', $tarea);
             $tarea->load(['propietarios', 'responsables', 'checklists', 'workflow']);
             $tarea = $this->tareaService->verificarVencimientoAlCargar($tarea);
             return $this->successResponse($tarea, 'Tarea obtenida correctamente');
@@ -127,6 +128,7 @@ class TareaController extends Controller
     public function update(UpdateTareaRequest $request, Tarea $tarea)
     {
         try {
+            $this->authorize('update', $tarea);
             $tarea = $this->tareaService->update($tarea, $request->validated());
             return $this->successResponse($tarea, 'Tarea actualizada correctamente');
         } catch (UncompletedChecklistException $e) {
@@ -149,6 +151,7 @@ class TareaController extends Controller
     public function destroy(Tarea $tarea)
     {
         try {
+            $this->authorize('delete', $tarea);
             $this->tareaService->destroy($tarea);
             return $this->successResponse(null, 'Tarea eliminada correctamente');
         } catch (\Exception $e) {

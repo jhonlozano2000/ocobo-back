@@ -69,6 +69,9 @@ class TareaChecklistController extends Controller
     public function update(UpdateChecklistItemRequest $request, Tarea $tarea, TareaChecklist $checklist)
     {
         try {
+            // Ownership: el ítem debe pertenecer a la tarea de la ruta
+            abort_unless($checklist->tarea_id === $tarea->id, 404, 'Ítem no pertenece a la tarea');
+
             $checklist->update($request->validated());
             return $this->successResponse($checklist->fresh(), 'Ítem actualizado correctamente');
         } catch (\Exception $e) {
@@ -85,6 +88,9 @@ class TareaChecklistController extends Controller
     public function destroy(Tarea $tarea, TareaChecklist $checklist)
     {
         try {
+            // Ownership: el ítem debe pertenecer a la tarea de la ruta
+            abort_unless($checklist->tarea_id === $tarea->id, 404, 'Ítem no pertenece a la tarea');
+
             $checklist->delete();
             return $this->successResponse(null, 'Ítem eliminado correctamente');
         } catch (\Exception $e) {

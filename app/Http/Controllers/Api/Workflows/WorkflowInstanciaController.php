@@ -30,7 +30,7 @@ class WorkflowInstanciaController extends Controller
     public function index(int $workflowId)
     {
         try {
-            $instancias = WorkflowInstancia::with(['usuarioEjecuta:id,name', 'nodoActual', 'workflow:id,nombre'])
+            $instancias = WorkflowInstancia::with(['usuarioEjecuta:id,nombres,apellidos', 'nodoActual', 'workflow:id,nombre'])
                 ->where('workflow_id', $workflowId)
                 ->orderBy('created_at', 'desc')
                 ->paginate(request('per_page', 10));
@@ -59,6 +59,12 @@ class WorkflowInstanciaController extends Controller
     {
         try {
             $instancia = $this->executionService->obtenerInstancia($instanciaId);
+
+            // Scope: la instancia debe pertenecer al workflow de la ruta
+            if ($instancia->workflow_id !== $workflowId) {
+                return $this->errorResponse('Instancia no encontrada en este workflow', null, 404);
+            }
+
             return $this->successResponse($instancia, 'Instancia obtenida correctamente');
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }

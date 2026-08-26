@@ -342,6 +342,40 @@ class ArchivoHelper
     }
 
     /**
+     * Guarda un UploadedFile directo con hash SHA-256 en el disco indicado.
+     * Variante para services que reciben el archivo ya extraído del Request.
+     *
+     * @return array{nombre_almacenado: string, ruta: string, hash: string}|null
+     */
+    public static function guardarUploadedConHash(UploadedFile $file, string $disk): ?array
+    {
+        if (! $file->isValid()) {
+            return null;
+        }
+
+        $contenido = $file->getContent();
+        if (empty($contenido)) {
+            $pathname = $file->getPathname();
+            if ($pathname && file_exists($pathname)) {
+                $contenido = file_get_contents($pathname);
+            } else {
+                return null;
+            }
+        }
+
+        $hash = hash('sha256', $contenido);
+        $nombreArchivo = Str::random(50).'.'.$file->getClientOriginalExtension();
+
+        self::getStorage($disk)->put($nombreArchivo, $contenido);
+
+        return [
+            'nombre_almacenado' => $nombreArchivo,
+            'ruta' => $nombreArchivo,
+            'hash' => $hash,
+        ];
+    }
+
+    /**
      * Guarda un archivo en el disco especificado y retorna el path junto con su hash SHA-256 y metadatos tecnicos.
      * Inyecta metadatos internos (Título, Autor, Asunto) en el binario si es un PDF.
      *

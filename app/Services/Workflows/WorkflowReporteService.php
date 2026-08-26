@@ -52,30 +52,34 @@ class WorkflowReporteService
 
     public function tareasVencidasPorUsuario(int $workflowId): array
     {
+        // users no tiene columna `name`: usar nombres + apellidos
         $moduloVencidas = DB::table('workflow_tareas')
             ->join('tarea_responsables', 'workflow_tareas.id', '=', 'tarea_responsables.tarea_id')
             ->join('users', 'tarea_responsables.user_id', '=', 'users.id')
             ->where('workflow_tareas.workflow_id', $workflowId)
             ->where('workflow_tareas.estado', 'vencida')
-            ->select('users.id', 'users.name', DB::raw('COUNT(*) as total'))
-            ->groupBy('users.id', 'users.name')
+            ->select('users.id', 'users.nombres', 'users.apellidos', DB::raw('COUNT(*) as total'))
+            ->groupBy('users.id', 'users.nombres', 'users.apellidos')
             ->get();
 
+        // La tabla real de nodos es workflow_nodos (no work_flow_nodos)
         $nodoVencidas = DB::table('work_flow_tareas')
-            ->join('work_flow_nodos', 'work_flow_tareas.nodo_id', '=', 'work_flow_nodos.id')
+            ->join('workflow_nodos', 'work_flow_tareas.nodo_id', '=', 'workflow_nodos.id')
             ->join('users', 'work_flow_tareas.responsable_usuario_id', '=', 'users.id')
-            ->where('work_flow_nodos.workflow_id', $workflowId)
+            ->where('workflow_nodos.workflow_id', $workflowId)
             ->where('work_flow_tareas.estado', 'vencida')
-            ->select('users.id', 'users.name', DB::raw('COUNT(*) as total'))
-            ->groupBy('users.id', 'users.name')
+            ->select('users.id', 'users.nombres', 'users.apellidos', DB::raw('COUNT(*) as total'))
+            ->groupBy('users.id', 'users.nombres', 'users.apellidos')
             ->get();
 
         $porUsuario = collect($moduloVencidas)->concat($nodoVencidas)
             ->groupBy('id')
             ->map(function ($items) {
+                $primero = $items->first();
+
                 return (object) [
-                    'id' => $items->first()->id,
-                    'name' => $items->first()->name,
+                    'id' => $primero->id,
+                    'name' => trim($primero->nombres.' '.$primero->apellidos),
                     'total' => $items->sum('total'),
                 ];
             })
