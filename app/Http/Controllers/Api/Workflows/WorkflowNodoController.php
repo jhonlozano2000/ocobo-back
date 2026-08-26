@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Workflows;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Workflows\StoreWorkflowNodoRequest;
 use App\Http\Requests\Workflows\UpdateWorkflowNodoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\WorkflowNodo;
@@ -35,17 +36,10 @@ class WorkflowNodoController extends Controller
         }
     }
 
-    public function store(Request $request, int $workflowId)
+    public function store(StoreWorkflowNodoRequest $request, int $workflowId)
     {
         try {
-            $data = $request->validate([
-                'tipo' => 'required|in:inicio,tarea,condicion,notificacion,fin',
-                'titulo' => 'required|string|max:255',
-                'descripcion' => 'nullable|string',
-                'posicion_x' => 'required|numeric',
-                'posicion_y' => 'required|numeric',
-                'configuracion_json' => 'nullable|json',
-            ]);
+            $data = $request->validated();
 
             $data['workflow_id'] = $workflowId;
             $nodo = WorkflowNodo::create($data);

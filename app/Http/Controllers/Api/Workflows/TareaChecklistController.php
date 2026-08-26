@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Workflows;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Workflows\ReordenarChecklistRequest;
 use App\Http\Requests\Workflows\StoreChecklistItemRequest;
 use App\Http\Requests\Workflows\UpdateChecklistItemRequest;
 use App\Http\Traits\ApiResponseTrait;
@@ -104,17 +105,10 @@ class TareaChecklistController extends Controller
      * Reordenar checklists
      * PUT /api/workflow-tareas/{tarea}/checklists/reordenar
      */
-    public function reordenar(Tarea $tarea)
+    public function reordenar(ReordenarChecklistRequest $request, Tarea $tarea)
     {
         try {
-            $data = request()->validate([
-                'orden' => 'required|array',
-                'orden.*' => [
-                    'required',
-                    'integer',
-                    Rule::exists('tarea_checklists', 'id')->where('tarea_id', $tarea->id),
-                ],
-            ]);
+            $data = $request->validated();
             $this->tareaService->reordenarChecklist($tarea, $data['orden']);
             return $this->successResponse(null, 'Checklists reordenados correctamente');
         } catch (\Exception $e) {

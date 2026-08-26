@@ -7,6 +7,7 @@ use App\Exceptions\Workflows\UncompletedChecklistException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\AsignarWorkFlowTareaRequest;
 use App\Http\Requests\Workflows\CambiarEstadoWorkFlowTareaRequest;
+use App\Http\Requests\Workflows\ReordenarWorkFlowTareasRequest;
 use App\Http\Requests\Workflows\StoreWorkFlowTareaRequest;
 use App\Http\Requests\Workflows\UpdateWorkFlowTareaRequest;
 use App\Http\Traits\ApiResponseTrait;
@@ -137,14 +138,9 @@ class WorkFlowTareaController extends Controller
         }
     }
 
-    public function reordenar(Request $request, int $workflowId, int $nodoId)
+    public function reordenar(ReordenarWorkFlowTareasRequest $request, int $workflowId, int $nodoId)
     {
         try {
-            $request->validate([
-                'tareas' => 'required|array',
-                'tareas.*' => 'required|integer|exists:work_flow_tareas,id',
-            ]);
-
             $tareas = $this->tareaService->reordenar($nodoId, $request->input('tareas'));
             return $this->successResponse($tareas, 'Tareas reordenadas correctamente');
         } catch (\Exception $e) {

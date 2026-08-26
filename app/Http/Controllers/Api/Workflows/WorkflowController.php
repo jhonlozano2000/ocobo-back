@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Workflows;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\StoreWorkflowRequest;
 use App\Http\Requests\Workflows\UpdateWorkflowRequest;
+use App\Http\Requests\Workflows\CambiarEstadoWorkflowRequest;
 use App\Http\Requests\Workflows\StoreNodoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\Workflow;
@@ -113,12 +114,12 @@ class WorkflowController extends Controller
         }
     }
 
-    public function cambiarEstado(int $id)
+    public function cambiarEstado(CambiarEstadoWorkflowRequest $request, int $id)
     {
         try {
-            $request = request()->validate(['estado' => 'required|in:borrador,activo,inactivo,archivado']);
             $this->authorize('update', Workflow::findOrFail($id));
-            $workflow = $this->workflowService->cambiarEstado($id, $request['estado']);
+            $data = $request->validated();
+            $workflow = $this->workflowService->cambiarEstado($id, $data['estado']);
             return $this->successResponse($workflow, 'Estado actualizado correctamente');
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Auth\Access\AuthorizationException) { throw $e; }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Workflows;
 
 use App\Exceptions\Workflows\StateTransitionException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Workflows\DetenerInstanciaRequest;
 use App\Http\Requests\Workflows\EjecutarNodoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\WorkflowInstancia;
@@ -94,13 +95,13 @@ class WorkflowInstanciaController extends Controller
         }
     }
 
-    public function detener(int $workflowId, int $instanciaId)
+    public function detener(DetenerInstanciaRequest $request, int $workflowId, int $instanciaId)
     {
         try {
-            $request = request()->validate(['estado' => 'sometimes|in:detenida,cancelada']);
+            $data = $request->validated();
             $instancia = $this->executionService->detenerInstancia(
                 $instanciaId,
-                $request['estado'] ?? 'detenida'
+                $data['estado'] ?? 'detenida'
             );
             return $this->successResponse($instancia, 'Instancia detenida correctamente');
         } catch (\App\Exceptions\Workflows\WorkflowException $e) {

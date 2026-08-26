@@ -1,17 +1,16 @@
 <?php
-
 declare(strict_types=1);
 
 namespace App\Http\Requests\Workflows;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Auth;
 
 class StoreChecklistItemRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows('Workflows -> Tareas -> Editar');
+        return Auth::user()->hasPermissionTo('Workflows -> Tareas -> Editar');
     }
 
     public function rules(): array

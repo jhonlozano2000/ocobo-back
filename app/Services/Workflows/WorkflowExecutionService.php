@@ -250,16 +250,18 @@ class WorkflowExecutionService
 
         $valorReal = $contexto[$campo] ?? null;
 
+        // Comparación estricta para igualdad: evita coerciones sorpresivas
+        // ('0' == false, null == '', etc.) en condiciones de rama
         return match ($operador) {
-            '==' => $valorReal == $valorEsperado,
-            '!=' => $valorReal != $valorEsperado,
+            '==' => $valorReal === $valorEsperado,
+            '!=' => $valorReal !== $valorEsperado,
             '>' => $valorReal > $valorEsperado,
             '>=' => $valorReal >= $valorEsperado,
             '<' => $valorReal < $valorEsperado,
             '<=' => $valorReal <= $valorEsperado,
             'contains' => is_string($valorReal) && str_contains($valorReal, (string) $valorEsperado),
-            'in' => in_array($valorReal, (array) $valorEsperado),
-            default => $valorReal == $valorEsperado,
+            'in' => in_array($valorReal, (array) $valorEsperado, true),
+            default => $valorReal === $valorEsperado,
         };
     }
 }
