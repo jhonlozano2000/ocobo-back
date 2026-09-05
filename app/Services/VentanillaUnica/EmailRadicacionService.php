@@ -5,6 +5,7 @@ namespace App\Services\VentanillaUnica;
 use App\Helpers\MailConfigHelper;
 use App\Mail\RespuestaRadicadoMail;
 use App\Models\Configuracion\ConfigListaDetalle;
+use App\Models\Configuracion\ConfigVarias;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\VentanillaEmailRadicado;
@@ -437,42 +438,112 @@ class EmailRadicacionService
     }
 
     /**
-     * Genera el siguiente número de radicado recibido en formato YYYY-VR-NNNNNN.
+     * Genera el siguiente número de radicado recibido.
+     * Lee el formato desde config_varias (formato_num_radicado_reci), ej: YYYYMMDD-#####.
      */
     public function obtenerSiguienteNumeroRadicado(): string
     {
         return DB::transaction(function () {
-            $anio = now()->format('Y');
-            $prefijo = $anio.'-VR-';
+            $formato = ConfigVarias::getValor('formato_num_radicado_reci', 'YYYYMMDD-#####');
+
+            $ahora = now();
+            $anio = $ahora->format('Y');
+            $mes = $ahora->format('m');
+            $dia = $ahora->format('d');
+
+            // Construir prefijo reemplazando YYYY, MM, DD
+            $prefijo = str_replace(
+                ['YYYY', 'MM', 'DD'],
+                [$anio, $mes, $dia],
+                $formato
+            );
+
+            // Contar cuántos # hay para saber el ancho del número
+            $posHash = strpos($formato, '#');
+            if ($posHash === false) {
+                // No hay #, usar formato simple
+                $prefijoConGuion = $prefijo.'-';
+            } else {
+                // El prefijo termina antes del primer #
+                $prefijoConGuion = substr($formato, 0, $posHash);
+                $prefijoConGuion = str_replace(
+                    ['YYYY', 'MM', 'DD'],
+                    [$anio, $mes, $dia],
+                    $prefijoConGuion
+                );
+            }
+
+            // Contar dígitos (# consecutivos desde la posición actual)
+            $digitCount = 0;
+            $i = $posHash;
+            $len = strlen($formato);
+            while ($i < $len && $formato[$i] === '#') {
+                $digitCount++;
+                $i++;
+            }
+            if ($digitCount === 0) {
+                $digitCount = 5; // Default
+            }
 
             $ultimoNumero = DB::table('ventanilla_radica_reci')
-                ->where('num_radicado', 'like', $prefijo.'%')
+                ->where('num_radicado', 'like', $prefijoConGuion.'%')
                 ->lockForUpdate()
-                ->max(DB::raw('CAST(SUBSTRING(num_radicado, '.(strlen($prefijo) + 1).') AS UNSIGNED)'));
+                ->max(DB::raw('CAST(SUBSTRING(num_radicado, '.(strlen($prefijoConGuion) + 1).') AS UNSIGNED)'));
 
             $siguienteNumero = ($ultimoNumero ?? 0) + 1;
 
-            return $prefijo.str_pad($siguienteNumero, 6, '0', STR_PAD_LEFT);
+            return $prefijoConGuion.str_pad($siguienteNumero, $digitCount, '0', STR_PAD_LEFT);
         });
     }
 
     /**
-     * Genera el siguiente número de radicado enviado en formato YYYY-VE-NNNNNN.
+     * Genera el siguiente número de radicado enviado.
+     * Lee el formato desde config_varias (formato_num_radicado_env), ej: YYYYMMDD-#####.
      */
     public function obtenerSiguienteNumeroRadicadoEnviado(): string
     {
         return DB::transaction(function () {
-            $anio = now()->format('Y');
-            $prefijo = $anio.'-VE-';
+            $formato = ConfigVarias::getValor('formato_num_radicado_env', 'YYYYMMDD-#####');
+
+            $ahora = now();
+            $anio = $ahora->format('Y');
+            $mes = $ahora->format('m');
+            $dia = $ahora->format('d');
+
+            $posHash = strpos($formato, '#');
+            if ($posHash === false) {
+                $prefijoConGuion = str_replace(
+                    ['YYYY', 'MM', 'DD'],
+                    [$anio, $mes, $dia],
+                    $formato
+                ).'-';
+            } else {
+                $prefijoConGuion = str_replace(
+                    ['YYYY', 'MM', 'DD'],
+                    [$anio, $mes, $dia],
+                    substr($formato, 0, $posHash)
+                );
+            }
+
+            $digitCount = 0;
+            $i = $posHash;
+            $len = strlen($formato);
+            while ($i < $len && $formato[$i] === '#') {
+                $digitCount++;
+                $i++;
+            }
+            if ($digitCount === 0) {
+                $digitCount = 5;
+            }
 
             $ultimoNumero = DB::table('ventanilla_radica_enviados')
-                ->where('num_radicado', 'like', $prefijo.'%')
+                ->where('num_radicado', 'like', $prefijoConGuion.'%')
                 ->lockForUpdate()
-                ->max(DB::raw('CAST(SUBSTRING(num_radicado, '.(strlen($prefijo) + 1).') AS UNSIGNED)'));
+                ->max(DB::raw('CAST(SUBSTRING(num_radicado, '.(strlen($prefijoConGuion) + 1).') AS UNSIGNED)'));
 
             $siguienteNumero = ($ultimoNumero ?? 0) + 1;
 
-            return $prefijo.str_pad($siguienteNumero, 6, '0', STR_PAD_LEFT);
+            return $prefijoConGuion.str_pad($siguienteNumero, $digitCount, '0', STR_PAD_LEFT);
         });
     }
 
