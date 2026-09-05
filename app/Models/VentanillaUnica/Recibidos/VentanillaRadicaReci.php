@@ -33,6 +33,7 @@ class VentanillaRadicaReci extends Model
 
     protected $fillable = [
         'num_radicado',
+        'imap_uid',
         'clasifica_documen_id',
         'usuario_crea',
         'tercero_id',

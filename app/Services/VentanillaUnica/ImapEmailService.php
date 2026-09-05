@@ -4,9 +4,11 @@ namespace App\Services\VentanillaUnica;
 
 use App\Helpers\MailConfigHelper;
 use App\Models\Configuracion\ConfigVarias;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use DirectoryTree\ImapEngine\Attachment;
 use DirectoryTree\ImapEngine\Mailbox;
 use DirectoryTree\ImapEngine\MessageInterface;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -156,6 +158,8 @@ class ImapEmailService
 
             $mailbox->disconnect();
 
+            $this->marcarRadicados($emails);
+
             return [
                 'emails' => $emails,
                 'pagination' => [
@@ -272,6 +276,31 @@ class ImapEmailService
         }
 
         return $path;
+    }
+
+    /**
+     * Marca los emails que ya tienen radicado asociado.
+     * Busca en ventanilla_radica_reci por imap_uid y cambia folder a 'sent'.
+     *
+     * @param  array  &$emails  Array de emails (se modifica por referencia)
+     */
+    protected function marcarRadicados(array &$emails): void
+    {
+        $uids = array_column($emails, 'uid');
+
+        if (empty($uids)) {
+            return;
+        }
+
+        $radicadosUids = VentanillaRadicaReci::whereIn('imap_uid', $uids)
+            ->pluck('imap_uid')
+            ->toArray();
+
+        foreach ($emails as &$email) {
+            if (in_array($email['uid'], $radicadosUids)) {
+                $email['folder'] = 'sent';
+            }
+        }
     }
 
     /**

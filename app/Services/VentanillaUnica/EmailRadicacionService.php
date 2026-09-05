@@ -73,6 +73,7 @@ class EmailRadicacionService
 
             $radicadoData = [
                 'num_radicado' => $numRadicado,
+                'imap_uid' => $emailData['uid'] ?? null,
                 'clasifica_documen_id' => $data['clasifica_documen_id'] ?? null,
                 'tercero_id' => $data['tercero_id'] ?? null,
                 'usuario_crea' => auth()->id(),
