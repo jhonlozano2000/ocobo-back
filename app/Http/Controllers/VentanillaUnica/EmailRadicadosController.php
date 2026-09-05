@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\RadicarEmailRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\VentanillaEmailRadicado;
+use App\Models\Configuracion\ConfigLista;
 use App\Services\VentanillaUnica\EmailRadicacionService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -53,9 +54,13 @@ class EmailRadicadosController extends Controller
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
                     $q->where('asunto', 'like', "%{$search}%")
-                        ->orWhere('remitente', 'like', "%{$search}%")
-                        ->orWhere('correo_remitente', 'like', "%{$search}%");
+                        ->orWhere('remitente_nombre', 'like', "%{$search}%")
+                        ->orWhere('remitente_email', 'like', "%{$search}%");
                 });
+            }
+
+            if ($request->filled('label')) {
+                $query->whereRaw("JSON_CONTAINS(etiquetas, ?)", [json_encode($request->label)]);
             }
 
             if ($request->filled('fecha_desde')) {
@@ -397,6 +402,34 @@ class EmailRadicadosController extends Controller
     }
 
     /**
+     * Obtiene las etiquetas disponibles para correos electrónicos desde config_listas.
+     */
+    public function etiquetasDisponibles(): JsonResponse
+    {
+        try {
+            $lista = ConfigLista::where('cod', 'LabEmail')->first();
+
+            if (! $lista) {
+                return $this->successResponse([], 'No hay etiquetas configuradas');
+            }
+
+            $etiquetas = $lista->detalles()
+                ->where('estado', 1)
+                ->get()
+                ->map(fn ($d) => [
+                    'codigo' => $d->codigo,
+                    'nombre' => $d->nombre,
+                ]);
+
+            return $this->successResponse($etiquetas, 'Etiquetas obtenidas exitosamente');
+        } catch (\Exception $e) {
+            if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            return $this->errorResponse('Error al obtener las etiquetas', $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Elimina lógicamente el registro de seguimiento de un correo radicado.
      */
     public function destroy(int $id): JsonResponse
@@ -416,6 +449,29 @@ class EmailRadicadosController extends Controller
                 $e->getMessage(),
                 500
             );
+        }
+    }
+
+    /**
+     * Alterna una etiqueta en el correo radicado.
+     *
+     * @param int    $id       ID del correo radicado
+     * @param string $etiqueta Código de la etiqueta a alternar (personal, company, important, private)
+     */
+    public function toggleEtiqueta(int $id, string $etiqueta): JsonResponse
+    {
+        try {
+            $correoRadicado = VentanillaEmailRadicado::findOrFail($id);
+            $correoRadicado->toggleEtiqueta($etiqueta);
+            $correoRadicado->save();
+
+            return $this->successResponse($correoRadicado, 'Etiqueta actualizada exitosamente');
+        } catch (ModelNotFoundException) {
+            return $this->errorResponse('Correo radicado no encontrado', null, 404);
+        } catch (\Exception $e) {
+            if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            return $this->errorResponse('Error al actualizar la etiqueta', $e->getMessage(), 500);
         }
     }
 }
