@@ -151,6 +151,7 @@ class ImapEmailService
                     'adjuntos_info' => $this->getAttachments($message),
                     'is_read' => in_array('Seen', $message->flags() ?? []),
                     'is_starred' => in_array('Flagged', $message->flags() ?? []),
+                    'is_radicado' => false,
                     'folder' => 'inbox',
                     'labels' => [],
                 ];
@@ -297,9 +298,7 @@ class ImapEmailService
             ->toArray();
 
         foreach ($emails as &$email) {
-            if (in_array($email['uid'], $radicadosUids)) {
-                $email['folder'] = 'sent';
-            }
+            $email['is_radicado'] = in_array((string) $email['uid'], array_map('strval', $radicadosUids));
         }
     }
 
