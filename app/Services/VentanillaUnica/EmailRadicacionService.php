@@ -8,7 +8,6 @@ use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
-use App\Models\VentanillaUnica\VentanillaEmailRadicado;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -16,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * Servicio que orquesta la radicación de correos electrónicos.
- * Coordina la sincronización IMAP, creación de radicados (recibidos/enviados) y generación de rótulos.
+ * Recibe datos del email directamente (desde IMAP) y crea radicados en ventanilla_radica_reci/enviados.
  */
 class EmailRadicacionService
 {
@@ -45,175 +44,89 @@ class EmailRadicacionService
     }
 
     /**
-     * Sincroniza correos desde el buzón IMAP hacia la tabla de seguimiento.
+     * Crea un radicado RECIBIDO a partir de datos de un email.
      *
-     * @return array Resumen de la sincronización [total, nuevos, duplicados, errores]
+     * @param  array  $emailData  Datos del email (uid, asunto, remitente_*, fecha_correo, body_*, adjuntos_info, etc.)
+     * @param  array  $data  Datos del formulario de radicación
+     * @return array ['radicado', 'rotulo_path', 'pdf_path', 'respuesta_enviada']
      */
-    public function sincronizarCorreos(): array
+    public function radicarFromEmailData(array $emailData, array $data = []): array
     {
-        $resultado = [
-            'total' => 0,
-            'nuevos' => 0,
-            'duplicados' => 0,
-            'errores' => 0,
-        ];
-
-        try {
-            $correos = $this->imapService->fetchInboxMessages(7);
-            $resultado['total'] = count($correos);
-
-            foreach ($correos as $correoData) {
-                try {
-                    $existe = VentanillaEmailRadicado::where('imap_uid', $correoData['uid'])->exists();
-
-                    if ($existe) {
-                        $resultado['duplicados']++;
-
-                        continue;
-                    }
-
-                    VentanillaEmailRadicado::create([
-                        'imap_uid' => $correoData['uid'],
-                        'imap_folder' => 'INBOX',
-                        'asunto' => $correoData['asunto'],
-                        'remitente_email' => $correoData['remitente_email'],
-                        'remitente_nombre' => $correoData['remitente_nombre'],
-                        'fecha_correo' => $correoData['fecha_correo'],
-                        'body_text' => $correoData['body_text'],
-                        'body_html' => $correoData['body_html'],
-                        'tiene_adjuntos' => $correoData['tiene_adjuntos'],
-                        'adjuntos_info' => $correoData['adjuntos_info'],
-                        'estado' => 'pendiente',
-                        'sincronizado_en' => now(),
-                    ]);
-
-                    $resultado['nuevos']++;
-                } catch (\Exception $e) {
-                    Log::error('EmailRadicacionService: Error al guardar correo individual', [
-                        'uid' => $correoData['uid'] ?? 'desconocido',
-                        'error' => $e->getMessage(),
-                    ]);
-                    $resultado['errores']++;
-                }
-            }
-        } catch (\Exception $e) {
-            Log::error('EmailRadicacionService: Error en sincronización de correos', [
-                'error' => $e->getMessage(),
-            ]);
-            throw $e;
-        }
-
-        return $resultado;
-    }
-
-    /**
-     * Crea un radicado RECIBIDO a partir de un correo electrónico.
-     *
-     * @param  int  $emailId  ID del registro en ventanilla_email_radicados
-     * @param  array  $data  Datos del formulario (clasifica_documen_id, tercero_id, medio_recep_id, etc.)
-     * @return array ['radicado' => VentanillaRadicaReci, 'rotulo_path' => string, 'pdf_path' => string|null]
-     */
-    public function radicarFromEmail(int $emailId, array $data = []): array
-    {
-        \Log::debug('EmailRadicacionService: radicarFromEmail INICIO', ['emailId' => $emailId, 'data' => $data]);
-
-        return DB::transaction(function () use ($emailId, $data) {
-            $email = VentanillaEmailRadicado::findOrFail($emailId);
-            \Log::debug('EmailRadicacionService: Email encontrado', ['id' => $email->id, 'estado' => $email->estado]);
-
-            if ($email->estado === 'radicado') {
-                \Log::warning('EmailRadicacionService: Email ya radicado');
-                throw new \Exception('Este correo ya ha sido radicado anteriormente.');
-            }
-
-            // Hash SHA-256 ISO 27001 A.10.1.2
-            $hashSha256 = $this->calcularHashEmail($email);
-            \Log::debug('EmailRadicacionService: Hash calculado', ['hash' => substr($hashSha256, 0, 16).'...']);
-
-            // Número de radicado
+        return DB::transaction(function () use ($emailData, $data) {
+            $hashSha256 = $this->calcularHashEmailArray($emailData);
             $numRadicado = $this->obtenerSiguienteNumeroRadicado();
-            \Log::debug('EmailRadicacionService: Número de radicado', ['num_radicado' => $numRadicado]);
 
-            // Medio de recepción
             $medioRecepId = $data['medio_recep_id'] ?? null;
             if (! $medioRecepId) {
                 $medioRecepcion = ConfigListaDetalle::where('nombre', 'Correo Electrónico')->first();
                 $medioRecepId = $medioRecepcion?->id;
             }
 
-            \Log::debug('EmailRadicacionService: Medio recepción', ['medio_recep_id' => $medioRecepId]);
-
             if (! $medioRecepId) {
-                \Log::error('EmailRadicacionService: Medio de recepción no encontrado');
                 throw new \Exception('No se encontró el medio de recepción "Correo Electrónico" en la configuración.');
             }
 
-            // Crear radicado recibido
+            $adjuntosInfo = $emailData['adjuntos_info'] ?? [];
+            $fecDocu = isset($emailData['fecha_correo'])
+                ? \Carbon\Carbon::parse($emailData['fecha_correo'])->format('Y-m-d')
+                : now()->format('Y-m-d');
+
             $radicadoData = [
                 'num_radicado' => $numRadicado,
                 'clasifica_documen_id' => $data['clasifica_documen_id'] ?? null,
                 'tercero_id' => $data['tercero_id'] ?? null,
                 'usuario_crea' => auth()->id(),
                 'medio_recep_id' => $medioRecepId,
-                'asunto' => $data['asunto'] ?? $email->asunto,
-                'nom_origi' => $data['nom_razo_soci'] ?? $email->remitente_nombre,
-                'fec_docu' => $email->fecha_correo?->format('Y-m-d'),
+                'asunto' => $data['asunto'] ?? $emailData['asunto'] ?? '',
+                'nom_origi' => $data['nom_razo_soci'] ?? $emailData['remitente_nombre'] ?? '',
+                'fec_docu' => $fecDocu,
                 'num_folios' => $data['num_folios'] ?? 0,
-                'num_anexos' => $data['num_anexos'] ?? count($email->adjuntos_info ?? []),
-                'descrip_anexos' => $data['descrip_anexos'] ?? ($email->tiene_adjuntos
-                    ? collect($email->adjuntos_info ?? [])->pluck('filename')->implode(', ')
-                    : null),
+                'num_anexos' => $data['num_anexos'] ?? count($adjuntosInfo),
+                'descrip_anexos' => $data['descrip_anexos'] ?? (
+                    ! empty($adjuntosInfo) ? collect($adjuntosInfo)->pluck('filename')->implode(', ') : null
+                ),
                 'estado_trabajo' => 'RECIBIDO',
                 'cod_verifica' => strtoupper(substr(uniqid('OCOBO-'), 0, 10)),
                 'hash_sha256' => $hashSha256,
             ];
-            \Log::debug('EmailRadicacionService: Creando radicado con datos:', $radicadoData);
 
             $radicado = $this->reciService->create($radicadoData);
-            \Log::debug('EmailRadicacionService: Radicado creado:', ['id' => $radicado->id, 'num_radicado' => $radicado->num_radicado]);
 
-            // Guardar adjuntos
-            if ($email->tiene_adjuntos && ! empty($email->adjuntos_info)) {
-                $this->guardarAdjuntosEmail($email, $radicado);
+            // Guardar adjuntos desde IMAP
+            if (! empty($emailData['tiene_adjuntos']) && ! empty($adjuntosInfo)) {
+                $this->guardarAdjuntosDesdeImap($emailData['uid'], $radicado);
             }
 
-            // Convertir email a PDF y guardar como archivo digital
-            $pdfPath = $this->convertEmailToPdf($email, $radicado, 'recibido');
+            // Convertir email a PDF
+            $emailObj = (object) $emailData;
+            $pdfPath = $this->convertEmailToPdfArray($emailData, $radicado, 'recibido');
 
-            // Actualizar nom_origi con el nombre del PDF generado
             if ($pdfPath) {
                 $radicado->update(['nom_origi' => basename($pdfPath)]);
             }
-
-            // Actualizar tracking
-            $email->update([
-                'radicado_id' => $radicado->id,
-                'estado' => 'radicado',
-                'radicado_en' => now(),
-            ]);
 
             // Generar rótulo PNG
             $rotuloPath = $this->rotuloService->generarRotulo([
                 'num_radicado' => $numRadicado,
                 'fecha_radicado' => $radicado->created_at->format('Y-m-d H:i:s'),
-                'remitente_nombre' => $email->remitente_nombre,
-                'remitente_email' => $email->remitente_email,
-                'asunto' => $email->asunto,
+                'remitente_nombre' => $emailData['remitente_nombre'] ?? '',
+                'remitente_email' => $emailData['remitente_email'] ?? '',
+                'asunto' => $emailData['asunto'] ?? '',
                 'clasificacion' => $radicado->clasificacionDocumental?->nom ?? '',
                 'codigo_verificacion' => $radicado->cod_verifica,
                 'hash_sha256' => $hashSha256,
             ]);
 
-            // Respuesta automática al remitente original
+            // Respuesta automática al remitente
             $replyResult = false;
             try {
-                $replyResult = $this->responderConRadicado(
-                    $emailId,
+                $replyResult = $this->responderConRadicadoDirecto(
+                    $emailData,
                     'Su correo ha sido radicado exitosamente con el número '.$numRadicado.'. Adjunto rótulo del radicado.'
                 );
             } catch (\Exception $e) {
-                \Log::warning('EmailRadicacionService: Error al enviar respuesta automática (recibido)', [
-                    'email_id' => $emailId,
+                Log::warning('EmailRadicacionService: Error al enviar respuesta automática', [
+                    'uid' => $emailData['uid'] ?? '',
                     'error' => $e->getMessage(),
                 ]);
             }
@@ -228,38 +141,30 @@ class EmailRadicacionService
     }
 
     /**
-     * Crea un radicado ENVIADO a partir de un correo electrónico.
+     * Crea un radicado ENVIADO a partir de datos de un email.
      *
-     * @param  int  $emailId  ID del registro en ventanilla_email_radicados
-     * @param  array  $data  Datos del formulario (clasifica_documen_id, tercero_id, medio_enviado_id, etc.)
-     * @return array ['radicado' => VentanillaRadicaEnviados, 'rotulo_path' => string, 'pdf_path' => string|null]
+     * @param  array  $emailData  Datos del email
+     * @param  array  $data  Datos del formulario de radicación
+     * @return array ['radicado', 'rotulo_path', 'pdf_path', 'respuesta_enviada']
      */
-    public function radicarEnviadoFromEmail(int $emailId, array $data = []): array
+    public function radicarEnviadoFromEmailData(array $emailData, array $data = []): array
     {
-        return DB::transaction(function () use ($emailId, $data) {
-            $email = VentanillaEmailRadicado::findOrFail($emailId);
-
-            if ($email->estado === 'radicado') {
-                throw new \Exception('Este correo ya ha sido radicado anteriormente.');
-            }
-
-            // Hash SHA-256 ISO 27001 A.10.1.2
-            $hashSha256 = $this->calcularHashEmail($email);
-
-            // Número de radicado enviado
+        return DB::transaction(function () use ($emailData, $data) {
+            $hashSha256 = $this->calcularHashEmailArray($emailData);
             $numRadicado = $this->obtenerSiguienteNumeroRadicadoEnviado();
 
-            // Medio de envío
             $medioEnvioId = $data['medio_enviado_id'] ?? null;
             if (! $medioEnvioId) {
                 $medioEnvio = ConfigListaDetalle::where('nombre', 'Correo Electrónico')->first();
                 $medioEnvioId = $medioEnvio?->id;
             }
 
-            // Tipo de respuesta
             $tipoRespuestaId = $data['tipo_respuesta_id'] ?? null;
+            $adjuntosInfo = $emailData['adjuntos_info'] ?? [];
+            $fecDocu = isset($emailData['fecha_correo'])
+                ? \Carbon\Carbon::parse($emailData['fecha_correo'])->format('Y-m-d')
+                : now()->format('Y-m-d');
 
-            // Crear radicado enviado
             $radicadoData = [
                 'num_radicado' => $numRadicado,
                 'clasifica_documen_id' => $data['clasifica_documen_id'] ?? null,
@@ -267,28 +172,29 @@ class EmailRadicacionService
                 'usuario_crea' => auth()->id(),
                 'medio_enviado_id' => $medioEnvioId,
                 'tipo_respuesta_id' => $tipoRespuestaId,
-                'asunto' => $data['asunto'] ?? $email->asunto,
-                'nom_origi' => $data['nom_razo_soci'] ?? $email->remitente_nombre,
-                'fec_docu' => $email->fecha_correo?->format('Y-m-d'),
+                'asunto' => $data['asunto'] ?? $emailData['asunto'] ?? '',
+                'nom_origi' => $data['nom_razo_soci'] ?? $emailData['remitente_nombre'] ?? '',
+                'fec_docu' => $fecDocu,
                 'num_folios' => $data['num_folios'] ?? 0,
-                'num_anexos' => $data['num_anexos'] ?? count($email->adjuntos_info ?? []),
-                'descrip_anexos' => $data['descrip_anexos'] ?? ($email->tiene_adjuntos
-                    ? collect($email->adjuntos_info ?? [])->pluck('filename')->implode(', ')
-                    : ''),
+                'num_anexos' => $data['num_anexos'] ?? count($adjuntosInfo),
+                'descrip_anexos' => $data['descrip_anexos'] ?? (
+                    ! empty($adjuntosInfo) ? collect($adjuntosInfo)->pluck('filename')->implode(', ') : ''
+                ),
                 'hash_sha256' => $hashSha256,
                 'estado_trabajo' => 'ENVIADO',
             ];
+
             $radicado = $this->enviadosService->create($radicadoData);
 
-            // Guardar adjuntos del email enviado
-            if (! empty($email->adjuntos_info) && $email->tiene_adjuntos) {
+            // Guardar adjuntos desde IMAP
+            if (! empty($emailData['tiene_adjuntos']) && ! empty($adjuntosInfo)) {
                 try {
                     $mailbox = $this->imapService->connect();
                     $inbox = $mailbox->inbox();
                     $message = $inbox->messages()
                         ->withBody()
                         ->withBodyStructure()
-                        ->findOrFail((int) $email->imap_uid);
+                        ->findOrFail((int) $emailData['uid']);
 
                     $directorio = 'radicados_enviados/'.$radicado->num_radicado;
 
@@ -299,50 +205,42 @@ class EmailRadicacionService
                     $mailbox->disconnect();
                 } catch (\Exception $e) {
                     Log::error('EmailRadicacionService: Error al guardar adjuntos del correo enviado', [
-                        'email_id' => $email->id,
+                        'uid' => $emailData['uid'] ?? '',
                         'radicado_id' => $radicado->id,
                         'error' => $e->getMessage(),
                     ]);
                 }
             }
 
-            // Convertir email a PDF y guardar como archivo digital
-            $pdfPath = $this->convertEmailToPdf($email, $radicado, 'enviado');
+            // Convertir email a PDF
+            $pdfPath = $this->convertEmailToPdfArray($emailData, $radicado, 'enviado');
 
-            // Actualizar nom_origi con el nombre del PDF generado
             if ($pdfPath) {
                 $radicado->update(['nom_origi' => basename($pdfPath)]);
             }
-
-            // Actualizar tracking
-            $email->update([
-                'radicado_id' => $radicado->id,
-                'estado' => 'radicado',
-                'radicado_en' => now(),
-            ]);
 
             // Generar rótulo PNG
             $rotuloPath = $this->rotuloService->generarRotulo([
                 'num_radicado' => $numRadicado,
                 'fecha_radicado' => $radicado->created_at->format('Y-m-d H:i:s'),
-                'remitente_nombre' => $email->remitente_nombre,
-                'remitente_email' => $email->remitente_email,
-                'asunto' => $email->asunto,
+                'remitente_nombre' => $emailData['remitente_nombre'] ?? '',
+                'remitente_email' => $emailData['remitente_email'] ?? '',
+                'asunto' => $emailData['asunto'] ?? '',
                 'clasificacion' => $radicado->clasificacionDocumental?->nom ?? '',
                 'codigo_verificacion' => $radicado->cod_verifica ?? '',
                 'hash_sha256' => $hashSha256,
             ]);
 
-            // Respuesta automática al remitente original
+            // Respuesta automática
             $replyResult = false;
             try {
-                $replyResult = $this->responderConRadicado(
-                    $emailId,
+                $replyResult = $this->responderConRadicadoDirecto(
+                    $emailData,
                     'Su correo ha sido radicado exitosamente con el número '.$numRadicado.'. Adjunto rótulo del radicado.'
                 );
             } catch (\Exception $e) {
-                \Log::warning('EmailRadicacionService: Error al enviar respuesta automática (enviado)', [
-                    'email_id' => $emailId,
+                Log::warning('EmailRadicacionService: Error al enviar respuesta automática (enviado)', [
+                    'uid' => $emailData['uid'] ?? '',
                     'error' => $e->getMessage(),
                 ]);
             }
@@ -357,43 +255,46 @@ class EmailRadicacionService
     }
 
     /**
-     * Calcula el hash SHA-256 del contenido del correo (ISO 27001 A.10.1.2).
+     * Calcula el hash SHA-256 del contenido del correo desde un array.
      */
-    protected function calcularHashEmail(VentanillaEmailRadicado $email): string
+    public function calcularHashEmailArray(array $emailData): string
     {
+        $timestamp = isset($emailData['fecha_correo'])
+            ? \Carbon\Carbon::parse($emailData['fecha_correo'])->timestamp
+            : '';
+
         $hashContent = implode('|', [
-            $email->asunto ?? '',
-            $email->remitente_email ?? '',
-            $email->remitente_nombre ?? '',
-            $email->fecha_correo?->timestamp ?? '',
-            $email->body_text ?? '',
+            $emailData['asunto'] ?? '',
+            $emailData['remitente_email'] ?? '',
+            $emailData['remitente_nombre'] ?? '',
+            $timestamp,
+            $emailData['body_text'] ?? '',
         ]);
 
         return hash('sha256', $hashContent);
     }
 
     /**
-     * Convierte el contenido HTML del correo a PDF y lo guarda como archivo digital.
-     *
-     * @param  VentanillaEmailRadicado  $email  Registro del correo
-     * @param  VentanillaRadicaReci|VentanillaRadicaEnviados  $radicado  Radicado creado
-     * @param  string  $tipo  'recibido' o 'enviado'
-     * @return string|null Ruta del PDF generado o null si falla
+     * Convierte el contenido del correo a PDF desde un array.
      */
-    public function convertEmailToPdf(VentanillaEmailRadicado $email, $radicado, string $tipo = 'recibido'): ?string
+    public function convertEmailToPdfArray(array $emailData, $radicado, string $tipo = 'recibido'): ?string
     {
         try {
-            $htmlContent = $email->body_html ?: '<p>'.nl2br(e($email->body_text)).'</p>';
+            $htmlContent = ($emailData['body_html'] ?? '') ?: '<p>'.nl2br(e($emailData['body_text'] ?? '')).'</p>';
+
+            $fechaCorreo = isset($emailData['fecha_correo'])
+                ? \Carbon\Carbon::parse($emailData['fecha_correo'])->format('Y-m-d H:i:s')
+                : now()->format('Y-m-d H:i:s');
 
             $data = [
                 'email' => [
-                    'asunto' => $email->asunto,
-                    'remitente_nombre' => $email->remitente_nombre,
-                    'remitente_email' => $email->remitente_email,
-                    'fecha_correo' => $email->fecha_correo?->format('Y-m-d H:i:s'),
+                    'asunto' => $emailData['asunto'] ?? '',
+                    'remitente_nombre' => $emailData['remitente_nombre'] ?? '',
+                    'remitente_email' => $emailData['remitente_email'] ?? '',
+                    'fecha_correo' => $fechaCorreo,
                     'body_html' => $htmlContent,
-                    'adjuntos_info' => $email->adjuntos_info ?? [],
-                    'tiene_adjuntos' => $email->tiene_adjuntos,
+                    'adjuntos_info' => $emailData['adjuntos_info'] ?? [],
+                    'tiene_adjuntos' => $emailData['tiene_adjuntos'] ?? false,
                 ],
                 'radicado' => [
                     'num_radicado' => $radicado->num_radicado,
@@ -407,7 +308,6 @@ class EmailRadicacionService
 
             $pdf = $this->pdfService->generarPdfCorreo($data, ['filename' => $filename, 'enable_remote_images' => false]);
 
-            // Guardar en directorio del radicado usando Storage::disk
             $diskName = $tipo === 'recibido' ? 'radicados_recibidos' : 'radicados_enviados';
             $storage = Storage::disk($diskName);
             $directorio = $radicado->num_radicado;
@@ -419,7 +319,6 @@ class EmailRadicacionService
             $relativePath = $directorio.'/'.$filename;
             $storage->put($relativePath, $pdf->output());
 
-            // Actualizar archivo_digital en el radicado
             $radicado->update([
                 'archivo_digital' => $relativePath,
                 'archivo_tipo' => 'application/pdf',
@@ -429,7 +328,7 @@ class EmailRadicacionService
             return $relativePath;
         } catch (\Exception $e) {
             Log::error('EmailRadicacionService: Error al convertir correo a PDF', [
-                'email_id' => $email->id,
+                'uid' => $emailData['uid'] ?? '',
                 'error' => $e->getMessage(),
             ]);
 
@@ -451,29 +350,17 @@ class EmailRadicacionService
             $mes = $ahora->format('m');
             $dia = $ahora->format('d');
 
-            // Construir prefijo reemplazando YYYY, MM, DD
-            $prefijo = str_replace(
-                ['YYYY', 'MM', 'DD'],
-                [$anio, $mes, $dia],
-                $formato
-            );
-
-            // Contar cuántos # hay para saber el ancho del número
             $posHash = strpos($formato, '#');
             if ($posHash === false) {
-                // No hay #, usar formato simple
-                $prefijoConGuion = $prefijo.'-';
+                $prefijoConGuion = str_replace(['YYYY', 'MM', 'DD'], [$anio, $mes, $dia], $formato).'-';
             } else {
-                // El prefijo termina antes del primer #
-                $prefijoConGuion = substr($formato, 0, $posHash);
                 $prefijoConGuion = str_replace(
                     ['YYYY', 'MM', 'DD'],
                     [$anio, $mes, $dia],
-                    $prefijoConGuion
+                    substr($formato, 0, $posHash)
                 );
             }
 
-            // Contar dígitos (# consecutivos desde la posición actual)
             $digitCount = 0;
             $i = $posHash;
             $len = strlen($formato);
@@ -482,7 +369,7 @@ class EmailRadicacionService
                 $i++;
             }
             if ($digitCount === 0) {
-                $digitCount = 5; // Default
+                $digitCount = 5;
             }
 
             $ultimoNumero = DB::table('ventanilla_radica_reci')
@@ -512,11 +399,7 @@ class EmailRadicacionService
 
             $posHash = strpos($formato, '#');
             if ($posHash === false) {
-                $prefijoConGuion = str_replace(
-                    ['YYYY', 'MM', 'DD'],
-                    [$anio, $mes, $dia],
-                    $formato
-                ).'-';
+                $prefijoConGuion = str_replace(['YYYY', 'MM', 'DD'], [$anio, $mes, $dia], $formato).'-';
             } else {
                 $prefijoConGuion = str_replace(
                     ['YYYY', 'MM', 'DD'],
@@ -548,81 +431,72 @@ class EmailRadicacionService
     }
 
     /**
-     * Obtiene el detalle completo de un correo electrónico.
+     * Envía un correo de respuesta con el rótulo de radicado adjunto.
+     * Recibe datos del email directamente (array).
      */
-    public function obtenerDetalleEmail(int $emailId): ?array
+    public function responderConRadicadoDirecto(array $emailData, string $mensajeRespuesta): bool
     {
-        $email = VentanillaEmailRadicado::with('radicado')->find($emailId);
+        try {
+            $numRadicado = $this->obtenerSiguienteNumeroRadicado();
 
-        if (! $email) {
-            return null;
+            // Buscar el radicado más reciente del remitente
+            $radicado = VentanillaRadicaReci::where('nom_origi', 'like', '%'.$emailData['remitente_email'].'%')
+                ->orWhere('asunto', $emailData['asunto'] ?? '')
+                ->latest()
+                ->first();
+
+            if (! $radicado) {
+                Log::warning('EmailRadicacionService: No se encontró radicado para responder');
+                return false;
+            }
+
+            MailConfigHelper::configureFromConfigVarias();
+
+            $rotuloPath = $this->descargarRotuloPorNum($radicado->num_radicado);
+
+            $mailData = [
+                'radicado' => $radicado,
+                'mensaje' => $mensajeRespuesta,
+                'email_original' => [
+                    'asunto' => $emailData['asunto'] ?? '',
+                    'remitente' => $emailData['remitente_nombre'] ?? '',
+                ],
+            ];
+
+            $toEmail = $emailData['remitente_email'] ?? '';
+            $toName = $emailData['remitente_nombre'] ?? '';
+
+            $mailable = new RespuestaRadicadoMail($mailData);
+
+            if ($rotuloPath && file_exists($rotuloPath)) {
+                $mailable->attach($rotuloPath, [
+                    'as' => 'rotulo_'.$radicado->num_radicado.'.png',
+                    'mime' => 'image/png',
+                ]);
+            }
+
+            Mail::to($toEmail, $toName)->send($mailable);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('EmailRadicacionService: Error al enviar respuesta con radicado', [
+                'email' => $emailData['remitente_email'] ?? '',
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
         }
-
-        return [
-            'id' => $email->id,
-            'imap_uid' => $email->imap_uid,
-            'asunto' => $email->asunto,
-            'remitente_email' => $email->remitente_email,
-            'remitente_nombre' => $email->remitente_nombre,
-            'fecha_correo' => $email->fecha_correo?->format('Y-m-d H:i:s'),
-            'body_text' => $email->body_text,
-            'body_html' => $email->body_html,
-            'tiene_adjuntos' => $email->tiene_adjuntos,
-            'adjuntos_info' => $email->adjuntos_info,
-            'estado' => $email->estado,
-            'radicado_id' => $email->radicado_id,
-            'radicado_num' => $email->radicado?->num_radicado,
-            'sincronizado_en' => $email->sincronizado_en?->format('Y-m-d H:i:s'),
-            'radicado_en' => $email->radicado_en?->format('Y-m-d H:i:s'),
-            'respondido_en' => $email->respondido_en?->format('Y-m-d H:i:s'),
-        ];
     }
 
     /**
-     * Obtiene el modelo del radicado (recibido o enviado) desde el email tracking.
+     * Descarga el rótulo PNG por número de radicado.
      */
-    protected function obtenerRadicado(VentanillaEmailRadicado $email)
+    public function descargarRotuloPorNum(string $numRadicado): ?string
     {
-        if (! $email->radicado_id) {
-            return null;
-        }
-
-        // Intentar recibido
-        $recibido = VentanillaRadicaReci::find($email->radicado_id);
-        if ($recibido) {
-            return $recibido;
-        }
-
-        // Intentar enviado
-        $enviado = VentanillaRadicaEnviados::find($email->radicado_id);
-        if ($enviado) {
-            return $enviado;
-        }
-
-        return null;
-    }
-
-    /**
-     * Descarga el rótulo PNG asociado al radicado del correo.
-     */
-    public function descargarRotulo(int $emailId): ?string
-    {
-        $email = VentanillaEmailRadicado::find($emailId);
-
-        if (! $email || ! $email->radicado_id) {
-            return null;
-        }
-
-        // Intentar ambos directorios (recibidos y enviados)
         $directories = ['radicados_recibidos/rotulos', 'radicados_enviados/rotulos'];
-        $radicado = $this->obtenerRadicado($email);
-
-        if (! $radicado) {
-            return null;
-        }
 
         foreach ($directories as $directorio) {
-            $archivos = glob(storage_path("app/{$directorio}/rotulo_*{$radicado->num_radicado}*.png"));
+            $archivos = glob(storage_path("app/{$directorio}/rotulo_*{$numRadicado}*.png"));
             if (! empty($archivos)) {
                 return $archivos[0];
             }
@@ -632,70 +506,9 @@ class EmailRadicacionService
     }
 
     /**
-     * Envía un correo de respuesta con el rótulo de radicado adjunto.
+     * Guarda los adjuntos del correo desde IMAP usando el UID.
      */
-    public function responderConRadicado(int $emailId, string $mensajeRespuesta): bool
-    {
-        try {
-            $email = VentanillaEmailRadicado::find($emailId);
-
-            if (! $email || ! $email->radicado_id) {
-                throw new \Exception('El correo o el radicado no existen.');
-            }
-
-            $radicado = $this->obtenerRadicado($email);
-
-            if (! $radicado) {
-                throw new \Exception('No se encontró el radicado asociado.');
-            }
-
-            MailConfigHelper::configureFromConfigVarias();
-
-            $rotuloPath = $this->descargarRotulo($emailId);
-
-            $mailData = [
-                'radicado' => $radicado,
-                'mensaje' => $mensajeRespuesta,
-                'email_original' => [
-                    'asunto' => $email->asunto,
-                    'remitente' => $email->remitente_nombre,
-                ],
-            ];
-
-            $toEmail = $email->remitente_email;
-            $toName = $email->remitente_nombre;
-
-            $mailable = new RespuestaRadicadoMail($mailData);
-
-            if ($rotuloPath && file_exists($rotuloPath)) {
-                $mailable->attach($rotuloPath, [
-                    'as' => 'rotulo_'.$email->radicado->num_radicado.'.png',
-                    'mime' => 'image/png',
-                ]);
-            }
-
-            Mail::to($toEmail, $toName)->send($mailable);
-
-            $email->update([
-                'estado' => 'respondido',
-                'respondido_en' => now(),
-            ]);
-
-            return true;
-        } catch (\Exception $e) {
-            Log::error('EmailRadicacionService: Error al enviar respuesta con radicado', [
-                'email_id' => $emailId,
-                'error' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
-    }
-
-    /**
-     * Guarda los adjuntos del correo en el disco del radicado.
-     */
-    protected function guardarAdjuntosEmail(VentanillaEmailRadicado $email, VentanillaRadicaReci $radicado): void
+    protected function guardarAdjuntosDesdeImap(string $uid, VentanillaRadicaReci $radicado): void
     {
         try {
             $mailbox = $this->imapService->connect();
@@ -704,7 +517,7 @@ class EmailRadicacionService
             $message = $inbox->messages()
                 ->withBody()
                 ->withBodyStructure()
-                ->findOrFail((int) $email->imap_uid);
+                ->findOrFail((int) $uid);
 
             $directorio = 'radicados_recibidos/'.$radicado->num_radicado;
 
@@ -715,7 +528,7 @@ class EmailRadicacionService
             $mailbox->disconnect();
         } catch (\Exception $e) {
             Log::error('EmailRadicacionService: Error al guardar adjuntos del correo', [
-                'email_id' => $email->id,
+                'uid' => $uid,
                 'radicado_id' => $radicado->id,
                 'error' => $e->getMessage(),
             ]);

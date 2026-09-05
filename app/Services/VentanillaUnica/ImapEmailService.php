@@ -106,6 +106,74 @@ class ImapEmailService
     }
 
     /**
+     * Obtiene emails del inbox con paginación nativa de IMAP.
+     * Lee directamente de Gmail sin pasar por la BD.
+     *
+     * @param  int  $page  Página actual (1-based)
+     * @param  int  $perPage  Elementos por página
+     * @param  string|null  $search  Término de búsqueda (asunto o remitente)
+     * @return array ['emails' => array, 'pagination' => array]
+     */
+    public function fetchPaginatedInbox(int $page = 1, int $perPage = 15, ?string $search = null): array
+    {
+        try {
+            $mailbox = $this->connect();
+            $inbox = $mailbox->inbox();
+
+            $query = $inbox->messages()
+                ->withHeaders()
+                ->withBodyStructure()
+                ->newest();
+
+            if ($search) {
+                $escapedSearch = addcslashes($search, '\()"');
+                $query->where('SUBJECT', $escapedSearch)
+                    ->orWhere('FROM', $escapedSearch);
+            }
+
+            $paginator = $query->paginate($perPage, $page);
+
+            $emails = [];
+            foreach ($paginator->items() as $message) {
+                $from = $message->from();
+                $emails[] = [
+                    'id' => (string) $message->uid(),
+                    'uid' => (string) $message->uid(),
+                    'asunto' => $message->subject() ?: '(Sin asunto)',
+                    'remitente_email' => $from?->email() ?? '',
+                    'remitente_nombre' => $from?->name() ?? '',
+                    'fecha_correo' => $message->date()?->toDateTimeString(),
+                    'body_text' => $message->text() ?? '',
+                    'body_html' => $message->html() ?? '',
+                    'tiene_adjuntos' => $message->hasAttachments(),
+                    'adjuntos_info' => $this->getAttachments($message),
+                    'is_read' => in_array('Seen', $message->flags() ?? []),
+                    'is_starred' => in_array('Flagged', $message->flags() ?? []),
+                    'folder' => 'inbox',
+                    'labels' => [],
+                ];
+            }
+
+            $mailbox->disconnect();
+
+            return [
+                'emails' => $emails,
+                'pagination' => [
+                    'currentPage' => $paginator->currentPage(),
+                    'lastPage' => $paginator->lastPage(),
+                    'perPage' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                ],
+            ];
+        } catch (\Exception $e) {
+            Log::error('ImapEmailService: Error al obtener emails paginados del inbox', [
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Obtiene los detalles completos de un mensaje por su UID.
      *
      * @param  string  $uid  Identificador único del mensaje IMAP

@@ -3,8 +3,7 @@
 /**
  * Archivo de rutas para el módulo de Email Radicados.
  *
- * Este archivo define las rutas para la gestión de correos electrónicos
- * radicados dentro del sistema de ventanilla única.
+ * Rutas para la gestión de correos electrónicos radicados (lectura directa desde IMAP).
  */
 
 use App\Http\Controllers\VentanillaUnica\EmailRadicadosController;
@@ -14,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 $permEmail = 'Radicar -> Cores. Recibida -> ';
 
 Route::middleware('auth:sanctum')->group(function () use ($permEmail) {
-    // Rutas con throttle:api (rate limit general 60/min)
+    // Lectura (throttle:api — 60/min)
     Route::middleware('throttle:api')->group(function () use ($permEmail) {
         Route::get('/email-radicados', [EmailRadicadosController::class, 'index'])
             ->name('email-radicados.index')
@@ -37,12 +36,8 @@ Route::middleware('auth:sanctum')->group(function () use ($permEmail) {
             ->middleware('can:'.$permEmail.'Mostrar');
     });
 
-    // Rutas con throttle:radicacion (30/min) - operaciones de creación/edición
+    // Escritura (throttle:radicacion — 30/min)
     Route::middleware('throttle:radicacion')->group(function () use ($permEmail) {
-        Route::post('/email-radicados/sincronizar', [EmailRadicadosController::class, 'sincronizar'])
-            ->name('email-radicados.sincronizar')
-            ->middleware('can:'.$permEmail.'Sincronizar');
-
         Route::post('/email-radicados/{id}/radicar', [EmailRadicadosController::class, 'radicar'])
             ->name('email-radicados.radicar')
             ->middleware('can:'.$permEmail.'Crear');
@@ -50,9 +45,5 @@ Route::middleware('auth:sanctum')->group(function () use ($permEmail) {
         Route::post('/email-radicados/{id}/responder', [EmailRadicadosController::class, 'responder'])
             ->name('email-radicados.responder')
             ->middleware('can:'.$permEmail.'Crear');
-
-        Route::delete('/email-radicados/{id}', [EmailRadicadosController::class, 'destroy'])
-            ->name('email-radicados.destroy')
-            ->middleware('can:'.$permEmail.'Eliminar');
     });
 });
