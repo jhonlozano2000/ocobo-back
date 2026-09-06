@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Route;
  * Rate limiting: throttle:radicacion (escritura) / throttle:api (lectura)
  *
  * @author Jhon Javer Lozano Arce
+ *
  * @date 2026-08-20
  */
 
@@ -30,6 +31,7 @@ Route::middleware(['auth:sanctum', 'throttle:radicacion'])->group(function () {
     /**
      * POST /api/pqrs
      * Crea un nuevo radicado PQRS (desde radicado recibido o directo)
+     *
      * @name pqrs.store
      */
     Route::post('/pqrs', [VentanillaPqrsController::class, 'store'])->name('pqrs.store');
@@ -37,6 +39,7 @@ Route::middleware(['auth:sanctum', 'throttle:radicacion'])->group(function () {
     /**
      * DELETE /api/pqrs
      * Eliminación masiva (bulk) de PQRS por IDs
+     *
      * @name pqrs.bulk-destroy
      */
     Route::delete('/pqrs', [VentanillaPqrsController::class, 'bulkDestroy'])->name('pqrs.bulk-destroy');
@@ -51,6 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * GET /api/pqrs
          * Lista paginada de PQRS con filtros, búsqueda y ABAC
+         *
          * @name pqrs.index
          */
         Route::get('/pqrs', [VentanillaPqrsController::class, 'index'])->name('pqrs.index');
@@ -66,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * GET /api/pqrs/export
          * Exporta listado de PQRS a Excel/CSV
+         *
          * @name pqrs.export
          */
         Route::get('/pqrs/export', [VentanillaPqrsController::class, 'export'])->name('pqrs.export');
@@ -73,6 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * GET /api/pqrs/estadisticas
          * Estadísticas agregadas: totales por estado, prioridad, vencimientos
+         *
          * @name pqrs.estadisticas
          */
         Route::get('/pqrs/estadisticas', [VentanillaPqrsController::class, 'estadisticas'])->name('pqrs.estadisticas');
@@ -80,6 +86,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * GET /api/pqrs/{id}/linea-tiempo
          * Línea de tiempo completa del PQRS (eventos, pases, comentarios, etc.)
+         *
          * @name pqrs.linea-tiempo
          */
         Route::get('/pqrs/{id}/linea-tiempo', [VentanillaPqrsController::class, 'lineaTiempo'])->name('pqrs.linea-tiempo');
@@ -87,6 +94,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * GET /api/pqrs/{id}
          * Detalle completo de un PQRS con todas sus relaciones
+         *
          * @name pqrs.show
          */
         Route::get('/pqrs/{id}', [VentanillaPqrsController::class, 'show'])->name('pqrs.show');
@@ -94,6 +102,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * GET /api/pqrs/mis-radicados
          * PQRS asignados al usuario autenticado (vía responsables)
+         *
          * @name pqrs.mis-radicados
          */
         Route::get('/pqrs/mis-radicados', [VentanillaPqrsController::class, 'misRadicados'])->name('pqrs.mis-radicados');
@@ -101,6 +110,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * GET /api/pqrs/estados
          * Catálogo de estados de trámite disponibles
+         *
          * @name pqrs.estados
          */
         Route::get('/pqrs/estados', [VentanillaPqrsController::class, 'estadosDisponibles'])->name('pqrs.estados');
@@ -108,6 +118,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * GET /api/pqrs/estados/{estadoId}/transiciones
          * Transiciones válidas desde un estado (machine state)
+         *
          * @name pqrs.transiciones-estado
          */
         Route::get('/pqrs/estados/{estadoId}/transiciones', [VentanillaPqrsController::class, 'transicionesEstado'])->name('pqrs.transiciones-estado');
@@ -115,6 +126,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * GET /api/pqrs/{id}/historial-notificaciones
          * Historial de emails/notificaciones enviadas para este PQRS
+         *
          * @name pqrs.historial-notificaciones
          */
         Route::get('/pqrs/{id}/historial-notificaciones', [VentanillaPqrsController::class, 'historialNotificaciones'])->name('pqrs.historial-notificaciones');
@@ -122,6 +134,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * GET /api/pqrs/{id}/historial-clasificacion
          * Historial de cambios de clasificación documental
+         *
          * @name pqrs.historial-clasificacion
          */
         Route::get('/pqrs/{id}/historial-clasificacion', [VentanillaPqrsController::class, 'historialClasificacion'])->name('pqrs.historial-clasificacion');
@@ -135,6 +148,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * PUT /api/pqrs/{id}
          * Actualización general del PQRS
+         *
          * @name pqrs.update
          */
         Route::put('/pqrs/{id}', [VentanillaPqrsController::class, 'update'])->name('pqrs.update');
@@ -142,6 +156,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * DELETE /api/pqrs/{id}
          * Eliminación individual (soft delete)
+         *
          * @name pqrs.destroy
          */
         Route::delete('/pqrs/{id}', [VentanillaPqrsController::class, 'destroy'])->name('pqrs.destroy');
@@ -149,6 +164,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * PUT /api/pqrs/{id}/estado
          * Cambio de estado de trámite (con validación de transiciones)
+         *
          * @name pqrs.cambiar-estado
          */
         Route::put('/pqrs/{id}/estado', [VentanillaPqrsController::class, 'cambiarEstado'])->name('pqrs.cambiar-estado');
@@ -156,6 +172,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * POST /api/pqrs/{id}/prorroga
          * Aplica prórroga automática (duplica plazo legal)
+         *
          * @name pqrs.prorroga
          */
         Route::post('/pqrs/{id}/prorroga', [VentanillaPqrsController::class, 'aplicarProrroga'])->name('pqrs.prorroga');
@@ -163,6 +180,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * PUT /api/pqrs/{id}/asunto
          * Actualiza solo el asunto del PQRS
+         *
          * @name pqrs.update-asunto
          */
         Route::put('/pqrs/{id}/asunto', [VentanillaPqrsController::class, 'updateAsunto'])->name('pqrs.update-asunto');
@@ -170,6 +188,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * PUT /api/pqrs/{id}/fechas
          * Actualiza fechas (vencimiento, respuesta, etc.)
+         *
          * @name pqrs.update-fechas
          */
         Route::put('/pqrs/{id}/fechas', [VentanillaPqrsController::class, 'updateFechas'])->name('pqrs.update-fechas');
@@ -177,6 +196,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * PUT /api/pqrs/{id}/clasificacion
          * Cambia clasificación documental (registra en historial)
+         *
          * @name pqrs.update-clasificacion
          */
         Route::put('/pqrs/{id}/clasificacion', [VentanillaPqrsController::class, 'updateClasificacion'])->name('pqrs.update-clasificacion');
@@ -184,6 +204,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * GET /api/pqrs/{id}/rotulo
          * Genera e imprime rótulo/caratula del PQRS
+         *
          * @name pqrs.imprimir-rotulo
          */
         Route::get('/pqrs/{id}/rotulo', [VentanillaPqrsController::class, 'imprimirRotulo'])->name('pqrs.imprimir-rotulo');
@@ -191,6 +212,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * POST /api/pqrs/{id}/notificar-email
          * Envía notificación por email (registra en historial)
+         *
          * @name pqrs.notificar-email
          */
         Route::post('/pqrs/{id}/notificar-email', [VentanillaPqrsController::class, 'notificarEmail'])->name('pqrs.notificar-email');
@@ -198,6 +220,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * POST /api/pqrs/{id}/solicitar-otp-firma
          * Inicia proceso de firma digital (envía OTP)
+         *
          * @name pqrs.solicitar-otp-firma
          */
         Route::post('/pqrs/{id}/solicitar-otp-firma', [VentanillaPqrsController::class, 'solicitarOtpFirma'])->name('pqrs.solicitar-otp-firma');
@@ -205,6 +228,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * POST /api/pqrs/{id}/validar-otp-firma
          * Valida OTP y completa firma digital
+         *
          * @name pqrs.validar-otp-firma
          */
         Route::post('/pqrs/{id}/validar-otp-firma', [VentanillaPqrsController::class, 'validarOtpFirma'])->name('pqrs.validar-otp-firma');
@@ -212,20 +236,39 @@ Route::middleware('auth:sanctum')->group(function () {
         /**
          * POST /api/pqrs/{id}/guardar-firma
          * Guarda firma digital completada
+         *
          * @name pqrs.guardar-firma
          */
         Route::post('/pqrs/{id}/guardar-firma', [VentanillaPqrsController::class, 'guardarFirma'])->name('pqrs.guardar-firma');
 
         /**
-         * POST /api/pqrs/{id}/anular
-         * Anula el PQRS (cambia estado, registra motivo)
-         * @name pqrs.anular
+         * POST /api/pqrs/{id}/solicitar-anulacion
+         * Registra la solicitud de anuracion de un PQRS
+         *
+         * @name pqrs.solicitar-anulacion
          */
-        Route::post('/pqrs/{id}/anular', [VentanillaPqrsController::class, 'anular'])->name('pqrs.anular');
+        Route::post('/pqrs/{id}/solicitar-anulacion', [VentanillaPqrsController::class, 'solicitarAnulacion'])->name('pqrs.solicitar-anulacion');
+
+        /**
+         * GET /api/pqrs/pendientes-anulacion
+         * Lista PQRS con solicitud de anulación pendiente
+         *
+         * @name pqrs.pendientes-anulacion
+         */
+        Route::get('/pqrs/pendientes-anulacion', [VentanillaPqrsController::class, 'listarPendientesAnulacion'])->name('pqrs.pendientes-anulacion')->middleware('can:Jefe de Archivo');
+
+        /**
+         * POST /api/pqrs/{id}/procesar-anulacion
+         * Aprueba o rechaza la anulación de un PQRS
+         *
+         * @name pqrs.procesar-anulacion
+         */
+        Route::post('/pqrs/{id}/procesar-anulacion', [VentanillaPqrsController::class, 'procesarAnulacion'])->name('pqrs.procesar-anulacion')->middleware('can:Jefe de Archivo');
 
         /**
          * GET /api/pqrs/pendientes-firma
          * Lista PQRS pendientes de firma digital
+         *
          * @name pqrs.pendientes-firma
          */
         Route::get('/pqrs/pendientes-firma', [VentanillaPqrsController::class, 'pendientesFirma'])->name('pqrs.pendientes-firma');

@@ -116,9 +116,11 @@ class RadicacionEnviadosService
      */
     public function getStats(): array
     {
+        $estadosCerrados = ['FINALIZADO', 'ANULADO'];
+
         return [
             'total_enviados' => VentanillaRadicaEnviados::count(),
-            'total_pendientes' => VentanillaRadicaEnviados::where('estado', 'Pendiente')->count(),
+            'total_pendientes' => VentanillaRadicaEnviados::whereNotIn('estado_trabajo', $estadosCerrados)->count(),
         ];
     }
 }

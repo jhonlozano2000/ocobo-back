@@ -20,6 +20,8 @@ class MetadataController extends Controller
 
     public function show(int $archivoId, string $tipo = 'reci'): JsonResponse
     {
+        $this->autorizarPorTipo($tipo, 'Mostrar');
+
         $resultado = FileMetadataHelper::obtenerMetadataConInfo($archivoId, $tipo);
 
         if (! $resultado) {
@@ -36,9 +38,11 @@ class MetadataController extends Controller
         ]);
     }
 
-    public function historial(int $metadataId, string $tipo = 'reci'): JsonResponse
+    public function historial(int $archivoId, string $tipo = 'reci'): JsonResponse
     {
-        $historial = FileMetadataHelper::obtenerHistorial($metadataId, $tipo);
+        $this->autorizarPorTipo($tipo, 'Mostrar');
+
+        $historial = FileMetadataHelper::obtenerHistorialPorArchivo($archivoId, $tipo);
 
         return response()->json([
             'status' => true,
@@ -49,6 +53,8 @@ class MetadataController extends Controller
 
     public function exportar(Request $request, string $tipo = 'reci'): StreamedResponse
     {
+        $this->autorizarPorTipo($tipo, 'Exportar');
+
         $filtros = $request->only(['radicado_id', 'nivel_clasificacion', 'fecha_desde', 'fecha_hasta']);
 
         return FileMetadataHelper::exportarMetadata($filtros, $tipo);
@@ -77,6 +83,8 @@ class MetadataController extends Controller
      */
     public function store(Request $request, int $archivoId, string $tipo = 'reci'): JsonResponse
     {
+        $this->autorizarPorTipo($tipo, 'Editar');
+
         $request->validate([
             'descripcion' => 'nullable|string|max:1000',
             'palabras_clave' => 'nullable|array',
@@ -190,5 +198,27 @@ class MetadataController extends Controller
             'interno' => VentanillaRadicaInternoMetadata::class,
             default => null,
         };
+    }
+
+    /**
+     * Las rutas de metadata son compartidas por los tres módulos y el tipo llega
+     * como parámetro, así que el permiso debe evaluarse sobre el módulo implicado.
+     * Sin esto, un usuario solo con permisos de Recibida podía leer o editar la
+     * metadata de Enviados e Internos pasando tipo=enviados / tipo=interno.
+     */
+    private function autorizarPorTipo(string $tipo, string $accion): void
+    {
+        $prefijo = match ($tipo) {
+            'reci' => 'Radicar -> Cores. Recibida -> ',
+            'enviados' => 'Radicar -> Cores. Enviada -> ',
+            'interno' => 'Radicar -> Cores. Interna -> ',
+            default => null,
+        };
+
+        if ($prefijo === null) {
+            abort(422, 'Tipo de metadata no válido. Use: reci, enviados, interno');
+        }
+
+        abort_unless(auth()->user()?->can($prefijo.$accion), 403);
     }
 }

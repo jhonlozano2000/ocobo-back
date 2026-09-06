@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\OfiArchivo\OfiArchivoPrestamo;
 use App\Models\Transversal\FirmaEvento;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
-use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
-use App\Models\OfiArchivo\OfiArchivoPrestamo;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\ControlAcceso\UserService;
 use App\Services\OfiArchivo\ReportesService as ArchivoReportesService;
 use App\Services\VentanillaUnica\PqrsService;
-use App\Services\VentanillaUnica\RadicacionReciService;
 use App\Services\VentanillaUnica\RadicacionEnviadosService;
-use App\Services\ControlAcceso\UserService;
+use App\Services\VentanillaUnica\RadicacionReciService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
@@ -25,7 +26,7 @@ class DashboardGlobalController extends Controller
         protected UserService $userService,
     ) {}
 
-    public function index(): \Illuminate\Http\JsonResponse
+    public function index(): JsonResponse
     {
         $data = Cache::remember('dashboard_global_stats', 300, function () {
             return $this->aggregateAll();
@@ -37,10 +38,10 @@ class DashboardGlobalController extends Controller
     protected function aggregateAll(): array
     {
         $archivo = $this->archivoReportes->estadisticasGenerales();
-        $recibidos = rescue(fn() => $this->reciService->getStats(), ['total_radicados' => 0, 'pendientes' => 0, 'vencidos' => 0]);
-        $enviados = rescue(fn() => $this->enviadosService->getStats(), ['total_enviados' => 0, 'total_pendientes' => 0]);
-        $pqrs = rescue(fn() => $this->pqrsService->getEstadisticas(), ['total' => 0, 'pendientes' => 0, 'urgentes' => 0, 'vencidas' => 0]);
-        $usuarios = rescue(fn() => $this->userService->getStats(), ['total_users' => 0, 'total_users_activos' => 0, 'total_users_inactivos' => 0]);
+        $recibidos = rescue(fn () => $this->reciService->getStats(), ['total_radicados' => 0, 'pendientes' => 0, 'vencidos' => 0]);
+        $enviados = rescue(fn () => $this->enviadosService->getStats(), ['total_enviados' => 0, 'total_pendientes' => 0]);
+        $pqrs = rescue(fn () => $this->pqrsService->getEstadisticas(), ['total' => 0, 'pendientes' => 0, 'urgentes' => 0, 'vencidas' => 0]);
+        $usuarios = rescue(fn () => $this->userService->getStats(), ['total_users' => 0, 'total_users_activos' => 0, 'total_users_inactivos' => 0]);
 
         return [
             'radicados_recibidos' => [
@@ -122,7 +123,7 @@ class DashboardGlobalController extends Controller
             ];
         }
 
-        $prestamos = OfiArchivoPrestamo::where('fecha_devolucion_esperada', '<', now())
+        $prestamos = OfiArchivoPrestamo::where('fecha_devolucion_esperada', '<', $limite)
             ->where('estado', 'Activo')
             ->get(['id', 'solicitante_id', 'fecha_prestamo', 'fecha_devolucion_esperada']);
 
@@ -136,7 +137,7 @@ class DashboardGlobalController extends Controller
             ];
         }
 
-        usort($items, fn($a, $b) => ($a['dias_restantes'] ?? 999) <=> ($b['dias_restantes'] ?? 999));
+        usort($items, fn ($a, $b) => ($a['dias_restantes'] ?? 999) <=> ($b['dias_restantes'] ?? 999));
 
         return $items;
     }

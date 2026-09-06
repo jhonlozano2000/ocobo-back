@@ -1360,6 +1360,21 @@ class VentanillaRadicaReciController extends Controller
                     ->orWhere('archivo_digital', '');
             })->count();
 
+            $listaSinArchivoDigital = VentanillaRadicaReci::where(function ($query) {
+                $query->whereNull('archivo_digital')
+                    ->orWhere('archivo_digital', '');
+            })->select('id', 'num_radicado', 'created_at', 'asunto')
+                ->with('tercero:id,nom_razo_soci')
+                ->limit(20)
+                ->get()
+                ->map(fn ($r) => [
+                    'id' => $r->id,
+                    'num_radicado' => $r->num_radicado,
+                    'fecha' => $r->created_at?->format('Y-m-d'),
+                    'tercero' => $r->tercero->nom_razo_soci ?? 'N/A',
+                    'asunto' => $r->asunto ?? '—',
+                ]);
+
             $faltanImprimirRotulo = VentanillaRadicaReci::where('impri_rotulo', '!=', 1)->count();
 
             $radicadosVencidos = VentanillaRadicaReci::where('fec_venci', '<', $fechaActual)->count();
@@ -1392,6 +1407,7 @@ class VentanillaRadicaReciController extends Controller
                 'total_finalizado' => $totalFinalizado,
                 'total_con_archivos' => $totalConArchivos,
                 'faltan_archivo_digital' => $faltanArchivoDigital,
+                'lista_sin_archivo_digital' => $listaSinArchivoDigital,
                 'faltan_imprimir_rotulo' => $faltanImprimirRotulo,
                 'radicados_vencidos' => $radicadosVencidos,
                 'radicados_hoy' => $radicadosHoy,

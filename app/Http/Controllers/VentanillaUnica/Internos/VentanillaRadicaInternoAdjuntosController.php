@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\VentanillaUnica\Internos;
 
 use App\Helpers\ArchivoHelper;
+use App\Helpers\FileMetadataHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Internos\UploadArchivosAdjuntosInternoRequest;
 use App\Http\Traits\ApiResponseTrait;
@@ -11,6 +12,8 @@ use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoArchivos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class VentanillaRadicaInternoAdjuntosController extends Controller
 {
@@ -72,6 +75,11 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
                     'hash_sha256' => $hashSha256,
                 ]);
 
+                FileMetadataHelper::crearMetadataArchivoAdjuntoInterno(
+                    $archivoAdicional,
+                    $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
+                );
+
                 $fileUrl = ArchivoHelper::obtenerUrl($rutaArchivo, self::DISK);
 
                 $archivosSubidos[] = [
@@ -87,8 +95,13 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
 
             return $this->successResponse($archivosSubidos, 'Archivos adicionales subidos exitosamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al subir archivos adicionales', $e->getMessage(), 500);
         }
     }
@@ -117,8 +130,13 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
 
             return $this->successResponse($archivos, 'Archivos adicionales obtenidos exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener archivos adicionales', $e->getMessage(), 500);
         }
     }
@@ -140,8 +158,13 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
 
             return Storage::disk(self::DISK)->download($archivo->archivo);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al descargar el archivo', $e->getMessage(), 500);
         }
     }
@@ -164,8 +187,13 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
 
             return $this->successResponse(null, 'Archivo adicional eliminado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al eliminar el archivo adicional', $e->getMessage(), 500);
         }
     }

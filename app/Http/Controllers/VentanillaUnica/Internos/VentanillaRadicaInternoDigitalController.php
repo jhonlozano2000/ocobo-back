@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\VentanillaUnica\Internos;
 
 use App\Helpers\ArchivoHelper;
+use App\Helpers\FileMetadataHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Internos\UploadArchivoInternoRequest;
 use App\Http\Traits\ApiResponseTrait;
@@ -12,6 +13,8 @@ use App\Services\VentanillaUnica\OcrHttpService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class VentanillaRadicaInternoDigitalController extends Controller
 {
@@ -78,6 +81,11 @@ class VentanillaRadicaInternoDigitalController extends Controller
                 'subido_por' => $usuario?->id,
             ]);
 
+            FileMetadataHelper::crearMetadataArchivoDigitalInterno(
+                $radicado, $nuevoArchivo, $hashSha256, $fileSize,
+                $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
+            );
+
             try {
                 $ocrText = null;
                 $ocrHttpService = app(OcrHttpService::class);
@@ -93,8 +101,12 @@ class VentanillaRadicaInternoDigitalController extends Controller
                     }
                 }
             } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+                if ($e instanceof ValidationException) {
+                    throw $e;
+                }
+                if ($e instanceof HttpExceptionInterface) {
+                    throw $e;
+                }
                 \Log::warning('OCR falló en radicado interno pero no afecta upload', [
                     'radicado_id' => $radicado->id,
                     'error' => $e->getMessage(),
@@ -117,8 +129,12 @@ class VentanillaRadicaInternoDigitalController extends Controller
                 'file_url' => $fileUrl,
             ], 'Archivo digital subido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al subir el archivo digital', $e->getMessage(), 500);
@@ -140,8 +156,13 @@ class VentanillaRadicaInternoDigitalController extends Controller
 
             return Storage::disk(self::DISK)->download($radicado->archivo_digital);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al descargar el archivo', $e->getMessage(), 500);
         }
     }
@@ -162,8 +183,13 @@ class VentanillaRadicaInternoDigitalController extends Controller
 
             return $this->successResponse(null, 'Archivo eliminado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al eliminar el archivo', $e->getMessage(), 500);
         }
     }
@@ -190,8 +216,13 @@ class VentanillaRadicaInternoDigitalController extends Controller
 
             return $this->successResponse($fileInfo, 'Información del archivo obtenida exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener información del archivo', $e->getMessage(), 500);
         }
     }
@@ -211,8 +242,13 @@ class VentanillaRadicaInternoDigitalController extends Controller
                 'archivo' => basename($radicado->archivo_digital),
             ], 'OCR obtenido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener OCR', $e->getMessage(), 500);
         }
     }
@@ -232,8 +268,13 @@ class VentanillaRadicaInternoDigitalController extends Controller
 
             return $this->successResponse($historial, 'Historial de eliminaciones obtenido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el historial', $e->getMessage(), 500);
         }
     }
@@ -269,8 +310,13 @@ class VentanillaRadicaInternoDigitalController extends Controller
 
             return $this->errorResponse('No se pudo extraer texto del documento', null, 500);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al re-aplicar OCR', $e->getMessage(), 500);
         }
     }

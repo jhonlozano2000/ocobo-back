@@ -5,8 +5,9 @@ namespace App\Services\ClasificacionDocumental;
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTVD;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class TVDService
@@ -137,6 +138,21 @@ class TVDService
             return ['inserted' => 0, 'errors' => ['No se encontró la dependencia con código: '.$codigoDependencia]];
         }
 
+        // Todo-o-nada: sin transacción, una excepción a mitad de archivo dejaba
+        // la TVD importada a medias en la base de datos.
+        return DB::transaction(fn () => $this->importarFilas($data, $dependencia->id));
+    }
+
+    /**
+     * Recorre las filas de la hoja y crea Series/SubSeries.
+     * Los errores por fila se acumulan y esa fila se omite; solo un fallo
+     * duro aborta y revierte toda la importación.
+     *
+     * @param  array<int, array<int, mixed>>  $data
+     * @return array{inserted: int, errors: array<int, string>}
+     */
+    private function importarFilas(array $data, int $dependenciaId): array
+    {
         $idSerie = null;
         $inserted = 0;
         $errors = [];
@@ -189,14 +205,18 @@ class TVDService
                 continue;
             }
 
+            $gestion = $tipo === 'SerieDocumental' ? $this->parseInt($row[7] ?? null) : null;
+            $central = $tipo === 'SerieDocumental' ? $this->parseInt($row[8] ?? null) : null;
+
             $elemento = ClasificacionDocumentalTVD::create([
                 'tipo' => $tipo,
                 'cod' => $codigo,
                 'nom' => $nombre,
                 'parent' => $parent,
-                'dependencia_id' => $dependencia->id,
-                'gestion' => $tipo === 'SerieDocumental' ? $this->parseInt($row[7] ?? null) : null,
-                'central' => $tipo === 'SerieDocumental' ? $this->parseInt($row[8] ?? null) : null,
+                'dependencia_id' => $dependenciaId,
+                'gestion' => $gestion,
+                'central' => $central,
+                'total_anios' => ($gestion !== null && $central !== null) ? $gestion + $central : $gestion,
                 'soporte' => trim($row[9] ?? '') ?: null,
                 'disposicion_final' => trim($row[10] ?? '') ?: null,
                 'estado' => true,
@@ -225,29 +245,89 @@ class TVDService
         $sheet = $spreadsheet->getActiveSheet();
         $data = $sheet->toArray();
 
-        $filasValidas = 0;
+        $codigoDependencia = trim((string) ($sheet->getCell('B4')->getValue() ?? ''));
+
         $errores = [];
+        $dependencia = null;
+
+        // B4 es el modo de fallo real del import: si la dependencia no existe,
+        // la importación completa se aborta. Validarlo aqui evita sorpresas.
+        if ($codigoDependencia === '') {
+            $errores[] = 'Celda B4: falta el codigo de la dependencia.';
+        } else {
+            $dependencia = CalidadOrganigrama::where('cod_organico', $codigoDependencia)
+                ->where('tipo', 'Dependencia')
+                ->first();
+
+            if (! $dependencia) {
+                $errores[] = 'No se encontro la dependencia con codigo: '.$codigoDependencia;
+            }
+        }
+
+        $filasValidas = 0;
+        $series = 0;
+        $subseries = 0;
+        $tieneSeriePadre = false;
 
         foreach ($data as $index => $row) {
             if ($index < 6) {
                 continue;
             }
 
+            $colA = trim($row[0] ?? '');
+            $colB = trim($row[1] ?? '');
+            $colC = trim($row[2] ?? '');
             $nombre = trim($row[4] ?? '');
 
-            if (empty($nombre)) {
+            if ($nombre === '') {
                 continue;
             }
 
-            $filasValidas++;
+            $hasA = ! empty($colA);
+            $hasB = ! empty($colB);
+            $hasC = ! empty($colC);
 
-            if (empty(trim($row[1] ?? '')) && empty(trim($row[2] ?? ''))) {
-                $errores[] = 'Fila '.($index + 1).': elemento sin clasificación de serie/subserie';
+            // Mismas ramas que importarFilas(): asi el diagnostico coincide
+            // con lo que despues se va a escribir.
+            if ($hasA && $hasB && ! $hasC) {
+                $series++;
+                $filasValidas++;
+                $tieneSeriePadre = true;
+
+                continue;
             }
+
+            if (($hasA && $hasB && $hasC) || (! $hasA && ! $hasB && ! $hasC)) {
+                if (! $tieneSeriePadre) {
+                    $errores[] = 'Fila '.($index + 1).': SubSerie sin Serie padre.';
+
+                    continue;
+                }
+
+                if ($hasA && $hasB && $hasC && trim($colC) === '') {
+                    $errores[] = 'Fila '.($index + 1).': la SubSerie no tiene codigo.';
+
+                    continue;
+                }
+
+                $subseries++;
+                $filasValidas++;
+
+                continue;
+            }
+
+            $errores[] = 'Fila '.($index + 1).': combinacion de columnas no reconocida (A/B/C).';
+        }
+
+        if ($filasValidas === 0) {
+            $errores[] = 'El archivo no contiene filas de datos a partir de la fila 7.';
         }
 
         return [
             'filas_validas' => $filasValidas,
+            'series' => $series,
+            'subseries' => $subseries,
+            'dependencia' => $dependencia ? $dependencia->nom_organico : null,
             'errores' => $errores,
         ];
     }

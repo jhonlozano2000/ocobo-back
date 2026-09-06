@@ -86,11 +86,14 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
         Route::get('/radica-recibida/{radica_reci_id}/pase-historial', [VentanillaRadicaReciPaseHistorialController::class, 'byRadicado'])->name('radica-recibida.pase.historial')->middleware('can:'.$permReci.'Mostrar');
 
         Route::get('/radica-recibida/{radica_reci_id}/compartir-historial', [VentanillaRadicaReciCompartirHistorialController::class, 'byRadicado'])->name('radica-recibida.compartir.historial')->middleware('can:'.$permReci.'Mostrar');
-        Route::get('/metadata/clasificacion-niveles', [MetadataController::class, 'nivelClasificacionIndex'])->name('metadata.niveles')->middleware('can:'.$permReci.'Listar');
-        Route::get('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'show'])->name('metadata.show')->middleware('can:'.$permReci.'Mostrar');
-        Route::put('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'store'])->name('metadata.update')->middleware('can:'.$permReci.'Editar');
-        Route::get('/metadata/historial/{metadataId}/{tipo?}', [MetadataController::class, 'historial'])->name('metadata.historial')->middleware('can:'.$permReci.'Mostrar');
-        Route::get('/metadata/exportar/{tipo?}', [MetadataController::class, 'exportar'])->name('metadata.exportar')->middleware('can:'.$permReci.'Exportar');
-        Route::get('/metadata/sugerir-clasificacion', [MetadataController::class, 'sugerirClasificacion'])->name('metadata.sugerir-clasificacion')->middleware('can:'.$permReci.'Listar');
+        // Metadata es compartida por recibidos/enviados/internos: el prefijo de permiso
+        // depende del parámetro {tipo}, así que se autoriza dentro del controlador
+        // (MetadataController::autorizarPorTipo) y no con un can: fijo aqui.
+        Route::get('/metadata/clasificacion-niveles', [MetadataController::class, 'nivelClasificacionIndex'])->name('metadata.niveles');
+        Route::get('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'show'])->name('metadata.show');
+        Route::put('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'store'])->name('metadata.update');
+        Route::get('/metadata/historial/{archivoId}/{tipo?}', [MetadataController::class, 'historial'])->name('metadata.historial');
+        Route::get('/metadata/exportar/{tipo?}', [MetadataController::class, 'exportar'])->name('metadata.exportar');
+        Route::get('/metadata/sugerir-clasificacion', [MetadataController::class, 'sugerirClasificacion'])->name('metadata.sugerir-clasificacion');
     });
 });

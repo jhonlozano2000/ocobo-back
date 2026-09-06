@@ -127,9 +127,13 @@ class RadicacionReciService
      */
     public function getStats(): array
     {
+        $estadosCerrados = ['FINALIZADO', 'ANULADO'];
+
         $total = VentanillaRadicaReci::count();
-        $pendientes = VentanillaRadicaReci::where('estado', 'Pendiente')->count();
-        $vencidos = VentanillaRadicaReci::where('fec_venci', '<', now()->format('Y-m-d'))->count();
+        $pendientes = VentanillaRadicaReci::whereNotIn('estado_trabajo', $estadosCerrados)->count();
+        $vencidos = VentanillaRadicaReci::where('fec_venci', '<', now()->format('Y-m-d'))
+            ->whereNotIn('estado_trabajo', $estadosCerrados)
+            ->count();
 
         return [
             'total_radicados' => $total,

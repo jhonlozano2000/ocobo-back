@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\ClasificacionDocumental;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ClasificacionDocumental\StoreTVDRequest;
+use App\Http\Requests\ClasificacionDocumental\UpdateTVDRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTVD;
@@ -35,10 +37,10 @@ class ClasificacionDocumentalTVDController extends Controller
         }
     }
 
-    public function store(Request $request)
+    public function store(StoreTVDRequest $request)
     {
         try {
-            $tvd = $this->service->create($request->all());
+            $tvd = $this->service->create($request->validated());
 
             return $this->successResponse($tvd, 'Elemento TVD creado exitosamente', 201);
         } catch (\Exception $e) {
@@ -65,10 +67,10 @@ class ClasificacionDocumentalTVDController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateTVDRequest $request, $id)
     {
         try {
-            $tvd = $this->service->update($id, $request->all());
+            $tvd = $this->service->update((int) $id, $request->validated());
 
             if (! $tvd) {
                 return $this->errorResponse('Elemento TVD no encontrado', null, 404);

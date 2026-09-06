@@ -10,6 +10,7 @@ use App\Models\Transversal\FirmaEvento;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -297,16 +298,74 @@ class PqrsService
     }
 
     /**
-     * Anula una PQRS con motivo.
+     * Solicita la anulación de una PQRS (guarda solicitud en el radicado asociado).
      */
-    public function anularPqrs(VentanillaPqrs $pqrs, string $motivo): VentanillaPqrs
+    public function solicitarAnulacion(VentanillaPqrs $pqrs, string $motivo): VentanillaPqrs
     {
-        $observacionesActuales = $pqrs->observaciones ?? '';
-        $nuevasObservaciones = trim($observacionesActuales."\n[ANULADO] ".$motivo);
+        $radicado = $pqrs->radicado;
+
+        if (! $radicado) {
+            throw new \Exception('La PQRS no tiene un radicado asociado.');
+        }
+
+        if ($radicado->usua_aprue_anula_id) {
+            throw new \Exception('El radicado ya está anulado.');
+        }
+
+        if ($radicado->usua_soli_anula_id && ! $radicado->usua_aprue_anula_id) {
+            throw new \Exception('Ya existe una solicitud de anulación pendiente para este radicado.');
+        }
+
+        $radicado->update([
+            'usua_soli_anula_id' => Auth::id(),
+            'observa_soli_anula' => $motivo,
+        ]);
+
+        $pqrs->load(['radicado', 'tercero', 'tipoPqrs', 'clasificacionDocumental']);
+
+        return $pqrs;
+    }
+
+    /**
+     * Procesa (aprueba o rechaza) la anulación de una PQRS.
+     */
+    public function procesarAnulacion(VentanillaPqrs $pqrs, string $accion, string $observaciones): VentanillaPqrs
+    {
+        $radicado = $pqrs->radicado;
+
+        if (! $radicado) {
+            throw new \Exception('La PQRS no tiene un radicado asociado.');
+        }
+
+        if (! $radicado->usua_soli_anula_id) {
+            throw new \Exception('No existe solicitud de anulación para este radicado.');
+        }
+
+        if ($radicado->usua_aprue_anula_id) {
+            throw new \Exception('La anulación ya fue procesada.');
+        }
+
+        if ($accion === 'rechazar') {
+            $radicado->update([
+                'usua_soli_anula_id' => null,
+                'observa_soli_anula' => null,
+            ]);
+
+            $pqrs->load(['radicado', 'tercero', 'tipoPqrs', 'clasificacionDocumental']);
+
+            return $pqrs;
+        }
+
+        // Aprobar
+        $radicado->update([
+            'usua_aprue_anula_id' => Auth::id(),
+            'observa_aprue_anula' => $observaciones,
+            'estado_trabajo' => 'ANULADO',
+        ]);
 
         $pqrs->update([
             'estado_tramite' => 'Vencida',
-            'observaciones' => $nuevasObservaciones,
+            'observaciones' => trim(($pqrs->observaciones ?? '')."\n[ANULADO] ".$observaciones),
         ]);
 
         $pqrs->load(['radicado', 'tercero', 'tipoPqrs', 'clasificacionDocumental']);
@@ -314,6 +373,19 @@ class PqrsService
         $this->limpiarCacheEstadisticas();
 
         return $pqrs;
+    }
+
+    /**
+     * Lista PQRS con solicitud de anulación pendiente de aprobación.
+     */
+    public function listarPendientesAnulacion()
+    {
+        return VentanillaPqrs::withTrashed()->whereHas('radicado', function ($query) {
+            $query->whereNotNull('usua_soli_anula_id')
+                ->whereNull('usua_aprue_anula_id');
+        })->with(['radicado.tercero', 'radicado.usuario_soli_anula', 'tipoPqrs'])
+            ->orderBy('updated_at', 'desc')
+            ->get();
     }
 
     /**

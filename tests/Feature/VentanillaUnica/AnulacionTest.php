@@ -7,6 +7,7 @@ use App\Models\Configuracion\ConfigLista;
 use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\Gestion\GestionTercero;
 use App\Models\User;
+use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
@@ -37,6 +38,7 @@ class AnulacionTest extends TestCase
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Recibida -> Listar']);
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Enviada -> Listar']);
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Listar']);
+        Permission::firstOrCreate(['name' => 'Radicar -> PQRSF -> Anular']);
         Permission::firstOrCreate(['name' => 'Jefe de Archivo']);
 
         // Crear rol ventanilla
@@ -45,6 +47,7 @@ class AnulacionTest extends TestCase
             'Radicar -> Cores. Recibida -> Listar',
             'Radicar -> Cores. Enviada -> Listar',
             'Radicar -> Cores. Interna -> Listar',
+            'Radicar -> PQRSF -> Anular',
         ]);
 
         // Crear rol Jefe de Archivo
@@ -367,6 +370,45 @@ class AnulacionTest extends TestCase
     }
 
     // -------------------------------------------------------
+    // PQRS
+    // -------------------------------------------------------
+
+    /** @test */
+    public function solicitar_anulacion_pqrs_requiere_auth(): void
+    {
+        $pqrs = $this->crearPqrsVinculadaARadicado();
+
+        $this->postJson("/api/ventanilla/pqrs/{$pqrs->ventanilla_radica_reci_id}/solicitar-anulacion", [
+            'motivo' => 'Error de digitacion',
+        ])->assertUnauthorized();
+    }
+
+    /** @test */
+    public function solicitar_anulacion_pqrs_registra_solicitud_en_el_radicado(): void
+    {
+        $pqrs = $this->crearPqrsVinculadaARadicado();
+
+        $response = $this->actingAs($this->user)->postJson(
+            "/api/ventanilla/pqrs/{$pqrs->ventanilla_radica_reci_id}/solicitar-anulacion",
+            ['motivo' => 'Error de digitacion']
+        );
+
+        $response->assertOk();
+        $this->assertDatabaseHas('ventanilla_radica_reci', [
+            'id' => $pqrs->ventanilla_radica_reci_id,
+            'usua_soli_anula_id' => $this->user->id,
+            'observa_soli_anula' => 'Error de digitacion',
+        ]);
+    }
+
+    /** @test */
+    public function listar_pendientes_anulacion_pqrs_exige_jefe_de_archivo(): void
+    {
+        $this->actingAs($this->user)->getJson('/api/ventanilla/pqrs/pendientes-anulacion')
+            ->assertForbidden();
+    }
+
+    // -------------------------------------------------------
     // HELPERS
     // -------------------------------------------------------
 
@@ -452,5 +494,31 @@ class AnulacionTest extends TestCase
         ]);
 
         return $radicado->fresh();
+    }
+
+    private function crearPqrsVinculadaARadicado(): VentanillaPqrs
+    {
+        $radicado = $this->crearRadicadoRecibido();
+
+        $listaTipos = ConfigLista::create(['nombre' => 'Tipos PQRS Anulaciones', 'cod' => 'L-TPQ-AN']);
+        $tipoPqrs = ConfigListaDetalle::create([
+            'lista_id' => $listaTipos->id,
+            'nombre' => 'Queja',
+            'codigo' => 'PQ-AN',
+            'estado' => 1,
+        ]);
+
+        return VentanillaPqrs::create([
+            'ventanilla_radica_reci_id' => $radicado->id,
+            'gestion_tercero_id' => $this->tercero->id,
+            'clasificacion_documental_trd_id' => $this->clasificacion->id,
+            'tipo_pqrs_id' => $tipoPqrs->id,
+            'prioridad' => 'Normal',
+            'estado_tramite' => 'Pendiente',
+            'detalle_solicitud' => 'Solicitud PQRS para anulación',
+            'fecha_vencimiento' => now()->addDays(15),
+            'fecha_vencimiento_original' => now()->addDays(15),
+            'fechor_tramite' => now(),
+        ]);
     }
 }

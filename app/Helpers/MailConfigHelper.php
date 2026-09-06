@@ -16,6 +16,10 @@ class MailConfigHelper
      */
     public static function configureFromConfigVarias(): void
     {
+        if (app()->environment('testing')) {
+            return;
+        }
+
         try {
             $host = ConfigVarias::getValor('correo_host');
             $port = ConfigVarias::getValor('correo_port', '587');

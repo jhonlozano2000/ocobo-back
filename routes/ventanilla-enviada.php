@@ -5,9 +5,8 @@ use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosContro
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosDigitalController;
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosFirmantesController;
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosProyectoresController;
-use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosRespuestasController;
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosResponsableController;
-use App\Http\Controllers\VentanillaUnica\MetadataController;
+use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosRespuestasController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -22,15 +21,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/radica-enviada/mis-radicados', [VentanillaRadicaEnviadosController::class, 'misRadicados'])->name('radica-enviada.mis-radicados')->middleware('can:'.$permEnvi.'Listar');
     Route::put('/radica-enviada/{id}/estado', [VentanillaRadicaEnviadosController::class, 'updateEstado'])->name('radica-enviada.update-estado')->middleware('can:'.$permEnvi.'Editar');
     Route::get('/radica-enviada', [VentanillaRadicaEnviadosController::class, 'index'])->name('radica-enviada.index')->middleware('can:'.$permEnvi.'Listar');
-    Route::get('/radica-enviada/export', [VentanillaRadicaEnviadosController::class, 'export'])->name('radica-enviada.export')->middleware('can:'.$permEnvi.'Listar');
     Route::post('/radica-enviada', [VentanillaRadicaEnviadosController::class, 'store'])->name('radica-enviada.store')->middleware('can:'.$permEnvi.'Crear');
+    Route::get('/radica-enviada/export', [VentanillaRadicaEnviadosController::class, 'export'])->name('radica-enviada.export')->middleware('can:'.$permEnvi.'Listar');
+    Route::get('/radica-enviada/pendientes-anulacion', [VentanillaRadicaEnviadosController::class, 'listarPendientesAnulacion'])->name('radica-enviada.pendientes-anulacion')->middleware('can:Jefe de Archivo');
+    Route::post('/radica-enviada/{id}/solicitar-anulacion', [VentanillaRadicaEnviadosController::class, 'solicitarAnulacion'])->name('radica-enviada.solicitar-anulacion')->middleware('can:'.$permEnvi.'Listar');
+    Route::post('/radica-enviada/{id}/procesar-anulacion', [VentanillaRadicaEnviadosController::class, 'procesarAnulacion'])->name('radica-enviada.procesar-anulacion')->middleware('can:Jefe de Archivo');
     Route::get('/radica-enviada/{id}', [VentanillaRadicaEnviadosController::class, 'show'])->name('radica-enviada.show')->middleware('can:'.$permEnvi.'Mostrar');
     Route::put('/radica-enviada/{id}', [VentanillaRadicaEnviadosController::class, 'update'])->name('radica-enviada.update')->middleware('can:'.$permEnvi.'Editar');
     Route::delete('/radica-enviada/{id}', [VentanillaRadicaEnviadosController::class, 'destroy'])->name('radica-enviada.destroy')->middleware('can:'.$permEnvi.'Eliminar');
     Route::get('/radica-enviada/search/ocr', [VentanillaRadicaEnviadosController::class, 'searchByOcr'])->name('radica-enviada.search-ocr')->middleware('can:'.$permEnvi.'Listar');
-    Route::get('/radica-enviada/pendientes-anulacion', [VentanillaRadicaEnviadosController::class, 'listarPendientesAnulacion'])->name('radica-enviada.pendientes-anulacion')->middleware('can:Jefe de Archivo');
-    Route::post('/radica-enviada/{id}/solicitar-anulacion', [VentanillaRadicaEnviadosController::class, 'solicitarAnulacion'])->name('radica-enviada.solicitar-anulacion')->middleware('can:'.$permEnvi.'Listar');
-    Route::post('/radica-enviada/{id}/procesar-anulacion', [VentanillaRadicaEnviadosController::class, 'procesarAnulacion'])->name('radica-enviada.procesar-anulacion')->middleware('can:Jefe de Archivo');
 
     Route::prefix('radica-enviada/{id}/archivos')->name('radica-enviada.archivos.')->group(function () use ($permEnvi) {
         Route::prefix('digital')->name('digital.')->group(function () use ($permEnvi) {
@@ -72,10 +71,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/radica-enviada', [VentanillaRadicaEnviadosController::class, 'bulkDestroy'])->name('radica-enviada.bulk-destroy')->middleware('can:'.$permEnvi.'Eliminar');
     Route::post('/radica-enviada/{id}/notificacion-tercero', [VentanillaRadicaEnviadosController::class, 'enviarNotificacionTercero'])->name('radica-enviada.notificacion-tercero')->middleware('can:'.$permEnvi.'Notificar Email');
 
-    Route::get('/metadata/clasificacion-niveles', [MetadataController::class, 'nivelClasificacionIndex'])->name('metadata.niveles')->middleware('can:'.$permEnvi.'Listar');
-    Route::get('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'show'])->name('metadata.show')->middleware('can:'.$permEnvi.'Mostrar');
-    Route::put('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'store'])->name('metadata.update')->middleware('can:'.$permEnvi.'Editar');
-    Route::get('/metadata/historial/{metadataId}/{tipo?}', [MetadataController::class, 'historial'])->name('metadata.historial')->middleware('can:'.$permEnvi.'Mostrar');
-    Route::get('/metadata/exportar/{tipo?}', [MetadataController::class, 'exportar'])->name('metadata.exportar')->middleware('can:'.$permEnvi.'Exportar');
-    Route::get('/metadata/sugerir-clasificacion', [MetadataController::class, 'sugerirClasificacion'])->name('metadata.sugerir-clasificacion-enviados')->middleware('can:'.$permEnvi.'Listar');
+    // Las rutas /metadata/* son compartidas y se registran en ventanilla-recibida.php.
+    // Duplicarlas aqui las dejaba inoperativas (Laravel resuelve la primera registrada)
+    // y su permiso fijo de Enviada nunca se aplicaba.
 });

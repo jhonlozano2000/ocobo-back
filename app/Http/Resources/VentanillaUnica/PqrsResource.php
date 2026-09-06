@@ -42,6 +42,9 @@ class PqrsResource extends JsonResource
                 'id' => $this->clasificacionDocumental->id,
                 'nombre' => $this->clasificacionDocumental->getNombreCompleto(),
                 'codigo' => $this->clasificacionDocumental->getCodigoCompleto(),
+                'serie' => $this->clasificacionDocumental->getJerarquia()[0]['nom'] ?? null,
+                'subserie' => collect($this->clasificacionDocumental->getJerarquia())->where('tipo', 'SubSerie')->first()['nom'] ?? null,
+                'tipo_documento' => $this->clasificacionDocumental->tipo === 'TipoDocumento' ? $this->clasificacionDocumental->nom : null,
             ] : null,
             'fallo_judicial' => $this->fallo_judicial,
             'fechor_tramite' => $this->fechor_tramite?->format('Y-m-d H:i:s'),
@@ -51,6 +54,7 @@ class PqrsResource extends JsonResource
                 'id' => $this->radicado->id,
                 'num_radicado' => $this->radicado->num_radicado,
                 'asunto' => $this->radicado->asunto,
+                'dependencia_custodio_id' => $this->radicado->getDependenciaCustodioId(),
                 'fec_venci' => $this->radicado->fec_venci instanceof Carbon
                     ? $this->radicado->fec_venci->format('Y-m-d')
                     : $this->radicado->fec_venci,

@@ -35,8 +35,10 @@ class ListPqrsRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'search.string' => 'El término de búsqueda debe ser un texto válido.',
+            'search.max' => 'El término de búsqueda no puede exceder los 100 caracteres.',
             'tipo_pqrs_id.exists' => 'El tipo de PQRS seleccionado no es válido.',
-            'estado_tramite.in' => 'El estado del trámite debe ser Pendiente, En Tramite, Respondida o Vencida.',
+            'estado_tramite.in' => 'El estado del trámite debe ser Pendiente, En Trámite, Respondida o Vencida.',
             'prioridad.in' => 'La prioridad debe ser Normal, Urgente o Tutela.',
             'clasificacion_id.exists' => 'La clasificación documental seleccionada no es válida.',
             'gestion_tercero_id.exists' => 'El tercero/afectado seleccionado no es válido.',

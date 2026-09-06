@@ -28,7 +28,6 @@ Route::middleware('throttle:config-operations')->group(function () {
             Route::get('/estadisticas/por-dependencias', [ClasificacionDocumentalTRDController::class, 'estadisticasPorDependencias'])->name('estadisticas.por-dependencias')->middleware('can:'.$p.'Listar');
             Route::get('/estadisticas/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'estadistica'])->name('estadisticas')->middleware('can:'.$p.'Listar');
 
-            Route::get('/por-dependencia/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'clasificacionesPorDependencia'])->name('clasificaciones.por-dependencia')->middleware('can:'.$p.'Listar');
             Route::get('/dependencia/{dependenciaId}', [ClasificacionDocumentalTRDController::class, 'listarPorDependencia'])->name('por-dependencia')->middleware('can:'.$p.'Listar');
             Route::get('/{id}/dias-vencimiento', [ClasificacionDocumentalTRDController::class, 'getDiasVencimiento'])->name('dias-vencimiento')->middleware('can:'.$p.'Mostrar');
 

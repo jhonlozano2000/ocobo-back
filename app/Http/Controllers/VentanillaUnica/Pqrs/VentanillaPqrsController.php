@@ -86,7 +86,7 @@ class VentanillaPqrsController extends Controller
         $this->middleware('can:'.self::PERM.'Imprimir Rotulo')->only(['imprimirRotulo']);
         $this->middleware('can:'.self::PERM.'Notificar Email')->only(['notificarEmail']);
         $this->middleware('can:'.self::PERM.'Firmar peticionario')->only(['solicitarOtpFirma', 'validarOtpFirma', 'guardarFirma']);
-        $this->middleware('can:'.self::PERM.'Anular')->only(['anular']);
+        $this->middleware('can:'.self::PERM.'Anular')->only(['solicitarAnulacion', 'procesarAnulacion', 'listarPendientesAnulacion']);
     }
 
     public function index(ListPqrsRequest $request): JsonResponse
@@ -131,6 +131,9 @@ class VentanillaPqrsController extends Controller
                     $item->dias_habiles_restantes = $pqrsCompleto->getDiasHabilesRestantes();
                     $item->estado_color = $pqrsCompleto->getEstadoColor();
                     $item->radicado = $pqrsCompleto->radicado;
+                    if ($item->radicado) {
+                        $item->radicado->dependencia_custodio_id = $pqrsCompleto->radicado->getDependenciaCustodioId();
+                    }
                     $item->tercero = $pqrsCompleto->tercero;
                     $item->tipoPqrs = $pqrsCompleto->tipoPqrs;
                     $item->clasificacionDocumental = $pqrsCompleto->clasificacionDocumental;
@@ -153,6 +156,9 @@ class VentanillaPqrsController extends Controller
     {
         $request->validate([
             'format' => 'required|in:excel,pdf,csv',
+        ], [
+            'format.required' => 'El formato de exportación es obligatorio.',
+            'format.in' => 'El formato debe ser excel, pdf o csv.',
         ]);
 
         $query = VentanillaPqrs::with([
@@ -288,7 +294,7 @@ class VentanillaPqrsController extends Controller
     public function show(int $id): JsonResponse
     {
         try {
-            $pqrs = VentanillaPqrs::with([
+            $pqrs = VentanillaPqrs::withTrashed()->with([
                 'radicado.tercero',
                 'radicado.clasificacionDocumental',
                 'radicado.archivos',
@@ -368,11 +374,15 @@ class VentanillaPqrsController extends Controller
             $validated = $request->validate([
                 'estado_tramite' => 'required|in:Pendiente,En Tramite,Respondida,Vencida',
                 'fecha_respuesta' => 'nullable|date',
+            ], [
+                'estado_tramite.required' => 'El estado del trámite es obligatorio.',
+                'estado_tramite.in' => 'El estado del trámite debe ser Pendiente, En Trámite, Respondida o Vencida.',
+                'fecha_respuesta.date' => 'La fecha de respuesta debe ser una fecha válida.',
             ]);
 
             $pqrs = $this->pqrsService->cambiarEstado($id, $validated['estado_tramite'], $validated['fecha_respuesta'] ?? null);
 
-            $this->auditVentanilla($pqrs, 'updated', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
+            $this->auditVentanilla($pqrs, 'change_status', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
                 'estado' => $validated['estado_tramite'],
             ]);
 
@@ -424,7 +434,7 @@ class VentanillaPqrsController extends Controller
     public function lineaTiempo(int $id): JsonResponse
     {
         try {
-            $pqrs = VentanillaPqrs::with([
+            $pqrs = VentanillaPqrs::withTrashed()->with([
                 'radicado',
                 'radicado.usuarioCreaRadicado',
                 'radicado.usuarioSubio',
@@ -441,7 +451,7 @@ class VentanillaPqrsController extends Controller
 
             $eventos = [];
 
-            // ── Eventos del radicado recibido asociado ──
+            // ── 1. Eventos del radicado recibido asociado ──
             $radicado = $pqrs->radicado;
             if ($radicado) {
                 // Radicado creado
@@ -508,7 +518,7 @@ class VentanillaPqrsController extends Controller
                 }
             }
 
-            // ── Eventos propios del PQRS ──
+            // ── 2. Eventos propios del PQRS ──
             $eventos[] = [
                 'fecha' => $pqrs->created_at->toIso8601String(),
                 'tipo' => 'pqrs_creada',
@@ -522,18 +532,225 @@ class VentanillaPqrsController extends Controller
                 ],
             ];
 
-            if ($pqrs->estado_tramite === 'Respondida' && $pqrs->fecha_respuesta) {
+            // ── 3. Eventos desde log de actividad (UsersActivityLog) ──
+            $activityLogs = \App\Models\UsersActivityLog::where('module', 'VentanillaUnica')
+                ->where('entity_type', VentanillaPqrs::class)
+                ->where('entity_id', $pqrs->id)
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            foreach ($activityLogs as $log) {
+                $tipo = $log->action;
+                $usuario = $log->user ? $log->user->getInfoUsuario() : null;
+                $nuevos = $log->new_values ?? [];
+                $anteriores = $log->old_values ?? [];
+
+                switch ($log->action) {
+                    case 'update':
+                        // Detectar qué campo cambió
+                        if (isset($nuevos['campo'])) {
+                            $campo = $nuevos['campo'];
+                            switch ($campo) {
+                                case 'asunto':
+                                    $eventos[] = [
+                                        'fecha' => $log->created_at->toIso8601String(),
+                                        'tipo' => 'asunto_editado',
+                                        'titulo' => 'Asunto editado',
+                                        'descripcion' => 'Se actualizó el asunto del radicado',
+                                        'usuario' => $usuario,
+                                        'datos' => ['nuevo_asunto' => $nuevos['asunto'] ?? $anteriores['asunto'] ?? ''],
+                                    ];
+                                    break;
+                                case 'fechor_tramite':
+                                    $eventos[] = [
+                                        'fecha' => $log->created_at->toIso8601String(),
+                                        'tipo' => 'fechas_editadas',
+                                        'titulo' => 'Fechas editadas',
+                                        'descripcion' => 'Se actualizó la fecha de trámite y se recalculó el vencimiento',
+                                        'usuario' => $usuario,
+                                        'datos' => [
+                                            'nueva_fecha' => $nuevos['fechor_tramite'] ?? '',
+                                            'nueva_fecha_vencimiento' => $nuevos['fecha_vencimiento'] ?? '',
+                                        ],
+                                    ];
+                                    break;
+                                case 'clasificacion_documental_trd_id':
+                                    $eventos[] = [
+                                        'fecha' => $log->created_at->toIso8601String(),
+                                        'tipo' => 'clasificacion_editada',
+                                        'titulo' => 'Clasificación editada',
+                                        'descripcion' => 'Se cambió la clasificación documental',
+                                        'usuario' => $usuario,
+                                        'datos' => [
+                                            'anterior_id' => $anteriores['clasificacion_documental_trd_id'] ?? '',
+                                            'nueva_id' => $nuevos['clasificacion_documental_trd_id'] ?? '',
+                                        ],
+                                    ];
+                                    break;
+                                case 'estado_tramite':
+                                    $eventos[] = [
+                                        'fecha' => $log->created_at->toIso8601String(),
+                                        'tipo' => 'estado_cambiado',
+                                        'titulo' => 'Estado de trámite cambiado',
+                                        'descripcion' => "Estado cambiado a: {$nuevos['estado_tramite']}",
+                                        'usuario' => $usuario,
+                                        'datos' => [
+                                            'estado_anterior' => $anteriores['estado_tramite'] ?? '',
+                                            'estado_nuevo' => $nuevos['estado_tramite'] ?? '',
+                                        ],
+                                    ];
+                                    break;
+                                default:
+                                    $eventos[] = [
+                                        'fecha' => $log->created_at->toIso8601String(),
+                                        'tipo' => 'pqrs_actualizada',
+                                        'titulo' => 'PQRS actualizada',
+                                        'descripcion' => $log->description ?? 'Se actualizó la PQRS',
+                                        'usuario' => $usuario,
+                                        'datos' => ['campo' => $campo],
+                                    ];
+                            }
+                        } else {
+                            $eventos[] = [
+                                'fecha' => $log->created_at->toIso8601String(),
+                                'tipo' => 'pqrs_actualizada',
+                                'titulo' => 'PQRS actualizada',
+                                'descripcion' => $log->description ?? 'Se actualizó la PQRS',
+                                'usuario' => $usuario,
+                                'datos' => $nuevos,
+                            ];
+                        }
+                        break;
+
+                    case 'change_status':
+                        $eventos[] = [
+                            'fecha' => $log->created_at->toIso8601String(),
+                            'tipo' => 'estado_cambiado',
+                            'titulo' => 'Estado de trámite cambiado',
+                            'descripcion' => 'Se cambió el estado de trámite',
+                            'usuario' => $usuario,
+                            'datos' => [
+                                'estado_anterior' => $anteriores['estado_tramite'] ?? '',
+                                'estado_nuevo' => $nuevos['estado_tramite'] ?? '',
+                            ],
+                        ];
+                        break;
+
+                    case 'created':
+                        $eventos[] = [
+                            'fecha' => $log->created_at->toIso8601String(),
+                            'tipo' => 'pqrs_creada',
+                            'titulo' => 'PQRS creada',
+                            'descripcion' => $log->description ?? 'PQRS creada',
+                            'usuario' => $usuario,
+                            'datos' => $nuevos,
+                        ];
+                        break;
+
+                    case 'deleted':
+                        $eventos[] = [
+                            'fecha' => $log->created_at->toIso8601String(),
+                            'tipo' => 'pqrs_eliminada',
+                            'titulo' => 'PQRS eliminada (borrado lógico)',
+                            'descripcion' => $log->description ?? 'PQRS eliminada',
+                            'usuario' => $usuario,
+                            'datos' => $nuevos,
+                        ];
+                        break;
+
+                    case 'signed':
+                        $eventos[] = [
+                            'fecha' => $log->created_at->toIso8601String(),
+                            'tipo' => 'firma_guardada',
+                            'titulo' => 'Firma electrónica guardada',
+                            'descripcion' => 'Se guardó la firma digital de la PQRS',
+                            'usuario' => $usuario,
+                            'datos' => $nuevos,
+                        ];
+                        break;
+
+                    case 'notified':
+                        $eventos[] = [
+                            'fecha' => $log->created_at->toIso8601String(),
+                            'tipo' => 'notificacion_enviada',
+                            'titulo' => 'Notificación enviada',
+                            'descripcion' => "Notificación enviada ({$nuevos['modo']}): {$nuevos['total_enviados']} destinatarios",
+                            'usuario' => $usuario,
+                            'datos' => [
+                                'modo' => $nuevos['modo'] ?? '',
+                                'total_enviados' => $nuevos['total_enviados'] ?? 0,
+                            ],
+                        ];
+                        break;
+
+                    case 'aprobar':
+                        $eventos[] = [
+                            'fecha' => $log->created_at->toIso8601String(),
+                            'tipo' => 'anulacion_aprobada',
+                            'titulo' => 'Anulación aprobada',
+                            'descripcion' => 'Se aprobó la solicitud de anulación de la PQRS',
+                            'usuario' => $usuario,
+                            'datos' => $nuevos,
+                        ];
+                        break;
+
+                    case 'rechazar':
+                        $eventos[] = [
+                            'fecha' => $log->created_at->toIso8601String(),
+                            'tipo' => 'anulacion_rechazada',
+                            'titulo' => 'Anulación rechazada',
+                            'descripcion' => 'Se rechazó la solicitud de anulación de la PQRS',
+                            'usuario' => $usuario,
+                            'datos' => $nuevos,
+                        ];
+                        break;
+
+                    default:
+                        $eventos[] = [
+                            'fecha' => $log->created_at->toIso8601String(),
+                            'tipo' => $log->action,
+                            'titulo' => ucfirst($log->action),
+                            'descripcion' => $log->description ?? '',
+                            'usuario' => $usuario,
+                            'datos' => $nuevos,
+                        ];
+                }
+            }
+
+            // ── 4. Eventos de firma (estado_firma, fecha_firma) ──
+            if ($pqrs->estado_firma === 'firmada' && $pqrs->fecha_firma) {
                 $eventos[] = [
-                    'fecha' => $pqrs->fecha_respuesta->toIso8601String(),
-                    'tipo' => 'pqrs_respondida',
-                    'titulo' => 'PQRS respondida',
-                    'descripcion' => 'Se registró respuesta a la PQRS',
+                    'fecha' => $pqrs->fecha_firma->toIso8601String(),
+                    'tipo' => 'firma_completada',
+                    'titulo' => 'PQRS firmada electrónicamente',
+                    'descripcion' => 'Se completó la firma digital de la PQRS',
                     'datos' => [
-                        'fecha_respuesta' => $pqrs->fecha_respuesta->format('Y-m-d H:i:s'),
+                        'firmado_en_representacion' => $pqrs->firmado_en_representacion,
+                        'nombre_representado' => $pqrs->nombre_representado,
                     ],
+                ];
+            } elseif ($pqrs->estado_firma === 'pendiente_otp') {
+                $eventos[] = [
+                    'fecha' => $pqrs->updated_at->toIso8601String(),
+                    'tipo' => 'otp_solicitado',
+                    'titulo' => 'OTP para firma solicitado',
+                    'descripcion' => 'Se solicitó código OTP para firma electrónica',
+                    'datos' => [],
                 ];
             }
 
+            // ── 5. Eventos de anulación (si aplica) ──
+            if ($pqrs->deleted_at) {
+                $eventos[] = [
+                    'fecha' => $pqrs->deleted_at->toIso8601String(),
+                    'tipo' => 'pqrs_anulada',
+                    'titulo' => 'PQRS anulada',
+                    'descripcion' => 'La PQRS fue anulada (borrado lógico)',
+                    'datos' => [],
+                ];
+            }
+
+            // ── 6. Prórroga ──
             if ($pqrs->tiene_prorroga) {
                 $eventos[] = [
                     'fecha' => $pqrs->updated_at->toIso8601String(),
@@ -546,6 +763,62 @@ class VentanillaPqrsController extends Controller
                 ];
             }
 
+            // ── 7. Respuesta ──
+            if ($pqrs->estado_tramite === 'Respondida' && $pqrs->fecha_respuesta) {
+                $eventos[] = [
+                    'fecha' => $pqrs->fecha_respuesta->toIso8601String(),
+                    'tipo' => 'pqrs_respondida',
+                    'titulo' => 'PQRS respondida',
+                    'descripcion' => 'Se registró respuesta a la PQRS',
+                    'datos' => [
+                        'fecha_respuesta' => $pqrs->fecha_respuesta->format('Y-m-d H:i:s'),
+                    ],
+                ];
+            }
+
+            // ── 8. Historial de clasificación documental (desde tabla dedicada) ──
+            $historialClasif = \App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciHistorialClasificacionDocumental::where('radica_reci_id', $pqrs->ventanilla_radica_reci_id)
+                ->with(['clasificacionAnterior', 'clasificacionNueva', 'usuario'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            foreach ($historialClasif as $h) {
+                $eventos[] = [
+                    'fecha' => $h->created_at->toIso8601String(),
+                    'tipo' => 'clasificacion_cambiada',
+                    'titulo' => 'Clasificación documental cambiada',
+                    'descripcion' => 'De: '.($h->clasificacionAnterior?->getNombreCompleto() ?? 'N/A').' → '.($h->clasificacionNueva?->getNombreCompleto() ?? 'N/A'),
+                    'usuario' => $h->usuario ? $h->usuario->getInfoUsuario() : null,
+                    'datos' => [
+                        'motivo' => $h->motivo,
+                        'anterior_id' => $h->clasificacion_anterior_id,
+                        'nueva_id' => $h->clasificacion_nueva_id,
+                    ],
+                ];
+            }
+
+            // ── 9. Historial de notificaciones (desde tabla dedicada) ──
+            $historialNotif = \App\Models\VentanillaUnica\Recibidos\VentanillaRadicaHistorialNotificacion::where('radicado_id', $pqrs->ventanilla_radica_reci_id)
+                ->with('usuario')
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            foreach ($historialNotif as $n) {
+                $eventos[] = [
+                    'fecha' => $n->created_at->toIso8601String(),
+                    'tipo' => 'notificacion_enviada',
+                    'titulo' => 'Notificación enviada',
+                    'descripcion' => "Notificación ({$n->tipo}) enviada a {$n->total_enviados} destinatario(s)",
+                    'usuario' => $n->usuario ? $n->usuario->getInfoUsuario() : null,
+                    'datos' => [
+                        'modo' => $n->tipo,
+                        'total_enviados' => $n->total_enviados,
+                        'destinatarios' => $n->destinatarios,
+                    ],
+                ];
+            }
+
+            // ── Ordenar por fecha descendente ──
             usort($eventos, fn ($a, $b) => strcmp($b['fecha'], $a['fecha']));
 
             return $this->successResponse([
@@ -570,7 +843,13 @@ class VentanillaPqrsController extends Controller
     {
         try {
             $request->validate([
-                'detalle_solicitud' => 'required|string|max:3000',
+                'asunto' => 'nullable|string|max:255',
+                'detalle_solicitud' => 'nullable|string|max:3000',
+            ], [
+                'asunto.string' => 'El asunto del radicado debe ser un texto válido.',
+                'asunto.max' => 'El asunto del radicado no puede exceder los 255 caracteres.',
+                'detalle_solicitud.string' => 'El detalle de la solicitud debe ser un texto válido.',
+                'detalle_solicitud.max' => 'El detalle de la solicitud no puede exceder los 3000 caracteres.',
             ]);
 
             $pqrs = VentanillaPqrs::find($id);
@@ -579,10 +858,20 @@ class VentanillaPqrsController extends Controller
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
-            $pqrs->update(['detalle_solicitud' => $request->detalle_solicitud]);
+            $updates = [];
+            if ($request->filled('detalle_solicitud')) {
+                $updates['detalle_solicitud'] = $request->detalle_solicitud;
+            }
+            if ($updates) {
+                $pqrs->update($updates);
+            }
+
+            if ($pqrs->radicado && $request->filled('asunto')) {
+                $pqrs->radicado->update(['asunto' => $request->asunto]);
+            }
 
             $this->auditVentanilla($pqrs, 'updated', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
-                'campo' => 'detalle_solicitud',
+                'campo' => 'asunto',
             ]);
 
             return $this->successResponse(new PqrsResource($pqrs), 'Detalle de solicitud actualizado exitosamente');
@@ -598,6 +887,9 @@ class VentanillaPqrsController extends Controller
         try {
             $request->validate([
                 'fechor_tramite' => 'required|date',
+            ], [
+                'fechor_tramite.required' => 'La fecha de trámite es obligatoria.',
+                'fechor_tramite.date' => 'La fecha de trámite debe ser una fecha válida.',
             ]);
 
             $pqrs = VentanillaPqrs::find($id);
@@ -628,7 +920,12 @@ class VentanillaPqrsController extends Controller
         try {
             $request->validate([
                 'clasificacion_documental_trd_id' => 'required|exists:clasificacion_documental_trd,id',
-                'motivo' => 'required|string|max:500',
+                'motivo' => 'nullable|string|max:500',
+            ], [
+                'clasificacion_documental_trd_id.required' => 'La clasificación documental es obligatoria.',
+                'clasificacion_documental_trd_id.exists' => 'La clasificación documental seleccionada no existe.',
+                'motivo.string' => 'El motivo debe ser un texto válido.',
+                'motivo.max' => 'El motivo no puede exceder los 500 caracteres.',
             ]);
 
             $pqrs = VentanillaPqrs::find($id);
@@ -670,7 +967,7 @@ class VentanillaPqrsController extends Controller
     public function imprimirRotulo(int $id): Response|JsonResponse
     {
         try {
-            $pqrs = VentanillaPqrs::with(['radicado.tercero'])->find($id);
+            $pqrs = VentanillaPqrs::withTrashed()->with(['radicado.tercero'])->find($id);
 
             if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
@@ -715,13 +1012,19 @@ class VentanillaPqrsController extends Controller
                 'modo' => 'required|string|in:todos,responsables,remitente',
                 'asunto' => 'nullable|string|max:500',
                 'mensaje' => 'nullable|string',
+            ], [
+                'modo.required' => 'El modo de notificación es obligatorio.',
+                'modo.in' => 'El modo debe ser todos, responsables o remitente.',
+                'asunto.string' => 'El asunto del correo debe ser un texto válido.',
+                'asunto.max' => 'El asunto del correo no puede exceder los 500 caracteres.',
+                'mensaje.string' => 'El mensaje del correo debe ser un texto válido.',
             ]);
 
             // El asunto y el cuerpo del correo los genera la plantilla del
             // Mailable; si la UI envía asunto/mensaje se usan como
             // personalización opcional sobre la plantilla.
 
-            $pqrs = VentanillaPqrs::with(['radicado.tercero', 'tipoPqrs', 'radicado.responsables.userCargo.user'])->find($id);
+            $pqrs = VentanillaPqrs::withTrashed()->with(['radicado.tercero', 'tipoPqrs', 'radicado.responsables.userCargo.user'])->find($id);
 
             if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
@@ -824,6 +1127,10 @@ class VentanillaPqrsController extends Controller
         try {
             $request->validate([
                 'otp' => 'required|string|size:6',
+            ], [
+                'otp.required' => 'El código OTP es obligatorio.',
+                'otp.string' => 'El código OTP debe ser un texto válido.',
+                'otp.size' => 'El código OTP debe tener exactamente 6 caracteres.',
             ]);
 
             $pqrs = VentanillaPqrs::find($id);
@@ -858,6 +1165,12 @@ class VentanillaPqrsController extends Controller
                 'firma_digital' => 'required|string',
                 'firmado_en_representacion' => 'nullable|boolean',
                 'nombre_representado' => 'nullable|string|max:255',
+            ], [
+                'firma_digital.required' => 'La firma digital es obligatoria.',
+                'firma_digital.string' => 'La firma digital debe ser un texto válido.',
+                'firmado_en_representacion.boolean' => 'El campo de representación debe ser verdadero o falso.',
+                'nombre_representado.string' => 'El nombre del representado debe ser un texto válido.',
+                'nombre_representado.max' => 'El nombre del representado no puede exceder los 255 caracteres.',
             ]);
 
             $pqrs = VentanillaPqrs::find($id);
@@ -887,30 +1200,91 @@ class VentanillaPqrsController extends Controller
     /**
      * Anula una PQRS con motivo.
      */
-    public function anular(Request $request, int $id): JsonResponse
+    /**
+     * Solicita la anulación de una PQRS.
+     */
+    public function solicitarAnulacion(Request $request, int $id): JsonResponse
     {
         try {
             $request->validate([
                 'motivo' => 'required|string|max:1000',
+            ], [
+                'motivo.required' => 'El motivo de anulación es obligatorio.',
+                'motivo.string' => 'El motivo debe ser un texto válido.',
+                'motivo.max' => 'El motivo no puede exceder los 1000 caracteres.',
             ]);
 
-            $pqrs = VentanillaPqrs::find($id);
+            $pqrs = VentanillaPqrs::withTrashed()->where('ventanilla_radica_reci_id', $id)->first();
 
             if (! $pqrs) {
-                return $this->errorResponse('PQRS no encontrada', null, 404);
+                return $this->errorResponse('PQRS no encontrada para este radicado', null, 404);
             }
 
-            $pqrs = $this->pqrsService->anularPqrs($pqrs, $request->motivo);
+            $pqrs = $this->pqrsService->solicitarAnulacion($pqrs, $request->motivo);
 
-            $this->auditVentanilla($pqrs, 'annulled', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
+            $this->auditVentanilla($pqrs, 'solicitar_anulacion', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
                 'motivo' => $request->motivo,
             ]);
 
-            return $this->successResponse(new PqrsResource($pqrs), 'PQRS anulada exitosamente');
+            return $this->successResponse(new PqrsResource($pqrs), 'Solicitud de anulación creada exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
-            return $this->errorResponse('Error al anular la PQRS', $e->getMessage(), 500);
+            if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            return $this->errorResponse('Error al solicitar la anulación', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Procesa (aprueba o rechaza) la anulación de una PQRS.
+     */
+    public function procesarAnulacion(Request $request, int $id): JsonResponse
+    {
+        try {
+            $request->validate([
+                'accion' => 'required|in:aprobar,rechazar',
+                'observaciones' => 'required|string|max:1000',
+            ], [
+                'accion.required' => 'La acción es obligatoria.',
+                'accion.in' => 'La acción debe ser "aprobar" o "rechazar".',
+                'observaciones.required' => 'Las observaciones son obligatorias.',
+                'observaciones.max' => 'Las observaciones no pueden exceder los 1000 caracteres.',
+            ]);
+
+            $pqrs = VentanillaPqrs::withTrashed()->where('ventanilla_radica_reci_id', $id)->first();
+
+            if (! $pqrs) {
+                return $this->errorResponse('PQRS no encontrada para este radicado', null, 404);
+            }
+
+            $pqrs = $this->pqrsService->procesarAnulacion($pqrs, $request->accion, $request->observaciones);
+
+            $this->auditVentanilla($pqrs, $request->accion, $pqrs->radicado?->num_radicado ?? $pqrs->id, [
+                'observaciones' => $request->observaciones,
+            ]);
+
+            $mensaje = $request->accion === 'aprobar' ? 'Anulación aprobada exitosamente' : 'Anulación rechazada';
+
+            return $this->successResponse(new PqrsResource($pqrs), $mensaje);
+        } catch (\Exception $e) {
+            if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            return $this->errorResponse('Error al procesar la anulación', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Lista PQRS con solicitud de anulación pendiente de aprobación.
+     */
+    public function listarPendientesAnulacion(): JsonResponse
+    {
+        try {
+            $pqrs = $this->pqrsService->listarPendientesAnulacion();
+
+            return $this->successResponse(PqrsResource::collection($pqrs), 'PQRS pendientes de anulación obtenidos');
+        } catch (\Exception $e) {
+            if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            return $this->errorResponse('Error al listar pendientes de anulación', $e->getMessage(), 500);
         }
     }
 
@@ -1087,6 +1461,12 @@ class VentanillaPqrsController extends Controller
             $request->validate([
                 'ids' => 'required|array|min:1',
                 'ids.*' => 'integer|exists:ventanilla_pqrs,id',
+            ], [
+                'ids.required' => 'La lista de IDs es obligatoria.',
+                'ids.array' => 'La lista de IDs debe ser un arreglo.',
+                'ids.min' => 'Debe seleccionar al menos un registro para eliminar.',
+                'ids.*.integer' => 'Cada ID debe ser un número entero.',
+                'ids.*.exists' => 'Uno o más IDs no existen en el sistema.',
             ]);
 
             $ids = $request->ids;
@@ -1095,7 +1475,7 @@ class VentanillaPqrsController extends Controller
             try {
                 $eliminados = [];
                 foreach ($ids as $id) {
-                    $pqrs = VentanillaPqrs::find($id);
+            $pqrs = VentanillaPqrs::withTrashed()->find($id);
                     if ($pqrs) {
                         $numRadicado = $pqrs->radicado?->num_radicado ?? $pqrs->id;
                         $pqrs->delete();
@@ -1126,7 +1506,7 @@ class VentanillaPqrsController extends Controller
     public function historialNotificaciones(int $id): JsonResponse
     {
         try {
-            $pqrs = VentanillaPqrs::find($id);
+            $pqrs = VentanillaPqrs::withTrashed()->find($id);
 
             if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
@@ -1151,7 +1531,7 @@ class VentanillaPqrsController extends Controller
     public function historialClasificacion(int $id): JsonResponse
     {
         try {
-            $pqrs = VentanillaPqrs::find($id);
+            $pqrs = VentanillaPqrs::withTrashed()->find($id);
 
             if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);

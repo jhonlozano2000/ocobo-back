@@ -58,10 +58,12 @@ class ReportesTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->getJson(
-            '/api/reportes/export?modulo=recibidas&format=excel'
-        );
-        $response->assertStatus(200);
+        foreach (['excel', 'pdf', 'csv'] as $formato) {
+            $response = $this->actingAs($user)->getJson(
+                "/api/reportes/export?modulo=recibidas&format={$formato}"
+            );
+            $response->assertStatus(200, "Export en formato {$formato} debe responder 200");
+        }
     }
 
     // ─── ReporteProgramado CRUD ────────────────────────────────────

@@ -731,4 +731,23 @@ class FileMetadataHelper
             ->get()
             ->toArray();
     }
+
+    /**
+     * Historial resolviendo primero el registro de metadata a partir del id del
+     * archivo/radicado. La UI trabaja con ids de radicado, no de metadata.
+     */
+    public static function obtenerHistorialPorArchivo(int $archivoId, string $tipo = 'reci'): array
+    {
+        $metadata = match ($tipo) {
+            'enviados' => VentanillaRadicaEnviadosMetadata::where('archivo_id', $archivoId)->first(),
+            'interno' => VentanillaRadicaInternoMetadata::where('archivo_id', $archivoId)->first(),
+            default => VentanillaRadicaReciMetadata::where('archivo_id', $archivoId)->first(),
+        };
+
+        if (! $metadata) {
+            return [];
+        }
+
+        return self::obtenerHistorial($metadata->id, $tipo);
+    }
 }
