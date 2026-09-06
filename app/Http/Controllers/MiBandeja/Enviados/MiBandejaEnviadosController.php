@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados as VentanillaRadicaEnviado;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class MiBandejaEnviadosController extends Controller
 {
@@ -45,11 +47,59 @@ class MiBandejaEnviadosController extends Controller
                 'data' => $radicados,
             ]);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return response()->json([
                 'status' => false,
                 'message' => 'Error al obtener mis radicados enviados',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Estadísticas reales del usuario (no depende del límite de 50).
+     */
+    public function estadisticas(Request $request)
+    {
+        try {
+            $userId = Auth::id();
+
+            $baseQuery = VentanillaRadicaEnviado::query()
+                ->whereHas('usuariosResponsables', function ($q) use ($userId) {
+                    $q->where('users_cargos.user_id', $userId);
+                });
+
+            $total = (clone $baseQuery)->count();
+            $pendiente = (clone $baseQuery)->where('estado_trabajo', 'PENDIENTE')->count();
+            $enProceso = (clone $baseQuery)->where('estado_trabajo', 'EN_PROCESO')->count();
+            $finalizado = (clone $baseQuery)->where('estado_trabajo', 'FINALIZADO')->count();
+
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'total' => $total,
+                    'pendiente' => $pendiente,
+                    'enProceso' => $enProceso,
+                    'finalizado' => $finalizado,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Error al obtener estadísticas',
                 'error' => $e->getMessage(),
             ], 500);
         }

@@ -3,12 +3,12 @@
 namespace App\Services\Workflows;
 
 use App\Events\NotificationPushed;
+use App\Models\ControlAcceso\UserNotificationSetting;
 use App\Models\Notificacion;
-use App\Models\Workflows\Tarea;
-use App\Models\Workflows\WorkFlowTarea;
-use App\Models\Workflows\Workflow;
-use App\Models\Workflows\WorkflowInstancia;
 use App\Models\User;
+use App\Models\Workflows\Tarea;
+use App\Models\Workflows\WorkflowInstancia;
+use App\Models\Workflows\WorkFlowTarea;
 
 class WorkflowNotificationService
 {
@@ -108,7 +108,7 @@ class WorkflowNotificationService
 
     public function notificarWorkFlowTareaVencida(WorkFlowTarea $tarea): void
     {
-        if (!$tarea->responsable_usuario_id) {
+        if (! $tarea->responsable_usuario_id) {
             return;
         }
 
@@ -193,6 +193,10 @@ class WorkflowNotificationService
     private function dispatch(Notificacion $notificacion): void
     {
         try {
+            if (! $this->userAllowsNotification($notificacion->user_id, $notificacion->type)) {
+                return;
+            }
+
             event(new NotificationPushed($notificacion));
         } catch (\Throwable $e) {
             logger()->warning('Failed to broadcast notification', [
@@ -200,5 +204,21 @@ class WorkflowNotificationService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function userAllowsNotification(int $userId, string $type): bool
+    {
+        $preferenceKey = match ($type) {
+            'tarea.asignada' => 'new_for_you',
+            default => 'account_activity',
+        };
+
+        $settings = UserNotificationSetting::forUser($userId);
+
+        if (! $settings) {
+            return true;
+        }
+
+        return $settings->isEnabled($preferenceKey);
     }
 }

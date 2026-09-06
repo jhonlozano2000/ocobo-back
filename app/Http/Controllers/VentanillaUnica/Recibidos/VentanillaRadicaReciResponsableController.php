@@ -6,18 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Generales\ListResponsablesRequest;
 use App\Http\Requests\Ventanilla\Recibidos\StoreResponsableReciboRequest;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\Notificacion;
+use App\Http\Traits\NotificationPreferenceTrait;
+use App\Models\ControlAcceso\UserCargo;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class VentanillaRadicaReciResponsableController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, NotificationPreferenceTrait;
 
     private const PERM = 'Radicar -> Cores. Recibida -> ';
 
@@ -50,8 +51,13 @@ class VentanillaRadicaReciResponsableController extends Controller
 
             return $this->successResponse($responsables, 'Listado de responsables obtenido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el listado de responsables', $e->getMessage(), 500);
         }
     }
@@ -83,15 +89,15 @@ class VentanillaRadicaReciResponsableController extends Controller
                 $radicaReciId = $data['radica_reci_id'];
 
                 // Crear notificación in-app para el usuario responsable
-                $userCargo = \App\Models\ControlAcceso\UserCargo::find($data['users_cargos_id']);
+                $userCargo = UserCargo::find($data['users_cargos_id']);
                 if ($userCargo && $userCargo->user) {
                     $radicado = VentanillaRadicaReci::find($data['radica_reci_id']);
                     $titulo = $responsableData['custodio'] ? 'Nuevo radicado asignado (custodio)' : 'Nuevo radicado asignado';
                     $mensaje = $radicado
-                        ? 'Se le ha asignado el radicado ' . $radicado->num_radicado . ' como responsable.'
+                        ? 'Se le ha asignado el radicado '.$radicado->num_radicado.' como responsable.'
                         : 'Se le ha asignado un nuevo radicado como responsable.';
 
-                    Notificacion::create([
+                    $this->createNotificationIfAllowed([
                         'user_id' => $userCargo->user_id,
                         'type' => 'asignacion_responsable',
                         'title' => $titulo,
@@ -119,8 +125,12 @@ class VentanillaRadicaReciResponsableController extends Controller
 
             return $this->successResponse($responsablesCreados, 'Responsables asignados exitosamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar responsables', $e->getMessage(), 500);
@@ -138,8 +148,13 @@ class VentanillaRadicaReciResponsableController extends Controller
 
             return $this->successResponse($responsable, 'Responsable encontrado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el responsable', $e->getMessage(), 500);
         }
     }
@@ -170,8 +185,12 @@ class VentanillaRadicaReciResponsableController extends Controller
                 'Responsable actualizado exitosamente'
             );
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar el responsable', $e->getMessage(), 500);
@@ -201,8 +220,12 @@ class VentanillaRadicaReciResponsableController extends Controller
 
             return $this->successResponse(null, 'Responsable eliminado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar el responsable', $e->getMessage(), 500);
@@ -222,8 +245,13 @@ class VentanillaRadicaReciResponsableController extends Controller
 
             return $this->successResponse($responsables, 'Responsables de la radicación obtenidos exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener los responsables', $e->getMessage(), 500);
         }
     }
@@ -254,8 +282,13 @@ class VentanillaRadicaReciResponsableController extends Controller
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Responsable no encontrado', null, 404);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al registrar el acuse digital', $e->getMessage(), 500);
         }
     }
@@ -278,15 +311,15 @@ class VentanillaRadicaReciResponsableController extends Controller
                 $responsablesCreados[] = $responsable->load(['usuarioCargo', 'radicado']);
 
                 // Crear notificación in-app para el usuario responsable
-                $userCargo = \App\Models\ControlAcceso\UserCargo::find($responsableData['users_cargos_id']);
+                $userCargo = UserCargo::find($responsableData['users_cargos_id']);
                 if ($userCargo && $userCargo->user) {
                     $radicado = VentanillaRadicaReci::find($radica_reci_id);
                     $titulo = $responsableData['custodio'] ? 'Nuevo radicado asignado (custodio)' : 'Nuevo radicado asignado';
                     $mensaje = $radicado
-                        ? 'Se le ha asignado el radicado ' . $radicado->num_radicado . ' como responsable.'
+                        ? 'Se le ha asignado el radicado '.$radicado->num_radicado.' como responsable.'
                         : 'Se le ha asignado un nuevo radicado como responsable.';
 
-                    Notificacion::create([
+                    $this->createNotificationIfAllowed([
                         'user_id' => $userCargo->user_id,
                         'type' => 'asignacion_responsable',
                         'title' => $titulo,
@@ -311,8 +344,12 @@ class VentanillaRadicaReciResponsableController extends Controller
 
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar responsables', $e->getMessage(), 500);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\OfiArchivo\OfiArchivoPrestamo;
 use App\Models\Transversal\FirmaEvento;
+use App\Models\User;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
@@ -140,5 +141,67 @@ class DashboardGlobalController extends Controller
         usort($items, fn ($a, $b) => ($a['dias_restantes'] ?? 999) <=> ($b['dias_restantes'] ?? 999));
 
         return $items;
+    }
+
+    /**
+     * Sparkline data: radicados recibidos por día en los últimos 30 días.
+     */
+    public function sparklines(): JsonResponse
+    {
+        $dias = 30;
+        $inicio = now()->subDays($dias);
+
+        $recibidosPorDia = VentanillaRadicaReci::where('created_at', '>=', $inicio)
+            ->selectRaw('DATE(created_at) as fecha, COUNT(*) as total')
+            ->groupBy('fecha')
+            ->orderBy('fecha')
+            ->pluck('total', 'fecha');
+
+        $enviadosPorDia = VentanillaRadicaEnviados::where('created_at', '>=', $inicio)
+            ->selectRaw('DATE(created_at) as fecha, COUNT(*) as total')
+            ->groupBy('fecha')
+            ->orderBy('fecha')
+            ->pluck('total', 'fecha');
+
+        $pqrsPorDia = VentanillaPqrs::where('created_at', '>=', $inicio)
+            ->selectRaw('DATE(created_at) as fecha, COUNT(*) as total')
+            ->groupBy('fecha')
+            ->orderBy('fecha')
+            ->pluck('total', 'fecha');
+
+        $usuariosTotales = User::count();
+        $usuariosActivos = User::where('estado', true)->count();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'radicados_recibidos' => $this->formatSparkline($recibidosPorDia, $dias),
+                'radicados_enviados' => $this->formatSparkline($enviadosPorDia, $dias),
+                'pqrs' => $this->formatSparkline($pqrsPorDia, $dias),
+                'usuarios' => [
+                    'total' => $usuariosTotales,
+                    'activos' => $usuariosActivos,
+                ],
+                'firmas' => [
+                    'hoy' => FirmaEvento::whereDate('created_at', today())->count(),
+                    'semana' => FirmaEvento::where('created_at', '>=', now()->subWeek())->count(),
+                    'mes' => FirmaEvento::where('created_at', '>=', now()->subMonth())->count(),
+                ],
+            ],
+        ]);
+    }
+
+    private function formatSparkline($data, int $dias): array
+    {
+        $result = [];
+        for ($i = $dias; $i >= 0; $i--) {
+            $fecha = now()->subDays($i)->format('Y-m-d');
+            $result[] = [
+                'fecha' => $fecha,
+                'total' => $data[$fecha] ?? 0,
+            ];
+        }
+
+        return $result;
     }
 }

@@ -9,4 +9,8 @@ Route::middleware('auth:sanctum')->group(function () use ($permMiBandeja) {
     Route::get('/mis-radicados', [MiBandejaRecibidosController::class, 'misRadicados'])
         ->name('mi-bandeja.recibidos.mis-radicados')
         ->middleware('can:'.$permMiBandeja.'Ver');
+
+    Route::get('/mis-radicados/estadisticas', [MiBandejaRecibidosController::class, 'estadisticas'])
+        ->name('mi-bandeja.recibidos.estadisticas')
+        ->middleware('can:'.$permMiBandeja.'Ver');
 });
