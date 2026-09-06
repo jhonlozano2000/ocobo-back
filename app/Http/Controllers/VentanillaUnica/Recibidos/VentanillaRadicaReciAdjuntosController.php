@@ -10,6 +10,7 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivo;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivoEliminado;
+use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -80,10 +81,23 @@ class VentanillaRadicaReciAdjuntosController extends Controller
                     'hash_sha256' => $hash,
                 ]);
 
-                FileMetadataHelper::crearMetadataArchivoAdjunto(
-                    $archivoAdicional,
-                    $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
-                );
+                if ($request->input('tipo') === 'pqrs' && $request->input('pqrs_id')) {
+                    $pqrs = VentanillaPqrs::find($request->input('pqrs_id'));
+                    if ($pqrs) {
+                        FileMetadataHelper::crearMetadataArchivoPqrs(
+                            $pqrs,
+                            $archivoAdicional->id,
+                            $hash,
+                            $archivoAdicional->archivo_peso,
+                            $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
+                        );
+                    }
+                } else {
+                    FileMetadataHelper::crearMetadataArchivoAdjunto(
+                        $archivoAdicional,
+                        $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
+                    );
+                }
 
                 $archivosSubidos[] = [
                     'id' => $archivoAdicional->id,

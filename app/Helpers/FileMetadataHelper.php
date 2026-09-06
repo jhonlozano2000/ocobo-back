@@ -17,6 +17,8 @@ use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivo;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciMetadata;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciMetadataHistory;
+use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsMetadata;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -620,6 +622,10 @@ class FileMetadataHelper
 
     public static function obtenerMetadataConInfo(int $archivoId, string $tipo = 'reci'): ?array
     {
+        if ($tipo === 'pqrs') {
+            return self::obtenerMetadataPqrs($archivoId);
+        }
+
         $metadata = match ($tipo) {
             'enviados' => VentanillaRadicaEnviadosMetadata::where('archivo_id', $archivoId)->with('nivelClasificacion')->first(),
             'interno' => VentanillaRadicaInternoMetadata::where('archivo_id', $archivoId)->with('nivelClasificacion')->first(),
@@ -738,6 +744,10 @@ class FileMetadataHelper
      */
     public static function obtenerHistorialPorArchivo(int $archivoId, string $tipo = 'reci'): array
     {
+        if ($tipo === 'pqrs') {
+            return [];
+        }
+
         $metadata = match ($tipo) {
             'enviados' => VentanillaRadicaEnviadosMetadata::where('archivo_id', $archivoId)->first(),
             'interno' => VentanillaRadicaInternoMetadata::where('archivo_id', $archivoId)->first(),
@@ -749,5 +759,63 @@ class FileMetadataHelper
         }
 
         return self::obtenerHistorial($metadata->id, $tipo);
+    }
+
+    // ========== PQRS ==========
+
+    /**
+     * Crea metadatos para un archivo asociado a un PQRS.
+     */
+    public static function crearMetadataArchivoPqrs(VentanillaPqrs $pqrs, int $archivoId, string $hash, int $archivoPeso, array $extra = []): ?VentanillaPqrsMetadata
+    {
+        $radicado = $pqrs->radicado;
+
+        $clasificacion = $radicado?->clasificacionDocumental;
+
+        $metadataData = [
+            'archivo_id' => $archivoId,
+            'pqrs_id' => $pqrs->id,
+            'radicado_id' => $pqrs->ventanilla_radica_reci_id,
+            'nivel_clasificacion' => 'PUBLICO',
+            'titulo_documento' => $radicado?->num_radicado,
+            'descripcion' => $extra['descripcion'] ?? null,
+            'palabras_clave' => $extra['palabras_clave'] ?? null,
+            'clasificacion_id' => $extra['clasificacion_id'] ?? $clasificacion?->id,
+            'clasificacion_ruta' => $clasificacion?->ruta_completa ?? null,
+            'clasificacion_serie' => $clasificacion?->parent?->nom ?? null,
+            'clasificacion_subserie' => $clasificacion?->nom ?? null,
+            'clasificacion_tipo_doc' => $clasificacion?->tipo ?? null,
+            'hash_sha256_archivo' => $hash,
+            'tipo_archivo' => 'adjunto',
+            'num_radicado' => $radicado?->num_radicado,
+            'asunto' => $radicado?->asunto,
+            'fecha_creacion_documento' => now(),
+            'fecha_modificacion' => now(),
+            'dueno_documento_id' => $radicado?->usuario_crea,
+        ];
+
+        $metadata = VentanillaPqrsMetadata::create(array_merge($metadataData, $extra));
+
+        return $metadata;
+    }
+
+    /**
+     * Obtiene la metadata de un archivo PQRS.
+     */
+    public static function obtenerMetadataPqrs(int $archivoId): ?array
+    {
+        $metadata = VentanillaPqrsMetadata::where('archivo_id', $archivoId)
+            ->with('nivelClasificacion')
+            ->first();
+
+        if (! $metadata) {
+            return null;
+        }
+
+        return [
+            'metadata' => $metadata,
+            'nivel_clasificacion' => $metadata->nivelClasificacion,
+            'historial' => [],
+        ];
     }
 }

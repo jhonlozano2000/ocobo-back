@@ -9,6 +9,7 @@ use App\Http\Requests\Ventanilla\Recibidos\UploadArchivoRecibidoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivoEliminado;
+use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Services\VentanillaUnica\OcrHttpService;
 use App\Services\VentanillaUnica\OcrService;
 use Illuminate\Support\Facades\Auth;
@@ -117,10 +118,20 @@ class VentanillaRadicaReciDigitalController extends Controller
                 ]);
             }
 
-            FileMetadataHelper::crearMetadataArchivoDigital(
-                $radicado, $nuevoArchivo, $hashSha256, $fileSize,
-                $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
-            );
+            if ($request->input('tipo') === 'pqrs' && $request->input('pqrs_id')) {
+                $pqrs = VentanillaPqrs::find($request->input('pqrs_id'));
+                if ($pqrs) {
+                    FileMetadataHelper::crearMetadataArchivoPqrs(
+                        $pqrs, $nuevoArchivo, $hashSha256, $fileSize,
+                        $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
+                    );
+                }
+            } else {
+                FileMetadataHelper::crearMetadataArchivoDigital(
+                    $radicado, $nuevoArchivo, $hashSha256, $fileSize,
+                    $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
+                );
+            }
 
             DB::commit();
 

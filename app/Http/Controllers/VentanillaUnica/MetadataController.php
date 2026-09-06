@@ -9,6 +9,7 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\FileClassificationLevel;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosMetadata;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoMetadata;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsMetadata;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciMetadata;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -196,6 +197,7 @@ class MetadataController extends Controller
             'reci' => VentanillaRadicaReciMetadata::class,
             'enviados' => VentanillaRadicaEnviadosMetadata::class,
             'interno' => VentanillaRadicaInternoMetadata::class,
+            'pqrs' => VentanillaPqrsMetadata::class,
             default => null,
         };
     }
@@ -212,6 +214,7 @@ class MetadataController extends Controller
             'reci' => 'Radicar -> Cores. Recibida -> ',
             'enviados' => 'Radicar -> Cores. Enviada -> ',
             'interno' => 'Radicar -> Cores. Interna -> ',
+            'pqrs' => 'Radicar -> PQRSF -> ',
             default => null,
         };
 
