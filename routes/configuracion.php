@@ -54,9 +54,9 @@ Route::middleware(['auth:sanctum', 'throttle:config-operations'])->group(functio
     Route::get('/listas-con-detalle', [ConfigListaController::class, 'listaDetalle'])->name('listas.detalle')->middleware('can:'.$p.'Listar');
     Route::get('/listas-cabeza', [ConfigListaController::class, 'listaCabeza'])->name('listas.cabeza')->middleware('can:'.$p.'Listar');
 
-    Route::get('/listas', [ConfigListaController::class, 'index'])->name('listas.index')->middleware('can:'.$p.'Listar');
+    Route::get('/listas', [ConfigListaController::class, 'index'])->name('listas.index');
     Route::post('/listas', [ConfigListaController::class, 'store'])->name('listas.store')->middleware('can:'.$p.'Crear');
-    Route::get('/listas/{lista}', [ConfigListaController::class, 'show'])->name('listas.show')->middleware('can:'.$p.'Mostrar');
+    Route::get('/listas/{lista}', [ConfigListaController::class, 'show'])->name('listas.show');
     Route::put('/listas/{lista}', [ConfigListaController::class, 'update'])->name('listas.update')->middleware('can:'.$p.'Editar');
     Route::delete('/listas/{lista}', [ConfigListaController::class, 'destroy'])->name('listas.destroy')->middleware('can:'.$p.'Eliminar');
 
