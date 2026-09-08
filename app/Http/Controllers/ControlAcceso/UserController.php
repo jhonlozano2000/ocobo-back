@@ -254,10 +254,13 @@ class UserController extends Controller
                 return $parts[0] ?? 'Otros';
             });
 
+            $otrosPermisos = $user->getDirectPermissions()->pluck('name')->toArray();
+
             return $this->successResponse([
                 'roles' => $roles,
                 'permisos' => $allPermissions->unique('id')->values(),
                 'permisos_por_modulo' => $permisosPorModulo->toArray(),
+                'otros_permisos' => $otrosPermisos,
             ], 'Permisos obtenidos exitosamente');
         } catch (\Exception $e) {
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
@@ -377,6 +380,52 @@ class UserController extends Controller
         if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
         if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
             return $this->errorResponse('Error al obtener actividad', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Sincroniza los "Otros permisos" directos del usuario.
+     * Solo gestiona: Jefe de dependencia, Jefe de oficina, Puede firmar.
+     */
+    public function syncOtrosPermisos(Request $request, string $id)
+    {
+        try {
+            $user = User::find($id);
+            if (! $user) {
+                return $this->errorResponse('Usuario no encontrado', null, 404);
+            }
+
+            $validated = $request->validate([
+                'permisos' => 'required|array',
+                'permisos.*' => 'string|in:Mi Bandeja -> Jefe de dependencia,Mi Bandeja -> Jefe de oficina,Mi Bandeja -> Puede firmar',
+            ]);
+
+            $permisosOtros = [
+                'Mi Bandeja -> Jefe de dependencia',
+                'Mi Bandeja -> Jefe de oficina',
+                'Mi Bandeja -> Puede firmar',
+            ];
+
+            // Remover todos los "otros permisos" primero
+            foreach ($permisosOtros as $permiso) {
+                if ($user->hasPermissionTo($permiso)) {
+                    $user->revokePermissionTo($permiso);
+                }
+            }
+
+            // Asignar los seleccionados
+            foreach ($validated['permisos'] as $permiso) {
+                $user->givePermissionTo($permiso);
+            }
+
+            return $this->successResponse(
+                $user->getDirectPermissions()->pluck('name'),
+                'Otros permisos actualizados exitosamente'
+            );
+        } catch (\Exception $e) {
+            if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            return $this->errorResponse('Error al sincronizar permisos', $e->getMessage(), 500);
         }
     }
 

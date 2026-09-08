@@ -42,6 +42,7 @@ Route::middleware(['throttle:config-operations', 'auth:sanctum'])->group(functio
     Route::get('/users/{userId}/historial-roles', [UserController::class, 'getHistorialRoles'])->name('users.historial-roles');
     Route::get('/users/{userId}/conexiones', [UserController::class, 'getConexiones'])->name('users.conexiones');
     Route::get('/users/{userId}/permisos', [UserController::class, 'getPermisos'])->name('users.permisos');
+    Route::put('/users/{userId}/otros-permisos', [UserController::class, 'syncOtrosPermisos'])->name('users.otros-permisos');
     Route::get('/users/{userId}/cargo', [UserController::class, 'getUserCargo'])->name('users.cargo');
 
     /**
