@@ -4,6 +4,7 @@ namespace App\Http\Controllers\MiBandeja\Recibidos;
 
 use App\Http\Controllers\Controller;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\MiBandeja\MiBandejaFiltroService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -14,6 +15,9 @@ class MiBandejaRecibidosController extends Controller
     /**
      * Obtener radicados asignados al usuario actual (Mi Bandeja).
      * Filtra por los cargos del usuario a través de ventanilla_radica_reci_responsa.
+     *
+     * Parámetros:
+     * - nivel: 'mis_radicados' | 'ver_todo' (default: 'mis_radicados')
      */
     public function misRadicados(Request $request)
     {
@@ -21,12 +25,31 @@ class MiBandejaRecibidosController extends Controller
             $userId = Auth::id();
             $search = $request->get('search', '');
             $estado = $request->get('estado', '');
+            $nivel = $request->get('nivel', 'mis_radicados');
 
-            $query = VentanillaRadicaReci::query()
-                ->whereHas('usuariosResponsables', function ($q) use ($userId) {
+            $query = VentanillaRadicaReci::query();
+
+            // Aplicar filtro jerárquico
+            if ($nivel === 'ver_todo') {
+                $userIds = MiBandejaFiltroService::getUserIdsParaFiltro($userId);
+
+                if ($userIds) {
+                    $query->whereHas('usuariosResponsables', function ($q) use ($userIds) {
+                        $q->whereIn('users_cargos.user_id', $userIds);
+                    });
+                } else {
+                    // Sin permisos de jefe, fallback a mis radicados
+                    $query->whereHas('usuariosResponsables', function ($q) use ($userId) {
+                        $q->where('users_cargos.user_id', $userId);
+                    });
+                }
+            } else {
+                $query->whereHas('usuariosResponsables', function ($q) use ($userId) {
                     $q->where('users_cargos.user_id', $userId);
-                })
-                ->orderBy('created_at', 'desc');
+                });
+            }
+
+            $query->orderBy('created_at', 'desc');
 
             if ($search) {
                 $query->where(function ($q) use ($search) {
@@ -71,16 +94,36 @@ class MiBandejaRecibidosController extends Controller
 
     /**
      * Estadísticas reales del usuario (no depende del límite de 50).
+     *
+     * Parámetros:
+     * - nivel: 'mis_radicados' | 'ver_todo' (default: 'mis_radicados')
      */
     public function estadisticas(Request $request)
     {
         try {
             $userId = Auth::id();
+            $nivel = $request->get('nivel', 'mis_radicados');
 
-            $baseQuery = VentanillaRadicaReci::query()
-                ->whereHas('usuariosResponsables', function ($q) use ($userId) {
+            $baseQuery = VentanillaRadicaReci::query();
+
+            // Aplicar filtro jerárquico
+            if ($nivel === 'ver_todo') {
+                $userIds = MiBandejaFiltroService::getUserIdsParaFiltro($userId);
+
+                if ($userIds) {
+                    $baseQuery->whereHas('usuariosResponsables', function ($q) use ($userIds) {
+                        $q->whereIn('users_cargos.user_id', $userIds);
+                    });
+                } else {
+                    $baseQuery->whereHas('usuariosResponsables', function ($q) use ($userId) {
+                        $q->where('users_cargos.user_id', $userId);
+                    });
+                }
+            } else {
+                $baseQuery->whereHas('usuariosResponsables', function ($q) use ($userId) {
                     $q->where('users_cargos.user_id', $userId);
                 });
+            }
 
             $total = (clone $baseQuery)->count();
             $recibido = (clone $baseQuery)->where('estado_trabajo', 'RECIBIDO')->count();

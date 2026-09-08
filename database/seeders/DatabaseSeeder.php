@@ -22,6 +22,7 @@ use Database\Seeders\Permisos\PermisosGestionArchivoSeeder;
 use Database\Seeders\Permisos\PermisosGestionSeeder;
 use Database\Seeders\Permisos\PermisosMiBandejaSeeder;
 use Database\Seeders\Permisos\PermisosMiBandejaTempSeeder;
+use Database\Seeders\Permisos\PermisosOtrosPermisosSeeder;
 use Database\Seeders\Permisos\PermisosOtrosSeeder;
 use Database\Seeders\Permisos\PermisosPlantillasDocumentosSeeder;
 use Database\Seeders\Permisos\PermisosPqrsSeeder;
@@ -66,6 +67,8 @@ class DatabaseSeeder extends Seeder
         $this->call(PermisosOtrosSeeder::class);
 
         $this->call(PermisosMiBandejaSeeder::class);
+
+        $this->call(PermisosOtrosPermisosSeeder::class);
 
         $this->call(PermisosMiBandejaTempSeeder::class);
 
