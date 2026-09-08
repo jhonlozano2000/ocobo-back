@@ -39,12 +39,19 @@ class MiBandejaRecibidosController extends Controller
                 $query->where('estado_trabajo', $estado);
             }
 
-            $radicados = $query->with('tercero')->limit(50)->get();
+            $perPage = min((int) $request->get('per_page', 15), 100);
+            $radicados = $query->with('tercero')->paginate($perPage);
 
             return response()->json([
                 'status' => true,
                 'message' => 'Mis radicados obtenidos',
-                'data' => $radicados,
+                'data' => $radicados->items(),
+                'pagination' => [
+                    'total' => $radicados->total(),
+                    'per_page' => $radicados->perPage(),
+                    'current_page' => $radicados->currentPage(),
+                    'last_page' => $radicados->lastPage(),
+                ],
             ]);
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -83,6 +90,12 @@ class MiBandejaRecibidosController extends Controller
                 ->whereNotIn('estado_trabajo', ['FINALIZADO', 'ANULADO'])->count();
             $porVencer = (clone $baseQuery)->whereBetween('fec_venci', [now(), now()->addDays(3)])
                 ->whereNotIn('estado_trabajo', ['FINALIZADO', 'ANULADO'])->count();
+            $sinArchivoDigital = (clone $baseQuery)->whereNull('archivo_digital')
+                ->where('estado_trabajo', '!=', 'ANULADO')->count();
+            $porFirmar = (clone $baseQuery)->where('estado_firma', '!=', 'firmado')
+                ->whereNotNull('estado_firma')
+                ->where('estado_trabajo', '!=', 'ANULADO')->count();
+            $vigentes = $total - $vencido - $porVencer - $finalizado;
 
             return response()->json([
                 'status' => true,
@@ -93,6 +106,9 @@ class MiBandejaRecibidosController extends Controller
                     'finalizado' => $finalizado,
                     'vencido' => $vencido,
                     'porVencer' => $porVencer,
+                    'vigentes' => $vigentes,
+                    'sinArchivoDigital' => $sinArchivoDigital,
+                    'porFirmar' => $porFirmar,
                 ],
             ]);
         } catch (\Exception $e) {
