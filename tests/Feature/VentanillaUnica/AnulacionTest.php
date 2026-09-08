@@ -18,7 +18,6 @@ use Tests\TestCase;
 
 class AnulacionTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
 

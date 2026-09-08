@@ -18,7 +18,6 @@ use Tests\TestCase;
  */
 class RolesAccessTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
     protected User $sinPermisos;

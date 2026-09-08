@@ -23,7 +23,6 @@ use Tests\TestCase;
  */
 class MetadataAuthorizationTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $soloRecibida;
 

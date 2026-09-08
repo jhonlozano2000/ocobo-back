@@ -22,7 +22,6 @@ use Tests\TestCase;
  */
 class ConfiguracionAccessTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
 

@@ -10,7 +10,6 @@ use PragmaRX\Google2FALaravel\Google2FA;
 
 class TwoFactorTest extends TestCase
 {
-    use RefreshDatabase;
 
     private User $user;
     private Google2FA $google2fa;

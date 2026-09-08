@@ -21,7 +21,6 @@ use Tests\TestCase;
  */
 class DashboardStatsTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
 

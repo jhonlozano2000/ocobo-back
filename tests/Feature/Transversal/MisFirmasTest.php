@@ -9,7 +9,6 @@ use Tests\TestCase;
 
 class MisFirmasTest extends TestCase
 {
-    use RefreshDatabase;
 
     public function test_returns_only_own_signatures()
     {

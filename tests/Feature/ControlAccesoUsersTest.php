@@ -9,7 +9,6 @@ use Tests\TestCase;
 
 class ControlAccesoUsersTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected function setUp(): void
     {

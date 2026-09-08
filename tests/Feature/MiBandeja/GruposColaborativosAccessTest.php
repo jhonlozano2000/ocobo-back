@@ -25,7 +25,6 @@ use Tests\TestCase;
  */
 class GruposColaborativosAccessTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $creador;
     protected User $miembro;

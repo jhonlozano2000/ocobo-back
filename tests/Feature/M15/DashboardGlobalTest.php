@@ -8,7 +8,6 @@ use Tests\TestCase;
 
 class DashboardGlobalTest extends TestCase
 {
-    use RefreshDatabase;
 
     public function test_requires_authentication()
     {

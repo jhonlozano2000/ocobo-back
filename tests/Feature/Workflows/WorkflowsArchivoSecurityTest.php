@@ -27,7 +27,6 @@ use Tests\TestCase;
  */
 class WorkflowsArchivoSecurityTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $userA;
 

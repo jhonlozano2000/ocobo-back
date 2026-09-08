@@ -24,7 +24,6 @@ use Tests\TestCase;
  */
 class ExpedienteLifecycleTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
     protected CalidadOrganigrama $dependencia;

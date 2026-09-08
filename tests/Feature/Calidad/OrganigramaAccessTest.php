@@ -18,7 +18,6 @@ use Tests\TestCase;
  */
 class OrganigramaAccessTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
 

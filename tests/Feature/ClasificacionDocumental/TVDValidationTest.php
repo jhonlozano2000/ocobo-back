@@ -17,7 +17,6 @@ use Tests\TestCase;
  */
 class TVDValidationTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
 

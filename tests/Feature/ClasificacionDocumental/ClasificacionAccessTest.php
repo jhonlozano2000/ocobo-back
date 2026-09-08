@@ -18,7 +18,6 @@ use Tests\TestCase;
  */
 class ClasificacionAccessTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
 

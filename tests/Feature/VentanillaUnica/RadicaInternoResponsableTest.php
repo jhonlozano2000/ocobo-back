@@ -25,7 +25,6 @@ use Tests\TestCase;
  */
 class RadicaInternoResponsableTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
     protected User $user2;

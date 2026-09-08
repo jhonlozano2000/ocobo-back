@@ -24,7 +24,6 @@ use Tests\TestCase;
  */
 class GestionArchivoAccessTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $sinPermisos;
     protected User $jefe;

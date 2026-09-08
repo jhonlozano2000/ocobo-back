@@ -25,7 +25,6 @@ use Tests\TestCase;
  */
 class PrestamoTransferenciaTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
     protected OfiArchivoExpediente $expediente;

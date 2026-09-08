@@ -23,7 +23,6 @@ use Tests\TestCase;
  */
 class RadicaInternoCompartirHistorialTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
     protected User $user2;

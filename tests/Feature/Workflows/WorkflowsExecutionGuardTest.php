@@ -28,7 +28,6 @@ use Tests\TestCase;
  */
 class WorkflowsExecutionGuardTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $creador;
 

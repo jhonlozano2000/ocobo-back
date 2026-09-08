@@ -18,7 +18,6 @@ use Tests\TestCase;
  */
 class EnviadosAccessTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
 

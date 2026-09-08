@@ -11,7 +11,6 @@ use Tests\TestCase;
 
 class FirmaValidacionTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected function setUp(): void
     {

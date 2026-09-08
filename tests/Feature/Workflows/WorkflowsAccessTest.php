@@ -19,7 +19,6 @@ use Tests\TestCase;
  */
 class WorkflowsAccessTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
 

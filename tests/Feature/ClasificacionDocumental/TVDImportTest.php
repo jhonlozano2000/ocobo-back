@@ -20,7 +20,6 @@ use Tests\TestCase;
  */
 class TVDImportTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
 

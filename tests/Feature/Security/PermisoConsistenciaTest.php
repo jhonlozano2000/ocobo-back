@@ -40,7 +40,6 @@ use Tests\TestCase;
  */
 class PermisoConsistenciaTest extends TestCase
 {
-    use RefreshDatabase;
 
     /**
      * Seeders oficiales de permisos (mismo orden que DatabaseSeeder).
