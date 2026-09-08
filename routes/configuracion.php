@@ -86,7 +86,7 @@ Route::middleware(['auth:sanctum', 'throttle:config-operations'])->group(functio
     // ────────────────────────────────────────────────────────────────
     $p = 'Config - Otras configuraciones -> ';
 
-    Route::get('config-varias', [ConfigVariasController::class, 'index'])->name('config.varias.list')->middleware('can:'.$p.'Listar');
+    Route::get('config-varias', [ConfigVariasController::class, 'index'])->name('config.varias.list');
     Route::post('config-varias', [ConfigVariasController::class, 'store'])->name('config.varias.store')->middleware('can:'.$p.'Editar');
     Route::put('config-varias/{clave}', [ConfigVariasController::class, 'update'])->name('config.varias.update')->middleware('can:'.$p.'Editar');
     Route::post('config-varias/batch', [ConfigVariasController::class, 'updateBatch'])->name('config.varias.update.batch')->middleware('can:'.$p.'Editar');
