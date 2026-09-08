@@ -143,14 +143,14 @@ Route::middleware(['auth:sanctum', 'throttle:config-operations'])->group(functio
     $p = 'Config - Calendario -> ';
 
     Route::prefix('calendario-festivos')->group(function () use ($p) {
-        Route::get('/', [ConfigCalendarioFestivoController::class, 'index'])->middleware('can:'.$p.'Listar');
+        Route::get('/', [ConfigCalendarioFestivoController::class, 'index']);
         Route::post('/', [ConfigCalendarioFestivoController::class, 'store'])->middleware('can:'.$p.'Crear');
         Route::put('/{id}', [ConfigCalendarioFestivoController::class, 'update'])->middleware('can:'.$p.'Editar');
         Route::delete('/{id}', [ConfigCalendarioFestivoController::class, 'destroy'])->middleware('can:'.$p.'Eliminar');
-        Route::get('/verificar/{fecha}', [ConfigCalendarioFestivoController::class, 'verificarFecha'])->middleware('can:'.$p.'Listar');
-        Route::get('/anio/{anio}', [ConfigCalendarioFestivoController::class, 'festivosPorAnio'])->middleware('can:'.$p.'Listar');
+        Route::get('/verificar/{fecha}', [ConfigCalendarioFestivoController::class, 'verificarFecha']);
+        Route::get('/anio/{anio}', [ConfigCalendarioFestivoController::class, 'festivosPorAnio']);
         Route::post('/anio/{anio}/generar-colombia', [ConfigCalendarioFestivoController::class, 'generarFestivosColombia'])->middleware('can:'.$p.'Crear');
-        Route::post('/calcular-vencimiento', [ConfigCalendarioFestivoController::class, 'calcularVencimiento'])->middleware('can:'.$p.'Listar');
+        Route::post('/calcular-vencimiento', [ConfigCalendarioFestivoController::class, 'calcularVencimiento']);
         Route::post('/importar', [ConfigCalendarioFestivoController::class, 'importar'])->middleware('can:'.$p.'Crear');
         Route::post('/clear-cache', [ConfigCalendarioFestivoController::class, 'clearCache'])->middleware('can:'.$p.'Editar');
     });
