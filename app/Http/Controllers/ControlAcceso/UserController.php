@@ -396,7 +396,7 @@ class UserController extends Controller
             }
 
             $validated = $request->validate([
-                'permisos' => 'required|array',
+                'permisos' => 'nullable|array',
                 'permisos.*' => 'string|in:Mi Bandeja -> Jefe de dependencia,Mi Bandeja -> Jefe de oficina,Mi Bandeja -> Puede firmar',
             ]);
 
@@ -414,7 +414,7 @@ class UserController extends Controller
             }
 
             // Asignar los seleccionados
-            foreach ($validated['permisos'] as $permiso) {
+            foreach ($validated['permisos'] ?? [] as $permiso) {
                 $user->givePermissionTo($permiso);
             }
 
