@@ -131,7 +131,7 @@ class MiBandejaRecibidosController extends Controller
             $finalizado = (clone $baseQuery)->where('estado_trabajo', 'FINALIZADO')->count();
             $vencido = (clone $baseQuery)->where('fec_venci', '<', now())
                 ->whereNotIn('estado_trabajo', ['FINALIZADO', 'ANULADO'])->count();
-            $porVencer = (clone $baseQuery)->whereBetween('fec_venci', [now(), now()->addDays(3)])
+            $porVencer = (clone $baseQuery)->whereBetween('fec_venci', [now(), now()->addDays(5)])
                 ->whereNotIn('estado_trabajo', ['FINALIZADO', 'ANULADO'])->count();
             $sinArchivoDigital = (clone $baseQuery)->whereNull('archivo_digital')
                 ->where('estado_trabajo', '!=', 'ANULADO')->count();

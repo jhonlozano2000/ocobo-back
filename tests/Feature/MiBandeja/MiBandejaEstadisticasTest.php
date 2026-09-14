@@ -13,7 +13,6 @@ use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados as VentanillaRa
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoResponsable;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
@@ -40,7 +39,6 @@ use Tests\TestCase;
  */
 class MiBandejaEstadisticasTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
 
@@ -468,5 +466,23 @@ class MiBandejaEstadisticasTest extends TestCase
 
         $this->getJson('/api/mi-bandeja/internos/mis-radicados')
             ->assertForbidden();
+    }
+
+    protected function tearDown(): void
+    {
+        if (isset($this->radicadoRecibido)) {
+            \DB::table('ventanilla_radica_reci_responsa')
+                ->where('radica_reci_id', $this->radicadoRecibido->id)->delete();
+            $this->radicadoRecibido->delete();
+        }
+        if (isset($this->radicadoEnviado)) {
+            $this->radicadoEnviado->delete();
+        }
+        if (isset($this->radicadoInterno)) {
+            \DB::table('ventanilla_radica_internos_responsa')
+                ->where('radica_interno_id', $this->radicadoInterno->id)->delete();
+            $this->radicadoInterno->delete();
+        }
+        parent::tearDown();
     }
 }

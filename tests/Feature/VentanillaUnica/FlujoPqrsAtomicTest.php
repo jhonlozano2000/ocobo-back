@@ -12,7 +12,6 @@ use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\VentanillaUnica\PqrsService;
 use App\Services\VentanillaUnica\RadicadoConsecutivoService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -20,7 +19,6 @@ use Tests\TestCase;
 
 class FlujoPqrsAtomicTest extends TestCase
 {
-    use RefreshDatabase;
 
     protected User $user;
 
