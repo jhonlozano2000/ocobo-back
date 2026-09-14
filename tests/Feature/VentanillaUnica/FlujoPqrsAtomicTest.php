@@ -11,13 +11,16 @@ use App\Models\Gestion\GestionTercero;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\VentanillaUnica\PqrsService;
+use App\Services\VentanillaUnica\RadicadoConsecutivoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class FlujoPqrsAtomicTest extends TestCase
 {
+    use RefreshDatabase;
 
     protected User $user;
 
@@ -120,6 +123,25 @@ class FlujoPqrsAtomicTest extends TestCase
     }
 
     /** @test */
+    public function el_consecutivo_reservado_se_revierte_si_la_transaccion_falla()
+    {
+        $service = app(RadicadoConsecutivoService::class);
+
+        DB::beginTransaction();
+        $reservado = $service->reservarRecibido();
+        DB::rollBack();
+
+        $confirmado = DB::transaction(fn () => $service->reservarRecibido());
+
+        $this->assertSame($reservado, $confirmado);
+        $this->assertDatabaseHas('ventanilla_radicado_consecutivos', [
+            'tipo' => 'recibido',
+            'periodo' => (int) now()->format('Y'),
+            'consecutivo' => 1,
+        ]);
+    }
+
+    /** @test */
     public function puede_crear_radicado_con_pqrs_exitosamente()
     {
         $response = $this->actingAs($this->user)->postJson('/api/ventanilla/radica-recibida', [
@@ -215,7 +237,6 @@ class FlujoPqrsAtomicTest extends TestCase
             'tipo_pqrs_id' => $this->tipoPqrs->id,
             'prioridad' => 'Normal',
         ]);
-
 
         // La transacción debería hacer rollback completo.
         // El código exacto puede variar (500 por excepción del servicio o
