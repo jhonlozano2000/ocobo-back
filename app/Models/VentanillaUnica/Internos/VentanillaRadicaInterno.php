@@ -78,17 +78,20 @@ class VentanillaRadicaInterno extends Model
      */
     public function getDependenciaOrigenAttribute()
     {
-        if ($this->relationLoaded('dependenciaOrigen') && $this->dependenciaOrigen) {
-            return ['id' => $this->dependenciaOrigen->id, 'nombre' => $this->dependenciaOrigen->nom_organico];
+        if ($this->relationLoaded('dependenciaOrigen')) {
+            $dep = $this->getRelation('dependenciaOrigen');
+
+            return $dep ? ['id' => $dep->id, 'nombre' => $dep->nom_organico] : null;
         }
 
         if ($this->dependencia_origen_id) {
             $dep = $this->dependenciaOrigen;
+
             return $dep ? ['id' => $dep->id, 'nombre' => $dep->nom_organico] : null;
         }
 
         $cargoActivo = $this->usuarioCrea?->cargoActivo;
-        if (!$cargoActivo?->cargo) {
+        if (! $cargoActivo?->cargo) {
             return null;
         }
 
