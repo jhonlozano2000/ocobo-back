@@ -67,16 +67,23 @@ class MiBandejaInternosController extends Controller
                 $query->where('estado_trabajo', $estado);
             }
 
+            $perPage = min((int) $request->get('per_page', 15), 100);
             $radicados = $query
                 ->with(['responsables.userCargo', 'usuarioCrea.cargoActivo.cargo', 'dependenciaOrigen'])
-                ->limit(50)
-                ->get()
-                ->each->append('dependencia_origen');
+                ->paginate($perPage);
+
+            $radicados->getCollection()->each->append('dependencia_origen');
 
             return response()->json([
                 'status' => true,
                 'message' => 'Mis radicados internos obtenidos',
-                'data' => $radicados,
+                'data' => $radicados->items(),
+                'pagination' => [
+                    'total' => $radicados->total(),
+                    'per_page' => $radicados->perPage(),
+                    'current_page' => $radicados->currentPage(),
+                    'last_page' => $radicados->lastPage(),
+                ],
             ]);
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {

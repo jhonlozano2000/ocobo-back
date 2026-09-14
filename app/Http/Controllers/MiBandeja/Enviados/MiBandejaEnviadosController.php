@@ -61,12 +61,19 @@ class MiBandejaEnviadosController extends Controller
                 $query->where('estado_trabajo', $estado);
             }
 
-            $radicados = $query->limit(50)->get();
+            $perPage = min((int) $request->get('per_page', 15), 100);
+            $radicados = $query->paginate($perPage);
 
             return response()->json([
                 'status' => true,
                 'message' => 'Mis radicados enviados obtenidos',
-                'data' => $radicados,
+                'data' => $radicados->items(),
+                'pagination' => [
+                    'total' => $radicados->total(),
+                    'per_page' => $radicados->perPage(),
+                    'current_page' => $radicados->currentPage(),
+                    'last_page' => $radicados->lastPage(),
+                ],
             ]);
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
