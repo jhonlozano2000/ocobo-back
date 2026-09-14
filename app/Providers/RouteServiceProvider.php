@@ -104,6 +104,10 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::middleware('api')
                 ->prefix('api/mi-bandeja')
+                ->group(base_path('routes/mi-disco.php'));
+
+            Route::middleware('api')
+                ->prefix('api/mi-bandeja')
                 ->group(base_path('routes/mi-bandeja-temp.php'));
 
             // GESTIÓN DE ARCHIVO — PRÉSTAMOS
