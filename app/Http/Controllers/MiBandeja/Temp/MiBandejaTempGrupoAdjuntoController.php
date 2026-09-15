@@ -114,6 +114,12 @@ class MiBandejaTempGrupoAdjuntoController extends Controller
     public function destroy($grupoId, $id)
     {
         try {
+            $grupo = $this->autorizarGrupo($grupoId);
+
+            if (! $grupo) {
+                return $this->errorResponse('Grupo no encontrado', null, 404);
+            }
+
             $adjunto = \App\Models\MiBandeja\MiBandejaTempGrupoArchiAdjunto::where('grupo_id', $grupoId)->find($id);
 
             if (! $adjunto) {
@@ -144,6 +150,12 @@ class MiBandejaTempGrupoAdjuntoController extends Controller
     public function descargar($grupoId, $id)
     {
         try {
+            $grupo = $this->autorizarGrupo($grupoId);
+
+            if (! $grupo) {
+                return $this->errorResponse('Grupo no encontrado', null, 404);
+            }
+
             $adjunto = \App\Models\MiBandeja\MiBandejaTempGrupoArchiAdjunto::where('grupo_id', $grupoId)->find($id);
 
             if (! $adjunto) {

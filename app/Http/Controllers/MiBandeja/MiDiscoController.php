@@ -52,7 +52,7 @@ class MiDiscoController extends Controller
             'carpetas' => $carpetas,
             'archivos' => $archivos,
             'breadcrumb' => $breadcrumb,
-        ]);
+        ], 'Listado obtenido');
     }
 
     public function storeCarpeta(Request $request): JsonResponse
