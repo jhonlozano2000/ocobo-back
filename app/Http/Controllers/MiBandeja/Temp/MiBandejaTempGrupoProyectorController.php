@@ -7,6 +7,8 @@ use App\Http\Requests\MiBandeja\StoreGrupoProyectorRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempGrupoProyector;
+use App\Models\Notificacion;
+use App\Events\NotificationPushed;
 use Illuminate\Http\Request;
 
 /**
@@ -83,6 +85,22 @@ class MiBandejaTempGrupoProyectorController extends Controller
             ]);
 
             $proyector->load(['user.cargo', 'cargo']);
+
+            // Crear notificación in-app para el proyector
+            $notificacion = Notificacion::create([
+                'user_id' => $request->user_id,
+                'type' => 'asignacion_proyector',
+                'title' => 'Proyector asignado en grupo colaborativo',
+                'message' => 'Se le ha asignado como proyector del grupo "' . $grupo->nombre . '".',
+                'notifiable_type' => 'App\Models\MiBandeja\MiBandejaTemp',
+                'notifiable_id' => $grupoId,
+                'data' => [
+                    'grupo_id' => $grupoId,
+                    'nombre_grupo' => $grupo->nombre,
+                    'asignado_por' => auth()->id(),
+                ],
+            ]);
+            event(new NotificationPushed($notificacion));
 
             return $this->successResponse($proyector, 'Proyector agregado exitosamente', 201);
         } catch (\Exception $e) {

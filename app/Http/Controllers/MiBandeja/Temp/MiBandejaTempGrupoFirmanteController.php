@@ -7,6 +7,8 @@ use App\Http\Requests\MiBandeja\StoreGrupoFirmanteRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempGrupoFirmante;
+use App\Models\Notificacion;
+use App\Events\NotificationPushed;
 use Illuminate\Http\Request;
 
 /**
@@ -84,6 +86,22 @@ class MiBandejaTempGrupoFirmanteController extends Controller
             ]);
 
             $firmante->load(['user.cargo', 'cargo']);
+
+            // Crear notificación in-app para el firmante
+            $notificacion = Notificacion::create([
+                'user_id' => $request->user_id,
+                'type' => 'asignacion_firmante',
+                'title' => 'Firmante asignado en grupo colaborativo',
+                'message' => 'Se le ha asignado como firmante del grupo "' . $grupo->nombre . '".',
+                'notifiable_type' => 'App\Models\MiBandeja\MiBandejaTemp',
+                'notifiable_id' => $grupoId,
+                'data' => [
+                    'grupo_id' => $grupoId,
+                    'nombre_grupo' => $grupo->nombre,
+                    'asignado_por' => auth()->id(),
+                ],
+            ]);
+            event(new NotificationPushed($notificacion));
 
             return $this->successResponse($firmante, 'Firmante agregado exitosamente', 201);
         } catch (\Exception $e) {

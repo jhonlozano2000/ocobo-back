@@ -7,6 +7,8 @@ use App\Http\Requests\MiBandeja\StoreGrupoRevisorRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempGrupoRevisor;
+use App\Models\Notificacion;
+use App\Events\NotificationPushed;
 use Illuminate\Http\Request;
 
 use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
@@ -62,6 +64,22 @@ class MiBandejaTempGrupoRevisorController extends Controller
             ]);
 
             $revisor->load(['user.cargo', 'cargo']);
+
+            // Crear notificación in-app para el revisor
+            $notificacion = Notificacion::create([
+                'user_id' => $request->user_id,
+                'type' => 'asignacion_responsable',
+                'title' => 'Revisor asignado en grupo colaborativo',
+                'message' => 'Se le ha asignado como revisor del grupo "' . $grupo->nombre . '".',
+                'notifiable_type' => 'App\Models\MiBandeja\MiBandejaTemp',
+                'notifiable_id' => $grupoId,
+                'data' => [
+                    'grupo_id' => $grupoId,
+                    'nombre_grupo' => $grupo->nombre,
+                    'asignado_por' => auth()->id(),
+                ],
+            ]);
+            event(new NotificationPushed($notificacion));
 
             return $this->successResponse($revisor, 'Revisor agregado exitosamente', 201);
         } catch (\Exception $e) {
