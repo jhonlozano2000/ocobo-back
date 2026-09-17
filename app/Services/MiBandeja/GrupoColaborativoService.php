@@ -370,6 +370,12 @@ class GrupoColaborativoService
 
             $grupo->update($data);
 
+            // Actualizar estado del radicado a TRAMITADO si tiene fecha de vencimiento
+            $radicado = $grupo->radicado;
+            if ($radicado && $radicado->fec_venci) {
+                $radicado->updateQuietly(['estado_trabajo' => \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_TRAMITADO]);
+            }
+
             return $grupo->fresh();
         });
     }

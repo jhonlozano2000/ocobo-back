@@ -3,7 +3,6 @@
 namespace Tests\Feature\Transversal;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -47,7 +46,7 @@ class FirmaValidacionTest extends TestCase
         $hashOriginal = hash_file('sha256', Storage::disk('radicados_recibidos')->path($path));
 
         $documentoId = $this->insertRadicadoRecibido([
-            'num_radicado' => 'VAL-INTEGRIDAD-001',
+            'num_radicado' => 'VAL-INTEGRIDAD-'.uniqid(),
             'archivo_digital' => $path,
             'hash_sha256' => $hashOriginal,
             'estado_firma' => 'firmado',
@@ -59,7 +58,7 @@ class FirmaValidacionTest extends TestCase
             'user_id' => $user->id,
             'hash_original' => $hashOriginal,
             'hash_firmado' => $hashOriginal,
-            'otp_utilizado' => '***123',
+            'otp_utilizado' => substr('***'.uniqid(), 0, 10),
             'user_agent' => 'test',
             'ip_address' => '127.0.0.1',
             'fecha_firma' => now(),
@@ -89,7 +88,7 @@ class FirmaValidacionTest extends TestCase
         $hashOriginal = hash_file('sha256', Storage::disk('radicados_recibidos')->path($path));
 
         $documentoId = $this->insertRadicadoRecibido([
-            'num_radicado' => 'VAL-INTEGRIDAD-002',
+            'num_radicado' => 'VAL-INTEGRIDAD-'.uniqid(),
             'archivo_digital' => $path,
             'hash_sha256' => $hashOriginal,
             'estado_firma' => 'firmado',
@@ -101,7 +100,7 @@ class FirmaValidacionTest extends TestCase
             'user_id' => $user->id,
             'hash_original' => $hashOriginal,
             'hash_firmado' => 'hash_totalmente_diferente',
-            'otp_utilizado' => '***123',
+            'otp_utilizado' => substr('***'.uniqid(), 0, 10),
             'user_agent' => 'test',
             'ip_address' => '127.0.0.1',
             'fecha_firma' => now(),

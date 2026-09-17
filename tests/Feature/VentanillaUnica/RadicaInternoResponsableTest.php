@@ -8,10 +8,10 @@ use App\Models\ControlAcceso\UserCargo;
 use App\Models\User;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoResponsable;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\PermissionRegistrar;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -127,7 +127,10 @@ class RadicaInternoResponsableTest extends TestCase
         $response->assertStatus(201)
             ->assertJsonPath('status', true);
 
-        $this->assertDatabaseCount('ventanilla_radica_internos_responsa', 1);
+        $this->assertDatabaseHas('ventanilla_radica_internos_responsa', [
+            'radica_interno_id' => $this->radicado->id,
+            'users_cargos_id' => $this->userCargo->id,
+        ]);
     }
 
     /** @test */

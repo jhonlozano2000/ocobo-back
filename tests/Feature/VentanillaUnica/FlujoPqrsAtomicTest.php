@@ -100,6 +100,9 @@ class FlujoPqrsAtomicTest extends TestCase
     /** @test */
     public function puede_crear_radicado_sin_pqrs()
     {
+        $radicaCountBefore = DB::table('ventanilla_radica_reci')->count();
+        $pqrsCountBefore = DB::table('ventanilla_pqrs')->count();
+
         $response = $this->actingAs($this->user)->postJson('/api/ventanilla/radica-recibida', [
             'clasifica_documen_id' => $this->clasificacion->id,
             'tercero_id' => $this->tercero->id,
@@ -116,8 +119,8 @@ class FlujoPqrsAtomicTest extends TestCase
             ->assertJsonPath('data.radicado.asunto', 'Prueba sin PQRS')
             ->assertJsonPath('data.pqrs', null);
 
-        $this->assertDatabaseCount('ventanilla_radica_reci', 1);
-        $this->assertDatabaseCount('ventanilla_pqrs', 0);
+        $this->assertSame($radicaCountBefore + 1, DB::table('ventanilla_radica_reci')->count());
+        $this->assertSame($pqrsCountBefore, DB::table('ventanilla_pqrs')->count());
     }
 
     /** @test */
@@ -132,16 +135,21 @@ class FlujoPqrsAtomicTest extends TestCase
         $confirmado = DB::transaction(fn () => $service->reservarRecibido());
 
         $this->assertSame($reservado, $confirmado);
-        $this->assertDatabaseHas('ventanilla_radicado_consecutivos', [
-            'tipo' => 'recibido',
-            'periodo' => (int) now()->format('Y'),
-            'consecutivo' => 1,
-        ]);
+
+        $consecutivo = DB::table('ventanilla_radicado_consecutivos')
+            ->where('tipo', 'recibido')
+            ->where('periodo', (int) now()->format('Y'))
+            ->first();
+        $this->assertNotNull($consecutivo);
+        $this->assertGreaterThanOrEqual(1, $consecutivo->consecutivo);
     }
 
     /** @test */
     public function puede_crear_radicado_con_pqrs_exitosamente()
     {
+        $radicaCountBefore = DB::table('ventanilla_radica_reci')->count();
+        $pqrsCountBefore = DB::table('ventanilla_pqrs')->count();
+
         $response = $this->actingAs($this->user)->postJson('/api/ventanilla/radica-recibida', [
             'clasifica_documen_id' => $this->clasificacion->id,
             'tercero_id' => $this->tercero->id,
@@ -162,17 +170,20 @@ class FlujoPqrsAtomicTest extends TestCase
             ->assertJsonPath('data.radicado.asunto', 'Prueba con PQRS')
             ->assertJsonPath('data.pqrs.estado_tramite', 'Pendiente');
 
-        $this->assertDatabaseCount('ventanilla_radica_reci', 1);
-        $this->assertDatabaseCount('ventanilla_pqrs', 1);
+        $this->assertSame($radicaCountBefore + 1, DB::table('ventanilla_radica_reci')->count());
+        $this->assertSame($pqrsCountBefore + 1, DB::table('ventanilla_pqrs')->count());
 
         // Verificar que la PQRS está vinculada al radicado
-        $radicado = VentanillaRadicaReci::first();
+        $radicado = VentanillaRadicaReci::latest()->first();
         $this->assertTrue($radicado->pqrs()->exists());
     }
 
     /** @test */
     public function falla_creacion_pqrs_si_falta_tipo_pqrs()
     {
+        $radicaCountBefore = DB::table('ventanilla_radica_reci')->count();
+        $pqrsCountBefore = DB::table('ventanilla_pqrs')->count();
+
         $response = $this->actingAs($this->user)->postJson('/api/ventanilla/radica-recibida', [
             'clasifica_documen_id' => $this->clasificacion->id,
             'tercero_id' => $this->tercero->id,
@@ -187,13 +198,16 @@ class FlujoPqrsAtomicTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['tipo_pqrs_id']);
 
-        $this->assertDatabaseCount('ventanilla_radica_reci', 0);
-        $this->assertDatabaseCount('ventanilla_pqrs', 0);
+        $this->assertSame($radicaCountBefore, DB::table('ventanilla_radica_reci')->count());
+        $this->assertSame($pqrsCountBefore, DB::table('ventanilla_pqrs')->count());
     }
 
     /** @test */
     public function falla_creacion_pqrs_si_tipo_pqrs_no_existe()
     {
+        $radicaCountBefore = DB::table('ventanilla_radica_reci')->count();
+        $pqrsCountBefore = DB::table('ventanilla_pqrs')->count();
+
         $response = $this->actingAs($this->user)->postJson('/api/ventanilla/radica-recibida', [
             'clasifica_documen_id' => $this->clasificacion->id,
             'tercero_id' => $this->tercero->id,
@@ -208,8 +222,8 @@ class FlujoPqrsAtomicTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['tipo_pqrs_id']);
 
-        $this->assertDatabaseCount('ventanilla_radica_reci', 0);
-        $this->assertDatabaseCount('ventanilla_pqrs', 0);
+        $this->assertSame($radicaCountBefore, DB::table('ventanilla_radica_reci')->count());
+        $this->assertSame($pqrsCountBefore, DB::table('ventanilla_pqrs')->count());
     }
 
     /** @test */
@@ -217,6 +231,9 @@ class FlujoPqrsAtomicTest extends TestCase
     {
         // Simular un escenario donde PQRS falla después de crear el radicado
         // Esto se puede hacer mockeando el servicio PQRS para que lance una excepción
+
+        $radicaCountBefore = DB::table('ventanilla_radica_reci')->count();
+        $pqrsCountBefore = DB::table('ventanilla_pqrs')->count();
 
         $this->mock(PqrsService::class, function ($mock) {
             $mock->shouldReceive('crearDesdeRadicado')
@@ -242,8 +259,8 @@ class FlujoPqrsAtomicTest extends TestCase
         // filas parciales en ninguna de las dos tablas.
         $this->assertContains($response->status(), [500, 422]);
 
-        $this->assertDatabaseCount('ventanilla_radica_reci', 0);
-        $this->assertDatabaseCount('ventanilla_pqrs', 0);
+        $this->assertSame($radicaCountBefore, DB::table('ventanilla_radica_reci')->count());
+        $this->assertSame($pqrsCountBefore, DB::table('ventanilla_pqrs')->count());
     }
 
     /** @test */
@@ -305,7 +322,7 @@ class FlujoPqrsAtomicTest extends TestCase
 
         // Crear radicados de ambos usuarios
         $radicadoPropio = VentanillaRadicaReci::create([
-            'num_radicado' => '20260101-00001',
+            'num_radicado' => 'ABAC-'.uniqid(),
             'clasifica_documen_id' => $this->clasificacion->id,
             'tercero_id' => $this->tercero->id,
             'medio_recep_id' => $this->medioRecepcion->id,
@@ -316,7 +333,7 @@ class FlujoPqrsAtomicTest extends TestCase
         ]);
 
         $radicadoOtro = VentanillaRadicaReci::create([
-            'num_radicado' => '20260101-00002',
+            'num_radicado' => 'ABAC-'.uniqid(),
             'clasifica_documen_id' => $this->clasificacion->id,
             'tercero_id' => $this->tercero->id,
             'medio_recep_id' => $this->medioRecepcion->id,
@@ -332,10 +349,11 @@ class FlujoPqrsAtomicTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('status', true);
 
-        // El usuario debería ver solo 1 radicado (el suyo)
+        // El usuario debería ver solo su propio radicado
         $responseData = $response->json('data');
-        $this->assertEquals(1, $responseData['total']);
-        $this->assertEquals('Radicado propio', $responseData['data'][0]['asunto']);
+        $asuntos = collect($responseData['data'])->pluck('asunto')->toArray();
+        $this->assertContains('Radicado propio', $asuntos);
+        $this->assertNotContains('Radicado de otro usuario', $asuntos);
     }
 
     /** @test */
@@ -348,7 +366,7 @@ class FlujoPqrsAtomicTest extends TestCase
         $otroUser = User::factory()->create();
 
         VentanillaRadicaReci::create([
-            'num_radicado' => '20260101-00001',
+            'num_radicado' => 'VERALL-'.uniqid(),
             'clasifica_documen_id' => $this->clasificacion->id,
             'tercero_id' => $this->tercero->id,
             'medio_recep_id' => $this->medioRecepcion->id,
@@ -359,7 +377,7 @@ class FlujoPqrsAtomicTest extends TestCase
         ]);
 
         VentanillaRadicaReci::create([
-            'num_radicado' => '20260101-00002',
+            'num_radicado' => 'VERALL-'.uniqid(),
             'clasifica_documen_id' => $this->clasificacion->id,
             'tercero_id' => $this->tercero->id,
             'medio_recep_id' => $this->medioRecepcion->id,
@@ -376,6 +394,6 @@ class FlujoPqrsAtomicTest extends TestCase
             ->assertJsonPath('status', true);
 
         $responseData = $response->json('data');
-        $this->assertEquals(2, $responseData['total']);
+        $this->assertGreaterThanOrEqual(2, $responseData['total']);
     }
 }

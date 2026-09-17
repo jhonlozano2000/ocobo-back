@@ -2043,46 +2043,6 @@ class VentanillaRadicaReciController extends Controller
         return $this->successResponse($estadosInfo, 'Estados disponibles obtenidos exitosamente');
     }
 
-    public function cambiarEstado($id, Request $request)
-    {
-        try {
-            $request->validate([
-                'estado' => 'required|string|in:RECIBIDO,EN_PROCESO,POR_VENCER,VENCIDO,FINALIZADO',
-                'observaciones' => 'nullable|string|max:500',
-            ], [
-                'estado.required' => 'El estado es obligatorio.',
-                'estado.in' => 'El estado no es válido.',
-            ]);
-
-            $radicado = VentanillaRadicaReci::find($id);
-
-            if (! $radicado) {
-                return $this->errorResponse('Radicado no encontrado', null, 404);
-            }
-
-            $estadoAnterior = $radicado->estado_trabajo;
-            $radicado->update(['estado_trabajo' => $request->estado]);
-
-            return $this->successResponse([
-                'id' => $radicado->id,
-                'estado_anterior' => $estadoAnterior,
-                'estado_nuevo' => $radicado->estado_trabajo,
-                'estado_info' => (new RadicadoEstadoTrabajoService)->getEstadoInfo($radicado->estado_trabajo),
-            ], 'Estado actualizado exitosamente');
-        } catch (ValidationException $e) {
-            return $this->errorResponse('Error de validación', $e->errors(), 422);
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-
-            return $this->errorResponse('Error al cambiar el estado', $e->getMessage(), 500);
-        }
-    }
-
     public function historialEstados($id)
     {
         try {
@@ -2132,37 +2092,6 @@ class VentanillaRadicaReciController extends Controller
 
             return $this->errorResponse('Error al obtener el historial de estados', $e->getMessage(), 500);
         }
-    }
-
-    public function transicionesEstado($estadoId)
-    {
-        $service = new RadicadoEstadoTrabajoService;
-        $estados = RadicadoEstadoTrabajoService::getEstados();
-
-        if (! in_array($estadoId, $estados)) {
-            return $this->errorResponse('Estado no válido', null, 422);
-        }
-
-        $transiciones = match ($estadoId) {
-            'RECIBIDO' => ['EN_PROCESO', 'FINALIZADO'],
-            'EN_PROCESO' => ['POR_VENCER', 'VENCIDO', 'RECIBIDO', 'FINALIZADO'],
-            'POR_VENCER' => ['VENCIDO', 'EN_PROCESO', 'FINALIZADO'],
-            'VENCIDO' => ['EN_PROCESO', 'FINALIZADO'],
-            'FINALIZADO' => ['EN_PROCESO'],
-            default => [],
-        };
-
-        $transicionesInfo = array_map(function ($estado) use ($service) {
-            $info = $service->getEstadoInfo($estado);
-
-            return [
-                'key' => $estado,
-                'label' => $info['label'],
-                'color' => $info['color'],
-            ];
-        }, $transiciones);
-
-        return $this->successResponse($transicionesInfo, 'Transiciones disponibles obtenidas exitosamente');
     }
 
     /**

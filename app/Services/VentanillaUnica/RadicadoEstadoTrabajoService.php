@@ -17,6 +17,8 @@ class RadicadoEstadoTrabajoService
 
     public const ESTADO_FINALIZADO = 'FINALIZADO';
 
+    public const ESTADO_TRAMITADO = 'TRAMITADO';
+
     public const DIAS_PROXIMO_VENCER = 5;
 
     public function calcularEstadoAutomatico(VentanillaRadicaReci $radicado): string
@@ -107,6 +109,12 @@ class RadicadoEstadoTrabajoService
                 'icon' => 'check-circle',
                 'description' => 'Radicado tramitado completamente',
             ],
+            self::ESTADO_TRAMITADO => [
+                'label' => 'Tramitado',
+                'color' => 'success',
+                'icon' => 'check-circle',
+                'description' => 'Radicado procesado y respondido',
+            ],
         ];
 
         return $estados[$estado] ?? [
@@ -125,6 +133,7 @@ class RadicadoEstadoTrabajoService
             self::ESTADO_POR_VENCER,
             self::ESTADO_VENCIDO,
             self::ESTADO_FINALIZADO,
+            self::ESTADO_TRAMITADO,
         ];
     }
 
@@ -136,6 +145,7 @@ class RadicadoEstadoTrabajoService
             self::ESTADO_POR_VENCER => '#FF6B35',
             self::ESTADO_VENCIDO => '#E53E3E',
             self::ESTADO_FINALIZADO => '#38A169',
+            self::ESTADO_TRAMITADO => '#38A169',
         ];
     }
 }

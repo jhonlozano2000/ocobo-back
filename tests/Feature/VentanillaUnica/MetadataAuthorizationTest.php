@@ -9,7 +9,6 @@ use App\Models\Gestion\GestionTercero;
 use App\Models\User;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosMetadata;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -89,7 +88,7 @@ class MetadataAuthorizationTest extends TestCase
         ]);
 
         $enviado = VentanillaRadicaEnviados::create([
-            'num_radicado' => 'ENV-MT-'.random_int(100000, 999999),
+            'num_radicado' => 'ENV-MT-'.uniqid(),
             'clasifica_documen_id' => $clasificacion->id,
             'tercero_id' => $tercero->id,
             'medio_enviado_id' => $medio->id,
@@ -214,7 +213,7 @@ class MetadataAuthorizationTest extends TestCase
         ]);
 
         $radicado = \App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci::create([
-            'num_radicado' => 'REC-PMT-'.random_int(100000, 999999),
+            'num_radicado' => 'REC-PMT-'.uniqid(),
             'clasifica_documen_id' => $clasificacion->id,
             'tercero_id' => $tercero->id,
             'medio_recep_id' => $medio->id,

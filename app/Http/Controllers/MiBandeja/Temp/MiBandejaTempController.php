@@ -112,6 +112,12 @@ class MiBandejaTempController extends Controller
 
             $grupo = MiBandejaTemp::create($validated);
 
+            // Actualizar estado del radicado a EN_PROCESO si tiene fecha de vencimiento
+            $radicado = $grupo->radicado;
+            if ($radicado && $radicado->fec_venci) {
+                $radicado->updateQuietly(['estado_trabajo' => \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_EN_PROCESO]);
+            }
+
             return $this->successResponse(
                 $grupo->load(['revisores.user.cargo', 'firmantes.user.cargo', 'proyectores.user.cargo', 'aprobadores.user.cargo']),
                 'Grupo colaborativo creado exitosamente',

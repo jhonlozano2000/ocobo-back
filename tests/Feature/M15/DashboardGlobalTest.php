@@ -3,7 +3,6 @@
 namespace Tests\Feature\M15;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class DashboardGlobalTest extends TestCase

@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Models\Workflows\Workflow;
 use App\Models\Workflows\WorkflowNodo;
 use App\Services\Workflows\WorkflowExecutionService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
 use Spatie\Permission\Models\Permission;

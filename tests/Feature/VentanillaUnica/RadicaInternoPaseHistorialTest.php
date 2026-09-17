@@ -7,7 +7,6 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\User;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\PermissionRegistrar;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;

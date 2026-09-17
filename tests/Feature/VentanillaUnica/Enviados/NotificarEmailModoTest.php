@@ -3,7 +3,6 @@
 namespace Tests\Feature\VentanillaUnica\Enviados;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Spatie\Permission\PermissionRegistrar;
 use Spatie\Permission\Models\Permission;

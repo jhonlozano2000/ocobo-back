@@ -86,7 +86,7 @@ class VentanillaRadicaReci extends Model
         });
 
         static::updated(function ($radicado) {
-            if ($radicado->wasChanged(['fec_venci']) || $radicado->wasChanged(['responsables'])) {
+            if ($radicado->wasChanged(['fec_venci'])) {
                 $radicado->actualizarEstadoTrabajo();
             }
         });
@@ -420,18 +420,14 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
-     * Actualiza el estado de trabajo del radicado según las reglas:
-     * - VENCIDO: si fec_venci < hoy
-     * - POR_VENCER: si fec_venci está próximo a vencer (5 días)
-     * - EN_PROCESO: si tiene responsables asignados
-     * - RECIBIDO: en caso contrario
+     * Actualiza el estado de trabajo del radicado según las reglas del negocio.
      */
     public function actualizarEstadoTrabajo(): bool
     {
         $nuevoEstado = $this->calcularEstadoTrabajo();
 
         if ($this->estado_trabajo !== $nuevoEstado) {
-            $this->update(['estado_trabajo' => $nuevoEstado]);
+            $this->updateQuietly(['estado_trabajo' => $nuevoEstado]);
 
             return true;
         }
@@ -441,18 +437,23 @@ class VentanillaRadicaReci extends Model
 
     /**
      * Calcula el estado de trabajo correspondiente según las reglas del negocio.
+     * Solo radicados con fecha de vencimiento tienen estado.
      */
-    public function calcularEstadoTrabajo(): string
+    public function calcularEstadoTrabajo(): ?string
     {
-        if ($this->fec_venci && now()->parse($this->fec_venci)->isBefore(now()->startOfDay())) {
-            return RadicadoEstadoTrabajoService::ESTADO_VENCIDO;
+        if (! $this->fec_venci) {
+            return null;
         }
 
-        if ($this->fec_venci && now()->parse($this->fec_venci)->lte(now()->addDays(5)->endOfDay())) {
-            return RadicadoEstadoTrabajoService::ESTADO_POR_VENCER;
+        $grupo = \App\Models\MiBandeja\MiBandejaTemp::where('radicado_id', $this->id)
+            ->where('radicado_tipo', 'recibido')
+            ->first();
+
+        if ($grupo && $grupo->estado_grupo === 'finalizado') {
+            return RadicadoEstadoTrabajoService::ESTADO_TRAMITADO;
         }
 
-        if ($this->responsables()->exists()) {
+        if ($grupo) {
             return RadicadoEstadoTrabajoService::ESTADO_EN_PROCESO;
         }
 

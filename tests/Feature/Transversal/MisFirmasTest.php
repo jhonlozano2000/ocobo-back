@@ -4,7 +4,6 @@ namespace Tests\Feature\Transversal;
 
 use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class MisFirmasTest extends TestCase

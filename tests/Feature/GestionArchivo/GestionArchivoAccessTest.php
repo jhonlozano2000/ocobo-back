@@ -7,7 +7,6 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoTransferencia;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\PermissionRegistrar;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;

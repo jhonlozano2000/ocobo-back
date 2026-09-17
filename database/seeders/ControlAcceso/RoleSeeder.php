@@ -14,13 +14,13 @@ class RoleSeeder extends Seeder
     {
         $this->command->info('* Creando roles');
 
-        Role::create(['name' => 'Administrador']);
-        Role::create(['name' => 'Radicador correspondencia recibida']);
-        Role::create(['name' => 'Radicador correspondencia enviada']);
-        Role::create(['name' => 'Radicador correspondencia interna']);
-        Role::create(['name' => 'Radicador PQRSF']);
-        Role::create(['name' => 'Digitalizador']);
-        Role::create(['name' => 'Mi espacion']);
+        Role::firstOrCreate(['name' => 'Administrador']);
+        Role::firstOrCreate(['name' => 'Radicador correspondencia recibida']);
+        Role::firstOrCreate(['name' => 'Radicador correspondencia enviada']);
+        Role::firstOrCreate(['name' => 'Radicador correspondencia interna']);
+        Role::firstOrCreate(['name' => 'Radicador PQRSF']);
+        Role::firstOrCreate(['name' => 'Digitalizador']);
+        Role::firstOrCreate(['name' => 'Mi espacion']);
 
         $this->command->info('✅ Roles creados exitosamente');
     }

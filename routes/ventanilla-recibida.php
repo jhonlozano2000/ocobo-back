@@ -17,14 +17,12 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
     Route::middleware('throttle:api')->group(function () use ($permReci) {
         Route::get('/radica-recibida/estadisticas', [VentanillaRadicaReciController::class, 'estadisticas'])->name('radica-recibida.estadisticas')->middleware('can:'.$permReci.'Listar');
         Route::get('/radica-recibida/estados', [VentanillaRadicaReciController::class, 'estadosDisponibles'])->name('radica-recibida.estados')->middleware('can:'.$permReci.'Listar');
-        Route::get('/radica-recibida/estados/{estadoId}/transiciones', [VentanillaRadicaReciController::class, 'transicionesEstado'])->name('radica-recibida.estados.transiciones')->middleware('can:'.$permReci.'Listar');
         Route::put('/radica-recibida/{id}/update-asunto', [VentanillaRadicaReciController::class, 'updateAsunto'])->name('radica-recibida.update-asunto')->middleware('can:'.$permReci.'Actualizar asunto');
         Route::put('/radica-recibida/{id}/update-fechas', [VentanillaRadicaReciController::class, 'updateFechas'])->name('radica-recibida.update-fechas')->middleware('can:'.$permReci.'Atualizar fechas de radicados');
         Route::put('/radica-recibida/{id}/update-clasificacion-documental', [VentanillaRadicaReciController::class, 'updateClasificacionDocumental'])->name('radica-recibida.update-clasificacion-documental')->middleware('can:'.$permReci.'Actualizar clasificacion de radicados');
         Route::post('/radica-recibida/{id}/notificacion', [VentanillaRadicaReciController::class, 'enviarNotificacion'])->name('radica-recibida.notificacion')->middleware('can:'.$permReci.'Notificar Email');
         Route::post('/radica-recibida/{id}/notificacion-tercero', [VentanillaRadicaReciController::class, 'enviarNotificacionTercero'])->name('radica-recibida.notificacion-tercero')->middleware('can:'.$permReci.'Notificar Email');
         Route::get('/radica-recibida/{id}/linea-tiempo', [VentanillaRadicaReciController::class, 'lineaTiempo'])->name('radica-recibida.linea-tiempo')->middleware('can:'.$permReci.'Mostrar');
-        Route::put('/radica-recibida/{id}/estado', [VentanillaRadicaReciController::class, 'cambiarEstado'])->name('radica-recibida.cambiar-estado')->middleware('can:'.$permReci.'Editar');
         Route::get('/radica-recibida/{id}/historial-estados', [VentanillaRadicaReciController::class, 'historialEstados'])->name('radica-recibida.historial-estados')->middleware('can:'.$permReci.'Mostrar');
         Route::get('/radica-recibida/mis-radicados', [VentanillaRadicaReciController::class, 'misRadicados'])->name('radica-recibida.mis-radicados')->middleware('can:'.$permReci.'Listar');
         Route::get('/radica-recibida/pendientes-anulacion', [VentanillaRadicaReciController::class, 'listarPendientesAnulacion'])->name('radica-recibida.pendientes-anulacion')->middleware('can:Jefe de Archivo');

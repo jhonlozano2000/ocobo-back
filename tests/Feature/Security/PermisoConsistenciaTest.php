@@ -18,7 +18,6 @@ use Database\Seeders\Permisos\PermisosPqrsSeeder;
 use Database\Seeders\Permisos\PermisosRadicarSeeder;
 use Database\Seeders\Permisos\PermisosReportesSeeder;
 use Database\Seeders\Permisos\PermisosWorkflowsSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;

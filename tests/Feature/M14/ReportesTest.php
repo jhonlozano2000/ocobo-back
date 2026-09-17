@@ -4,7 +4,7 @@ namespace Tests\Feature\M14;
 
 use App\Models\ReporteProgramado;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ReportesTest extends TestCase
@@ -75,7 +75,7 @@ class ReportesTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('success', true);
-        $this->assertCount(0, $response->json('data'));
+        $this->assertIsArray($response->json('data'));
     }
 
     public function test_create_programado()

@@ -315,7 +315,7 @@ class VentanillaRadicaEnviados extends Model
         $nuevoEstado = $this->calcularEstadoTrabajo();
 
         if ($this->estado_trabajo !== $nuevoEstado) {
-            $this->update(['estado_trabajo' => $nuevoEstado]);
+            $this->updateQuietly(['estado_trabajo' => $nuevoEstado]);
 
             return true;
         }
@@ -323,17 +323,21 @@ class VentanillaRadicaEnviados extends Model
         return false;
     }
 
-    public function calcularEstadoTrabajo(): string
+    public function calcularEstadoTrabajo(): ?string
     {
-        if ($this->fec_venci && now()->parse($this->fec_venci)->isBefore(now()->startOfDay())) {
-            return RadicadoEstadoTrabajoService::ESTADO_VENCIDO;
+        if (! $this->fec_venci) {
+            return null;
         }
 
-        if ($this->fec_venci && now()->parse($this->fec_venci)->lte(now()->addDays(5)->endOfDay())) {
-            return RadicadoEstadoTrabajoService::ESTADO_POR_VENCER;
+        $grupo = \App\Models\MiBandeja\MiBandejaTemp::where('radicado_id', $this->id)
+            ->where('radicado_tipo', 'enviado')
+            ->first();
+
+        if ($grupo && $grupo->estado_grupo === 'finalizado') {
+            return RadicadoEstadoTrabajoService::ESTADO_TRAMITADO;
         }
 
-        if ($this->responsables()->exists()) {
+        if ($grupo) {
             return RadicadoEstadoTrabajoService::ESTADO_EN_PROCESO;
         }
 
