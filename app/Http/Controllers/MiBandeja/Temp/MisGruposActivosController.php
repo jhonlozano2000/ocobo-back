@@ -106,7 +106,10 @@ class MisGruposActivosController extends Controller
 
                 // Full member lists
                 $revisores = $grupo->revisores->map(fn($r) => [
+                    'id' => $r->id,
+                    'user_id' => $r->user_id,
                     'user' => [
+                        'id' => $r->user?->id,
                         'nombres' => $r->user?->nombres,
                         'apellidos' => $r->user?->apellidos,
                     ],
@@ -115,7 +118,10 @@ class MisGruposActivosController extends Controller
                 ])->values();
 
                 $firmantes = $grupo->firmantes->map(fn($f) => [
+                    'id' => $f->id,
+                    'user_id' => $f->user_id,
                     'user' => [
+                        'id' => $f->user?->id,
                         'nombres' => $f->user?->nombres,
                         'apellidos' => $f->user?->apellidos,
                     ],
@@ -125,7 +131,10 @@ class MisGruposActivosController extends Controller
                 ])->values();
 
                 $proyectores = $grupo->proyectores->map(fn($p) => [
+                    'id' => $p->id,
+                    'user_id' => $p->user_id,
                     'user' => [
+                        'id' => $p->user?->id,
                         'nombres' => $p->user?->nombres,
                         'apellidos' => $p->user?->apellidos,
                     ],
@@ -134,7 +143,10 @@ class MisGruposActivosController extends Controller
                 ])->values();
 
                 $aprobadores = $grupo->aprobadores->map(fn($a) => [
+                    'id' => $a->id,
+                    'user_id' => $a->user_id,
                     'user' => [
+                        'id' => $a->user?->id,
                         'nombres' => $a->user?->nombres,
                         'apellidos' => $a->user?->apellidos,
                     ],
