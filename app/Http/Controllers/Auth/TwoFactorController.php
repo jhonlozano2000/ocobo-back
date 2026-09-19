@@ -54,7 +54,7 @@ class TwoFactorController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->two_factor_secret) {
+        if (! $user->two_factor_secret) {
             return $this->errorResponse('Primero debes generar el código QR.', null, 400);
         }
 
@@ -62,7 +62,7 @@ class TwoFactorController extends Controller
 
         $valid = $this->google2fa->verifyKey($user->two_factor_secret, $code);
 
-        if (!$valid) {
+        if (! $valid) {
             UsersAuthenticationLog::logEvent([
                 'user_id' => $user->id,
                 'event' => 'mfa_code_failed',
@@ -105,7 +105,7 @@ class TwoFactorController extends Controller
     {
         $user = $request->user();
 
-        if (!Hash::check($request->input('password'), $user->password)) {
+        if (! Hash::check($request->input('password'), $user->password)) {
             return $this->errorResponse('La contraseña no es correcta.', null, 422);
         }
 
@@ -134,12 +134,12 @@ class TwoFactorController extends Controller
 
         // Validar token
         $userId = TwoFactorToken::validate($token);
-        if (!$userId) {
+        if (! $userId) {
             return $this->errorResponse('El token ha expirado o no es válido. Inicia sesión de nuevo.', null, 401);
         }
 
         $user = User::find($userId);
-        if (!$user || !$user->twoFactorEnabled) {
+        if (! $user || ! $user->twoFactorEnabled) {
             return $this->errorResponse('Usuario no encontrado o 2FA no está activo.', null, 401);
         }
 
@@ -147,7 +147,7 @@ class TwoFactorController extends Controller
         $valid = $this->google2fa->verifyKey($user->two_factor_secret, $code, 1);
 
         // Si TOTP falla, probar recovery codes
-        if (!$valid) {
+        if (! $valid) {
             $recoveryCodes = $user->two_factor_recovery_codes;
             if ($recoveryCodes) {
                 foreach ($recoveryCodes as $index => $hashedCode) {
@@ -162,7 +162,7 @@ class TwoFactorController extends Controller
             }
         }
 
-        if (!$valid) {
+        if (! $valid) {
             UsersAuthenticationLog::logEvent([
                 'user_id' => $user->id,
                 'event' => 'mfa_code_failed',
@@ -176,6 +176,7 @@ class TwoFactorController extends Controller
         // Autenticar sesión
         Auth::login($user);
         $request->session()->regenerate();
+        $request->session()->put('auth_login_at', now()->timestamp);
 
         UsersAuthenticationLog::logEvent([
             'user_id' => $user->id,

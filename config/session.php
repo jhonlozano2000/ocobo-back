@@ -39,6 +39,10 @@ return [
 
     'expire_on_close' => false,
 
+    // Techo absoluto de sesión en segundos (12 horas por defecto).
+    // Previene sesiones infinitas por polling en segundo plano (ISO 27001 A.9.4.2).
+    'absolute_lifetime' => env('SESSION_ABSOLUTE_LIFETIME', 43200),
+
     /*
     |--------------------------------------------------------------------------
     | Session Encryption

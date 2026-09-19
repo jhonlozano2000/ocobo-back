@@ -6,18 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\AuthLoginRequest;
 use App\Http\Requests\Auth\AuthRegisterRequest;
 use App\Http\Resources\UserResource;
-use App\Services\Auth\TwoFactorToken;
 use App\Http\Traits\ApiResponseTrait;
+use App\Mail\PasswordResetMail;
+use App\Models\ControlAcceso\UsersSession;
 use App\Models\User;
 use App\Models\UsersAuthenticationLog;
+use App\Services\Auth\TwoFactorToken;
 use App\Services\Seguridad\AuditLogService;
-use App\Mail\PasswordResetMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class AuthController extends Controller
 {
@@ -47,6 +51,21 @@ class AuthController extends Controller
         // Sanitización de entrada para prevenir inyección
         $email = filter_var($credentials['email'], FILTER_SANITIZE_EMAIL);
 
+        // Claves de bloqueo temporal por fuerza bruta (ISO 27001 / OWASP)
+        $lockoutKey = 'login_lockout_'.sha1(strtolower($email));
+        $attemptsKey = 'login_attempts_'.sha1(strtolower($email));
+
+        if (Cache::has($lockoutKey)) {
+            $secondsRemaining = (int) Cache::get($lockoutKey) - now()->timestamp;
+            $minutesRemaining = max(1, (int) ceil($secondsRemaining / 60));
+
+            return $this->errorResponse(
+                "Cuenta bloqueada temporalmente por múltiples intentos fallidos. Intenta nuevamente en {$minutesRemaining} minuto(s).",
+                null,
+                429
+            );
+        }
+
         // Buscar usuario por email (case-insensitive)
         $user = User::where(function ($query) use ($email) {
             $query->where('email', $email)
@@ -71,8 +90,36 @@ class AuthController extends Controller
         if (! Hash::check($credentials['password'], $user->password)) {
             $this->logFailedLoginAttempt($user->id, $user->email, 'Credenciales incorrectas', $request);
 
+            // Incrementar contador de intentos fallidos con expiración de 15 minutos
+            $attempts = (int) Cache::get($attemptsKey, 0) + 1;
+            Cache::put($attemptsKey, $attempts, now()->addMinutes(15));
+
+            if ($attempts >= 5) {
+                // Bloquear la cuenta temporalmente por 15 minutos (900 segundos)
+                Cache::put($lockoutKey, now()->addMinutes(15)->timestamp, now()->addMinutes(15));
+                Cache::forget($attemptsKey);
+
+                UsersAuthenticationLog::logEvent([
+                    'user_id' => $user->id,
+                    'event' => 'account_locked',
+                    'success' => false,
+                    'email' => $user->email,
+                    'details' => 'Cuenta bloqueada temporalmente por 15 minutos tras 5 intentos fallidos consecutivos. IP: '.$request->ip(),
+                ]);
+
+                return $this->errorResponse(
+                    'Demasiados intentos fallidos. Tu cuenta ha sido bloqueada temporalmente por 15 minutos por seguridad.',
+                    null,
+                    429
+                );
+            }
+
             return $this->errorResponse('Las credenciales proporcionadas son incorrectas.', null, 401);
         }
+
+        // Limpiar contadores de intentos fallidos tras autenticación exitosa
+        Cache::forget($attemptsKey);
+        Cache::forget($lockoutKey);
 
         // Si el usuario tiene 2FA activo, NO crear sesión aún
         if ($user->twoFactorEnabled) {
@@ -84,12 +131,31 @@ class AuthController extends Controller
             ], 'Se requiere verificación de dos factores');
         }
 
+        // Detectar sesión concurrente previa desde otra IP / dispositivo (ISO 27001 A.9.4.2)
+        $sesionPrevia = UsersSession::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->where('ip_address', '!=', $request->ip())
+            ->first();
+
+        if ($sesionPrevia) {
+            UsersAuthenticationLog::logEvent([
+                'user_id' => $user->id,
+                'event' => 'concurrent_session_detected',
+                'success' => true,
+                'email' => $user->email,
+                'details' => "Nueva sesión iniciada desde IP {$request->ip()} mientras existía sesión activa previa desde IP {$sesionPrevia->ip_address}",
+            ]);
+        }
+
         // Autenticar al usuario (esto establecerá la sesión)
         Auth::login($user, $remember);
 
         // REGENERAR SESIÓN - Prevención Session Fixation (ISO 27001)
         // Cada login genera un nuevo ID de sesión
         $request->session()->regenerate();
+
+        // Registrar timestamp de inicio de sesión para Techo Máximo Absoluto (ISO 27001 A.9.4.2)
+        $request->session()->put('auth_login_at', now()->timestamp);
 
         // Registrar login exitoso
         $this->logSuccessfulLogin($user, $request);
@@ -252,14 +318,19 @@ class AuthController extends Controller
             $user = User::where('email', $request->email)->first();
             $token = Password::getRepository()->create($user);
 
-            $resetUrl = url("/es/reset-password?token={$token}&email=" . urlencode($request->email));
+            $resetUrl = url("/es/reset-password?token={$token}&email=".urlencode($request->email));
 
-            $resetUrl = url("/es/reset-password?token={$token}&email=" . urlencode($request->email));
+            $resetUrl = url("/es/reset-password?token={$token}&email=".urlencode($request->email));
 
             Mail::to($request->email)->send(new PasswordResetMail($resetUrl));
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al enviar el correo. Intenta de nuevo más tarde.', null, 500);
         }
 

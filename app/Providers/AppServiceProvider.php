@@ -8,20 +8,20 @@ use App\Contracts\Services\ConfigListaServiceInterface;
 use App\Contracts\Services\RoleServiceInterface;
 use App\Contracts\Services\TRDServiceInterface;
 use App\Contracts\Services\UserServiceInterface;
+use App\Models\MiBandeja\MiBandejaTemp;
+use App\Models\MiBandeja\MiBandejaTempArchivoVersion;
+use App\Models\MiBandeja\MiBandejaTempGrupoAprobador;
+use App\Models\MiBandeja\MiBandejaTempGrupoFirmante;
+use App\Models\MiBandeja\MiBandejaTempGrupoProyector;
+use App\Models\MiBandeja\MiBandejaTempGrupoRevisor;
+use App\Models\MiBandeja\MiBandejaTempNota;
+use App\Observers\MiBandeja\GrupoColaborativoAuditObserver;
 use App\Services\Calidad\CalidadOrganigramaService;
 use App\Services\ClasificacionDocumental\TRDService;
 use App\Services\Configuracion\ConfigDiviPoliService;
 use App\Services\Configuracion\ConfigListaService;
 use App\Services\ControlAcceso\RoleService;
 use App\Services\ControlAcceso\UserService;
-use App\Models\MiBandeja\MiBandejaTemp;
-use App\Models\MiBandeja\MiBandejaTempArchivoVersion;
-use App\Models\MiBandeja\MiBandejaTempGrupoFirmante;
-use App\Models\MiBandeja\MiBandejaTempGrupoProyector;
-use App\Models\MiBandeja\MiBandejaTempGrupoRevisor;
-use App\Models\MiBandeja\MiBandejaTempGrupoAprobador;
-use App\Models\MiBandeja\MiBandejaTempNota;
-use App\Observers\MiBandeja\GrupoColaborativoAuditObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
@@ -76,20 +76,34 @@ class AppServiceProvider extends ServiceProvider
                 });
         });
 
-        // Rate limit autenticación: 5 intentos/min por email+IP (Brute Force Protection)
+        // Rate limit autenticación: doble capa contra fuerza bruta y password spraying (ISO 27001 / OWASP)
         RateLimiter::for('login', function (Request $request) {
-            $email = $request->input('email', 'unknown');
+            $email = (string) $request->input('email', 'unknown');
             $ip = $request->ip();
-            $loginId = $email . '|' . $ip;
 
-            return Limit::perMinute(5)
-                ->by($loginId)
-                ->response(function (Request $request, array $headers) {
-                    return response()->json([
-                        'message' => 'Demasiados intentos de inicio de sesión. Intente en 1 minuto.',
-                        'retry_after' => $headers['Retry-After'] ?? 60,
-                    ], 429);
-                });
+            return [
+                // Capa 1: 5 intentos/minuto por combinación email + IP (fuerza bruta dirigida)
+                Limit::perMinute(5)
+                    ->by($email.'|'.$ip)
+                    ->response(function (Request $request, array $headers) {
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'Demasiados intentos de inicio de sesión para esta cuenta. Intente en 1 minuto.',
+                            'retry_after' => $headers['Retry-After'] ?? 60,
+                        ], 429);
+                    }),
+
+                // Capa 2: 20 intentos/minuto globales por IP (mitigación contra password spraying)
+                Limit::perMinute(20)
+                    ->by($ip)
+                    ->response(function (Request $request, array $headers) {
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'Demasiados intentos de inicio de sesión desde esta dirección IP. Intente en 1 minuto.',
+                            'retry_after' => $headers['Retry-After'] ?? 60,
+                        ], 429);
+                    }),
+            ];
         });
 
         // Rate limit registro: 3 registros/min por IP
@@ -221,7 +235,7 @@ class AppServiceProvider extends ServiceProvider
         // Rate limit forgot/reset password: 3 intentos/min por IP+email
         RateLimiter::for('forgot-password', function (Request $request) {
             return Limit::perMinute(3)
-                ->by('forgot-password:' . md5($request->ip() . '|' . ($request->email ?? '')))
+                ->by('forgot-password:'.md5($request->ip().'|'.($request->email ?? '')))
                 ->response(function () {
                     return response()->json([
                         'message' => 'Demasiadas solicitudes. Intenta de nuevo en 1 minuto.',
