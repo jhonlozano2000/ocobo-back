@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers\MiBandeja\Temp;
 
+use App\Events\NotificationPushed;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
 use App\Http\Requests\MiBandeja\StoreGrupoAprobadorRequest;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempGrupoAprobador;
 use App\Models\Notificacion;
-use App\Events\NotificationPushed;
 use Illuminate\Http\Request;
-
-use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class MiBandejaTempGrupoAprobadorController extends Controller
 {
@@ -38,8 +38,13 @@ class MiBandejaTempGrupoAprobadorController extends Controller
 
             return $this->successResponse($aprobadores, 'Aprobadores del grupo');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener aprobadores', $e->getMessage(), 500);
         }
     }
@@ -70,7 +75,7 @@ class MiBandejaTempGrupoAprobadorController extends Controller
                 'user_id' => $request->user_id,
                 'type' => 'asignacion_responsable',
                 'title' => 'Aprobador asignado en grupo colaborativo',
-                'message' => 'Se le ha asignado como aprobador del grupo "' . $grupo->nombre . '".',
+                'message' => 'Se le ha asignado como aprobador del grupo "'.$grupo->nombre.'".',
                 'notifiable_type' => 'App\Models\MiBandeja\MiBandejaTemp',
                 'notifiable_id' => $grupoId,
                 'data' => [
@@ -79,12 +84,21 @@ class MiBandejaTempGrupoAprobadorController extends Controller
                     'asignado_por' => auth()->id(),
                 ],
             ]);
-            event(new NotificationPushed($notificacion));
+            try {
+                event(new NotificationPushed($notificacion));
+            } catch (\Throwable $e) {
+                \Log::warning('Broadcast NotificationPushed falló en aprobador: '.$e->getMessage());
+            }
 
             return $this->successResponse($aprobador, 'Aprobador agregado exitosamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al agregar aprobador', $e->getMessage(), 500);
         }
     }
@@ -104,8 +118,13 @@ class MiBandejaTempGrupoAprobadorController extends Controller
 
             return $this->successResponse($aprobador, 'Aprobador actualizado');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al actualizar aprobador', $e->getMessage(), 500);
         }
     }
@@ -123,8 +142,13 @@ class MiBandejaTempGrupoAprobadorController extends Controller
 
             return $this->successResponse(null, 'Aprobador eliminado');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al eliminar aprobador', $e->getMessage(), 500);
         }
     }
@@ -146,8 +170,13 @@ class MiBandejaTempGrupoAprobadorController extends Controller
 
             return $this->successResponse($aprobador, 'Aprobador marcado como terminado');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al marcar como terminado', $e->getMessage(), 500);
         }
     }

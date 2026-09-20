@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\MiBandeja\Temp;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\MiBandejaTemp;
+use App\Services\MiBandeja\GrupoColaborativoService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class MisGruposActivosController extends Controller
 {
@@ -37,10 +41,10 @@ class MisGruposActivosController extends Controller
             ])
                 ->where('estado_grupo', 'activo')
                 ->where(function ($q) use ($user) {
-                    $q->whereHas('revisores', fn($q) => $q->where('user_id', $user->id))
-                        ->orWhereHas('firmantes', fn($q) => $q->where('user_id', $user->id))
-                        ->orWhereHas('proyectores', fn($q) => $q->where('user_id', $user->id))
-                        ->orWhereHas('aprobadores', fn($q) => $q->where('user_id', $user->id));
+                    $q->whereHas('revisores', fn ($q) => $q->where('user_id', $user->id))
+                        ->orWhereHas('firmantes', fn ($q) => $q->where('user_id', $user->id))
+                        ->orWhereHas('proyectores', fn ($q) => $q->where('user_id', $user->id))
+                        ->orWhereHas('aprobadores', fn ($q) => $q->where('user_id', $user->id));
                 })
                 ->orderBy('updated_at', 'desc')
                 ->get();
@@ -105,7 +109,7 @@ class MisGruposActivosController extends Controller
                 }
 
                 // Full member lists
-                $revisores = $grupo->revisores->map(fn($r) => [
+                $revisores = $grupo->revisores->map(fn ($r) => [
                     'id' => $r->id,
                     'user_id' => $r->user_id,
                     'user' => [
@@ -117,7 +121,7 @@ class MisGruposActivosController extends Controller
                     'descargo_plantilla' => (bool) $r->descargo_plantilla,
                 ])->values();
 
-                $firmantes = $grupo->firmantes->map(fn($f) => [
+                $firmantes = $grupo->firmantes->map(fn ($f) => [
                     'id' => $f->id,
                     'user_id' => $f->user_id,
                     'user' => [
@@ -130,7 +134,7 @@ class MisGruposActivosController extends Controller
                     'orden_firma' => $f->orden_firma,
                 ])->values();
 
-                $proyectores = $grupo->proyectores->map(fn($p) => [
+                $proyectores = $grupo->proyectores->map(fn ($p) => [
                     'id' => $p->id,
                     'user_id' => $p->user_id,
                     'user' => [
@@ -142,7 +146,7 @@ class MisGruposActivosController extends Controller
                     'descargo_plantilla' => (bool) $p->descargo_plantilla,
                 ])->values();
 
-                $aprobadores = $grupo->aprobadores->map(fn($a) => [
+                $aprobadores = $grupo->aprobadores->map(fn ($a) => [
                     'id' => $a->id,
                     'user_id' => $a->user_id,
                     'user' => [
@@ -177,17 +181,23 @@ class MisGruposActivosController extends Controller
 
             return $this->successResponse($data, 'Grupos activos del usuario');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener grupos activos', $e->getMessage(), 500);
         }
     }
 
     /**
      * Liberar el bloqueo de un documento en un grupo colaborativo.
-     * @param Request $request
-     * @param int $id
-     * @return \Illuminate\Http\JsonResponse
+     *
+     * @param  int  $id
+     * @return JsonResponse
+     *
      * @Author: Jhon Javer Lozano Arce
      */
     public function liberarBloqueo(Request $request, $id)
@@ -196,17 +206,22 @@ class MisGruposActivosController extends Controller
             $user = $request->user();
             $grupo = $this->autorizarGrupo($id);
 
-            if (!$grupo) {
+            if (! $grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
             }
 
-            $service = app(\App\Services\MiBandeja\GrupoColaborativoService::class);
+            $service = app(GrupoColaborativoService::class);
             $service->liberarBloqueo($grupo, $user);
 
             return $this->successResponse(null, 'Documento liberado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al liberar documento', $e->getMessage(), 500);
         }
     }

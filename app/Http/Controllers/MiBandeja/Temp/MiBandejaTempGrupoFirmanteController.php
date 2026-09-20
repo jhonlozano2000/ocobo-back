@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers\MiBandeja\Temp;
 
+use App\Events\NotificationPushed;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
 use App\Http\Requests\MiBandeja\StoreGrupoFirmanteRequest;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempGrupoFirmante;
 use App\Models\Notificacion;
-use App\Events\NotificationPushed;
-use Illuminate\Http\Request;
-
 /**
  * Controlador para gestionar firmantes de grupos colaborativos temporales.
  * Permite agregar, actualizar, eliminar, marcar como terminado y firmar documentos.
  */
-use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class MiBandejaTempGrupoFirmanteController extends Controller
 {
@@ -36,8 +37,8 @@ class MiBandejaTempGrupoFirmanteController extends Controller
     /**
      * Lista los firmantes de un grupo colaborativo temporal.
      *
-     * @param int $grupoId Identificador del grupo
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con los firmantes del grupo
+     * @param  int  $grupoId  Identificador del grupo
+     * @return JsonResponse Respuesta JSON con los firmantes del grupo
      */
     public function index($grupoId)
     {
@@ -52,8 +53,13 @@ class MiBandejaTempGrupoFirmanteController extends Controller
 
             return $this->successResponse($firmantes, 'Firmantes del grupo');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener firmantes', $e->getMessage(), 500);
         }
     }
@@ -61,11 +67,11 @@ class MiBandejaTempGrupoFirmanteController extends Controller
     /**
      * Agrega un nuevo firmante a un grupo colaborativo temporal.
      *
-     * @param \App\Http\Requests\MiBandeja\StoreGrupoFirmanteRequest $request Solicitud HTTP con datos del firmante
-     * @param int $grupoId Identificador del grupo
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el firmante creado
+     * @param  StoreGrupoFirmanteRequest  $request  Solicitud HTTP con datos del firmante
+     * @param  int  $grupoId  Identificador del grupo
+     * @return JsonResponse Respuesta JSON con el firmante creado
      */
-    public function store(\App\Http\Requests\MiBandeja\StoreGrupoFirmanteRequest $request, $grupoId)
+    public function store(StoreGrupoFirmanteRequest $request, $grupoId)
     {
         try {
             $grupo = $this->autorizarGrupo($grupoId);
@@ -78,7 +84,7 @@ class MiBandejaTempGrupoFirmanteController extends Controller
                 return $this->errorResponse('El usuario ya es firmante en este grupo', null, 422);
             }
 
-            $firmante = \App\Models\MiBandeja\MiBandejaTempGrupoFirmante::create([
+            $firmante = MiBandejaTempGrupoFirmante::create([
                 'grupo_id' => $grupoId,
                 'user_id' => $request->user_id,
                 'cargo_id' => $request->cargo_id,
@@ -92,7 +98,7 @@ class MiBandejaTempGrupoFirmanteController extends Controller
                 'user_id' => $request->user_id,
                 'type' => 'asignacion_firmante',
                 'title' => 'Firmante asignado en grupo colaborativo',
-                'message' => 'Se le ha asignado como firmante del grupo "' . $grupo->nombre . '".',
+                'message' => 'Se le ha asignado como firmante del grupo "'.$grupo->nombre.'".',
                 'notifiable_type' => 'App\Models\MiBandeja\MiBandejaTemp',
                 'notifiable_id' => $grupoId,
                 'data' => [
@@ -101,12 +107,21 @@ class MiBandejaTempGrupoFirmanteController extends Controller
                     'asignado_por' => auth()->id(),
                 ],
             ]);
-            event(new NotificationPushed($notificacion));
+            try {
+                event(new NotificationPushed($notificacion));
+            } catch (\Throwable $e) {
+                \Log::warning('Broadcast NotificationPushed falló en firmante: '.$e->getMessage());
+            }
 
             return $this->successResponse($firmante, 'Firmante agregado exitosamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al agregar firmante', $e->getMessage(), 500);
         }
     }
@@ -114,15 +129,15 @@ class MiBandejaTempGrupoFirmanteController extends Controller
     /**
      * Actualiza un firmante existente en un grupo colaborativo temporal.
      *
-     * @param Request $request Solicitud HTTP con datos a actualizar
-     * @param int $grupoId Identificador del grupo
-     * @param int $id Identificador del firmante
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el firmante actualizado
+     * @param  Request  $request  Solicitud HTTP con datos a actualizar
+     * @param  int  $grupoId  Identificador del grupo
+     * @param  int  $id  Identificador del firmante
+     * @return JsonResponse Respuesta JSON con el firmante actualizado
      */
     public function update(Request $request, $grupoId, $id)
     {
         try {
-            $firmante = \App\Models\MiBandeja\MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->find($id);
+            $firmante = MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->find($id);
 
             if (! $firmante) {
                 return $this->errorResponse('Firmante no encontrado', null, 404);
@@ -134,8 +149,13 @@ class MiBandejaTempGrupoFirmanteController extends Controller
 
             return $this->successResponse($firmante, 'Firmante actualizado');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al actualizar firmante', $e->getMessage(), 500);
         }
     }
@@ -143,14 +163,14 @@ class MiBandejaTempGrupoFirmanteController extends Controller
     /**
      * Elimina un firmante de un grupo colaborativo temporal.
      *
-     * @param int $grupoId Identificador del grupo
-     * @param int $id Identificador del firmante a eliminar
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con resultado de la operación
+     * @param  int  $grupoId  Identificador del grupo
+     * @param  int  $id  Identificador del firmante a eliminar
+     * @return JsonResponse Respuesta JSON con resultado de la operación
      */
     public function destroy($grupoId, $id)
     {
         try {
-            $firmante = \App\Models\MiBandeja\MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->find($id);
+            $firmante = MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->find($id);
 
             if (! $firmante) {
                 return $this->errorResponse('Firmante no encontrado', null, 404);
@@ -160,8 +180,13 @@ class MiBandejaTempGrupoFirmanteController extends Controller
 
             return $this->successResponse(null, 'Firmante eliminado');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al eliminar firmante', $e->getMessage(), 500);
         }
     }
@@ -169,14 +194,14 @@ class MiBandejaTempGrupoFirmanteController extends Controller
     /**
      * Marca un firmante como terminado en un grupo colaborativo temporal.
      *
-     * @param int $grupoId Identificador del grupo
-     * @param int $id Identificador del firmante a marcar como terminado
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el firmante actualizado
+     * @param  int  $grupoId  Identificador del grupo
+     * @param  int  $id  Identificador del firmante a marcar como terminado
+     * @return JsonResponse Respuesta JSON con el firmante actualizado
      */
     public function marcarTerminado($grupoId, $id)
     {
         try {
-            $firmante = \App\Models\MiBandeja\MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->find($id);
+            $firmante = MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->find($id);
 
             if (! $firmante) {
                 return $this->errorResponse('Firmante no encontrado', null, 404);
@@ -190,8 +215,13 @@ class MiBandejaTempGrupoFirmanteController extends Controller
 
             return $this->successResponse($firmante, 'Firmante marcado como terminado');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al marcar como terminado', $e->getMessage(), 500);
         }
     }
@@ -199,14 +229,14 @@ class MiBandejaTempGrupoFirmanteController extends Controller
     /**
      * Registra la firma de un firmante en un grupo colaborativo temporal.
      *
-     * @param int $grupoId Identificador del grupo
-     * @param int $id Identificador del firmante
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el firmante actualizado
+     * @param  int  $grupoId  Identificador del grupo
+     * @param  int  $id  Identificador del firmante
+     * @return JsonResponse Respuesta JSON con el firmante actualizado
      */
     public function firmar($grupoId, $id)
     {
         try {
-            $firmante = \App\Models\MiBandeja\MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->find($id);
+            $firmante = MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->find($id);
 
             if (! $firmante) {
                 return $this->errorResponse('Firmante no encontrado', null, 404);
@@ -218,8 +248,13 @@ class MiBandejaTempGrupoFirmanteController extends Controller
 
             return $this->successResponse($firmante, 'Firma registrada');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al registrar firma', $e->getMessage(), 500);
         }
     }

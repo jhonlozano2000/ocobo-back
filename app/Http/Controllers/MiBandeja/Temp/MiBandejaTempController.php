@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MiBandeja\Temp;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
 use App\Http\Requests\MiBandeja\CheckInRequest;
 use App\Http\Requests\MiBandeja\StoreMiBandejaTempRequest;
 use App\Http\Requests\MiBandeja\UpdateMiBandejaTempRequest;
@@ -10,10 +11,12 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Rules\MagicMime;
 use App\Services\MiBandeja\GrupoColaborativoService;
+use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
  * Controlador para gestionar grupos colaborativos temporales en Mi Bandeja.
@@ -39,8 +42,8 @@ class MiBandejaTempController extends Controller
     /**
      * Lista grupos colaborativos temporales del usuario autenticado.
      *
-     * @param Request $request Solicitud HTTP con parámetros de búsqueda y filtro
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con los grupos encontrados
+     * @param  Request  $request  Solicitud HTTP con parámetros de búsqueda y filtro
+     * @return JsonResponse Respuesta JSON con los grupos encontrados
      */
     public function index(Request $request)
     {
@@ -58,27 +61,27 @@ class MiBandejaTempController extends Controller
             ])
             // Visibilidad: creador O cualquier miembro. Agrupado para que los
             // orWhere no rompan los filtros de búsqueda/estado.
-            ->where(function ($q) use ($userId) {
-                $q->where('usua_crea_id', $userId)
-                    ->orWhereHas('revisores', function ($sq) use ($userId) {
-                        $sq->where('user_id', $userId);
-                    })
-                    ->orWhereHas('firmantes', function ($sq) use ($userId) {
-                        $sq->where('user_id', $userId);
-                    })
-                    ->orWhereHas('proyectores', function ($sq) use ($userId) {
-                        $sq->where('user_id', $userId);
-                    })
-                    ->orWhereHas('aprobadores', function ($sq) use ($userId) {
-                        $sq->where('user_id', $userId);
-                    });
-            })
-            ->orderBy('created_at', 'desc');
+                ->where(function ($q) use ($userId) {
+                    $q->where('usua_crea_id', $userId)
+                        ->orWhereHas('revisores', function ($sq) use ($userId) {
+                            $sq->where('user_id', $userId);
+                        })
+                        ->orWhereHas('firmantes', function ($sq) use ($userId) {
+                            $sq->where('user_id', $userId);
+                        })
+                        ->orWhereHas('proyectores', function ($sq) use ($userId) {
+                            $sq->where('user_id', $userId);
+                        })
+                        ->orWhereHas('aprobadores', function ($sq) use ($userId) {
+                            $sq->where('user_id', $userId);
+                        });
+                })
+                ->orderBy('created_at', 'desc');
 
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('nombre', 'like', "%{$search}%")
-                      ->orWhere('asunto', 'like', "%{$search}%");
+                        ->orWhere('asunto', 'like', "%{$search}%");
                 });
             }
 
@@ -90,8 +93,13 @@ class MiBandejaTempController extends Controller
 
             return $this->successResponse($grupos, 'Grupos colaborativos obtenidos');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener grupos', $e->getMessage(), 500);
         }
     }
@@ -99,8 +107,8 @@ class MiBandejaTempController extends Controller
     /**
      * Crea un nuevo grupo colaborativo temporal.
      *
-     * @param StoreMiBandejaTempRequest $request Solicitud HTTP con datos validados del grupo
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el grupo creado
+     * @param  StoreMiBandejaTempRequest  $request  Solicitud HTTP con datos validados del grupo
+     * @return JsonResponse Respuesta JSON con el grupo creado
      */
     public function store(StoreMiBandejaTempRequest $request)
     {
@@ -115,7 +123,7 @@ class MiBandejaTempController extends Controller
             // Actualizar estado del radicado a EN_PROCESO si tiene fecha de vencimiento
             $radicado = $grupo->radicado;
             if ($radicado && $radicado->fec_venci) {
-                $radicado->updateQuietly(['estado_trabajo' => \App\Services\VentanillaUnica\RadicadoEstadoTrabajoService::ESTADO_EN_PROCESO]);
+                $radicado->updateQuietly(['estado_trabajo' => RadicadoEstadoTrabajoService::ESTADO_EN_PROCESO]);
             }
 
             return $this->successResponse(
@@ -124,8 +132,13 @@ class MiBandejaTempController extends Controller
                 201
             );
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al crear grupo', $e->getMessage(), 500);
         }
     }
@@ -133,8 +146,8 @@ class MiBandejaTempController extends Controller
     /**
      * Muestra el detalle de un grupo colaborativo temporal específico.
      *
-     * @param int $id Identificador del grupo
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el grupo encontrado
+     * @param  int  $id  Identificador del grupo
+     * @return JsonResponse Respuesta JSON con el grupo encontrado
      */
     public function show($id)
     {
@@ -152,8 +165,13 @@ class MiBandejaTempController extends Controller
 
             return $this->successResponse($grupo, 'Detalle del grupo');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener grupo', $e->getMessage(), 500);
         }
     }
@@ -161,9 +179,9 @@ class MiBandejaTempController extends Controller
     /**
      * Actualiza un grupo colaborativo temporal existente.
      *
-     * @param UpdateMiBandejaTempRequest $request Solicitud HTTP con datos actualizados
-     * @param int $id Identificador del grupo a actualizar
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el grupo actualizado
+     * @param  UpdateMiBandejaTempRequest  $request  Solicitud HTTP con datos actualizados
+     * @param  int  $id  Identificador del grupo a actualizar
+     * @return JsonResponse Respuesta JSON con el grupo actualizado
      */
     public function update(UpdateMiBandejaTempRequest $request, $id)
     {
@@ -177,8 +195,13 @@ class MiBandejaTempController extends Controller
                 'Grupo actualizado exitosamente'
             );
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al actualizar grupo', $e->getMessage(), 500);
         }
     }
@@ -186,8 +209,8 @@ class MiBandejaTempController extends Controller
     /**
      * Elimina un grupo colaborativo temporal (solo si no está activo).
      *
-     * @param int $id Identificador del grupo a eliminar
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con resultado de la operación
+     * @param  int  $id  Identificador del grupo a eliminar
+     * @return JsonResponse Respuesta JSON con resultado de la operación
      */
     public function destroy($id)
     {
@@ -202,8 +225,13 @@ class MiBandejaTempController extends Controller
 
             return $this->successResponse(null, 'Grupo eliminado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al eliminar grupo', $e->getMessage(), 500);
         }
     }
@@ -226,8 +254,13 @@ class MiBandejaTempController extends Controller
         } catch (\RuntimeException $e) {
             return $this->errorResponse($e->getMessage(), null, 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al descargar documento', $e->getMessage(), 500);
         }
     }
@@ -253,8 +286,13 @@ class MiBandejaTempController extends Controller
         } catch (\RuntimeException $e) {
             return $this->errorResponse($e->getMessage(), null, 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al subir documento', $e->getMessage(), 500);
         }
     }
@@ -290,8 +328,13 @@ class MiBandejaTempController extends Controller
 
             return $this->successResponse($version, 'Documento subido exitosamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al subir documento', $e->getMessage(), 500);
         }
     }
@@ -300,8 +343,8 @@ class MiBandejaTempController extends Controller
      * Envía un grupo colaborativo temporal a trámite.
      * Verifica que todos los miembros hayan terminado su trabajo.
      *
-     * @param int $id Identificador del grupo a enviar a trámite
-     * @return \Illuminate\Http\JsonResponse Respuesta JSON con el grupo actualizado
+     * @param  int  $id  Identificador del grupo a enviar a trámite
+     * @return JsonResponse Respuesta JSON con el grupo actualizado
      */
     public function enviarTramite(Request $request, $id)
     {
@@ -309,7 +352,7 @@ class MiBandejaTempController extends Controller
 
         try {
             $grupo->load([
-                'revisores', 'firmantes', 'proyectores', 'aprobadores', 'adjuntos'
+                'revisores', 'firmantes', 'proyectores', 'aprobadores', 'adjuntos',
             ]);
 
             $grupoActualizado = $this->grupoService->enviarTramite(
@@ -321,8 +364,13 @@ class MiBandejaTempController extends Controller
         } catch (\RuntimeException $e) {
             return $this->errorResponse($e->getMessage(), null, 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al enviar a trámite', $e->getMessage(), 500);
         }
     }
@@ -341,8 +389,13 @@ class MiBandejaTempController extends Controller
         } catch (\RuntimeException $e) {
             return $this->errorResponse($e->getMessage(), null, 403);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al anular grupo', $e->getMessage(), 500);
         }
     }
@@ -370,8 +423,13 @@ class MiBandejaTempController extends Controller
         } catch (\RuntimeException $e) {
             return $this->errorResponse($e->getMessage(), null, 403);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al marcar como terminado', $e->getMessage(), 500);
         }
     }
