@@ -225,4 +225,109 @@ class MisGruposActivosController extends Controller
             return $this->errorResponse('Error al liberar documento', $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Obtener estadísticas de grupos colaborativos para el usuario autenticado.
+     *
+     * @return JsonResponse
+     *
+     * @Author: Jhon Javer Lozano Arce
+     */
+    public function estadisticas(Request $request)
+    {
+        try {
+            $user = Auth::user();
+
+            $grupos = MiBandejaTemp::with([
+                'revisores',
+                'firmantes',
+                'proyectores',
+                'aprobadores',
+            ])
+                ->where('estado_grupo', 'activo')
+                ->where(function ($q) use ($user) {
+                    $q->whereHas('revisores', fn ($q) => $q->where('user_id', $user->id))
+                        ->orWhereHas('firmantes', fn ($q) => $q->where('user_id', $user->id))
+                        ->orWhereHas('proyectores', fn ($q) => $q->where('user_id', $user->id))
+                        ->orWhereHas('aprobadores', fn ($q) => $q->where('user_id', $user->id));
+                })
+                ->get();
+
+            $totalGrupos = $grupos->count();
+            $pendientesMiAccion = 0;
+            $misTareasCumplidas = 0;
+            $pendientesOtrosFuncionarios = 0;
+
+            $desgloseOtrosPendientes = [
+                'proyectores' => 0,
+                'revisores' => 0,
+                'firmantes' => 0,
+                'aprobadores' => 0,
+            ];
+
+            foreach ($grupos as $grupo) {
+                // Determinar el estado de tarea del usuario actual en este grupo
+                $miembro = $grupo->revisores->firstWhere('user_id', $user->id)
+                    ?? $grupo->firmantes->firstWhere('user_id', $user->id)
+                    ?? $grupo->proyectores->firstWhere('user_id', $user->id)
+                    ?? $grupo->aprobadores->firstWhere('user_id', $user->id);
+
+                $miEstadoTarea = $miembro?->estado_tarea ?? 'pendiente';
+
+                if ($miEstadoTarea === 'cumplido') {
+                    $misTareasCumplidas++;
+                } else {
+                    $pendientesMiAccion++;
+                }
+
+                // Contabilizar asignaciones pendientes de OTROS funcionarios en los grupos donde participa el usuario
+                foreach ($grupo->proyectores as $p) {
+                    if ($p->user_id !== $user->id && ($p->estado_tarea ?? 'pendiente') === 'pendiente') {
+                        $pendientesOtrosFuncionarios++;
+                        $desgloseOtrosPendientes['proyectores']++;
+                    }
+                }
+
+                foreach ($grupo->revisores as $r) {
+                    if ($r->user_id !== $user->id && ($r->estado_tarea ?? 'pendiente') === 'pendiente') {
+                        $pendientesOtrosFuncionarios++;
+                        $desgloseOtrosPendientes['revisores']++;
+                    }
+                }
+
+                foreach ($grupo->firmantes as $f) {
+                    if ($f->user_id !== $user->id && ($f->estado_tarea ?? 'pendiente') === 'pendiente') {
+                        $pendientesOtrosFuncionarios++;
+                        $desgloseOtrosPendientes['firmantes']++;
+                    }
+                }
+
+                foreach ($grupo->aprobadores as $a) {
+                    if ($a->user_id !== $user->id && ($a->estado_tarea ?? 'pendiente') === 'pendiente') {
+                        $pendientesOtrosFuncionarios++;
+                        $desgloseOtrosPendientes['aprobadores']++;
+                    }
+                }
+            }
+
+            $estadisticas = [
+                'total_grupos' => $totalGrupos,
+                'pendientes_mi_accion' => $pendientesMiAccion,
+                'mis_tareas_cumplidas' => $misTareasCumplidas,
+                'pendientes_otros_funcionarios' => $pendientesOtrosFuncionarios,
+                'desglose_otros_pendientes' => $desgloseOtrosPendientes,
+            ];
+
+            return $this->successResponse($estadisticas, 'Estadísticas de grupos colaborativos');
+        } catch (\Exception $e) {
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
+            return $this->errorResponse('Error al calcular estadísticas', $e->getMessage(), 500);
+        }
+    }
 }

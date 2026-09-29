@@ -1,11 +1,11 @@
 <?php
 
 use App\Http\Controllers\MiBandeja\Temp\MiBandejaTempController;
-use App\Http\Controllers\MiBandeja\Temp\MiBandejaTempGrupoRevisorController;
+use App\Http\Controllers\MiBandeja\Temp\MiBandejaTempGrupoAdjuntoController;
 use App\Http\Controllers\MiBandeja\Temp\MiBandejaTempGrupoAprobadorController;
 use App\Http\Controllers\MiBandeja\Temp\MiBandejaTempGrupoFirmanteController;
 use App\Http\Controllers\MiBandeja\Temp\MiBandejaTempGrupoProyectorController;
-use App\Http\Controllers\MiBandeja\Temp\MiBandejaTempGrupoAdjuntoController;
+use App\Http\Controllers\MiBandeja\Temp\MiBandejaTempGrupoRevisorController;
 use App\Http\Controllers\MiBandeja\Temp\MiBandejaTempNotaController;
 use App\Http\Controllers\MiBandeja\Temp\MiBandejaTempVersionController;
 use App\Http\Controllers\MiBandeja\Temp\MisGruposActivosController;
@@ -14,9 +14,13 @@ use Illuminate\Support\Facades\Route;
 $permMiBandeja = 'Mi Bandeja - Grupos Colaborativos -> ';
 
 Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('grupos-colaborativos')->name('mi-bandeja.temp.grupos.')->group(function () use ($permMiBandeja) {
-    // mis-grupos-activos FIRST (before parameterized routes)
+    // mis-grupos-activos and mis-estadisticas FIRST (before parameterized routes)
     Route::get('/mis-grupos-activos', [MisGruposActivosController::class, 'index'])
         ->name('mis-grupos-activos')
+        ->middleware('can:'.$permMiBandeja.'Ver');
+
+    Route::get('/mis-estadisticas', [MisGruposActivosController::class, 'estadisticas'])
+        ->name('mis-estadisticas')
         ->middleware('can:'.$permMiBandeja.'Ver');
 
     // Grupo principal

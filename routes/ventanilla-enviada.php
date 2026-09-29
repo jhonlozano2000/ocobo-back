@@ -4,6 +4,7 @@ use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosAdjunt
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosController;
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosDigitalController;
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosFirmantesController;
+use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosPendientesController;
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosProyectoresController;
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosResponsableController;
 use App\Http\Controllers\VentanillaUnica\Enviados\VentanillaRadicaEnviadosRespuestasController;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->group(function () {
     $permEnvi = 'Radicar -> Cores. Enviada -> ';
 
+    Route::get('/radica-enviada/pendientes-radicar', [VentanillaRadicaEnviadosPendientesController::class, 'index'])->name('radica-enviada.pendientes-radicar.index')->middleware('can:'.$permEnvi.'Listar');
+    Route::get('/radica-enviada/pendientes-radicar/{id}', [VentanillaRadicaEnviadosPendientesController::class, 'show'])->name('radica-enviada.pendientes-radicar.show')->middleware('can:'.$permEnvi.'Listar');
     Route::get('/radica-enviada/estadisticas', [VentanillaRadicaEnviadosController::class, 'estadisticas'])->name('radica-enviada.estadisticas')->middleware('can:'.$permEnvi.'Listar');
     Route::put('/radica-enviada/{id}/update-asunto', [VentanillaRadicaEnviadosController::class, 'updateAsunto'])->name('radica-enviada.update-asunto')->middleware('can:'.$permEnvi.'Actualizar asunto');
     Route::put('/radica-enviada/{id}/update-fechas', [VentanillaRadicaEnviadosController::class, 'updateFechas'])->name('radica-enviada.update-fechas')->middleware('can:'.$permEnvi.'Atualizar fechas de radicados');
