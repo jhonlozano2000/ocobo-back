@@ -73,7 +73,11 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
                     $q->where('nombre', 'like', "%{$search}%")
                         ->orWhere('asunto', 'like', "%{$search}%")
                         ->orWhereHas('radicadoRecibido', function ($qr) use ($search) {
-                            $qr->where('num_radicado', 'like', "%{$search}%");
+                            $qr->where('num_radicado', 'like', "%{$search}%")
+                                ->orWhereHas('tercero', function ($qt) use ($search) {
+                                    $qt->where('nom_razo_soci', 'like', "%{$search}%")
+                                        ->orWhere('num_docu_nit', 'like', "%{$search}%");
+                                });
                         });
                 });
             }
@@ -219,6 +223,11 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
 
             return $this->successResponse($data, 'Detalle de pendiente para radicar obtenido exitosamente');
         } catch (\Exception $e) {
+            \Log::error('Error al obtener detalle del pendiente para radicar: '.$e->getMessage(), [
+                'id' => $id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return $this->errorResponse('Error al obtener detalle del pendiente', $e->getMessage(), 500);
         }
     }
