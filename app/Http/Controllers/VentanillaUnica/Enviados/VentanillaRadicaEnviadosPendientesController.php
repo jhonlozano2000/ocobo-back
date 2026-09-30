@@ -5,12 +5,18 @@ namespace App\Http\Controllers\VentanillaUnica\Enviados;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\MiBandejaTemp;
+use App\Models\MiBandeja\MiBandejaTempArchivoVersion;
+use App\Models\MiBandeja\MiBandejaTempGrupoArchiAdjunto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class VentanillaRadicaEnviadosPendientesController extends Controller
 {
     use ApiResponseTrait;
+
+    private const DISK = 'plantillas_grupos';
 
     private const PERM_LISTAR = 'Radicar -> Cores. Enviada -> Listar';
 
@@ -18,7 +24,7 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
 
     public function __construct()
     {
-        $this->middleware('can:'.self::PERM_LISTAR)->only(['index', 'show']);
+        $this->middleware('can:'.self::PERM_LISTAR)->only(['index', 'show', 'descargarDocumento', 'descargarAdjunto']);
     }
 
     /**
@@ -122,6 +128,9 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
                 'radicadoRecibido.clasificacionDocumental',
                 'plantilla',
                 'ultimaVersion.subidoPor',
+                'versiones.subidoPor',
+                'adjuntos.subidoPor',
+                'notas.user',
                 'proyectores.user.cargoActivo.cargo',
                 'proyectores.cargo',
                 'revisores.user.cargoActivo.cargo',
@@ -180,13 +189,30 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
                 ];
             };
 
-            // Mapeo estructurado para precarga en FormRadicadoEnviadoDrawer
+            // Mapeo estructurado para precarga en FormRadicadoEnviadoDrawer y vista de detalle completa
             $data = [
                 'grupo_id' => $grupo->id,
                 'nombre_grupo' => $grupo->nombre,
                 'asunto' => $grupo->asunto ?: ($radicadoRecibido?->asunto ?? ''),
+                'estado' => $grupo->estado,
+                'estado_grupo' => $grupo->estado_grupo,
+                'created_at' => $grupo->created_at,
+                'updated_at' => $grupo->updated_at,
+                'creado_por' => $grupo->creadoPor ? [
+                    'id' => $grupo->creadoPor->id,
+                    'nombres' => $grupo->creadoPor->nombres,
+                    'apellidos' => $grupo->creadoPor->apellidos,
+                    'full_name' => trim($grupo->creadoPor->nombres.' '.$grupo->creadoPor->apellidos),
+                ] : null,
                 'radicado_origen_id' => $radicadoRecibido?->id,
                 'radicado_origen_numero' => $radicadoRecibido?->num_radicado,
+                'radicado_origen' => $radicadoRecibido ? [
+                    'id' => $radicadoRecibido->id,
+                    'num_radicado' => $radicadoRecibido->num_radicado,
+                    'asunto' => $radicadoRecibido->asunto,
+                    'fec_radicado' => $radicadoRecibido->fec_radicado,
+                    'fec_venci' => $radicadoRecibido->fec_venci,
+                ] : null,
                 'tercero_id' => $tercero?->id,
                 'tercero' => $tercero ? [
                     'id' => $tercero->id,
@@ -215,7 +241,38 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
                     'extension' => $ultimaVersion->extension,
                     'mime_type' => $ultimaVersion->mime_type,
                     'hash_seguridad' => $ultimaVersion->hash_seguridad,
+                    'created_at' => $ultimaVersion->created_at,
+                    'subido_por' => $ultimaVersion->subidoPor ? trim($ultimaVersion->subidoPor->nombres.' '.$ultimaVersion->subidoPor->apellidos) : null,
                 ] : null,
+                'versiones' => $grupo->versiones->map(fn ($v) => [
+                    'id' => $v->id,
+                    'version' => $v->version,
+                    'nombre_original' => $v->nombre_original,
+                    'peso' => $v->peso,
+                    'extension' => $v->extension,
+                    'comentario_version' => $v->comentario_version,
+                    'created_at' => $v->created_at,
+                    'subido_por' => $v->subidoPor ? trim($v->subidoPor->nombres.' '.$v->subidoPor->apellidos) : null,
+                ]),
+                'adjuntos' => $grupo->adjuntos->map(fn ($a) => [
+                    'id' => $a->id,
+                    'archivo' => $a->archivo,
+                    'nombre_original' => $a->nombre_original,
+                    'tipo_mime' => $a->tipo_mime,
+                    'peso' => $a->peso,
+                    'hash_sha256' => $a->hash_sha256,
+                    'created_at' => $a->created_at,
+                    'subido_por' => $a->subidoPor ? trim($a->subidoPor->nombres.' '.$a->subidoPor->apellidos) : null,
+                ]),
+                'notas' => $grupo->notas->map(fn ($n) => [
+                    'id' => $n->id,
+                    'contenido' => $n->contenido,
+                    'created_at' => $n->created_at,
+                    'usuario' => $n->user ? [
+                        'id' => $n->user->id,
+                        'full_name' => trim($n->user->nombres.' '.$n->user->apellidos),
+                    ] : null,
+                ]),
                 'proyectores' => $grupo->proyectores->map($resolveMember),
                 'revisores' => $grupo->revisores->map($resolveMember),
                 'firmantes' => $grupo->firmantes->map($resolveMember),
@@ -229,6 +286,60 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
             ]);
 
             return $this->errorResponse('Error al obtener detalle del pendiente', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Descargar documento/versión del grupo colaborativo pendiente.
+     */
+    public function descargarDocumento(int $id, ?int $versionId = null): BinaryFileResponse|JsonResponse
+    {
+        try {
+            $query = MiBandejaTempArchivoVersion::where('grupo_id', $id);
+
+            if ($versionId) {
+                $version = $query->find($versionId);
+            } else {
+                $version = $query->latest('id')->first();
+            }
+
+            if (! $version) {
+                return $this->errorResponse('Archivo del documento no encontrado', null, 404);
+            }
+
+            if (! Storage::disk(self::DISK)->exists($version->ruta_completa)) {
+                return $this->errorResponse('Archivo no encontrado en disco', null, 404);
+            }
+
+            return Storage::disk(self::DISK)->download($version->ruta_completa, $version->nombre_original);
+        } catch (\Exception $e) {
+            \Log::error('Error al descargar documento de pendiente: '.$e->getMessage(), ['id' => $id, 'versionId' => $versionId]);
+
+            return $this->errorResponse('Error al descargar documento', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Descargar archivo adjunto del grupo colaborativo pendiente.
+     */
+    public function descargarAdjunto(int $id, int $adjuntoId): BinaryFileResponse|JsonResponse
+    {
+        try {
+            $adjunto = MiBandejaTempGrupoArchiAdjunto::where('grupo_id', $id)->find($adjuntoId);
+
+            if (! $adjunto) {
+                return $this->errorResponse('Adjunto no encontrado', null, 404);
+            }
+
+            if (! Storage::disk(self::DISK)->exists($adjunto->archivo)) {
+                return $this->errorResponse('Archivo adjunto no encontrado en disco', null, 404);
+            }
+
+            return Storage::disk(self::DISK)->download($adjunto->archivo, $adjunto->nombre_original);
+        } catch (\Exception $e) {
+            \Log::error('Error al descargar adjunto de pendiente: '.$e->getMessage(), ['id' => $id, 'adjuntoId' => $adjuntoId]);
+
+            return $this->errorResponse('Error al descargar adjunto', $e->getMessage(), 500);
         }
     }
 }
