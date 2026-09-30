@@ -70,6 +70,9 @@ Reglas fijas:
   - Estados PQRS: `badge-light-warning` (Pendiente), `badge-light-info` (En Trámite), `badge-light-success` (Respondida), `badge-light-danger` (Vencida)
   - Prioridades: `badge-light-success` (Normal), `badge-light-warning` (Urgente), `badge-light-danger` (Tutela)
   - Vencimiento: `badge-light-danger` (Crítico ≤2d), `badge-light-warning` (Urgente ≤5d), `badge-light-info` (En término)
+- **Documentación de Código (PHPDoc / DocBlocks)**:
+  - Métodos en Controllers, Services, Repositories y Helpers deben incluir PHPDoc explicando el propósito del negocio (el *por qué*), parámetros `@param`, tipo de retorno `@return`, y excepciones lanzadas `@throws`.
+  - En Models: documentar propiedades mágicas (`@property`), relaciones (`@method`) y scopes para permitir autocompletado estático y claridad de negocio.
 
 ## Testing
 - PHPUnit v11 (Unit + Feature en `tests/Unit/` y `tests/Feature/`)
