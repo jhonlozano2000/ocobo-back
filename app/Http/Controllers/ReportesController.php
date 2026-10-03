@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ReporteProgramadoMailable;
+use App\Models\ReporteProgramado;
 use App\Services\ReportesExportService;
 use App\Services\ReportesUnificadoService;
-use App\Models\ReporteProgramado;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\ReporteProgramadoMailable;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class ReportesController extends Controller
 {
@@ -35,8 +37,13 @@ class ReportesController extends Controller
 
             return response()->json(['success' => true, 'data' => $data]);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
@@ -58,7 +65,7 @@ class ReportesController extends Controller
             );
             $data = $this->unificado->generarUnificado($request->modulo, $filtros);
             $columnas = $data['columnas'];
-            $nombre = 'reporte_' . $request->modulo;
+            $nombre = 'reporte_'.$request->modulo;
 
             return match ($request->format) {
                 'excel' => $this->downloadExcel($data, $nombre, $columnas),
@@ -66,8 +73,13 @@ class ReportesController extends Controller
                 'csv' => $this->export->exportarCSV($data, $nombre, $columnas),
             };
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
@@ -154,7 +166,7 @@ class ReportesController extends Controller
         try {
             $data = $this->unificado->generarUnificado($item->modulo, $item->filtros ?? []);
             $columnas = $data['columnas'];
-            $nombre = 'reporte_' . $item->modulo;
+            $nombre = 'reporte_'.$item->modulo;
 
             $path = match ($item->formato) {
                 'excel' => $this->export->exportarExcel($data, $nombre, $columnas),
@@ -176,11 +188,16 @@ class ReportesController extends Controller
                 'data' => $item,
             ]);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al ejecutar reporte: ' . $e->getMessage(),
+                'message' => 'Error al ejecutar reporte: '.$e->getMessage(),
             ], 500);
         }
     }

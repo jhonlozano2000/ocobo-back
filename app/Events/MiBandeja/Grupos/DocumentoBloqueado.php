@@ -2,7 +2,6 @@
 
 namespace App\Events\MiBandeja\Grupos;
 
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -14,8 +13,11 @@ class DocumentoBloqueado implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public int $grupoId;
+
     public int $bloqueadoPorUserId;
+
     public string $nombreUsuario;
+
     public string $fechaBloqueo;
 
     public function __construct(int $grupoId, int $bloqueadoPorUserId, string $nombreUsuario, string $fechaBloqueo)

@@ -3,12 +3,11 @@
 namespace App\Services;
 
 use Barryvdh\DomPDF\Facade\Pdf;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ReportesExportService
 {
@@ -17,18 +16,18 @@ class ReportesExportService
      */
     public function exportarExcel(array $data, string $nombre, array $columnas = []): string
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         $headers = $columnas ?: array_keys(($data['datos'][0] ?? []));
         foreach ($headers as $i => $header) {
             $col = Coordinate::stringFromColumnIndex($i + 1);
-            $sheet->setCellValue($col . '1', $header);
-            $sheet->getStyle($col . '1')->getFont()->setBold(true);
-            $sheet->getStyle($col . '1')->getFill()
+            $sheet->setCellValue($col.'1', $header);
+            $sheet->getStyle($col.'1')->getFont()->setBold(true);
+            $sheet->getStyle($col.'1')->getFill()
                 ->setFillType(Fill::FILL_SOLID)
                 ->getStartColor()->setRGB('E8EAF6');
-            $sheet->getStyle($col . '1')->getAlignment()
+            $sheet->getStyle($col.'1')->getAlignment()
                 ->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
 
@@ -37,7 +36,7 @@ class ReportesExportService
             foreach ($headers as $i => $header) {
                 $col = Coordinate::stringFromColumnIndex($i + 1);
                 $value = is_array($item) ? ($item[$header] ?? $item[strtolower($header)] ?? '') : '';
-                $sheet->setCellValue($col . $row, $value);
+                $sheet->setCellValue($col.$row, $value);
             }
             $row++;
         }
@@ -51,8 +50,8 @@ class ReportesExportService
         $writer = new Xlsx($spreadsheet);
         $writer->save($path);
 
-        if (!file_exists($path)) {
-            throw new \RuntimeException("No se pudo generar el archivo Excel.");
+        if (! file_exists($path)) {
+            throw new \RuntimeException('No se pudo generar el archivo Excel.');
         }
 
         return $path;
@@ -78,7 +77,7 @@ class ReportesExportService
         $bytes = file_put_contents($path, $pdf->output());
 
         if ($bytes === false) {
-            throw new \RuntimeException("No se pudo generar el archivo PDF.");
+            throw new \RuntimeException('No se pudo generar el archivo PDF.');
         }
 
         return $path;
@@ -110,20 +109,20 @@ class ReportesExportService
 
         return response()->stream($callback, 200, [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $sanitizado . '_' . date('Ymd_His') . '.csv"',
+            'Content-Disposition' => 'attachment; filename="'.$sanitizado.'_'.date('Ymd_His').'.csv"',
         ]);
     }
 
     protected function generarRuta(string $nombre, string $extension): string
     {
         $dir = storage_path('app/exports');
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
         $sanitizado = self::sanitizarNombre($nombre);
 
-        return $dir . '/' . $sanitizado . '_' . date('Ymd_His') . '.' . $extension;
+        return $dir.'/'.$sanitizado.'_'.date('Ymd_His').'.'.$extension;
     }
 
     protected static function sanitizarNombre(string $nombre): string

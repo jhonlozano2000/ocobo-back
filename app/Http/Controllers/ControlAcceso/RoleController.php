@@ -8,7 +8,9 @@ use App\Http\Requests\ControlAcceso\StoreRoleRequest;
 use App\Http\Requests\ControlAcceso\UpdateRoleRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Services\ControlAcceso\RoleService;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class RoleController extends Controller
 {
@@ -29,8 +31,13 @@ class RoleController extends Controller
 
             return $this->successResponse($roles, 'Listado de roles obtenido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
         }
     }
@@ -46,8 +53,13 @@ class RoleController extends Controller
 
             return $this->successResponse($permissions, 'Listado de permisos obtenido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
         }
     }
@@ -63,8 +75,13 @@ class RoleController extends Controller
                 'Listado de roles con usuarios obtenido exitosamente'
             );
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener roles con usuarios', $e->getMessage(), 500);
         }
     }
@@ -79,8 +96,13 @@ class RoleController extends Controller
 
             return $this->successResponse($role->load('permissions'), 'Rol creado exitosamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al crear el rol', $e->getMessage(), 500);
         }
     }
@@ -99,8 +121,13 @@ class RoleController extends Controller
 
             return $this->successResponse($role, 'Rol encontrado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el rol', $e->getMessage(), 500);
         }
     }
@@ -115,8 +142,13 @@ class RoleController extends Controller
 
             return $this->successResponse($updated->load('permissions'), 'Rol actualizado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al actualizar el rol', $e->getMessage(), 500);
         }
     }
@@ -139,8 +171,13 @@ class RoleController extends Controller
 
             return $this->successResponse(null, 'Rol eliminado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al eliminar el rol', $e->getMessage(), 500);
         }
     }
@@ -156,8 +193,13 @@ class RoleController extends Controller
                 'Estadísticas de roles obtenidas exitosamente'
             );
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
         }
     }
@@ -173,8 +215,13 @@ class RoleController extends Controller
                 'Listado de roles con permisos obtenido exitosamente'
             );
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener roles y permisos', $e->getMessage(), 500);
         }
     }

@@ -7,6 +7,8 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Services\OfiArchivo\ReportesService;
 use App\Services\ReportesExportService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
  * Controlador de Reportes y Estadísticas del Archivo.
@@ -19,6 +21,7 @@ class OfiArchivoReportesController extends Controller
     use ApiResponseTrait;
 
     protected ReportesService $reportesService;
+
     protected ReportesExportService $exportService;
 
     public function __construct(ReportesService $reportesService, ReportesExportService $exportService)
@@ -55,8 +58,13 @@ class OfiArchivoReportesController extends Controller
 
             return $this->successResponse($reporte, 'Reporte generado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al generar el reporte', $e->getMessage(), 500);
         }
     }
@@ -86,7 +94,7 @@ class OfiArchivoReportesController extends Controller
             return $this->errorResponse('Tipo de reporte no válido', null, 422);
         }
 
-        $nombre = 'reporte_' . $tipo;
+        $nombre = 'reporte_'.$tipo;
 
         return match ($request->format) {
             'excel' => $this->downloadExcel($reporte, $nombre),
@@ -99,14 +107,14 @@ class OfiArchivoReportesController extends Controller
     {
         $path = $this->exportService->exportarExcel($data, $nombre);
 
-        return response()->download($path, $nombre . '.xlsx')->deleteFileAfterSend(true);
+        return response()->download($path, $nombre.'.xlsx')->deleteFileAfterSend(true);
     }
 
     protected function downloadPDF(array $data, string $nombre)
     {
         $path = $this->exportService->exportarPDF($data, $nombre);
 
-        return response()->download($path, $nombre . '.pdf')->deleteFileAfterSend(true);
+        return response()->download($path, $nombre.'.pdf')->deleteFileAfterSend(true);
     }
 
     /**
@@ -119,8 +127,13 @@ class OfiArchivoReportesController extends Controller
 
             return $this->successResponse($stats, 'Estadísticas obtenidas');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
         }
     }

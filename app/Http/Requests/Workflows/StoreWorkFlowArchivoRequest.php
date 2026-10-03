@@ -4,8 +4,8 @@ namespace App\Http\Requests\Workflows;
 
 use App\Http\Requests\SanitizedFormRequest;
 use App\Models\Workflows\Workflow;
-use App\Models\Workflows\WorkflowNodo;
 use App\Models\Workflows\WorkflowInstancia;
+use App\Models\Workflows\WorkflowNodo;
 
 class StoreWorkFlowArchivoRequest extends SanitizedFormRequest
 {

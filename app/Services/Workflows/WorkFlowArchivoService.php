@@ -7,7 +7,7 @@ use App\Models\Workflows\WorkFlowArchivo;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class WorkFlowArchivoService
 {
@@ -41,7 +41,7 @@ class WorkFlowArchivoService
             $archivoSeguro = ArchivoHelper::validarArchivoSeguro($archivo);
 
             if (! ($archivoSeguro['valido'] ?? false)) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'archivo' => [$archivoSeguro['error'] ?? 'Archivo no permitido'],
                 ]);
             }
@@ -49,7 +49,7 @@ class WorkFlowArchivoService
             $metadatos = ArchivoHelper::guardarUploadedConHash($archivo, self::DISK);
 
             if (! $metadatos) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'archivo' => ['No se pudo almacenar el archivo'],
                 ]);
             }

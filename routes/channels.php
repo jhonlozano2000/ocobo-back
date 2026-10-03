@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use Illuminate\Support\Facades\Broadcast;
 
@@ -46,7 +47,7 @@ Broadcast::channel('documentos.{documentoId}', function ($user, $documentoId) {
 // Canales de Grupos Colaborativos
 // ==========================================
 Broadcast::channel('grupo-colaborativo.{grupoId}', function ($user, $grupoId) {
-    $grupo = \App\Models\MiBandeja\MiBandejaTemp::find($grupoId);
+    $grupo = MiBandejaTemp::find($grupoId);
 
     if (! $grupo) {
         return false;

@@ -55,11 +55,11 @@ class WorkflowEstadoMachine
     {
         $estado = self::normalizar($estado);
 
-        if (!in_array($estado, ['pendiente', 'en_curso'], true)) {
+        if (! in_array($estado, ['pendiente', 'en_curso'], true)) {
             return false;
         }
 
-        if (!$fechaLimite) {
+        if (! $fechaLimite) {
             return false;
         }
 

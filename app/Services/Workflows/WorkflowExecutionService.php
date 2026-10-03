@@ -4,6 +4,7 @@ namespace App\Services\Workflows;
 
 use App\Exceptions\Workflows\StateTransitionException;
 use App\Models\Workflows\Workflow;
+use App\Models\Workflows\WorkflowConexion;
 use App\Models\Workflows\WorkflowInstancia;
 use App\Models\Workflows\WorkflowNodo;
 use App\Models\Workflows\WorkflowNodoInstancia;
@@ -31,7 +32,7 @@ class WorkflowExecutionService
             $workflow = Workflow::with('nodos')->findOrFail($workflowId);
 
             $nodoInicio = $workflow->nodos()->where('tipo', 'inicio')->first();
-            if (!$nodoInicio) {
+            if (! $nodoInicio) {
                 throw new StateTransitionException('El workflow no tiene un nodo de inicio');
             }
 
@@ -114,7 +115,7 @@ class WorkflowExecutionService
             if ($nodo && $nodo->tipo === 'condicion') {
                 $ramaTomada = null;
                 if ($siguienteNodo) {
-                    $conexion = \App\Models\Workflows\WorkflowConexion::where('nodo_origen_id', $nodoId)
+                    $conexion = WorkflowConexion::where('nodo_origen_id', $nodoId)
                         ->where('nodo_destino_id', $siguienteNodo->id)
                         ->first();
                     $ramaTomada = $conexion?->etiqueta;
@@ -194,7 +195,7 @@ class WorkflowExecutionService
             $instancia->update(['estado' => $estado]);
 
             $this->auditService->registrar(
-                'instancia.' . $estado,
+                'instancia.'.$estado,
                 $instancia->workflow_id,
                 $instancia->id,
                 ['estado_anterior' => $estadoAnterior]
@@ -211,13 +212,13 @@ class WorkflowExecutionService
 
     private function determinarSiguienteNodo(int $instanciaId, int $nodoActualId, array $resultado): ?WorkflowNodo
     {
-        $conexionesSalientes = \App\Models\Workflows\WorkflowConexion::where('nodo_origen_id', $nodoActualId)->get();
+        $conexionesSalientes = WorkflowConexion::where('nodo_origen_id', $nodoActualId)->get();
 
         if ($conexionesSalientes->isEmpty()) {
             return null;
         }
 
-        $nodoOrigen = \App\Models\Workflows\WorkflowNodo::find($nodoActualId);
+        $nodoOrigen = WorkflowNodo::find($nodoActualId);
 
         if ($nodoOrigen && $nodoOrigen->tipo === 'condicion') {
             $ramaVerdadera = $conexionesSalientes->firstWhere('etiqueta', 'Sí');
@@ -244,7 +245,7 @@ class WorkflowExecutionService
         $operador = $condicion['operador'] ?? '==';
         $valorEsperado = $condicion['valor'] ?? null;
 
-        if (!$campo) {
+        if (! $campo) {
             return true;
         }
 

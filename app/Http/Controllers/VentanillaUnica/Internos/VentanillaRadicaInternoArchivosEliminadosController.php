@@ -7,6 +7,8 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoArchivosEliminados;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class VentanillaRadicaInternoArchivosEliminadosController extends Controller
 {
@@ -22,8 +24,13 @@ class VentanillaRadicaInternoArchivosEliminadosController extends Controller
 
             return $this->successResponse($archivos, 'Archivos eliminados obtenidos exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener los archivos eliminados', $e->getMessage(), 500);
         }
     }
@@ -42,8 +49,12 @@ class VentanillaRadicaInternoArchivosEliminadosController extends Controller
 
             return $this->successResponse($archivo, 'Archivo eliminado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar el archivo', $e->getMessage(), 500);
@@ -64,8 +75,13 @@ class VentanillaRadicaInternoArchivosEliminadosController extends Controller
 
             return $this->successResponse($archivo, 'Archivo encontrado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el archivo', $e->getMessage(), 500);
         }
     }
@@ -81,8 +97,13 @@ class VentanillaRadicaInternoArchivosEliminadosController extends Controller
 
             return $this->successResponse($archivo, 'Historial de eliminaciones obtenido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el historial de eliminaciones', $e->getMessage(), 500);
         }
     }

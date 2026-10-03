@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('mi_bandeja_temp_grupo_responsables')) {
+        if (! Schema::hasTable('mi_bandeja_temp_grupo_responsables')) {
             Schema::create('mi_bandeja_temp_grupo_responsables', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('grupo_id')->constrained('mi_bandeja_temp')->onDelete('cascade');
@@ -22,7 +22,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('mi_bandeja_temp_grupo_firmantes')) {
+        if (! Schema::hasTable('mi_bandeja_temp_grupo_firmantes')) {
             Schema::create('mi_bandeja_temp_grupo_firmantes', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('grupo_id')->constrained('mi_bandeja_temp')->onDelete('cascade');
@@ -37,7 +37,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('mi_bandeja_temp_grupo_proyectores')) {
+        if (! Schema::hasTable('mi_bandeja_temp_grupo_proyectores')) {
             Schema::create('mi_bandeja_temp_grupo_proyectores', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('grupo_id')->constrained('mi_bandeja_temp')->onDelete('cascade');
@@ -50,7 +50,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('mi_bandeja_temp_grupo_archi_adjuntos')) {
+        if (! Schema::hasTable('mi_bandeja_temp_grupo_archi_adjuntos')) {
             Schema::create('mi_bandeja_temp_grupo_archi_adjuntos', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('grupo_id')->constrained('mi_bandeja_temp')->onDelete('cascade');

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Schema;
  * historial de instancias/auditoría asociado).
  *
  * @author Jhon Javer Lozano Arce
+ *
  * @date 2026-08-26
  */
 return new class extends Migration

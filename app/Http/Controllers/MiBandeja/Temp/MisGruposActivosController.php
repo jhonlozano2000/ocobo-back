@@ -41,7 +41,8 @@ class MisGruposActivosController extends Controller
             ])
                 ->where('estado_grupo', 'activo')
                 ->where(function ($q) use ($user) {
-                    $q->whereHas('revisores', fn ($q) => $q->where('user_id', $user->id))
+                    $q->where('usua_crea_id', $user->id)
+                        ->orWhereHas('revisores', fn ($q) => $q->where('user_id', $user->id))
                         ->orWhereHas('firmantes', fn ($q) => $q->where('user_id', $user->id))
                         ->orWhereHas('proyectores', fn ($q) => $q->where('user_id', $user->id))
                         ->orWhereHas('aprobadores', fn ($q) => $q->where('user_id', $user->id));
@@ -67,10 +68,14 @@ class MisGruposActivosController extends Controller
                     $miRol = 'proyector';
                     $ordenFirma = null;
                     $miEstadoTarea = $miembroP->estado_tarea ?? 'pendiente';
-                } else {
+                } elseif ($miembroAp) {
                     $miRol = 'aprobador';
                     $ordenFirma = null;
                     $miEstadoTarea = $miembroAp->estado_tarea ?? 'pendiente';
+                } else {
+                    $miRol = 'creador';
+                    $ordenFirma = null;
+                    $miEstadoTarea = 'cumplido';
                 }
 
                 $ultimaVersion = $grupo->ultimaVersion;
@@ -100,11 +105,20 @@ class MisGruposActivosController extends Controller
                 $radicado = null;
                 if ($radicadoModel) {
                     $tercero = $radicadoModel->tercero ?? null;
+                    $origen = null;
+                    if ($grupo->radicado_tipo === 'interno') {
+                        $depOrigen = $radicadoModel->dependencia_origen;
+                        $origen = is_array($depOrigen) ? ($depOrigen['nombre'] ?? null) : ($radicadoModel->usuarioCrea ? trim($radicadoModel->usuarioCrea->nombres.' '.$radicadoModel->usuarioCrea->apellidos) : null);
+                    } else {
+                        $origen = $tercero?->nom_razo_soci;
+                    }
+
                     $radicado = [
                         'numero' => $radicadoModel->num_radicado ?? null,
+                        'tipo' => $grupo->radicado_tipo,
                         'fecha_radicado' => $radicadoModel->created_at?->toISOString(),
                         'fecha_vencimiento' => $radicadoModel->fec_venci ? Carbon::parse($radicadoModel->fec_venci)->format('Y-m-d') : null,
-                        'tercero' => $tercero?->nom_razo_soci,
+                        'tercero' => $origen,
                     ];
                 }
 
@@ -246,7 +260,8 @@ class MisGruposActivosController extends Controller
             ])
                 ->where('estado_grupo', 'activo')
                 ->where(function ($q) use ($user) {
-                    $q->whereHas('revisores', fn ($q) => $q->where('user_id', $user->id))
+                    $q->where('usua_crea_id', $user->id)
+                        ->orWhereHas('revisores', fn ($q) => $q->where('user_id', $user->id))
                         ->orWhereHas('firmantes', fn ($q) => $q->where('user_id', $user->id))
                         ->orWhereHas('proyectores', fn ($q) => $q->where('user_id', $user->id))
                         ->orWhereHas('aprobadores', fn ($q) => $q->where('user_id', $user->id));

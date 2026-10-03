@@ -11,7 +11,7 @@ use App\Models\Workflows\Tarea;
 use App\Models\Workflows\TareaChecklist;
 use App\Models\Workflows\Workflow;
 use Illuminate\Support\Facades\DB;
-use App\Services\Workflows\WorkflowEstadoMachine;
+use Mews\Purifier\Facades\Purifier;
 
 /**
  * ISO 27001 A.12.4.1: Auditoría en cada acción de escritura
@@ -32,7 +32,7 @@ class TareaService
                 'workflow_id' => $data['workflow_id'],
                 'nombre' => $data['nombre'],
                 'descripcion' => isset($data['descripcion'])
-                    ? \Mews\Purifier\Facades\Purifier::clean($data['descripcion'])
+                    ? Purifier::clean($data['descripcion'])
                     : null,
                 'fecha_limite' => $data['fecha_limite'] ?? null,
                 'estado' => $data['estado'] ?? 'pendiente',
@@ -41,7 +41,7 @@ class TareaService
             $tarea->propietarios()->attach($user->id);
             $tarea->responsables()->attach($user->id);
 
-            if (!empty($data['checklists'])) {
+            if (! empty($data['checklists'])) {
                 $checklistItems = [];
                 foreach ($data['checklists'] as $index => $item) {
                     $checklistItems[] = new TareaChecklist([
@@ -74,7 +74,7 @@ class TareaService
             }
 
             if (isset($data['descripcion'])) {
-                $updateData['descripcion'] = \Mews\Purifier\Facades\Purifier::clean($data['descripcion']);
+                $updateData['descripcion'] = Purifier::clean($data['descripcion']);
             }
 
             if (isset($data['fecha_limite'])) {
@@ -82,7 +82,7 @@ class TareaService
             }
 
             if (isset($data['estado'])) {
-                if (!WorkflowEstadoMachine::puedeTransitar($tarea->estado, $data['estado'])) {
+                if (! WorkflowEstadoMachine::puedeTransitar($tarea->estado, $data['estado'])) {
                     throw new StateTransitionException(
                         "No se puede cambiar de '{$tarea->estado}' a '{$data['estado']}'"
                     );
@@ -98,7 +98,7 @@ class TareaService
                 $updateData['estado'] = $data['estado'];
             }
 
-            if (!empty($updateData)) {
+            if (! empty($updateData)) {
                 $tarea->update($updateData);
             }
 
@@ -115,7 +115,7 @@ class TareaService
                 $tarea->checklists()->whereNotIn('id', $incomingIds)->delete();
 
                 foreach ($data['checklists'] as $index => $item) {
-                    if (!empty($item['id'])) {
+                    if (! empty($item['id'])) {
                         TareaChecklist::where('id', $item['id'])
                             ->where('tarea_id', $tarea->id)
                             ->update([
@@ -163,7 +163,7 @@ class TareaService
         return DB::transaction(function () use ($tarea) {
             $tarea = $tarea->fresh('checklists');
 
-            if (!WorkflowEstadoMachine::puedeTransitar($tarea->estado, 'completada')) {
+            if (! WorkflowEstadoMachine::puedeTransitar($tarea->estado, 'completada')) {
                 throw new StateTransitionException(
                     "No se puede completar una tarea en estado '{$tarea->estado}'"
                 );
@@ -196,7 +196,7 @@ class TareaService
     public function iniciar(Tarea $tarea): Tarea
     {
         return DB::transaction(function () use ($tarea) {
-            if (!WorkflowEstadoMachine::puedeTransitar($tarea->estado, 'en_curso')) {
+            if (! WorkflowEstadoMachine::puedeTransitar($tarea->estado, 'en_curso')) {
                 throw new StateTransitionException(
                     "No se puede iniciar una tarea en estado '{$tarea->estado}'"
                 );
@@ -218,7 +218,7 @@ class TareaService
     public function cancelar(Tarea $tarea): Tarea
     {
         return DB::transaction(function () use ($tarea) {
-            if (!WorkflowEstadoMachine::puedeTransitar($tarea->estado, 'cancelada')) {
+            if (! WorkflowEstadoMachine::puedeTransitar($tarea->estado, 'cancelada')) {
                 throw new StateTransitionException(
                     "No se puede cancelar una tarea en estado '{$tarea->estado}'"
                 );
@@ -240,7 +240,7 @@ class TareaService
     public function reactivar(Tarea $tarea): Tarea
     {
         return DB::transaction(function () use ($tarea) {
-            if (!WorkflowEstadoMachine::puedeTransitar($tarea->estado, 'en_curso')) {
+            if (! WorkflowEstadoMachine::puedeTransitar($tarea->estado, 'en_curso')) {
                 throw new StateTransitionException(
                     "No se puede reactivar una tarea en estado '{$tarea->estado}'"
                 );
@@ -287,8 +287,8 @@ class TareaService
     {
         $vencidas = Tarea::with('responsables:id')
             ->where(function ($q) use ($userId) {
-                $q->whereHas('propietarios', fn($q) => $q->where('user_id', $userId))
-                  ->orWhereHas('responsables', fn($q) => $q->where('user_id', $userId));
+                $q->whereHas('propietarios', fn ($q) => $q->where('user_id', $userId))
+                    ->orWhereHas('responsables', fn ($q) => $q->where('user_id', $userId));
             })
             // Solo en_curso puede transitar a vencida (máquina de estados)
             ->where('estado', 'en_curso')
@@ -332,14 +332,14 @@ class TareaService
 
     public function addPropietario(Tarea $tarea, User $user): void
     {
-        if (!$tarea->propietarios()->where('user_id', $user->id)->exists()) {
+        if (! $tarea->propietarios()->where('user_id', $user->id)->exists()) {
             $tarea->propietarios()->attach($user->id);
         }
     }
 
     public function addResponsable(Tarea $tarea, User $user): void
     {
-        if (!$tarea->responsables()->where('user_id', $user->id)->exists()) {
+        if (! $tarea->responsables()->where('user_id', $user->id)->exists()) {
             $tarea->responsables()->attach($user->id);
         }
     }

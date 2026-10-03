@@ -8,7 +8,9 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Jenssegers\Agent\Agent;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class UserSessionController extends Controller
 {
@@ -93,8 +95,13 @@ class UserSessionController extends Controller
 
             return $this->successResponse($formattedSessions, 'Sesiones obtenidas exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener las sesiones', $e->getMessage(), 500);
         }
     }
@@ -176,8 +183,13 @@ class UserSessionController extends Controller
 
             return $this->successResponse($formattedSessions, 'Sesiones del usuario obtenidas exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener las sesiones', $e->getMessage(), 500);
         }
     }
@@ -221,8 +233,13 @@ class UserSessionController extends Controller
 
             return $this->successResponse(null, 'Sesión eliminada exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al eliminar la sesión', $e->getMessage(), 500);
         }
     }

@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class ConfigCalendarioFestivoController extends Controller
 {
@@ -30,8 +31,13 @@ class ConfigCalendarioFestivoController extends Controller
 
             return $this->successResponse($festivos, 'Festivos obtenidos exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener los días festivos', $e->getMessage(), 500);
         }
     }
@@ -54,8 +60,13 @@ class ConfigCalendarioFestivoController extends Controller
         } catch (ValidationException $e) {
             return $this->errorResponse('Datos inválidos', $e->errors(), 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al crear el día no hábil', $e->getMessage(), 500);
         }
     }
@@ -86,8 +97,13 @@ class ConfigCalendarioFestivoController extends Controller
         } catch (ValidationException $e) {
             return $this->errorResponse('Datos inválidos', $e->errors(), 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al actualizar el día no hábil', $e->getMessage(), 500);
         }
     }
@@ -107,8 +123,13 @@ class ConfigCalendarioFestivoController extends Controller
 
             return $this->successResponse(null, 'Día no hábil eliminado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al eliminar el día no hábil', $e->getMessage(), 500);
         }
     }
@@ -127,8 +148,13 @@ class ConfigCalendarioFestivoController extends Controller
                 'festivo' => $festivo,
             ]);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al verificar la fecha', $e->getMessage(), 500);
         }
     }
@@ -140,8 +166,13 @@ class ConfigCalendarioFestivoController extends Controller
 
             return $this->successResponse($festivos, "Festivos del año {$anio} obtenidos exitosamente");
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener los festivos del año', $e->getMessage(), 500);
         }
     }
@@ -167,8 +198,13 @@ class ConfigCalendarioFestivoController extends Controller
         } catch (ValidationException $e) {
             return $this->errorResponse('Datos inválidos', $e->errors(), 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al calcular vencimiento', $e->getMessage(), 500);
         }
     }
@@ -189,8 +225,13 @@ class ConfigCalendarioFestivoController extends Controller
         } catch (ValidationException $e) {
             return $this->errorResponse('Datos inválidos', $e->errors(), 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al importar festivos', $e->getMessage(), 500);
         }
     }
@@ -217,8 +258,13 @@ class ConfigCalendarioFestivoController extends Controller
                 'errores' => $resultados['errores'],
             ], "Festivos de Colombia para {$anio} generados exitosamente");
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al generar festivos', $e->getMessage(), 500);
         }
     }
@@ -230,8 +276,13 @@ class ConfigCalendarioFestivoController extends Controller
 
             return $this->successResponse(null, 'Caché de festivos limpiada exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al limpiar caché', $e->getMessage(), 500);
         }
     }

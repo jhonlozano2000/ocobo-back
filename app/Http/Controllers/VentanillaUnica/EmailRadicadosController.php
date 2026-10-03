@@ -11,6 +11,7 @@ use App\Services\VentanillaUnica\EmailRadicacionService;
 use App\Services\VentanillaUnica\ImapEmailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
  * Controller para la bandeja de correo electrónico.
@@ -45,7 +46,7 @@ class EmailRadicadosController extends Controller
             $result = $this->imapService->fetchPaginatedInbox($page, $perPage, $search);
 
             // Envolver en formato compatible con el frontend (Laravel paginator format)
-            $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
+            $paginator = new LengthAwarePaginator(
                 $result['emails'],
                 $result['pagination']['total'],
                 $result['pagination']['perPage'],

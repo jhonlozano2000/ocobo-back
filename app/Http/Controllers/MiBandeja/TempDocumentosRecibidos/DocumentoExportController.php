@@ -7,6 +7,8 @@ use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Services\MiBandeja\TempDocumentosRecibidos\DocumentoExportService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class DocumentoExportController extends Controller
 {
@@ -42,8 +44,13 @@ class DocumentoExportController extends Controller
             ])->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return response()->json([
                 'message' => 'Error al exportar el documento',
                 'error' => $e->getMessage(),

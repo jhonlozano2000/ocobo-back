@@ -5,10 +5,10 @@ namespace App\Observers\MiBandeja;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempArchivoVersion;
 use App\Models\MiBandeja\MiBandejaTempAuditLog;
+use App\Models\MiBandeja\MiBandejaTempGrupoAprobador;
 use App\Models\MiBandeja\MiBandejaTempGrupoFirmante;
 use App\Models\MiBandeja\MiBandejaTempGrupoProyector;
 use App\Models\MiBandeja\MiBandejaTempGrupoRevisor;
-use App\Models\MiBandeja\MiBandejaTempGrupoAprobador;
 use App\Models\MiBandeja\MiBandejaTempNota;
 
 class GrupoColaborativoAuditObserver
@@ -153,7 +153,7 @@ class GrupoColaborativoAuditObserver
             case $model instanceof MiBandejaTempGrupoFirmante:
             case $model instanceof MiBandejaTempGrupoProyector:
                 $dirty = $model->getDirty();
-                if (!isset($dirty['estado_tarea'])) {
+                if (! isset($dirty['estado_tarea'])) {
                     break;
                 }
 

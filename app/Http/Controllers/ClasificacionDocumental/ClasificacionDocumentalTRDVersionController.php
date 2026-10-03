@@ -13,6 +13,8 @@ use App\Models\Notificacion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class ClasificacionDocumentalTRDVersionController extends Controller
 {
@@ -73,8 +75,13 @@ class ClasificacionDocumentalTRDVersionController extends Controller
 
             return $this->successResponse($versiones, 'Versiones obtenidas exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener las versiones', $e->getMessage(), 500);
         }
     }
@@ -136,8 +143,12 @@ class ClasificacionDocumentalTRDVersionController extends Controller
 
             return $this->successResponse($nuevaVersion->load('dependencia'), 'Versión creada exitosamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al crear la versión', $e->getMessage(), 500);
@@ -180,8 +191,13 @@ class ClasificacionDocumentalTRDVersionController extends Controller
 
             return $this->successResponse($version, 'Versión obtenida exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener la versión', $e->getMessage(), 500);
         }
     }
@@ -296,8 +312,12 @@ class ClasificacionDocumentalTRDVersionController extends Controller
 
             return $this->successResponse(null, 'Versión aprobada exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al aprobar la versión', $e->getMessage(), 500);
@@ -361,8 +381,13 @@ class ClasificacionDocumentalTRDVersionController extends Controller
 
             return $this->successResponse($dependencias, 'Dependencias pendientes obtenidas exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener dependencias pendientes', $e->getMessage(), 500);
         }
     }
@@ -402,8 +427,13 @@ class ClasificacionDocumentalTRDVersionController extends Controller
 
             return $this->successResponse($data, 'Estadísticas obtenidas exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
         }
     }

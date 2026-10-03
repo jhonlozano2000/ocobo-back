@@ -75,17 +75,25 @@ class TRDService
     private function deriveDisposicionSoporte(array &$data): void
     {
         $parts = [];
-        if (!empty($data['ct'])) $parts[] = 'CT';
-        if (!empty($data['e'])) $parts[] = 'E';
-        if (!empty($data['m_d'])) $parts[] = 'M/D';
-        if (!empty($data['s'])) $parts[] = 'S';
-        $data['disposicion_final'] = !empty($parts) ? implode(', ', $parts) : null;
+        if (! empty($data['ct'])) {
+            $parts[] = 'CT';
+        }
+        if (! empty($data['e'])) {
+            $parts[] = 'E';
+        }
+        if (! empty($data['m_d'])) {
+            $parts[] = 'M/D';
+        }
+        if (! empty($data['s'])) {
+            $parts[] = 'S';
+        }
+        $data['disposicion_final'] = ! empty($parts) ? implode(', ', $parts) : null;
 
-        if (!empty($data['papel'])) {
+        if (! empty($data['papel'])) {
             $data['soporte'] = 'Papel';
-        } elseif (!empty($data['electronico'])) {
+        } elseif (! empty($data['electronico'])) {
             $data['soporte'] = 'Electrónico';
-        } elseif (!empty($data['mixto'])) {
+        } elseif (! empty($data['mixto'])) {
             $data['soporte'] = 'Mixto';
         } else {
             $data['soporte'] = null;

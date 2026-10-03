@@ -14,10 +14,15 @@ class NotaCreada implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public int $notaId;
+
     public int $grupoId;
+
     public string $contenido;
+
     public int $userId;
+
     public array $user;
+
     public string $createdAt;
 
     public function __construct(MiBandejaTempNota $nota)

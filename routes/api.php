@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\Gestion\GestionTerceroController;
 use App\Http\Controllers\OfiArchivo\OfiArchivoExpedienteController;
 use App\Http\Controllers\Transversal\FirmaElectronicaController;
 use App\Http\Controllers\VentanillaUnica\DocumentoController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,7 +31,7 @@ Route::middleware('auth:sanctum')->get('/auth/check', function () {
 Route::middleware('auth:sanctum')->get('/getme', [AuthController::class, 'getMe']);
 
 // Verificación de permisos server-side (OWASP A01 - Broken Access Control)
-Route::middleware('auth:sanctum')->post('/auth/check-permissions', function (Illuminate\Http\Request $request) {
+Route::middleware('auth:sanctum')->post('/auth/check-permissions', function (Request $request) {
     $user = $request->user();
     $permissions = $request->input('permissions', []);
 
@@ -51,12 +53,12 @@ Route::middleware('auth:sanctum')->post('/auth/check-permissions', function (Ill
 
 // Rutas de 2FA
 Route::middleware('auth:sanctum')->prefix('2fa')->group(function () {
-    Route::get('/setup', [App\Http\Controllers\Auth\TwoFactorController::class, 'setup']);
-    Route::post('/confirm', [App\Http\Controllers\Auth\TwoFactorController::class, 'confirm'])->middleware('throttle:2fa-confirm');
-    Route::post('/disable', [App\Http\Controllers\Auth\TwoFactorController::class, 'disable'])->middleware('throttle:2fa-disable');
+    Route::get('/setup', [TwoFactorController::class, 'setup']);
+    Route::post('/confirm', [TwoFactorController::class, 'confirm'])->middleware('throttle:2fa-confirm');
+    Route::post('/disable', [TwoFactorController::class, 'disable'])->middleware('throttle:2fa-disable');
 });
 
-Route::post('/2fa/verify', [App\Http\Controllers\Auth\TwoFactorController::class, 'verify'])->middleware('throttle:2fa-verify');
+Route::post('/2fa/verify', [TwoFactorController::class, 'verify'])->middleware('throttle:2fa-verify');
 
 // ==========================================
 // RUTAS DE GESTIÓN DE ARCHIVO (ISO 27001)

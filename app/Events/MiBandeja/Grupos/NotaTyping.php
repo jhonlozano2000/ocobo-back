@@ -13,9 +13,13 @@ class NotaTyping implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public int $grupoId;
+
     public int $userId;
+
     public string $userName;
+
     public ?string $userAvatar;
+
     public bool $typing;
 
     public function __construct(int $grupoId, int $userId, string $userName, ?string $userAvatar, bool $typing)

@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class LiberarBloqueosGrupos extends Command
 {
     protected $signature = 'grupos-colaborativos:liberar-bloqueos';
+
     protected $description = 'Libera los bloqueos de documentos de grupos colaborativos que hayan expirado (24h)';
 
     public function handle(GrupoColaborativoService $service): int

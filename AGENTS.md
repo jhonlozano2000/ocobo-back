@@ -59,6 +59,32 @@ Reglas fijas:
   - Permiso especial `Radicar -> Ver Todos` bypassa filtrado ABAC
   - Tests de integración en `tests/Feature/VentanillaUnica/FlujoPqrsAtomicTest.php`
 
+## Flujo de Pase y Transferencia de Custodio (Recibidos e Internos)
+- **Servicios Atómicos:** `PaseHistorialService` y `PaseHistorialInternoService`.
+- **Regla de Negocio (Opción 1):**
+  - Cada radicado posee funcionarios con un solo cargo activo asignado (`users_cargos`).
+  - Al realizar un **Pase**, el funcionario que transfiere se desvincula de los responsables activos (`ventanilla_radica_reci_responsa` / `ventanilla_radica_interno_responsa`).
+  - Si el funcionario que realiza el pase es el **custodio** (`custodio = 1`), la condición de custodia se hereda y transfiere automáticamente al nuevo responsable asignado (`custodio = 1`). Si no es custodio, se asigna con `custodio = 0`.
+  - Se registra el evento en la tabla histórica (`ventanilla_radica_reci_pase_historial` / `ventanilla_radica_interno_pase_historial`).
+- **Validaciones Preventivas:**
+  - Endpoint rechaza con `HTTP 422` si se intenta transferir a uno mismo o a un usuario que ya es responsable activo.
+  - El frontend excluye dinámicamente mediante `excludeIds` al usuario logueado y a los responsables actuales.
+
+## Correspondencia Interna (VentanillaRadicaInterno)
+- **Autorización Dual y Contextual de Consulta (Ventanilla Única vs Mi Bandeja):**
+  - Los endpoints de consulta y detalle (`show`, `lineaTiempo`, sub-recursos de `responsables`, `destinatarios`, `proyectores`, `firmantes`, `respuestas`, archivos `digital` y `adjuntos`) admiten acceso tanto para usuarios con permiso de Ventanilla (`Radicar -> Cores. Interna -> Mostrar`) como para usuarios de bandeja personal (`Mi Bandeja - Internos -> Ver`).
+  - Cuando un usuario no posee el rol/permiso de ventanilla pero sí el de bandeja (`Mi Bandeja - Internos -> Ver`), el modelo `VentanillaRadicaInterno` evalúa la autorización contextual mediante el método `tieneAccesoUsuario($user)`.
+  - Se autoriza la lectura si el usuario es: creador, responsable activo, destinatario, proyector, firmante, o funcionario dentro de la jerarquía organizacional del usuario consultante (jefe de dependencia/oficina). Si no cumple ninguna de estas condiciones, se rechaza con `HTTP 403`.
+  - El permiso `can:... -> Editar` se reserva estrictamente para endpoints de mutación (`POST`, `PUT`, `DELETE`).
+- **Detalle de Radicados Internos (`show`):**
+  - Incluye documentos relacionados (`getDocumentosRelacionados(true)`), información de clasificación documental con jerarquía, responsables, custodios, estado de trabajo y URL pública/firmada de archivo digital (`getUrlArchivoDigital()`).
+  - El método de URL para el archivo digital principal debe invocarse vía `$this->getUrlArchivoDigital()` y no mediante llamadas sin argumentos a `$this->getArchivoUrl()`.
+- **Firma Electrónica e Integridad Transversal:**
+  - El modelo `VentanillaRadicaInterno` implementa la relación polimórfica `firmaEventos()` (`morphMany(FirmaEvento::class, 'documentable')`).
+  - El servicio `FirmaValidacionService` y el controlador `FirmaValidacionController` validan la integridad verificando el `hash_firmado` del último `FirmaEvento` contra el `hash_sha256` actual del documento. Si no existe evento de firma, se retorna HTTP 404 con mensaje explicativo.
+- **Mi Bandeja Internos (Ordenamiento de Consultas):**
+  - El endpoint de listado (`/api/mi-bandeja/internos/mis-radicados`) aplica ordenamiento descendente explícito por fecha de creación e id: `$query->orderBy('created_at', 'desc')->orderBy('id', 'desc');` para garantizar estabilidad y coherencia cronológica en la bandeja personal.
+
 ## Convenciones
 - Modelos: `$fillable`, relaciones Eloquent explícitas, scopes para filtros
 - Archivos: usar `ArchivoHelper` (no manipular `Storage` directamente)
@@ -163,3 +189,10 @@ POST   /comunicaciones-recibidas/documentos/importar           # Importar archiv
 - Sugerencias pendientes pueden aplicarse al contenido al ser aceptadas
 - Cursores inactivos (>60 seg sin actividad) se limpian automáticamente
 - Todas las operaciones multi-tabla usan `DB::transaction()`
+
+## Mi Bandeja — Grupos Colaborativos (MiBandejaTemp)
+- **Vinculación Polimórfica de Radicado**:
+  - `mi_bandeja_temp` vincula radicados mediante `radicado_id` y `radicado_tipo` (`recibido`, `enviado`, `interno`).
+  - No debe poseer foreign key rígida en base de datos hacia `ventanilla_radica_reci` (eliminada en migración `2026_10_01_160551_drop_foreign_radicado_id_on_mi_bandeja_temp`).
+  - La integridad referencial se garantiza dinámicamente en el Form Request (`StoreMiBandejaTempRequest`) validando contra la tabla correspondiente (`ventanilla_radica_internos`, `ventanilla_radica_reci` o `ventanilla_radica_envia`).
+  - El modelo `MiBandejaTemp` resuelve la relación mediante el accessor `getRadicadoAttribute()`.

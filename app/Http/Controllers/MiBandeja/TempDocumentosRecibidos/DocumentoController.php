@@ -17,6 +17,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
  * Controlador de documentos colaborativos para Comunicaciones Recibidas.
@@ -160,8 +162,12 @@ class DocumentoController extends Controller
                 $request->user()->nombres
             );
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             \Log::warning('Broadcast UsuarioConectado falló: '.$e->getMessage());
         }
 
@@ -296,8 +302,12 @@ class DocumentoController extends Controller
                     $request->user()->id
                 );
             } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+                if ($e instanceof ValidationException) {
+                    throw $e;
+                }
+                if ($e instanceof HttpExceptionInterface) {
+                    throw $e;
+                }
                 \Log::warning('Broadcast falló en sincronizar: '.$e->getMessage());
             }
 

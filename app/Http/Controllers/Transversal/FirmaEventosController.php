@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Transversal\MisFirmasResource;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Transversal\FirmaEvento;
-use Illuminate\Http\Request;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * Controlador para consultar el historial de firmas electrónicas.

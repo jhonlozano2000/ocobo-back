@@ -5,7 +5,10 @@ namespace App\Models\VentanillaUnica\Internos;
 use App\Helpers\ArchivoHelper;
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Models\MiBandeja\MiBandejaTemp;
+use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
+use App\Services\MiBandeja\MiBandejaFiltroService;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -23,6 +26,9 @@ class VentanillaRadicaInterno extends Model
         'usuario_crea',
         'fec_docu',
         'fec_venci',
+        'num_folios',
+        'num_anexos',
+        'descrip_anexos',
         'asunto',
         'archivo_digital',
         'hash_sha256',
@@ -170,6 +176,14 @@ class VentanillaRadicaInterno extends Model
     }
 
     /**
+     * Eventos de firma electrónica asociados a la radicación interna.
+     */
+    public function firmaEventos()
+    {
+        return $this->morphMany(FirmaEvento::class, 'documentable');
+    }
+
+    /**
      * Obtiene la línea de tiempo de la radicación interna.
      */
     public function getLineaTiempo(): array
@@ -182,16 +196,41 @@ class VentanillaRadicaInterno extends Model
     }
 
     /**
-     * Obtiene los documentos relacionados con la radicación interna.
+     * Obtiene los documentos relacionados con la radicación interna (archivo principal y adicionales).
      */
     public function getDocumentosRelacionados(bool $incluirMetadatos = false): array
     {
-        $documentos = [];
-        foreach ($this->archivos as $archivo) {
-            $documentos[] = $archivo->getInfoArchivo($incluirMetadatos);
+        $archivoPrincipal = null;
+        if ($this->archivo_digital) {
+            $archivoPrincipal = $this->getInfoArchivo($incluirMetadatos);
+            if ($archivoPrincipal && $this->usuarioSubido) {
+                $archivoPrincipal['subido_por'] = trim($this->usuarioSubido->nombres.' '.($this->usuarioSubido->apellidos ?? ''));
+            }
         }
 
-        return $documentos;
+        $archivosRelacion = $this->relationLoaded('archivos') ? $this->archivos : $this->archivos()->get();
+        $archivosAdicionales = collect();
+
+        foreach ($archivosRelacion as $archivo) {
+            $info = $archivo->getInfoArchivo($incluirMetadatos);
+            if ($info) {
+                $info['fecha_subida'] = $archivo->created_at;
+                $archivosAdicionales->push($info);
+            }
+        }
+
+        $countArchivosAdicionales = $archivosAdicionales->count();
+        $totalArchivos = ($archivoPrincipal ? 1 : 0) + $countArchivosAdicionales;
+
+        return [
+            'archivo_principal' => $archivoPrincipal,
+            'archivos_adicionales' => $archivosAdicionales,
+            'total_archivos' => $totalArchivos,
+            'tiene_archivo_principal' => $archivoPrincipal !== null,
+            'tiene_archivos_adicionales' => $countArchivosAdicionales > 0,
+            'fecha_creacion' => $this->created_at,
+            'fecha_actualizacion' => $this->updated_at,
+        ];
     }
 
     /**
@@ -230,18 +269,18 @@ class VentanillaRadicaInterno extends Model
     public function getInfoArchivo(bool $incluirMetadatos = false): ?array
     {
         $info = [
-            'nombre' => basename($this->archivo_digital),
+            'nombre' => $this->nom_origi ?: basename($this->archivo_digital),
             'ruta' => $this->archivo_digital,
-            'url' => $this->getArchivoUrl(),
+            'url' => $this->getUrlArchivoDigital(),
             'extension' => pathinfo($this->archivo_digital, PATHINFO_EXTENSION),
         ];
 
         // Solo acceder al filesystem si se solicita explícitamente (para descarga/detalles)
         if ($incluirMetadatos) {
             try {
-                if (Storage::disk('ventanilla_radica_internos_archivos')->exists($this->archivo_digital)) {
-                    $info['tamaño'] = Storage::disk('ventanilla_radica_internos_archivos')->size($this->archivo_digital);
-                    $info['tipo'] = Storage::disk('ventanilla_radica_internos_archivos')->mimeType($this->archivo_digital);
+                if (Storage::disk('radicados_internos')->exists($this->archivo_digital)) {
+                    $info['tamaño'] = Storage::disk('radicados_internos')->size($this->archivo_digital);
+                    $info['tipo'] = Storage::disk('radicados_internos')->mimeType($this->archivo_digital);
                 }
             } catch (\Exception $e) {
                 // Si hay error al obtener información del archivo, continuar sin esos datos
@@ -299,7 +338,7 @@ class VentanillaRadicaInterno extends Model
             return null;
         }
 
-        $grupo = \App\Models\MiBandeja\MiBandejaTemp::where('radicado_id', $this->id)
+        $grupo = MiBandejaTemp::where('radicado_id', $this->id)
             ->where('radicado_tipo', 'interno')
             ->first();
 
@@ -353,7 +392,7 @@ class VentanillaRadicaInterno extends Model
 
     public function getUrlArchivoDigital()
     {
-        return $this->getArchivoUrl('archivo_digital', 'ventanilla_radica_internos_archivos');
+        return $this->getArchivoUrl('archivo_digital', 'radicados_internos');
     }
 
     public function getArchivoUrl(string $campo, string $disk): ?string
@@ -413,5 +452,70 @@ class VentanillaRadicaInterno extends Model
             'total_responsables' => $responsablesInfo->count(),
             'total_custodios' => $totalCustodios,
         ];
+    }
+
+    /**
+     * Determina si un usuario tiene acceso para consultar este radicado interno.
+     * Acceso otorgado si:
+     * - Es el usuario creador del radicado.
+     * - Es un responsable asignado (activo).
+     * - Es un destinatario asignado.
+     * - Es un proyector asignado.
+     * - Es un firmante asignado.
+     * - Pertenece a la misma dependencia/oficina según jerarquía de Mi Bandeja (si aplica).
+     */
+    public function tieneAccesoUsuario(int|User $user): bool
+    {
+        $userId = $user instanceof User ? $user->id : (int) $user;
+
+        if ((int) $this->usuario_crea === $userId) {
+            return true;
+        }
+
+        // Responsable
+        $esResponsable = $this->responsables()
+            ->whereHas('userCargo', fn ($q) => $q->where('user_id', $userId))
+            ->exists();
+        if ($esResponsable) {
+            return true;
+        }
+
+        // Destinatario
+        $esDestinatario = $this->destinatarios()
+            ->whereHas('userCargo', fn ($q) => $q->where('user_id', $userId))
+            ->exists();
+        if ($esDestinatario) {
+            return true;
+        }
+
+        // Proyector
+        $esProyector = $this->proyectores()
+            ->whereHas('userCargo', fn ($q) => $q->where('user_id', $userId))
+            ->exists();
+        if ($esProyector) {
+            return true;
+        }
+
+        // Firmante
+        $esFirmante = DB::table('ventanilla_radica_internos_firmantes')
+            ->where('radica_interno_id', $this->id)
+            ->where('users_id', $userId)
+            ->exists();
+        if ($esFirmante) {
+            return true;
+        }
+
+        // Jerarquía de Mi Bandeja (si es jefe de dependencia u oficina)
+        $userIdsJerarquia = MiBandejaFiltroService::getUserIdsParaFiltro($userId);
+        if ($userIdsJerarquia) {
+            $responsableEnJerarquia = $this->responsables()
+                ->whereHas('userCargo', fn ($q) => $q->whereIn('user_id', $userIdsJerarquia))
+                ->exists();
+            if ($responsableEnJerarquia) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Models\MiBandeja;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,9 +22,9 @@ class MiBandejaTempNota extends Model
         'contenido',
     ];
 
-    protected function contenido(): \Illuminate\Database\Eloquent\Casts\Attribute
+    protected function contenido(): Attribute
     {
-        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+        return Attribute::make(
             set: fn (string $value) => strip_tags($value),
         );
     }

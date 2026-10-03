@@ -105,14 +105,14 @@ class StoreUserSession
 
     private function sanitizeRefererUrl(?string $url): ?string
     {
-        if (!$url) {
+        if (! $url) {
             return null;
         }
 
         $url = preg_replace('/[?&]token=[^&]+/', '', $url);
 
         if (strlen($url) > 500) {
-            $url = substr($url, 0, 497) . '...';
+            $url = substr($url, 0, 497).'...';
         }
 
         return $url;

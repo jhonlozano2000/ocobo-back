@@ -2,7 +2,6 @@
 
 namespace App\Events\MiBandeja\Grupos;
 
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -14,8 +13,11 @@ class DocumentoLiberado implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public int $grupoId;
+
     public string $nuevaVersion;
+
     public int $subidoPorUserId;
+
     public string $nombreUsuario;
 
     public function __construct(int $grupoId, string $nuevaVersion, int $subidoPorUserId, string $nombreUsuario)

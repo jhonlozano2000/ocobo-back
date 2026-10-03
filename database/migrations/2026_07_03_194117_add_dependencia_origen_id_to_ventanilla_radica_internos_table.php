@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\Calidad\CalidadOrganigrama;
-use App\Models\User;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;

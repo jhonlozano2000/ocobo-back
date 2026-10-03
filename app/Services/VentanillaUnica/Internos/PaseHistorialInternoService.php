@@ -6,16 +6,17 @@ use App\Models\ControlAcceso\UserCargo;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoPaseHistorial;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoResponsable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PaseHistorialInternoService
 {
     /**
-     * Registra un pase y crea el nuevo responsable activo.
-     *
-     * El usuario anterior sigue activo en ventanilla_radica_internos_responsa
-     * para preservar el historial.
+     * Registra un pase y transfiere la responsabilidad:
+     * - El usuario destino se asigna como nuevo responsable activo.
+     * - Si el usuario origen era custodio, el destino hereda el rol de custodio.
+     * - El usuario origen se retira de la responsabilidad activa (su bandeja se actualiza),
+     *   quedando su participación registrada de forma permanente e inmutable en el historial.
      */
     public function registrarPase(array $data): array
     {
@@ -46,6 +47,33 @@ class PaseHistorialInternoService
 
             $usuarioOrigenId = $data['usuario_origen_id'] ?? Auth::id();
 
+            // Validación: No transferir a sí mismo
+            if ((int) $usuarioOrigenId === (int) $userCargo->user_id) {
+                throw new \Exception('No puedes realizar un pase hacia ti mismo.');
+            }
+
+            // Validación: No transferir a quien ya es responsable activo
+            $yaEsResponsable = VentanillaRadicaInternoResponsable::where('radica_interno_id', $data['radica_interno_id'])
+                ->whereHas('userCargo', function ($q) use ($userCargo) {
+                    $q->where('user_id', $userCargo->user_id);
+                })
+                ->exists();
+
+            if ($yaEsResponsable) {
+                throw new \Exception('El funcionario seleccionado ya es responsable de este radicado.');
+            }
+
+            // Buscar la asignación activa del usuario origen en este radicado
+            $responsableOrigen = VentanillaRadicaInternoResponsable::where('radica_interno_id', $data['radica_interno_id'])
+                ->whereHas('userCargo', function ($q) use ($usuarioOrigenId) {
+                    $q->where('user_id', $usuarioOrigenId);
+                })
+                ->first();
+
+            // Heredar rol de custodio si el origen lo tenía
+            $esCustodio = $responsableOrigen ? (bool) $responsableOrigen->custodio : false;
+
+            // 1. Registrar en historial inmutable
             $historial = VentanillaRadicaInternoPaseHistorial::create([
                 'radica_interno_id' => $data['radica_interno_id'],
                 'usuario_origen_id' => $usuarioOrigenId,
@@ -54,11 +82,17 @@ class PaseHistorialInternoService
                 'tipo' => $data['tipo'] ?? VentanillaRadicaInternoPaseHistorial::TIPO_PASE,
             ]);
 
+            // 2. Crear nuevo responsable activo
             $responsable = VentanillaRadicaInternoResponsable::create([
                 'radica_interno_id' => $data['radica_interno_id'],
                 'users_cargos_id' => $usersCargosId,
-                'custodio' => 0,
+                'custodio' => $esCustodio ? 1 : 0,
             ]);
+
+            // 3. Desvincular al usuario origen de la responsabilidad activa
+            if ($responsableOrigen) {
+                $responsableOrigen->delete();
+            }
 
             DB::commit();
 

@@ -5,11 +5,13 @@ namespace App\Http\Controllers\VentanillaUnica\Internos;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Notificacion;
+use App\Models\User;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoFirmantes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class VentanillaRadicaInternoFirmantesController extends Controller
 {
@@ -17,7 +19,8 @@ class VentanillaRadicaInternoFirmantesController extends Controller
 
     public function __construct()
     {
-        $this->middleware('can:Radicar -> Cores. Interna -> Editar');
+        $this->middleware('can:Radicar -> Cores. Interna -> Editar')->except(['getByRadicado', 'show']);
+        $this->middleware('can:Radicar -> Cores. Interna -> Mostrar')->only(['show']);
     }
 
     public function index(Request $request)
@@ -40,8 +43,13 @@ class VentanillaRadicaInternoFirmantesController extends Controller
 
             return $this->successResponse($firmas, 'Listado de firmantes obtenido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el listado de firmantes', $e->getMessage(), 500);
         }
     }
@@ -70,7 +78,7 @@ class VentanillaRadicaInternoFirmantesController extends Controller
                 ]);
                 $firmasCreadas[] = $firma->load(['user']);
 
-                $user = \App\Models\User::find($userId);
+                $user = User::find($userId);
                 if ($user) {
                     $radicado = VentanillaRadicaInterno::find($request->radica_interno_id);
                     Notificacion::create([
@@ -78,7 +86,7 @@ class VentanillaRadicaInternoFirmantesController extends Controller
                         'type' => 'asignacion_firmante',
                         'title' => 'Firmante asignado',
                         'message' => $radicado
-                            ? 'Se le ha asignado como firmante del radicado interno ' . $radicado->num_radicado . '.'
+                            ? 'Se le ha asignado como firmante del radicado interno '.$radicado->num_radicado.'.'
                             : 'Se le ha asignado como firmante de un radicado interno.',
                         'notifiable_type' => 'App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno',
                         'notifiable_id' => $request->radica_interno_id,
@@ -99,8 +107,12 @@ class VentanillaRadicaInternoFirmantesController extends Controller
 
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar firmantes', $e->getMessage(), 500);
@@ -129,7 +141,7 @@ class VentanillaRadicaInternoFirmantesController extends Controller
                 ]);
                 $firmasCreadas[] = $firma->load(['user']);
 
-                $user = \App\Models\User::find($userId);
+                $user = User::find($userId);
                 if ($user) {
                     $radicado = VentanillaRadicaInterno::find($radica_interno_id);
                     Notificacion::create([
@@ -137,7 +149,7 @@ class VentanillaRadicaInternoFirmantesController extends Controller
                         'type' => 'asignacion_firmante',
                         'title' => 'Firmante asignado',
                         'message' => $radicado
-                            ? 'Se le ha asignado como firmante del radicado interno ' . $radicado->num_radicado . '.'
+                            ? 'Se le ha asignado como firmante del radicado interno '.$radicado->num_radicado.'.'
                             : 'Se le ha asignado como firmante de un radicado interno.',
                         'notifiable_type' => 'App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno',
                         'notifiable_id' => $radica_interno_id,
@@ -158,8 +170,12 @@ class VentanillaRadicaInternoFirmantesController extends Controller
 
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar firmantes', $e->getMessage(), 500);
@@ -177,8 +193,13 @@ class VentanillaRadicaInternoFirmantesController extends Controller
 
             return $this->successResponse($firma, 'Firmante encontrado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el firmante', $e->getMessage(), 500);
         }
     }
@@ -210,8 +231,12 @@ class VentanillaRadicaInternoFirmantesController extends Controller
 
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar el firmante', $e->getMessage(), 500);
@@ -234,8 +259,12 @@ class VentanillaRadicaInternoFirmantesController extends Controller
 
             return $this->successResponse(null, 'Firmante eliminado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar el firmante', $e->getMessage(), 500);
@@ -245,6 +274,23 @@ class VentanillaRadicaInternoFirmantesController extends Controller
     public function getByRadicado($radica_interno_id)
     {
         try {
+            $user = auth()->user();
+            $puedeVerVentanilla = $user?->can('Radicar -> Cores. Interna -> Mostrar');
+            $puedeVerBandeja = $user?->can('Mi Bandeja - Internos -> Ver');
+
+            if (! $puedeVerVentanilla && ! $puedeVerBandeja) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
+            }
+
+            $radicado = VentanillaRadicaInterno::find($radica_interno_id);
+            if (! $radicado) {
+                return $this->errorResponse('Radicado interno no encontrado', null, 404);
+            }
+
+            if (! $puedeVerVentanilla && ! $radicado->tieneAccesoUsuario($user)) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
+            }
+
             $firmas = VentanillaRadicaInternoFirmantes::with(['user'])
                 ->where('radica_interno_id', $radica_interno_id)
                 ->orderBy('created_at', 'desc')
@@ -261,8 +307,13 @@ class VentanillaRadicaInternoFirmantesController extends Controller
 
             return $this->successResponse($firmasData, 'Firmantes del radicado obtenidos exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener los firmantes', $e->getMessage(), 500);
         }
     }

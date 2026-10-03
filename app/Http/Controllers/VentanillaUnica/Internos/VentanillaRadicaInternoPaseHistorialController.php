@@ -8,6 +8,8 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoPaseHistorial;
 use App\Services\VentanillaUnica\Internos\PaseHistorialInternoService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class VentanillaRadicaInternoPaseHistorialController extends Controller
 {
@@ -34,9 +36,14 @@ class VentanillaRadicaInternoPaseHistorialController extends Controller
 
             return $this->successResponse($result, 'Pase registrado exitosamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
-            return $this->errorResponse('Error al registrar el pase', $e->getMessage(), 500);
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
+            return $this->errorResponse($e->getMessage(), null, 422);
         }
     }
 
@@ -49,7 +56,7 @@ class VentanillaRadicaInternoPaseHistorialController extends Controller
             $historial = VentanillaRadicaInternoPaseHistorial::with([
                 'usuarioOrigen',
                 'usuarioDestino',
-                'usersCargosDestino.cargo'
+                'usersCargosDestino.cargo',
             ])
                 ->where('radica_interno_id', $radica_interno_id)
                 ->orderBy('created_at', 'desc')
@@ -57,8 +64,13 @@ class VentanillaRadicaInternoPaseHistorialController extends Controller
 
             return $this->successResponse($historial, 'Historial de pases obtenido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el historial de pases', $e->getMessage(), 500);
         }
     }

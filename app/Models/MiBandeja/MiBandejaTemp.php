@@ -2,9 +2,12 @@
 
 namespace App\Models\MiBandeja;
 
-use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\OfiArchivo\OfiArchivoPlantillaDocumento;
+use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -49,32 +52,26 @@ class MiBandejaTemp extends Model
 
     /**
      * Relación con el radicado recibido asociado.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function radicadoRecibido(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci::class, 'radicado_id');
+        return $this->belongsTo(VentanillaRadicaReci::class, 'radicado_id');
     }
 
     /**
      * Relación con el radicado enviado asociado.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function radicadoEnviado(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados::class, 'radicado_id');
+        return $this->belongsTo(VentanillaRadicaEnviados::class, 'radicado_id');
     }
 
     /**
      * Relación con el radicado interno asociado.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function radicadoInterno(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno::class, 'radicado_id');
+        return $this->belongsTo(VentanillaRadicaInterno::class, 'radicado_id');
     }
 
     /**
@@ -112,8 +109,6 @@ class MiBandejaTemp extends Model
 
     /**
      * Relación con el usuario que creó el grupo.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function creadoPor(): BelongsTo
     {
@@ -122,8 +117,6 @@ class MiBandejaTemp extends Model
 
     /**
      * Relación con el usuario que cargó la plantilla.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function plantillaCargadaPor(): BelongsTo
     {
@@ -132,8 +125,6 @@ class MiBandejaTemp extends Model
 
     /**
      * Relación con los revisores del grupo.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function revisores(): HasMany
     {
@@ -142,8 +133,6 @@ class MiBandejaTemp extends Model
 
     /**
      * Relación con los aprobadores del grupo.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function aprobadores(): HasMany
     {
@@ -152,8 +141,6 @@ class MiBandejaTemp extends Model
 
     /**
      * Relación con los firmantes del grupo.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function firmantes(): HasMany
     {
@@ -162,8 +149,6 @@ class MiBandejaTemp extends Model
 
     /**
      * Relación con los proyectores del grupo.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function proyectores(): HasMany
     {
@@ -172,8 +157,6 @@ class MiBandejaTemp extends Model
 
     /**
      * Relación con los adjuntos del grupo.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function adjuntos(): HasMany
     {
@@ -181,9 +164,17 @@ class MiBandejaTemp extends Model
     }
 
     /**
+     * Eventos de firma electrónica asociados al grupo colaborativo temporal (ISO 27001).
+     */
+    public function firmaEventos()
+    {
+        return $this->morphMany(FirmaEvento::class, 'documentable');
+    }
+
+    /**
      * Obtiene el radicado asociado según su tipo.
      *
-     * @return \Illuminate\Database\Eloquent\Model|null Modelo del radicado o null si no existe
+     * @return Model|null Modelo del radicado o null si no existe
      */
     public function getRadicadoAttribute()
     {

@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class VentanillaRadicaInternoDestinatariosController extends Controller
 {
@@ -52,8 +53,13 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             return $this->successResponse($destinatarios, 'Listado de destinatarios obtenido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el listado de destinatarios', $e->getMessage(), 500);
         }
     }
@@ -102,8 +108,12 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             return $this->successResponse($destinatario, 'Destinatario creado exitosamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al crear el destinatario', $e->getMessage(), 500);
@@ -151,8 +161,13 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             return $this->successResponse($destinatario, 'Destinatario encontrado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el destinatario', $e->getMessage(), 500);
         }
     }
@@ -192,6 +207,23 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
     public function getByRadicado($radica_interno_id)
     {
         try {
+            $user = auth()->user();
+            $puedeVerVentanilla = $user?->can('Radicar -> Cores. Interna -> Mostrar');
+            $puedeVerBandeja = $user?->can('Mi Bandeja - Internos -> Ver');
+
+            if (! $puedeVerVentanilla && ! $puedeVerBandeja) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
+            }
+
+            $radicado = VentanillaRadicaInterno::find($radica_interno_id);
+            if (! $radicado) {
+                return $this->errorResponse('Radicado interno no encontrado', null, 404);
+            }
+
+            if (! $puedeVerVentanilla && ! $radicado->tieneAccesoUsuario($user)) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
+            }
+
             $destinatarios = VentanillaRadicaInternoDestinatarios::with('userCargo.user')
                 ->where('radica_interno_id', $radica_interno_id)
                 ->orderBy('created_at', 'desc')
@@ -201,8 +233,13 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             return $this->successResponse($data, 'Listado de destinatarios obtenido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el listado de destinatarios', $e->getMessage(), 500);
         }
     }
@@ -264,8 +301,12 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             return $this->successResponse($destinatario, 'Destinatario actualizado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar el destinatario', $e->getMessage(), 500);
@@ -311,8 +352,12 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             return $this->successResponse(null, 'Destinatario eliminado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar el destinatario', $e->getMessage(), 500);
@@ -353,8 +398,12 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
 
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar destinatarios', $e->getMessage(), 500);
@@ -379,8 +428,13 @@ class VentanillaRadicaInternoDestinatariosController extends Controller
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Destinatario no encontrado', null, 404);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al registrar el acuse digital', $e->getMessage(), 500);
         }
     }

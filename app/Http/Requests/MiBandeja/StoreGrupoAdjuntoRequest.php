@@ -34,7 +34,7 @@ class StoreGrupoAdjuntoRequest extends FormRequest
             'archivo' => [
                 'required',
                 'file',
-                'max:' . $maxSize,
+                'max:'.$maxSize,
             ],
             'tipo' => ['nullable', Rule::in(['respuesta', 'anexo', 'evidencia'])],
         ];
@@ -48,6 +48,7 @@ class StoreGrupoAdjuntoRequest extends FormRequest
     public function messages(): array
     {
         $maxSizeKB = config('config_varias.max_tamano_archivo', 10240);
+
         return [
             'archivo.required' => 'El archivo es obligatorio.',
             'archivo.file' => 'El archivo debe ser un archivo válido.',

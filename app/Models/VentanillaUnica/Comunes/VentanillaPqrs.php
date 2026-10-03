@@ -6,16 +6,17 @@ use App\Helpers\CalendarioHelper;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\ConfigDiviPoli;
 use App\Models\Configuracion\ConfigListaDetalle;
+use App\Models\Configuracion\UsersCargos;
 use App\Models\Gestion\GestionTercero;
+use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Traits\AbacHierarquico;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\AbacHierarquico;
 
 /**
  * Modelo VentanillaPqrs — PQRS del módulo Ventanilla Única
@@ -39,12 +40,12 @@ use App\Traits\AbacHierarquico;
  * @property int|null $tipo_pqrs_id - Tipo de PQRS (catálogo lista 7)
  * @property string $prioridad - Normal|Alta|Urgente
  * @property string $estado_tramite - Pendiente|En trámite|Respondido|Cerrado
- * @property \Carbon\Carbon|null $fecha_vencimiento - Fecha límite de respuesta
- * @property \Carbon\Carbon|null $fecha_vencimiento_original - Vencimiento antes de prórroga
- * @property \Carbon\Carbon|null $fecha_respuesta - Fecha efectiva de respuesta
+ * @property Carbon|null $fecha_vencimiento - Fecha límite de respuesta
+ * @property Carbon|null $fecha_vencimiento_original - Vencimiento antes de prórroga
+ * @property Carbon|null $fecha_respuesta - Fecha efectiva de respuesta
  * @property bool $tiene_prorroga - Si tiene prórroga activa
  * @property string $fallo_judicial - Sí/No
- * @property \Carbon\Carbon|null $fechor_tramite - Fecha/hora de trámite
+ * @property Carbon|null $fechor_tramite - Fecha/hora de trámite
  * @property string|null $observaciones
  * @property string|null $num_docu_afectado - Número de documento del afectado
  * @property string|null $nom_afectado - Nombre del afectado
@@ -64,22 +65,21 @@ use App\Traits\AbacHierarquico;
  * @property string $tipo_persona - Natural|Jurídica
  * @property string $estado_firma - Sin firma|Pendiente OTP|Firmado
  * @property string|null $firma_digital - Firma en base64
- * @property \Carbon\Carbon|null $fecha_firma
+ * @property Carbon|null $fecha_firma
  * @property string|null $ip_firma
  * @property bool $firmado_en_representacion
  * @property string|null $nombre_representado
- *
- * @property-read \App\Models\Configuracion\UsersCargos|null $usersCargos
- * @property-read \App\Models\Gestion\GestionTercero|null $gestionTercero
- * @property-read \App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD|null $clasificacionDocumental
- * @property-read \App\Models\Configuracion\ConfigDiviPoli|null $diviPoliAfectado
- * @property-read \App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci|null $ventanillaRadicaReci
- * @property-read \Illuminate\Database\Eloquent\Collection $responsables
- * @property-read \Illuminate\Database\Eloquent\Collection $historialPases
- * @property-read \Illuminate\Database\Eloquent\Collection $historialCompartir
- * @property-read \Illuminate\Database\Eloquent\Collection $archivosPqrs
- * @property-read \Illuminate\Database\Eloquent\Collection $historialNotificaciones
- * @property-read \Illuminate\Database\Eloquent\Collection $historialClasificacion
+ * @property-read UsersCargos|null $usersCargos
+ * @property-read GestionTercero|null $gestionTercero
+ * @property-read ClasificacionDocumentalTRD|null $clasificacionDocumental
+ * @property-read ConfigDiviPoli|null $diviPoliAfectado
+ * @property-read VentanillaRadicaReci|null $ventanillaRadicaReci
+ * @property-read Collection $responsables
+ * @property-read Collection $historialPases
+ * @property-read Collection $historialCompartir
+ * @property-read Collection $archivosPqrs
+ * @property-read Collection $historialNotificaciones
+ * @property-read Collection $historialClasificacion
  * @property-read int $diasRestantesVencimiento
  * @property-read bool $vencido
  * @property-read bool $critico
@@ -87,12 +87,12 @@ use App\Traits\AbacHierarquico;
  * @property-read string $textoEstadoVencimiento
  *
  * @author Jhon Javer Lozano Arce
+ *
  * @date 2026-08-20
  */
-
 class VentanillaPqrs extends Model
 {
-    use HasFactory, SoftDeletes, AbacHierarquico;
+    use AbacHierarquico, HasFactory, SoftDeletes;
 
     protected $table = 'ventanilla_pqrs';
 
@@ -212,7 +212,7 @@ class VentanillaPqrs extends Model
 
     public function usuarioCreaRadicado(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'usuario_crea');
+        return $this->belongsTo(User::class, 'usuario_crea');
     }
 
     public function scopeActivas($query)

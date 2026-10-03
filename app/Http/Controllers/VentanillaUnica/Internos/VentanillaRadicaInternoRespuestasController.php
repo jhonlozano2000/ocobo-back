@@ -9,6 +9,7 @@ use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoRespuesta;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class VentanillaRadicaInternoRespuestasController extends Controller
 {
@@ -16,7 +17,7 @@ class VentanillaRadicaInternoRespuestasController extends Controller
 
     public function __construct()
     {
-        $this->middleware('can:Radicar -> Cores. Interna -> Editar');
+        $this->middleware('can:Radicar -> Cores. Interna -> Editar')->except(['index', 'disponibles']);
     }
 
     /**
@@ -25,10 +26,22 @@ class VentanillaRadicaInternoRespuestasController extends Controller
     public function index(Request $request, int $radicaInternoId): JsonResponse
     {
         try {
+            $user = auth()->user();
+            $puedeVerVentanilla = $user?->can('Radicar -> Cores. Interna -> Mostrar');
+            $puedeVerBandeja = $user?->can('Mi Bandeja - Internos -> Ver');
+
+            if (! $puedeVerVentanilla && ! $puedeVerBandeja) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
+            }
+
             $interno = VentanillaRadicaInterno::find($radicaInternoId);
 
             if (! $interno) {
                 return $this->errorResponse('Radicado interno no encontrado', null, 404);
+            }
+
+            if (! $puedeVerVentanilla && ! $interno->tieneAccesoUsuario($user)) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
             }
 
             $respuestas = $interno->respuestas()
@@ -37,6 +50,7 @@ class VentanillaRadicaInternoRespuestasController extends Controller
 
             $respuestasData = $respuestas->map(function ($respuesta) {
                 $internoResp = $respuesta->radicadoInternoRespuesta;
+
                 return [
                     'id' => $respuesta->id,
                     'radicado_interno' => $internoResp ? [
@@ -51,8 +65,13 @@ class VentanillaRadicaInternoRespuestasController extends Controller
 
             return $this->successResponse($respuestasData, 'Respuestas obtenidas exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener las respuestas', $e->getMessage(), 500);
         }
     }
@@ -82,8 +101,13 @@ class VentanillaRadicaInternoRespuestasController extends Controller
 
             return $this->successResponse($disponibles, 'Radicados internos disponibles');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener disponibles', $e->getMessage(), 500);
         }
     }
@@ -133,8 +157,13 @@ class VentanillaRadicaInternoRespuestasController extends Controller
         } catch (ValidationException $e) {
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al asociar respuestas', $e->getMessage(), 500);
         }
     }
@@ -163,8 +192,13 @@ class VentanillaRadicaInternoRespuestasController extends Controller
 
             return $this->successResponse($respuestas, 'Respuesta desasociada exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al desasociar la respuesta', $e->getMessage(), 500);
         }
     }

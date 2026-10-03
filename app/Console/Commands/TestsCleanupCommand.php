@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 class TestsCleanupCommand extends Command
 {
     protected $signature = 'tests:cleanup';
+
     protected $description = 'Limpia datos creados por tests (usuarios, radicados, etc.)';
 
     public function handle(): int
@@ -50,10 +51,10 @@ class TestsCleanupCommand extends Command
 
         $this->newLine();
         $this->info('Conteo final:');
-        $this->line('  Users: ' . DB::table('users')->count());
-        $this->line('  users_cargos: ' . DB::table('users_cargos')->count());
-        $this->line('  TRD: ' . DB::table('clasificacion_documental_trd')->count());
-        $this->line('  Organigrama: ' . DB::table('calidad_organigrama')->count());
+        $this->line('  Users: '.DB::table('users')->count());
+        $this->line('  users_cargos: '.DB::table('users_cargos')->count());
+        $this->line('  TRD: '.DB::table('clasificacion_documental_trd')->count());
+        $this->line('  Organigrama: '.DB::table('calidad_organigrama')->count());
 
         $this->newLine();
         $this->info('Limpieza completada.');

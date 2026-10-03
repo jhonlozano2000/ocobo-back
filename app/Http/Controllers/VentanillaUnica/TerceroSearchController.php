@@ -7,6 +7,8 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\Gestion\GestionTercero;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
  * Controlador para buscar terceros por correo electrónico.
@@ -51,8 +53,13 @@ class TerceroSearchController extends Controller
                 'divi_poli_id' => $tercero->divi_poli_id,
             ], 'Tercero encontrado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse(
                 'Error al buscar el tercero',
                 $e->getMessage(),

@@ -29,7 +29,7 @@ class UploadArchivoEnviadoRequest extends FormRequest
     public function rules(): array
     {
         $config = $this->getConfigValues();
-        $allowedExtensions = explode(',', $config['allowedExtensions']);
+        $allowedExtensions = array_values(array_filter(array_map('trim', explode(',', $config['allowedExtensions']))));
 
         return [
             'archivo_digital' => [

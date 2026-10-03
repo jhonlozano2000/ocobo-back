@@ -188,9 +188,12 @@ class PlantillaDocumentoService
             '${NOTIFICACION_CIUDAD}',
             '${NOTIFICACION_FECHA}',
             '${NOTIFICACION_MEDIO}',
+            '${FIRMA}',
+            '${FIRMAS}',
+            '${FIRMA_DIGITAL}',
         ];
 
-        $reemplazos = array_map(fn($key) => $variables[str_replace(['${', '}'], '', $key)] ?? '', $placeholders);
+        $reemplazos = array_map(fn ($key) => $variables[str_replace(['${', '}'], '', $key)] ?? '', $placeholders);
 
         return str_replace($placeholders, $reemplazos, $contenido);
     }

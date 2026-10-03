@@ -13,8 +13,11 @@ use App\Models\Notificacion;
  * Controlador para gestionar firmantes de grupos colaborativos temporales.
  * Permite agregar, actualizar, eliminar, marcar como terminado y firmar documentos.
  */
+use App\Services\Firma\FirmaService;
+use App\Services\MiBandeja\GrupoColaborativoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -29,8 +32,10 @@ class MiBandejaTempGrupoFirmanteController extends Controller
      * Constructor del controlador.
      * Aplica middleware de permisos para gestión de miembros.
      */
-    public function __construct()
-    {
+    public function __construct(
+        private readonly GrupoColaborativoService $grupoService,
+        private readonly FirmaService $firmaService,
+    ) {
         $this->middleware('can:'.self::PERM.'Gestionar Miembros')->only(['store', 'destroy', 'update']);
     }
 
@@ -176,6 +181,11 @@ class MiBandejaTempGrupoFirmanteController extends Controller
                 return $this->errorResponse('Firmante no encontrado', null, 404);
             }
 
+            $totalFirmantes = MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->count();
+            if ($totalFirmantes <= 1) {
+                return $this->errorResponse('El grupo colaborativo debe conservar al menos un firmante.', null, 422);
+            }
+
             $firmante->delete();
 
             return $this->successResponse(null, 'Firmante eliminado');
@@ -227,26 +237,146 @@ class MiBandejaTempGrupoFirmanteController extends Controller
     }
 
     /**
-     * Registra la firma de un firmante en un grupo colaborativo temporal.
+     * Solicita un código OTP de 6 dígitos para la firma electrónica del documento.
+     * El código es enviado al correo institucional del funcionario firmante (validez: 5 minutos).
      *
+     * @param  int  $grupoId  Identificador del grupo colaborativo
+     * @return JsonResponse Respuesta JSON con correo enmascarado
+     */
+    public function solicitarOtp($grupoId)
+    {
+        try {
+            $grupo = $this->autorizarGrupo($grupoId);
+
+            if (! $grupo) {
+                return $this->errorResponse('Grupo no encontrado', null, 404);
+            }
+
+            $user = auth()->user();
+            $firmante = $grupo->firmantes()->where('user_id', $user->id)->first();
+
+            if (! $firmante) {
+                return $this->errorResponse('No está registrado como firmante en este grupo colaborativo.', null, 403);
+            }
+
+            if ($firmante->fechor_firmado) {
+                return $this->errorResponse('Ya ha firmado este documento previamente.', null, 422);
+            }
+
+            if (empty($user->email)) {
+                return $this->errorResponse('El usuario no posee un correo electrónico registrado para el envío del código OTP.', null, 422);
+            }
+
+            $nombreDestino = trim(($user->nombres ?? '').' '.($user->apellidos ?? ''));
+
+            $this->firmaService->generarYEnviarOtpParaEmail(
+                $user->email,
+                $nombreDestino,
+                'grupo_colaborativo',
+                $grupo->id,
+                $user->id
+            );
+
+            // Enmascarar correo electrónico para privacidad
+            $partes = explode('@', $user->email);
+            $nombreUsuario = $partes[0];
+            $dominio = $partes[1] ?? '';
+            $longitud = strlen($nombreUsuario);
+            $enmascarado = $longitud <= 2
+                ? $nombreUsuario[0].'***@'.$dominio
+                : $nombreUsuario[0].str_repeat('*', max(1, $longitud - 2)).substr($nombreUsuario, -1).'@'.$dominio;
+
+            return $this->successResponse([
+                'email_enmascarado' => $enmascarado,
+                'expira_en_minutos' => 5,
+            ], "Código de seguridad OTP enviado exitosamente al correo {$enmascarado}");
+        } catch (\Exception $e) {
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
+            return $this->errorResponse('Error al solicitar código OTP', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Registra la firma de un firmante en un grupo colaborativo temporal
+     * previa verificación de identidad mediante OTP o contraseña (ISO 27001).
+     *
+     * @param  Request  $request  Solicitud HTTP con método ('otp' o 'password') y credencial
      * @param  int  $grupoId  Identificador del grupo
      * @param  int  $id  Identificador del firmante
      * @return JsonResponse Respuesta JSON con el firmante actualizado
      */
-    public function firmar($grupoId, $id)
+    public function firmar(Request $request, $grupoId, $id)
     {
         try {
+            $grupo = $this->autorizarGrupo($grupoId);
+
+            if (! $grupo) {
+                return $this->errorResponse('Grupo no encontrado', null, 404);
+            }
+
             $firmante = MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->find($id);
 
             if (! $firmante) {
                 return $this->errorResponse('Firmante no encontrado', null, 404);
             }
 
+            $user = auth()->user();
+            if ($firmante->user_id !== $user->id) {
+                return $this->errorResponse('Solo el usuario titular puede firmar su tarea asignada.', null, 403);
+            }
+
+            $metodo = $request->input('metodo');
+            $otpUtilizado = null;
+
+            if ($metodo === 'otp') {
+                $otp = (string) $request->input('otp');
+                if (empty($otp) || strlen($otp) !== 6) {
+                    return $this->errorResponse('Debe ingresar un código OTP válido de 6 dígitos.', null, 422);
+                }
+                $valido = $this->firmaService->validarOtpPorDocumento($otp, 'grupo_colaborativo', $grupo->id, $user->id);
+                if (! $valido) {
+                    return $this->errorResponse('El código de seguridad (OTP) es incorrecto o ha expirado.', null, 422);
+                }
+                $otpUtilizado = $otp;
+            } elseif ($metodo === 'password') {
+                $password = (string) $request->input('password');
+                if (empty($password) || ! Hash::check($password, $user->password)) {
+                    return $this->errorResponse('La contraseña ingresada es incorrecta.', null, 422);
+                }
+                $otpUtilizado = 'PASSWORD';
+            } else {
+                return $this->errorResponse('Debe seleccionar un método de verificación (Código OTP o Contraseña) para firmar el documento.', null, 422);
+            }
+
             $firmante->update([
                 'fechor_firmado' => now(),
+                'estado_tarea' => 'cumplido',
+                'fechor_terminado' => now(),
+                'descargo_plantilla' => true,
             ]);
 
-            return $this->successResponse($firmante, 'Firma registrada');
+            // Estampar imagen de firma registrada y leyenda ISO 27001 en el documento
+            try {
+                $this->grupoService->estamparFirmaFirmante($grupo, $user, $firmante, $otpUtilizado);
+            } catch (\Throwable $e) {
+                \Log::warning("No se pudo estampar firma en el documento físico del grupo {$grupoId}: ".$e->getMessage());
+            }
+
+            // Actualizar estado del grupo si todos los miembros cumplieron su labor
+            $grupo->refresh();
+            if ($grupo->todosTerminados()) {
+                $grupo->update(['estado' => 'listo_envio']);
+            }
+
+            $firmante->load(['user.cargo', 'cargo']);
+
+            return $this->successResponse($firmante, 'Firma registrada y estampada en el documento exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;

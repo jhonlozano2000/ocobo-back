@@ -8,6 +8,8 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoCompartirHistorial;
 use App\Services\VentanillaUnica\Internos\CompartirHistorialInternoService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class VentanillaRadicaInternoCompartirHistorialController extends Controller
 {
@@ -34,8 +36,13 @@ class VentanillaRadicaInternoCompartirHistorialController extends Controller
 
             return $this->successResponse($result, 'Radicado compartido exitosamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al compartir el radicado', $e->getMessage(), 500);
         }
     }
@@ -49,7 +56,7 @@ class VentanillaRadicaInternoCompartirHistorialController extends Controller
             $historial = VentanillaRadicaInternoCompartirHistorial::with([
                 'usuarioOrigen',
                 'usuarioDestino',
-                'usersCargosDestino.cargo'
+                'usersCargosDestino.cargo',
             ])
                 ->where('radica_interno_id', $radica_interno_id)
                 ->orderBy('created_at', 'desc')
@@ -57,8 +64,13 @@ class VentanillaRadicaInternoCompartirHistorialController extends Controller
 
             return $this->successResponse($historial, 'Historial de compartir obtenido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el historial de compartir', $e->getMessage(), 500);
         }
     }

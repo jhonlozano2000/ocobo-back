@@ -6,6 +6,7 @@ use App\Models\Configuracion\FileClassificationLevel;
 use App\Models\User;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -58,7 +59,7 @@ class VentanillaPqrsMetadata extends Model
 
     public function archivo(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivo::class, 'archivo_id');
+        return $this->belongsTo(VentanillaRadicaReciArchivo::class, 'archivo_id');
     }
 
     public function pqrs(): BelongsTo

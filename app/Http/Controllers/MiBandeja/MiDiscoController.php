@@ -4,8 +4,8 @@ namespace App\Http\Controllers\MiBandeja;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\MiDisco\MiDiscoCarpeta;
 use App\Models\MiDisco\MiDiscoArchivo;
+use App\Models\MiDisco\MiDiscoCarpeta;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -96,8 +96,8 @@ class MiDiscoController extends Controller
         $archivosCreados = [];
 
         foreach ($request->file('archivos') as $file) {
-            $nombreUniq = Str::uuid() . '.' . $file->getClientOriginalExtension();
-            $ruta = $file->storeAs('mi_disco/' . $user->id, $nombreUniq, 'local');
+            $nombreUniq = Str::uuid().'.'.$file->getClientOriginalExtension();
+            $ruta = $file->storeAs('mi_disco/'.$user->id, $nombreUniq, 'local');
 
             $archivosCreados[] = MiDiscoArchivo::create([
                 'nombre' => $nombreUniq,
@@ -119,7 +119,7 @@ class MiDiscoController extends Controller
         $user = Auth::user();
         $archivo = MiDiscoArchivo::where('user_id', $user->id)->findOrFail($id);
 
-        if (!Storage::disk('local')->exists($archivo->ruta_almacenamiento)) {
+        if (! Storage::disk('local')->exists($archivo->ruta_almacenamiento)) {
             abort(404, 'Archivo no encontrado en disco');
         }
 

@@ -3,7 +3,6 @@
 namespace App\Services\Firma;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Servicio para solicitar y verificar timestamps RFC 3161.
@@ -28,7 +27,7 @@ class TsaService
      * Solicita un timestamp RFC 3161 para un hash SHA-256.
      *
      * @param  string  $hash  Hash SHA-256 en hexadecimal
-     * @return string  Respuesta TSR completa codificada en base64
+     * @return string Respuesta TSR completa codificada en base64
      *
      * @throws \RuntimeException Si la TSA rechaza o falla la conexión
      */
@@ -72,7 +71,7 @@ class TsaService
      * el TSA confirmó ese hash.
      *
      * @param  string  $tokenBase64  Respuesta TSR completa en base64
-     * @param  string  $hash         Hash SHA-256 esperado en hexadecimal
+     * @param  string  $hash  Hash SHA-256 esperado en hexadecimal
      * @return array{valido: bool, fecha_firma: ?string}
      */
     public function verificarTimestamp(string $tokenBase64, string $hash): array

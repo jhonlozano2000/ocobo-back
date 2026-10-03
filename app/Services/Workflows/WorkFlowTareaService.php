@@ -4,11 +4,9 @@ namespace App\Services\Workflows;
 
 use App\Exceptions\Workflows\StateTransitionException;
 use App\Exceptions\Workflows\UncompletedChecklistException;
+use App\Models\Workflows\WorkflowNodo;
 use App\Models\Workflows\WorkFlowTarea;
 use App\Models\Workflows\WorkFlowTareaChecklist;
-use App\Models\Workflows\WorkflowInstancia;
-use App\Models\Workflows\WorkflowNodo;
-use App\Services\Workflows\WorkflowEstadoMachine;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -48,7 +46,7 @@ class WorkFlowTareaService
                 'orden' => $datos['orden'] ?? 0,
             ]);
 
-            if (!empty($datos['checklists'])) {
+            if (! empty($datos['checklists'])) {
                 $checklistItems = [];
                 foreach ($datos['checklists'] as $index => $item) {
                     $checklistItems[] = new WorkFlowTareaChecklist([
@@ -87,7 +85,7 @@ class WorkFlowTareaService
             }
 
             if (isset($datos['estado'])) {
-                if (!WorkflowEstadoMachine::puedeTransitar($tarea->estado, $datos['estado'])) {
+                if (! WorkflowEstadoMachine::puedeTransitar($tarea->estado, $datos['estado'])) {
                     throw new StateTransitionException(
                         "No se puede cambiar de '{$tarea->estado}' a '{$datos['estado']}'"
                     );
@@ -105,7 +103,7 @@ class WorkFlowTareaService
                     $estaCompletado = $item['esta_completado'] ?? false;
                     $orden = $item['orden'] ?? $index;
 
-                    if (!empty($item['id'])) {
+                    if (! empty($item['id'])) {
                         WorkFlowTareaChecklist::where('id', $item['id'])
                             ->where('work_flow_tarea_id', $tarea->id)
                             ->update([
@@ -191,7 +189,7 @@ class WorkFlowTareaService
         return DB::transaction(function () use ($tareaId, $estado, $resultado) {
             $tarea = WorkFlowTarea::with('checklists')->findOrFail($tareaId);
 
-            if (!WorkflowEstadoMachine::puedeTransitar($tarea->estado, $estado)) {
+            if (! WorkflowEstadoMachine::puedeTransitar($tarea->estado, $estado)) {
                 throw new StateTransitionException(
                     "No se puede cambiar de '{$tarea->estado}' a '{$estado}'"
                 );
@@ -215,7 +213,7 @@ class WorkFlowTareaService
             $tarea->update($datos);
 
             $this->auditService->registrar(
-                'tarea.' . $estado,
+                'tarea.'.$estado,
                 $tarea->nodo->workflow_id,
                 $tarea->instancia_id,
                 ['tarea_id' => $tarea->id, 'estado_anterior' => $estadoAnterior]

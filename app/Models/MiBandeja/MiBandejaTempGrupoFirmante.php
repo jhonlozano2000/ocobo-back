@@ -41,8 +41,6 @@ class MiBandejaTempGrupoFirmante extends Model
 
     /**
      * Relación con el grupo colaborativo temporal.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function grupo(): BelongsTo
     {
@@ -51,8 +49,6 @@ class MiBandejaTempGrupoFirmante extends Model
 
     /**
      * Relación con el usuario firmante.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function user(): BelongsTo
     {
@@ -61,12 +57,10 @@ class MiBandejaTempGrupoFirmante extends Model
 
     /**
      * Relación con el cargo del firmante.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function cargo(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Calidad\CalidadOrganigrama::class, 'cargo_id');
+        return $this->belongsTo(CalidadOrganigrama::class, 'cargo_id');
     }
 
     /**

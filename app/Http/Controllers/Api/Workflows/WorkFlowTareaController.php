@@ -11,9 +11,11 @@ use App\Http\Requests\Workflows\ReordenarWorkFlowTareasRequest;
 use App\Http\Requests\Workflows\StoreWorkFlowTareaRequest;
 use App\Http\Requests\Workflows\UpdateWorkFlowTareaRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\Workflows\WorkFlowTarea;
 use App\Services\Workflows\WorkFlowTareaService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class WorkFlowTareaController extends Controller
 {
@@ -36,10 +38,16 @@ class WorkFlowTareaController extends Controller
 
             $instanciaId = request('instancia_id');
             $tareas = $this->tareaService->listar($nodoId, $instanciaId ? (int) $instanciaId : null);
+
             return $this->successResponse($tareas, 'Tareas obtenidas correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener tareas', $e->getMessage());
         }
     }
@@ -53,10 +61,16 @@ class WorkFlowTareaController extends Controller
                 $request->validated(),
                 $instanciaId ? (int) $instanciaId : null
             );
+
             return $this->successResponse($tarea, 'Tarea creada correctamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al crear tarea', $e->getMessage());
         }
     }
@@ -64,14 +78,20 @@ class WorkFlowTareaController extends Controller
     public function show(int $workflowId, int $nodoId, int $tareaId)
     {
         try {
-            $tarea = \App\Models\Workflows\WorkFlowTarea::with(['responsable:id,nombres,apellidos', 'checklists'])
+            $tarea = WorkFlowTarea::with(['responsable:id,nombres,apellidos', 'checklists'])
                 ->where('nodo_id', $nodoId)
                 ->findOrFail($tareaId);
             $tarea = $this->tareaService->verificarVencimientoAlCargar($tarea);
+
             return $this->successResponse($tarea, 'Tarea obtenida correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener tarea', $e->getMessage(), 404);
         }
     }
@@ -80,10 +100,16 @@ class WorkFlowTareaController extends Controller
     {
         try {
             $tarea = $this->tareaService->actualizar($tareaId, $request->validated());
+
             return $this->successResponse($tarea, 'Tarea actualizada correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al actualizar tarea', $e->getMessage());
         }
     }
@@ -92,10 +118,16 @@ class WorkFlowTareaController extends Controller
     {
         try {
             $this->tareaService->eliminar($tareaId);
+
             return $this->successResponse(null, 'Tarea eliminada correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al eliminar tarea', $e->getMessage());
         }
     }
@@ -107,10 +139,16 @@ class WorkFlowTareaController extends Controller
                 $tareaId,
                 $request->validated()['responsable_usuario_id']
             );
+
             return $this->successResponse($tarea, 'Tarea asignada correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al asignar tarea', $e->getMessage());
         }
     }
@@ -124,6 +162,7 @@ class WorkFlowTareaController extends Controller
                 $data['estado'],
                 $data['resultado'] ?? []
             );
+
             return $this->successResponse($tarea, 'Estado de tarea actualizado correctamente');
         } catch (UncompletedChecklistException $e) {
             return $e->render();
@@ -132,8 +171,13 @@ class WorkFlowTareaController extends Controller
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Tarea no encontrada', null, 404);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al cambiar estado de tarea', $e->getMessage(), 500);
         }
     }
@@ -142,10 +186,16 @@ class WorkFlowTareaController extends Controller
     {
         try {
             $tareas = $this->tareaService->reordenar($nodoId, $request->input('tareas'));
+
             return $this->successResponse($tareas, 'Tareas reordenadas correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al reordenar tareas', $e->getMessage());
         }
     }

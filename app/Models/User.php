@@ -14,13 +14,13 @@ use App\Models\ControlAcceso\UserNotificationSetting;
 use App\Models\ControlAcceso\UsersSession;
 use App\Models\VentanillaUnica\Comunes\VentanillaUnica;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
-use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -154,8 +154,6 @@ class User extends Authenticatable
 
     /**
      * Relación con el cargo activo del usuario a través de UserCargo.
-     *
-     * @return HasOneThrough
      */
     public function cargo(): HasOneThrough
     {

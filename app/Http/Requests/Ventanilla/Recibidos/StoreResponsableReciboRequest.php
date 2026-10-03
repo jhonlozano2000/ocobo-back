@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Ventanilla\Recibidos;
 
-use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreResponsableReciboRequest extends FormRequest

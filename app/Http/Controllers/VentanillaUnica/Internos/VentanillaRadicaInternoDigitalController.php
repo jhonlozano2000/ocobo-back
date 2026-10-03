@@ -28,7 +28,6 @@ class VentanillaRadicaInternoDigitalController extends Controller
     {
         $this->middleware('can:'.self::PERM.'Subir digital')->only(['upload']);
         $this->middleware('can:'.self::PERM.'Eliminar digital')->only(['deleteFile']);
-        $this->middleware('can:'.self::PERM.'Mostrar')->only(['getFileInfo', 'download', 'getOcr']);
     }
 
     public function upload($id, UploadArchivoInternoRequest $request)
@@ -70,11 +69,13 @@ class VentanillaRadicaInternoDigitalController extends Controller
             $hashSha256 = $uploadData['hash'];
             $mimeType = $uploadData['mime'];
             $fileSize = $uploadData['size'];
+            $nombreOriginal = $archivo->getClientOriginalName();
 
             $usuario = Auth::user();
 
             $radicado->update([
                 'archivo_digital' => $nuevoArchivo,
+                'nom_origi' => $nombreOriginal,
                 'hash_sha256' => $hashSha256,
                 'archivo_tipo' => $mimeType,
                 'archivo_peso' => $fileSize,
@@ -144,10 +145,22 @@ class VentanillaRadicaInternoDigitalController extends Controller
     public function download($id)
     {
         try {
+            $user = Auth::user();
+            $puedeVerVentanilla = $user?->can('Radicar -> Cores. Interna -> Mostrar');
+            $puedeVerBandeja = $user?->can('Mi Bandeja - Internos -> Ver');
+
+            if (! $puedeVerVentanilla && ! $puedeVerBandeja) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
+            }
+
             $radicado = VentanillaRadicaInterno::find($id);
 
             if (! $radicado || ! $radicado->archivo_digital) {
                 return $this->errorResponse('Archivo no encontrado', null, 404);
+            }
+
+            if (! $puedeVerVentanilla && ! $radicado->tieneAccesoUsuario($user)) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
             }
 
             if (! ArchivoHelper::obtenerUrl($radicado->archivo_digital, self::DISK)) {
@@ -197,10 +210,22 @@ class VentanillaRadicaInternoDigitalController extends Controller
     public function getFileInfo($id)
     {
         try {
+            $user = Auth::user();
+            $puedeVerVentanilla = $user?->can('Radicar -> Cores. Interna -> Mostrar');
+            $puedeVerBandeja = $user?->can('Mi Bandeja - Internos -> Ver');
+
+            if (! $puedeVerVentanilla && ! $puedeVerBandeja) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
+            }
+
             $radicado = VentanillaRadicaInterno::with('usuarioSubido')->find($id);
 
             if (! $radicado || ! $radicado->archivo_digital) {
                 return $this->errorResponse('Archivo no encontrado', null, 404);
+            }
+
+            if (! $puedeVerVentanilla && ! $radicado->tieneAccesoUsuario($user)) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
             }
 
             $fileInfo = [
@@ -230,10 +255,22 @@ class VentanillaRadicaInternoDigitalController extends Controller
     public function getOcr($id)
     {
         try {
+            $user = Auth::user();
+            $puedeVerVentanilla = $user?->can('Radicar -> Cores. Interna -> Mostrar');
+            $puedeVerBandeja = $user?->can('Mi Bandeja - Internos -> Ver');
+
+            if (! $puedeVerVentanilla && ! $puedeVerBandeja) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
+            }
+
             $radicado = VentanillaRadicaInterno::find($id);
 
             if (! $radicado || ! $radicado->archivo_digital) {
                 return $this->errorResponse('El radicado no tiene archivo digital', null, 400);
+            }
+
+            if (! $puedeVerVentanilla && ! $radicado->tieneAccesoUsuario($user)) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
             }
 
             return $this->successResponse([

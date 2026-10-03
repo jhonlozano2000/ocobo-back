@@ -7,8 +7,8 @@ use App\Http\Requests\Ventanilla\Recibidos\StorePaseHistorialRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciPaseHistorial;
 use App\Services\VentanillaUnica\Recibidos\PaseHistorialService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class VentanillaRadicaReciPaseHistorialController extends Controller
 {
@@ -18,8 +18,35 @@ class VentanillaRadicaReciPaseHistorialController extends Controller
 
     public function __construct()
     {
-        $this->middleware('can:'.self::PERM.'Editar')->only(['store']);
-        $this->middleware('can:'.self::PERM.'Mostrar')->only(['byRadicado']);
+        $this->middleware(function ($request, $next) {
+            $user = auth()->user();
+            if (! $user) {
+                abort(401);
+            }
+
+            // Permitido para quien tenga permiso de Ventanilla Recibida Editar O Mi Bandeja Recibidos Ver
+            if ($user->hasPermissionTo('Radicar -> Cores. Recibida -> Editar') ||
+                $user->hasPermissionTo('Mi Bandeja - Recibidos -> Ver') ||
+                $user->hasPermissionTo('Mi Bandeja - Recibidos -> Editar Estado')) {
+                return $next($request);
+            }
+
+            abort(403, 'No tienes permiso para pasar este radicado.');
+        })->only(['store']);
+
+        $this->middleware(function ($request, $next) {
+            $user = auth()->user();
+            if (! $user) {
+                abort(401);
+            }
+
+            if ($user->hasPermissionTo('Radicar -> Cores. Recibida -> Mostrar') ||
+                $user->hasPermissionTo('Mi Bandeja - Recibidos -> Ver')) {
+                return $next($request);
+            }
+
+            abort(403, 'No tienes permiso para consultar este historial.');
+        })->only(['byRadicado']);
     }
 
     /**
@@ -35,9 +62,14 @@ class VentanillaRadicaReciPaseHistorialController extends Controller
 
             return $this->successResponse($result, 'Pase registrado exitosamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
-            return $this->errorResponse('Error al registrar el pase', $e->getMessage(), 500);
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
+            return $this->errorResponse($e->getMessage(), null, 422);
         }
     }
 
@@ -50,7 +82,7 @@ class VentanillaRadicaReciPaseHistorialController extends Controller
             $historial = VentanillaRadicaReciPaseHistorial::with([
                 'usuarioOrigen',
                 'usuarioDestino',
-                'usersCargosDestino.cargo'
+                'usersCargosDestino.cargo',
             ])
                 ->where('radica_reci_id', $radica_reci_id)
                 ->orderBy('created_at', 'desc')
@@ -58,8 +90,13 @@ class VentanillaRadicaReciPaseHistorialController extends Controller
 
             return $this->successResponse($historial, 'Historial de pases obtenido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el historial de pases', $e->getMessage(), 500);
         }
     }

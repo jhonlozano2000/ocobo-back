@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -11,7 +10,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::post('/broadcasting/auth', function (Request $request) {
-    if (!auth()->check()) {
+    if (! auth()->check()) {
         return response()->json(['message' => 'No autenticado'], 401);
     }
 

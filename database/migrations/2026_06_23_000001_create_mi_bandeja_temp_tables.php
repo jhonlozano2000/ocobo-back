@@ -13,8 +13,6 @@ return new class extends Migration
     /**
      * Ejecuta la migración.
      * Crea las tablas necesarias para grupos colaborativos temporales.
-     *
-     * @return void
      */
     public function up(): void
     {
@@ -43,7 +41,7 @@ return new class extends Migration
         });
 
         // Responsables del grupo
-        if (!Schema::hasTable('mi_bandeja_temp_grupo_responsables')) {
+        if (! Schema::hasTable('mi_bandeja_temp_grupo_responsables')) {
             Schema::create('mi_bandeja_temp_grupo_responsables', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('grupo_id');
@@ -64,7 +62,7 @@ return new class extends Migration
         }
 
         // Firmantes del grupo
-        if (!Schema::hasTable('mi_bandeja_temp_grupo_firmantes')) {
+        if (! Schema::hasTable('mi_bandeja_temp_grupo_firmantes')) {
             Schema::create('mi_bandeja_temp_grupo_firmantes', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('grupo_id');
@@ -86,7 +84,7 @@ return new class extends Migration
         }
 
         // Proyectores del grupo
-        if (!Schema::hasTable('mi_bandeja_temp_grupo_proyectores')) {
+        if (! Schema::hasTable('mi_bandeja_temp_grupo_proyectores')) {
             Schema::create('mi_bandeja_temp_grupo_proyectores', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('grupo_id');
@@ -106,7 +104,7 @@ return new class extends Migration
         }
 
         // Adjuntos del grupo
-        if (!Schema::hasTable('mi_bandeja_temp_grupo_archi_adjuntos')) {
+        if (! Schema::hasTable('mi_bandeja_temp_grupo_archi_adjuntos')) {
             Schema::create('mi_bandeja_temp_grupo_archi_adjuntos', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedBigInteger('grupo_id');
@@ -128,8 +126,6 @@ return new class extends Migration
     /**
      * Revierte la migración.
      * Elimina las tablas en orden inverso para respetar las dependencias.
-     *
-     * @return void
      */
     public function down(): void
     {

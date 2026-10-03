@@ -3,10 +3,10 @@
 namespace App\Models\OfiArchivo;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Builder;
 
 class OfiArchivoPlantillaDocumento extends Model
 {
@@ -50,7 +50,7 @@ class OfiArchivoPlantillaDocumento extends Model
     public function scopeVigente(Builder $q): Builder
     {
         return $q->where('activo', true)
-            ->where(fn($q) => $q->whereNull('fecha_vencimiento')->orWhere('fecha_vencimiento', '>', now()));
+            ->where(fn ($q) => $q->whereNull('fecha_vencimiento')->orWhere('fecha_vencimiento', '>', now()));
     }
 
     public function scopeActivas(Builder $q): Builder
@@ -66,15 +66,15 @@ class OfiArchivoPlantillaDocumento extends Model
     public function getPesoFormateadoAttribute(): string
     {
         if ($this->peso >= 1024) {
-            return number_format($this->peso / 1024, 2) . ' MB';
+            return number_format($this->peso / 1024, 2).' MB';
         }
 
-        return number_format($this->peso, 2) . ' KB';
+        return number_format($this->peso, 2).' KB';
     }
 
     public function getEstadoColorAttribute(): string
     {
-        if (!$this->activo) {
+        if (! $this->activo) {
             return 'error';
         }
         if ($this->fecha_vencimiento && $this->fecha_vencimiento->isPast()) {

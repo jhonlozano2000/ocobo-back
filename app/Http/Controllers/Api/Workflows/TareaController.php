@@ -12,7 +12,10 @@ use App\Http\Requests\Workflows\UpdateTareaRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\Tarea;
 use App\Services\Workflows\TareaService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
  * Controlador de Tareas de Workflow
@@ -30,9 +33,9 @@ class TareaController extends Controller
         // Abilities "no-modelo" (viewAny/create/misTareas) sí funcionan con la clase.
         // Las de instancia (view/update/delete) se autorizan dentro de cada método
         // para que la Policy reciba el MODELO, no el nombre de la clase.
-        $this->middleware('can:misTareas,' . Tarea::class)->only(['misTareas']);
-        $this->middleware('can:viewAny,' . Tarea::class)->only(['index']);
-        $this->middleware('can:create,' . Tarea::class)->only(['store']);
+        $this->middleware('can:misTareas,'.Tarea::class)->only(['misTareas']);
+        $this->middleware('can:viewAny,'.Tarea::class)->only(['index']);
+        $this->middleware('can:create,'.Tarea::class)->only(['store']);
     }
 
     /**
@@ -47,8 +50,8 @@ class TareaController extends Controller
             $this->tareaService->verificarVencimientosDeUsuario($user->id);
 
             $tareas = Tarea::where(function ($q) use ($user) {
-                $q->whereHas('propietarios', fn($q) => $q->where('user_id', $user->id))
-                  ->orWhereHas('responsables', fn($q) => $q->where('user_id', $user->id));
+                $q->whereHas('propietarios', fn ($q) => $q->where('user_id', $user->id))
+                    ->orWhereHas('responsables', fn ($q) => $q->where('user_id', $user->id));
             })
                 ->with(['propietarios', 'responsables', 'checklists', 'workflow'])
                 ->orderBy('created_at', 'desc')
@@ -56,9 +59,16 @@ class TareaController extends Controller
 
             return $this->successResponse($tareas, 'Mis tareas obtenidas correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Auth\Access\AuthorizationException) { throw $e; }
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof AuthorizationException) {
+                throw $e;
+            }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener mis tareas', $e->getMessage());
         }
     }
@@ -79,9 +89,16 @@ class TareaController extends Controller
 
             return $this->successResponse($tareas, 'Tareas obtenidas correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Auth\Access\AuthorizationException) { throw $e; }
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof AuthorizationException) {
+                throw $e;
+            }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener tareas', $e->getMessage());
         }
     }
@@ -96,11 +113,19 @@ class TareaController extends Controller
             $this->authorize('view', $tarea);
             $tarea->load(['propietarios', 'responsables', 'checklists', 'workflow']);
             $tarea = $this->tareaService->verificarVencimientoAlCargar($tarea);
+
             return $this->successResponse($tarea, 'Tarea obtenida correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Auth\Access\AuthorizationException) { throw $e; }
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof AuthorizationException) {
+                throw $e;
+            }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener tarea', $e->getMessage(), 404);
         }
     }
@@ -116,11 +141,19 @@ class TareaController extends Controller
                 $request->validated(),
                 $request->user()
             );
+
             return $this->successResponse($tarea, 'Tarea creada correctamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Auth\Access\AuthorizationException) { throw $e; }
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof AuthorizationException) {
+                throw $e;
+            }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al crear tarea', $e->getMessage());
         }
     }
@@ -134,6 +167,7 @@ class TareaController extends Controller
         try {
             $this->authorize('update', $tarea);
             $tarea = $this->tareaService->update($tarea, $request->validated());
+
             return $this->successResponse($tarea, 'Tarea actualizada correctamente');
         } catch (UncompletedChecklistException $e) {
             return $e->render();
@@ -142,9 +176,16 @@ class TareaController extends Controller
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Tarea no encontrada', null, 404);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Auth\Access\AuthorizationException) { throw $e; }
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof AuthorizationException) {
+                throw $e;
+            }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al actualizar tarea', $e->getMessage(), 500);
         }
     }
@@ -158,11 +199,19 @@ class TareaController extends Controller
         try {
             $this->authorize('delete', $tarea);
             $this->tareaService->destroy($tarea);
+
             return $this->successResponse(null, 'Tarea eliminada correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Auth\Access\AuthorizationException) { throw $e; }
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof AuthorizationException) {
+                throw $e;
+            }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al eliminar tarea', $e->getMessage());
         }
     }
@@ -177,15 +226,23 @@ class TareaController extends Controller
 
         try {
             $tarea = $this->tareaService->completar($tarea);
+
             return $this->successResponse($tarea, 'Tarea completada correctamente');
         } catch (UncompletedChecklistException $e) {
             return $e->render();
         } catch (StateTransitionException $e) {
             return $this->errorResponse($e->getMessage(), null, 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Auth\Access\AuthorizationException) { throw $e; }
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof AuthorizationException) {
+                throw $e;
+            }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al completar tarea', $e->getMessage(), 500);
         }
     }
@@ -196,13 +253,21 @@ class TareaController extends Controller
 
         try {
             $tarea = $this->tareaService->iniciar($tarea);
+
             return $this->successResponse($tarea, 'Tarea iniciada correctamente');
         } catch (StateTransitionException $e) {
             return $this->errorResponse($e->getMessage(), null, 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Auth\Access\AuthorizationException) { throw $e; }
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof AuthorizationException) {
+                throw $e;
+            }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al iniciar tarea', $e->getMessage(), 500);
         }
     }
@@ -213,13 +278,21 @@ class TareaController extends Controller
 
         try {
             $tarea = $this->tareaService->cancelar($tarea);
+
             return $this->successResponse($tarea, 'Tarea cancelada correctamente');
         } catch (StateTransitionException $e) {
             return $this->errorResponse($e->getMessage(), null, 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Auth\Access\AuthorizationException) { throw $e; }
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof AuthorizationException) {
+                throw $e;
+            }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al cancelar tarea', $e->getMessage(), 500);
         }
     }
@@ -230,11 +303,19 @@ class TareaController extends Controller
 
         try {
             $tarea = $this->tareaService->reactivar($tarea);
+
             return $this->successResponse($tarea, 'Tarea reactivada correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Auth\Access\AuthorizationException) { throw $e; }
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof AuthorizationException) {
+                throw $e;
+            }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al reactivar tarea', $e->getMessage());
         }
     }

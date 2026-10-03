@@ -4,12 +4,14 @@ namespace App\Http\Controllers\VentanillaUnica\Internos;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\ControlAcceso\UserCargo;
 use App\Models\Notificacion;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoProyectores;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class VentanillaRadicaInternoProyectoresController extends Controller
 {
@@ -50,8 +52,13 @@ class VentanillaRadicaInternoProyectoresController extends Controller
 
             return $this->successResponse($proyectores, 'Listado de proyectores obtenido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el listado de proyectores', $e->getMessage(), 500);
         }
     }
@@ -100,7 +107,7 @@ class VentanillaRadicaInternoProyectoresController extends Controller
             $proyector = VentanillaRadicaInternoProyectores::create($validated);
 
             // Crear notificación in-app para el proyector
-            $userCargo = \App\Models\ControlAcceso\UserCargo::find($validated['users_cargos_id']);
+            $userCargo = UserCargo::find($validated['users_cargos_id']);
             if ($userCargo && $userCargo->user) {
                 $radicado = VentanillaRadicaInterno::find($validated['radica_interno_id']);
                 Notificacion::create([
@@ -108,7 +115,7 @@ class VentanillaRadicaInternoProyectoresController extends Controller
                     'type' => 'asignacion_proyector',
                     'title' => 'Proyector asignado',
                     'message' => $radicado
-                        ? 'Se le ha asignado como proyector del radicado interno ' . $radicado->num_radicado . '.'
+                        ? 'Se le ha asignado como proyector del radicado interno '.$radicado->num_radicado.'.'
                         : 'Se le ha asignado como proyector de un radicado interno.',
                     'notifiable_type' => 'App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno',
                     'notifiable_id' => $validated['radica_interno_id'],
@@ -124,8 +131,12 @@ class VentanillaRadicaInternoProyectoresController extends Controller
 
             return $this->successResponse($proyector, 'Proyector creado exitosamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al crear el proyector', $e->getMessage(), 500);
@@ -172,8 +183,13 @@ class VentanillaRadicaInternoProyectoresController extends Controller
 
             return $this->successResponse($proyector, 'Proyector encontrado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el proyector', $e->getMessage(), 500);
         }
     }
@@ -234,8 +250,12 @@ class VentanillaRadicaInternoProyectoresController extends Controller
 
             return $this->successResponse($proyector, 'Proyector actualizado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar el proyector', $e->getMessage(), 500);
@@ -281,8 +301,12 @@ class VentanillaRadicaInternoProyectoresController extends Controller
 
             return $this->successResponse(null, 'Proyector eliminado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar el proyector', $e->getMessage(), 500);
@@ -292,6 +316,23 @@ class VentanillaRadicaInternoProyectoresController extends Controller
     public function getByRadicado($radica_interno_id)
     {
         try {
+            $user = auth()->user();
+            $puedeVerVentanilla = $user?->can('Radicar -> Cores. Interna -> Mostrar');
+            $puedeVerBandeja = $user?->can('Mi Bandeja - Internos -> Ver');
+
+            if (! $puedeVerVentanilla && ! $puedeVerBandeja) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
+            }
+
+            $radicado = VentanillaRadicaInterno::find($radica_interno_id);
+            if (! $radicado) {
+                return $this->errorResponse('Radicado interno no encontrado', null, 404);
+            }
+
+            if (! $puedeVerVentanilla && ! $radicado->tieneAccesoUsuario($user)) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
+            }
+
             $proyectores = VentanillaRadicaInternoProyectores::with(['userCargo.user', 'userCargo.cargo'])
                 ->where('radica_interno_id', $radica_interno_id)
                 ->orderBy('created_at', 'desc')
@@ -322,8 +363,13 @@ class VentanillaRadicaInternoProyectoresController extends Controller
 
             return $this->successResponse($data, 'Proyectores del radicado obtenidos exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener los proyectores', $e->getMessage(), 500);
         }
     }
@@ -354,14 +400,14 @@ class VentanillaRadicaInternoProyectoresController extends Controller
                 $proyectoresCreados[] = $proyector->load(['userCargo.user', 'userCargo.cargo']);
 
                 // Crear notificación in-app para el proyector
-                $userCargo = \App\Models\ControlAcceso\UserCargo::find($item['users_cargos_id']);
+                $userCargo = UserCargo::find($item['users_cargos_id']);
                 if ($userCargo && $userCargo->user) {
                     Notificacion::create([
                         'user_id' => $userCargo->user_id,
                         'type' => 'asignacion_proyector',
                         'title' => 'Proyector asignado',
                         'message' => $radicado
-                            ? 'Se le ha asignado como proyector del radicado interno ' . $radicado->num_radicado . '.'
+                            ? 'Se le ha asignado como proyector del radicado interno '.$radicado->num_radicado.'.'
                             : 'Se le ha asignado como proyector de un radicado interno.',
                         'notifiable_type' => 'App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno',
                         'notifiable_id' => $radica_interno_id,
@@ -382,8 +428,12 @@ class VentanillaRadicaInternoProyectoresController extends Controller
 
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar proyectores', $e->getMessage(), 500);

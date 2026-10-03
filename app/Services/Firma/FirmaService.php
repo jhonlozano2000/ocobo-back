@@ -6,7 +6,6 @@ use App\Helpers\MailConfigHelper;
 use App\Mail\OtpFirmaMail;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class FirmaService
@@ -28,12 +27,13 @@ class FirmaService
     }
 
     /**
-     * Genera un OTP de 6 digitos y lo envia al correo de un email especifico (tercero).
+     * Genera un OTP de 6 digitos y lo envia al correo de un email especifico (tercero o funcionario).
      */
-    public function generarYEnviarOtpParaEmail(string $email, ?string $nombre, string $documentableType, int $documentableId): bool
+    public function generarYEnviarOtpParaEmail(string $email, ?string $nombre, string $documentableType, int $documentableId, ?int $userId = null): bool
     {
         $otp = (string) random_int(100000, 999999);
-        $cacheKey = "otp_firma_{$documentableType}_{$documentableId}";
+        $suffix = $userId ? "_{$userId}" : '';
+        $cacheKey = "otp_firma_{$documentableType}_{$documentableId}{$suffix}";
 
         Cache::put($cacheKey, $otp, now()->addMinutes(5));
 
@@ -61,11 +61,12 @@ class FirmaService
     }
 
     /**
-     * Valida OTP por documento (recibidos/enviados/internos).
+     * Valida OTP por documento (recibidos/enviados/internos/grupos colaborativos).
      */
-    public function validarOtpPorDocumento(string $otp, string $documentableType, int $documentableId): bool
+    public function validarOtpPorDocumento(string $otp, string $documentableType, int $documentableId, ?int $userId = null): bool
     {
-        $cacheKey = "otp_firma_{$documentableType}_{$documentableId}";
+        $suffix = $userId ? "_{$userId}" : '';
+        $cacheKey = "otp_firma_{$documentableType}_{$documentableId}{$suffix}";
         $otpGuardado = Cache::get($cacheKey);
 
         if (! $otpGuardado || $otpGuardado != $otp) {

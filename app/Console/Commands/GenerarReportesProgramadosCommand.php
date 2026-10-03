@@ -2,17 +2,18 @@
 
 namespace App\Console\Commands;
 
+use App\Mail\ReporteProgramadoMailable;
 use App\Models\ReporteProgramado;
 use App\Services\ReportesExportService;
 use App\Services\ReportesUnificadoService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\ReporteProgramadoMailable;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class GenerarReportesProgramadosCommand extends Command
 {
     protected $signature = 'reportes:generar-programados';
+
     protected $description = 'Genera y envía reportes programados vencidos';
 
     public function handle(ReportesUnificadoService $unificado, ReportesExportService $export): int
@@ -34,7 +35,7 @@ class GenerarReportesProgramadosCommand extends Command
             try {
                 $data = $unificado->generarUnificado($item->modulo, $item->filtros ?? []);
                 $columnas = $data['columnas'];
-                $nombre = 'reporte_' . $item->modulo;
+                $nombre = 'reporte_'.$item->modulo;
 
                 $path = match ($item->formato) {
                     'excel' => $export->exportarExcel($data, $nombre, $columnas),

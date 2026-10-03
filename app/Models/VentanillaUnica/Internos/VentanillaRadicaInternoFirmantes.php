@@ -2,7 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Internos;
 
-use App\Models\ControlAcceso\UserCargo;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -24,7 +24,7 @@ class VentanillaRadicaInternoFirmantes extends Model
 
     public function user()
     {
-        return $this->belongsTo(\App\Models\User::class, 'users_id');
+        return $this->belongsTo(User::class, 'users_id');
     }
 
     public function getInfoFirmante(): ?array

@@ -65,7 +65,7 @@ class MiBandejaTempArchivoVersion extends Model
 
     public function estaBloqueadoPor(int $userId): bool
     {
-        return $this->bloqueado_por_user_id === $userId && !$this->estaDisponible();
+        return $this->bloqueado_por_user_id === $userId && ! $this->estaDisponible();
     }
 
     public function bloqueoExpirado(): bool

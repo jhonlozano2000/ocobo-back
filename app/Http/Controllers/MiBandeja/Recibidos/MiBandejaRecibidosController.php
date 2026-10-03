@@ -54,7 +54,15 @@ class MiBandejaRecibidosController extends Controller
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('num_radicado', 'like', "%{$search}%")
-                        ->orWhere('asunto', 'like', "%{$search}%");
+                        ->orWhere('asunto', 'like', "%{$search}%")
+                        ->orWhereHas('tercero', function ($tq) use ($search) {
+                            $tq->where('nom_razo_soci', 'like', "%{$search}%")
+                                ->orWhere('num_docu_nit', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('usuariosResponsables.user', function ($uq) use ($search) {
+                            $uq->where('nombres', 'like', "%{$search}%")
+                                ->orWhere('apellidos', 'like', "%{$search}%");
+                        });
                 });
             }
 
@@ -63,7 +71,14 @@ class MiBandejaRecibidosController extends Controller
             }
 
             $perPage = min((int) $request->get('per_page', 15), 100);
-            $radicados = $query->with('tercero')->paginate($perPage);
+            $radicados = $query->with([
+                'tercero',
+                'clasificacionDocumental',
+                'medioRecepcion',
+                'usuariosResponsables.user',
+                'usuariosResponsables.cargo',
+                'compartirHistorial',
+            ])->paginate($perPage);
 
             return response()->json([
                 'status' => true,

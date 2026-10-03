@@ -30,7 +30,9 @@ class VentanillaRadicaReciPaseHistorial extends Model
      * Tipos válidos de pase.
      */
     public const TIPO_PASE = 'pase';
+
     public const TIPO_ASIGNACION_INICIAL = 'asignacion_inicial';
+
     public const TIPO_REASIGNACION = 'reasignacion';
 
     /**

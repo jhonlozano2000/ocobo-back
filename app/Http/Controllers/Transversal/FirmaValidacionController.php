@@ -7,6 +7,8 @@ use App\Http\Requests\Transversal\FirmaValidarRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Services\Firma\FirmaValidacionService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class FirmaValidacionController extends Controller
 {
@@ -37,14 +39,20 @@ class FirmaValidacionController extends Controller
                 'documentable_type' => $request->input('documentable_type'),
                 'documentable_id' => $request->input('documentable_id'),
             ]);
+
             return $this->errorResponse($e->getMessage(), null, 404);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             Log::error('Error inesperado en validación de firma', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return $this->errorResponse('Error al validar la firma del documento', null, 500);
         }
     }

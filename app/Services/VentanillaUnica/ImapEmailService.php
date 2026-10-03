@@ -8,7 +8,6 @@ use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use DirectoryTree\ImapEngine\Attachment;
 use DirectoryTree\ImapEngine\Mailbox;
 use DirectoryTree\ImapEngine\MessageInterface;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**

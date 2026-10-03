@@ -15,7 +15,9 @@ use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
@@ -132,6 +134,13 @@ class MiBandejaTempController extends Controller
                 201
             );
         } catch (\Exception $e) {
+            Log::error('MiBandejaTempController@store error: '.$e->getMessage(), [
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             if ($e instanceof ValidationException) {
                 throw $e;
             }
@@ -237,7 +246,10 @@ class MiBandejaTempController extends Controller
     }
 
     /**
-     * Descarga el documento del grupo y lo bloquea (check-out).
+     * Descarga el documento del grupo y adquiere el bloqueo de edición (check-out).
+     *
+     * @param  int  $id  Identificador del grupo
+     * @return BinaryFileResponse|JsonResponse
      */
     public function checkOut($id)
     {
@@ -266,7 +278,11 @@ class MiBandejaTempController extends Controller
     }
 
     /**
-     * Sube una nueva versión del documento y libera el bloqueo (check-in).
+     * Sube una nueva versión del documento colaborativo y libera el bloqueo de edición (check-in).
+     *
+     * @param  CheckInRequest  $request  Solicitud validada con el archivo y comentario
+     * @param  int  $id  Identificador del grupo
+     * @return JsonResponse Respuesta JSON con la versión creada
      */
     public function checkIn(CheckInRequest $request, $id)
     {
@@ -298,7 +314,11 @@ class MiBandejaTempController extends Controller
     }
 
     /**
-     * Sube la versión inicial del documento (primera carga).
+     * Sube la versión inicial (1.0) del documento para un grupo que no parte de plantilla.
+     *
+     * @param  Request  $request  Solicitud con el archivo inicial
+     * @param  int  $id  Identificador del grupo
+     * @return JsonResponse Respuesta JSON con la versión creada
      */
     public function subirVersionInicial(Request $request, $id)
     {
@@ -341,8 +361,9 @@ class MiBandejaTempController extends Controller
 
     /**
      * Envía un grupo colaborativo temporal a trámite.
-     * Verifica que todos los miembros hayan terminado su trabajo.
+     * Verifica que todos los miembros hayan terminado su trabajo y que quien envía sea firmante.
      *
+     * @param  Request  $request  Solicitud con posible respuesta final
      * @param  int  $id  Identificador del grupo a enviar a trámite
      * @return JsonResponse Respuesta JSON con el grupo actualizado
      */
@@ -354,6 +375,12 @@ class MiBandejaTempController extends Controller
             $grupo->load([
                 'revisores', 'firmantes', 'proyectores', 'aprobadores', 'adjuntos',
             ]);
+
+            $userId = Auth::id();
+            $esFirmante = $grupo->firmantes->contains('user_id', $userId);
+            if (! $esFirmante) {
+                return $this->errorResponse('Solo los funcionarios firmantes pueden realizar el envío de la respuesta.', null, 403);
+            }
 
             $grupoActualizado = $this->grupoService->enviarTramite(
                 $grupo,
@@ -376,7 +403,10 @@ class MiBandejaTempController extends Controller
     }
 
     /**
-     * Anula un grupo colaborativo. Solo el creador puede hacerlo.
+     * Anula un grupo colaborativo. Solo el creador puede realizar esta acción.
+     *
+     * @param  int  $id  Identificador del grupo
+     * @return JsonResponse Respuesta JSON de confirmación
      */
     public function anular($id)
     {
@@ -401,14 +431,22 @@ class MiBandejaTempController extends Controller
     }
 
     /**
-     * Marca la tarea del usuario autenticado como terminada en un grupo.
+     * Marca la tarea del usuario autenticado como terminada en el grupo colaborativo.
+     *
+     * @param  Request  $request  Solicitud HTTP
+     * @param  int  $id  Identificador del grupo
+     * @return JsonResponse Respuesta JSON con el estado del grupo y tarea cumplida
      */
     public function marcarTerminado(Request $request, $id)
     {
         $grupo = $this->autorizarGrupo($id);
 
         try {
-            $resultado = $this->grupoService->marcarCumplido($grupo, Auth::user());
+            $resultado = $this->grupoService->marcarCumplido(
+                $grupo,
+                Auth::user(),
+                $request->only(['metodo', 'otp', 'password'])
+            );
 
             $grupo->load(['revisores', 'firmantes', 'proyectores', 'aprobadores']);
 
@@ -421,7 +459,7 @@ class MiBandejaTempController extends Controller
 
             return $this->successResponse($responseData, 'Tarea marcada como terminada');
         } catch (\RuntimeException $e) {
-            return $this->errorResponse($e->getMessage(), null, 403);
+            return $this->errorResponse($e->getMessage(), null, 422);
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;

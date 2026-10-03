@@ -16,7 +16,7 @@ return new class extends Migration
     {
         DB::statement('DROP VIEW IF EXISTS ventanilla_pqrs_view');
 
-        DB::statement("
+        DB::statement('
             CREATE VIEW ventanilla_pqrs_view AS
             SELECT
                 -- Campos principales del PQRS
@@ -125,7 +125,7 @@ return new class extends Migration
                 FROM ventanilla_radica_reci_responsa
                 GROUP BY radica_reci_id
             ) responsables_stats ON responsables_stats.radica_reci_id = vp.ventanilla_radica_reci_id
-        ");
+        ');
     }
 
     /**

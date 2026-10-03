@@ -87,7 +87,7 @@ class FirmaElectronicaHelper
      */
     public static function solicitarTimestamp(string $hash): array
     {
-        $tsaService = new TsaService();
+        $tsaService = new TsaService;
         $token = $tsaService->solicitarTimestamp($hash);
 
         // Obtener la fecha del token verificándolo
@@ -103,12 +103,12 @@ class FirmaElectronicaHelper
      * Verifica un token de timestamp RFC 3161.
      *
      * @param  string  $tokenBase64  Token TSR en base64
-     * @param  string  $hash         Hash SHA-256 esperado en hexadecimal
+     * @param  string  $hash  Hash SHA-256 esperado en hexadecimal
      * @return array ['valido' => bool, 'fecha_firma' => ?string]
      */
     public static function verificarTimestamp(string $tokenBase64, string $hash): array
     {
-        $tsaService = new TsaService();
+        $tsaService = new TsaService;
 
         return $tsaService->verificarTimestamp($tokenBase64, $hash);
     }

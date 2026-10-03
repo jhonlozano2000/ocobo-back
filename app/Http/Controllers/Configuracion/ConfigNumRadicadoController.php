@@ -8,6 +8,8 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\Configuracion\ConfigVarias;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class ConfigNumRadicadoController extends Controller
 {
@@ -48,8 +50,13 @@ class ConfigNumRadicadoController extends Controller
 
             return $this->successResponse($configuracion, 'Configuración de numeración obtenida exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener la configuración', $e->getMessage(), 500);
         }
     }
@@ -106,8 +113,12 @@ class ConfigNumRadicadoController extends Controller
 
             return $this->successResponse($configuracion, 'Formato de numeración actualizado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar la configuración', $e->getMessage(), 500);

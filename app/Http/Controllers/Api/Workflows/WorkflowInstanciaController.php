@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Workflows;
 
 use App\Exceptions\Workflows\StateTransitionException;
+use App\Exceptions\Workflows\WorkflowException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\DetenerInstanciaRequest;
 use App\Http\Requests\Workflows\EjecutarNodoRequest;
@@ -10,6 +11,8 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\WorkflowInstancia;
 use App\Services\Workflows\WorkflowExecutionService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
  * Controlador de Instancias de Workflows — Ejecución y monitoreo.
@@ -38,8 +41,13 @@ class WorkflowInstanciaController extends Controller
 
             return $this->successResponse($instancias, 'Instancias obtenidas correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener instancias', $e->getMessage());
         }
     }
@@ -48,10 +56,16 @@ class WorkflowInstanciaController extends Controller
     {
         try {
             $instancia = $this->executionService->iniciarInstancia($workflowId, auth()->id());
+
             return $this->successResponse($instancia, 'Instancia iniciada correctamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al iniciar instancia', $e->getMessage());
         }
     }
@@ -68,8 +82,13 @@ class WorkflowInstanciaController extends Controller
 
             return $this->successResponse($instancia, 'Instancia obtenida correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener instancia', $e->getMessage(), 404);
         }
     }
@@ -83,14 +102,20 @@ class WorkflowInstanciaController extends Controller
                 $data['nodo_id'],
                 $data['resultado'] ?? []
             );
+
             return $this->successResponse($instancia, 'Nodo ejecutado correctamente');
         } catch (StateTransitionException $e) {
             return $this->errorResponse($e->getMessage(), null, 422);
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Instancia no encontrada', null, 404);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al ejecutar nodo', $e->getMessage(), 500);
         }
     }
@@ -103,12 +128,18 @@ class WorkflowInstanciaController extends Controller
                 $instanciaId,
                 $data['estado'] ?? 'detenida'
             );
+
             return $this->successResponse($instancia, 'Instancia detenida correctamente');
-        } catch (\App\Exceptions\Workflows\WorkflowException $e) {
+        } catch (WorkflowException $e) {
             return $this->errorResponse($e->getMessage(), null, $e->getStatusCode());
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al detener instancia', $e->getMessage());
         }
     }

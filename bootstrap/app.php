@@ -22,12 +22,14 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Http\Middleware\ValidatePostSize;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Middleware\SetCacheHeaders;
 use Illuminate\Routing\Middleware\SubstituteBindings;
@@ -37,6 +39,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -115,9 +118,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (ValidationException $e, $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
+                $firstError = collect($e->errors())->flatten()->first() ?? 'Error de validación.';
+
                 return response()->json([
+                    'status' => false,
                     'success' => false,
-                    'message' => 'Error de validación.',
+                    'message' => $firstError,
                     'errors' => $e->errors(),
                 ], 422);
             }
@@ -126,8 +132,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (AuthenticationException $e, $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json([
+                    'status' => false,
                     'success' => false,
-                    'message' => 'No autenticado.',
+                    'message' => 'No autenticado o su sesión ha expirado.',
                 ], 401);
             }
         });
@@ -135,9 +142,35 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (AuthorizationException $e, $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json([
+                    'status' => false,
                     'success' => false,
-                    'message' => 'No tiene permiso para realizar esta acción.',
+                    'message' => 'No tiene permisos para realizar esta acción.',
                 ], 403);
+            }
+        });
+
+        $exceptions->render(function (NotFoundHttpException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                $mensaje = $e->getPrevious() instanceof ModelNotFoundException
+                    ? 'El recurso solicitado no fue encontrado.'
+                    : ($e->getMessage() ?: 'Recurso o endpoint no encontrado.');
+
+                return response()->json([
+                    'status' => false,
+                    'success' => false,
+                    'message' => $mensaje,
+                ], 404);
+            }
+        });
+
+        $exceptions->render(function (ThrottleRequestsException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'status' => false,
+                    'success' => false,
+                    'message' => 'Demasiadas solicitudes. Por favor, espere un momento antes de reintentar.',
+                    'error' => 'TOO_MANY_REQUESTS',
+                ], 429);
             }
         });
 
@@ -152,6 +185,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 }
 
                 $response = [
+                    'status' => false,
                     'success' => false,
                     'message' => 'Ha ocurrido un error. Contacte al administrador.',
                     'error' => 'SERVER_ERROR',

@@ -14,6 +14,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class FirmaElectronicaController extends Controller
 {
@@ -88,8 +90,12 @@ class FirmaElectronicaController extends Controller
 
             return $this->successResponse(null, "Código OTP enviado al correo del funcionario {$nombreDestino}");
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             Log::error('Error al enviar OTP de firma', [
                 'user_id' => Auth::id(),
                 'error' => $e->getMessage(),
@@ -191,8 +197,12 @@ class FirmaElectronicaController extends Controller
             return $this->successResponse($evento, 'Documento firmado electrónicamente con éxito');
 
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             Log::error('Error en proceso de firma electrónica', [

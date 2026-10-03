@@ -22,8 +22,8 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
         Route::put('/radica-recibida/{id}/update-clasificacion-documental', [VentanillaRadicaReciController::class, 'updateClasificacionDocumental'])->name('radica-recibida.update-clasificacion-documental')->middleware('can:'.$permReci.'Actualizar clasificacion de radicados');
         Route::post('/radica-recibida/{id}/notificacion', [VentanillaRadicaReciController::class, 'enviarNotificacion'])->name('radica-recibida.notificacion')->middleware('can:'.$permReci.'Notificar Email');
         Route::post('/radica-recibida/{id}/notificacion-tercero', [VentanillaRadicaReciController::class, 'enviarNotificacionTercero'])->name('radica-recibida.notificacion-tercero')->middleware('can:'.$permReci.'Notificar Email');
-        Route::get('/radica-recibida/{id}/linea-tiempo', [VentanillaRadicaReciController::class, 'lineaTiempo'])->name('radica-recibida.linea-tiempo')->middleware('can:'.$permReci.'Mostrar');
-        Route::get('/radica-recibida/{id}/historial-estados', [VentanillaRadicaReciController::class, 'historialEstados'])->name('radica-recibida.historial-estados')->middleware('can:'.$permReci.'Mostrar');
+        Route::get('/radica-recibida/{id}/linea-tiempo', [VentanillaRadicaReciController::class, 'lineaTiempo'])->name('radica-recibida.linea-tiempo');
+        Route::get('/radica-recibida/{id}/historial-estados', [VentanillaRadicaReciController::class, 'historialEstados'])->name('radica-recibida.historial-estados');
         Route::get('/radica-recibida/mis-radicados', [VentanillaRadicaReciController::class, 'misRadicados'])->name('radica-recibida.mis-radicados')->middleware('can:'.$permReci.'Listar');
         Route::get('/radica-recibida/pendientes-anulacion', [VentanillaRadicaReciController::class, 'listarPendientesAnulacion'])->name('radica-recibida.pendientes-anulacion')->middleware('can:Jefe de Archivo');
         Route::post('/radica-recibida/{id}/solicitar-anulacion', [VentanillaRadicaReciController::class, 'solicitarAnulacion'])->name('radica-recibida.solicitar-anulacion')->middleware('can:'.$permReci.'Listar');
@@ -47,9 +47,9 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
 
         Route::post('/radica-recibida/{radica_reci_id}/responsables', [VentanillaRadicaReciResponsableController::class, 'assignToRadicado'])->name('radica-recibida.responsables.asignar')->middleware('can:'.$permReci.'Editar');
 
-        Route::post('/radica-recibida/{radica_reci_id}/pase', [VentanillaRadicaReciPaseHistorialController::class, 'store'])->name('radica-recibida.pase.registrar')->middleware('can:'.$permReci.'Editar');
+        Route::post('/radica-recibida/{radica_reci_id}/pase', [VentanillaRadicaReciPaseHistorialController::class, 'store'])->name('radica-recibida.pase.registrar');
 
-        Route::post('/radica-recibida/{radica_reci_id}/compartir', [VentanillaRadicaReciCompartirHistorialController::class, 'store'])->name('radica-recibida.compartir.registrar')->middleware('can:'.$permReci.'Editar');
+        Route::post('/radica-recibida/{radica_reci_id}/compartir', [VentanillaRadicaReciCompartirHistorialController::class, 'store'])->name('radica-recibida.compartir.registrar');
     });
 
     // Rutas con throttle:uploads (10/min) - subida de archivos
@@ -81,9 +81,9 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
 
         Route::get('/radica-recibida/{radica_reci_id}/enviados', [VentanillaRadicaReciController::class, 'getEnviadosAsociados'])->name('radica-recibida.enviados.listar')->middleware('can:'.$permReci.'Mostrar');
 
-        Route::get('/radica-recibida/{radica_reci_id}/pase-historial', [VentanillaRadicaReciPaseHistorialController::class, 'byRadicado'])->name('radica-recibida.pase.historial')->middleware('can:'.$permReci.'Mostrar');
+        Route::get('/radica-recibida/{radica_reci_id}/pase-historial', [VentanillaRadicaReciPaseHistorialController::class, 'byRadicado'])->name('radica-recibida.pase.historial');
 
-        Route::get('/radica-recibida/{radica_reci_id}/compartir-historial', [VentanillaRadicaReciCompartirHistorialController::class, 'byRadicado'])->name('radica-recibida.compartir.historial')->middleware('can:'.$permReci.'Mostrar');
+        Route::get('/radica-recibida/{radica_reci_id}/compartir-historial', [VentanillaRadicaReciCompartirHistorialController::class, 'byRadicado'])->name('radica-recibida.compartir.historial');
         // Metadata es compartida por recibidos/enviados/internos: el prefijo de permiso
         // depende del parámetro {tipo}, así que se autoriza dentro del controlador
         // (MetadataController::autorizarPorTipo) y no con un can: fijo aqui.

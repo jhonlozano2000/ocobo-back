@@ -14,6 +14,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * siguiendo el mismo patrón de los módulos Recibidos/Enviados/Internos.
  *
  * @author Jhon Javer Lozano Arce
+ *
  * @date 2026-08-23
  */
 class UploadPqrsAdjuntosRequest extends FormRequest
@@ -42,8 +43,6 @@ class UploadPqrsAdjuntosRequest extends FormRequest
 
     /**
      * Determine if the user is authorized to make this request.
-     *
-     * @return bool
      */
     public function authorize(): bool
     {
@@ -58,7 +57,7 @@ class UploadPqrsAdjuntosRequest extends FormRequest
     public function rules(): array
     {
         $config = $this->getConfigValues();
-        $allowedExtensions = explode(',', $config['allowedExtensions']);
+        $allowedExtensions = array_values(array_filter(array_map('trim', explode(',', $config['allowedExtensions']))));
 
         return [
             'archivos' => [

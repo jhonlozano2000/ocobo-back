@@ -27,7 +27,6 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
     {
         $this->middleware('can:'.self::PERM.'Subir adjuntos')->only(['subirArchivosAdjuntos']);
         $this->middleware('can:'.self::PERM.'Eliminar adjuntos')->only(['eliminarArchivoAdjunto']);
-        $this->middleware('can:'.self::PERM.'Mostrar')->only(['listarArchivosAdjuntos', 'descargarArchivoAdjunto']);
     }
 
     public function subirArchivosAdjuntos($id, UploadArchivosAdjuntosInternoRequest $request)
@@ -109,10 +108,22 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
     public function listarArchivosAdjuntos($id)
     {
         try {
+            $user = Auth::user();
+            $puedeVerVentanilla = $user?->can('Radicar -> Cores. Interna -> Mostrar');
+            $puedeVerBandeja = $user?->can('Mi Bandeja - Internos -> Ver');
+
+            if (! $puedeVerVentanilla && ! $puedeVerBandeja) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
+            }
+
             $radicado = VentanillaRadicaInterno::with('archivos.usuarioSubido')->find($id);
 
             if (! $radicado) {
                 return $this->errorResponse('Radicado interno no encontrado', null, 404);
+            }
+
+            if (! $puedeVerVentanilla && ! $radicado->tieneAccesoUsuario($user)) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
             }
 
             $archivos = $radicado->archivos->map(fn ($archivo) => [
@@ -144,6 +155,23 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
     public function descargarArchivoAdjunto($id, $archivoId)
     {
         try {
+            $user = Auth::user();
+            $puedeVerVentanilla = $user?->can('Radicar -> Cores. Interna -> Mostrar');
+            $puedeVerBandeja = $user?->can('Mi Bandeja - Internos -> Ver');
+
+            if (! $puedeVerVentanilla && ! $puedeVerBandeja) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
+            }
+
+            $radicado = VentanillaRadicaInterno::find($id);
+            if (! $radicado) {
+                return $this->errorResponse('Radicado interno no encontrado', null, 404);
+            }
+
+            if (! $puedeVerVentanilla && ! $radicado->tieneAccesoUsuario($user)) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
+            }
+
             $archivo = VentanillaRadicaInternoArchivos::where('radicado_id', $id)
                 ->where('id', $archivoId)
                 ->first();

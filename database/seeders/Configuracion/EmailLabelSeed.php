@@ -11,7 +11,7 @@ class EmailLabelSeed extends Seeder
     public function run(): void
     {
         $lista = ConfigLista::create([
-            'cod'    => 'LabEmail',
+            'cod' => 'LabEmail',
             'nombre' => 'Labels Email',
             'estado' => true,
         ]);

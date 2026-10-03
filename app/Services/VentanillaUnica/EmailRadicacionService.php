@@ -6,8 +6,8 @@ use App\Helpers\MailConfigHelper;
 use App\Mail\RespuestaRadicadoMail;
 use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\Configuracion\ConfigVarias;
-use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -68,7 +68,7 @@ class EmailRadicacionService
 
             $adjuntosInfo = $emailData['adjuntos_info'] ?? [];
             $fecDocu = isset($emailData['fecha_correo'])
-                ? \Carbon\Carbon::parse($emailData['fecha_correo'])->format('Y-m-d')
+                ? Carbon::parse($emailData['fecha_correo'])->format('Y-m-d')
                 : now()->format('Y-m-d');
 
             $radicadoData = [
@@ -163,7 +163,7 @@ class EmailRadicacionService
             $tipoRespuestaId = $data['tipo_respuesta_id'] ?? null;
             $adjuntosInfo = $emailData['adjuntos_info'] ?? [];
             $fecDocu = isset($emailData['fecha_correo'])
-                ? \Carbon\Carbon::parse($emailData['fecha_correo'])->format('Y-m-d')
+                ? Carbon::parse($emailData['fecha_correo'])->format('Y-m-d')
                 : now()->format('Y-m-d');
 
             $radicadoData = [
@@ -261,7 +261,7 @@ class EmailRadicacionService
     public function calcularHashEmailArray(array $emailData): string
     {
         $timestamp = isset($emailData['fecha_correo'])
-            ? \Carbon\Carbon::parse($emailData['fecha_correo'])->timestamp
+            ? Carbon::parse($emailData['fecha_correo'])->timestamp
             : '';
 
         $hashContent = implode('|', [
@@ -284,7 +284,7 @@ class EmailRadicacionService
             $htmlContent = ($emailData['body_html'] ?? '') ?: '<p>'.nl2br(e($emailData['body_text'] ?? '')).'</p>';
 
             $fechaCorreo = isset($emailData['fecha_correo'])
-                ? \Carbon\Carbon::parse($emailData['fecha_correo'])->format('Y-m-d H:i:s')
+                ? Carbon::parse($emailData['fecha_correo'])->format('Y-m-d H:i:s')
                 : now()->format('Y-m-d H:i:s');
 
             $data = [
@@ -448,6 +448,7 @@ class EmailRadicacionService
 
             if (! $radicado) {
                 Log::warning('EmailRadicacionService: No se encontró radicado para responder');
+
                 return false;
             }
 

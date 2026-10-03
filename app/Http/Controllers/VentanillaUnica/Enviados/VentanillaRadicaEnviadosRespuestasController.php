@@ -7,10 +7,11 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosRespuestas;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class VentanillaRadicaEnviadosRespuestasController extends Controller
 {
@@ -37,8 +38,13 @@ class VentanillaRadicaEnviadosRespuestasController extends Controller
 
             return $this->successResponse($recibidos, 'Radicaados recibidos obtenidos exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener los radicados recibidos', $e->getMessage(), 500);
         }
     }
@@ -73,17 +79,30 @@ class VentanillaRadicaEnviadosRespuestasController extends Controller
                         'radica_reci_id' => $recibidoId,
                     ]);
                     $recibidosAsociados[] = $recibidoId;
+
+                    $radRecibido = VentanillaRadicaReci::find($recibidoId);
+                    if ($radRecibido) {
+                        $radRecibido->update([
+                            'radicado_respuesta' => $enviado->num_radicado,
+                            'estado_trabajo' => RadicadoEstadoTrabajoService::ESTADO_TRAMITADO,
+                        ]);
+                    }
                 }
             }
 
             $recibidos = $enviado->recibidos()->get();
 
-            return $this->successResponse($recibidos, 'Radicaados recibidos asociados exitosamente', 201);
+            return $this->successResponse($recibidos, 'Radicados recibidos asociados exitosamente', 201);
         } catch (ValidationException $e) {
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al asociar los radicados recibidos', $e->getMessage(), 500);
         }
     }
@@ -112,8 +131,13 @@ class VentanillaRadicaEnviadosRespuestasController extends Controller
 
             return $this->successResponse($recibidos, 'Radicado recibido desasociado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al desasociar el radicado recibido', $e->getMessage(), 500);
         }
     }

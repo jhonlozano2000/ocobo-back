@@ -12,7 +12,8 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\WorkFlowTarea;
 use App\Models\Workflows\WorkFlowTareaChecklist;
 use App\Services\Workflows\WorkFlowTareaService;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class WorkFlowTareaChecklistController extends Controller
 {
@@ -38,8 +39,13 @@ class WorkFlowTareaChecklistController extends Controller
                 'Checklists obtenidos correctamente'
             );
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener checklists', $e->getMessage());
         }
     }
@@ -52,10 +58,16 @@ class WorkFlowTareaChecklistController extends Controller
     {
         try {
             $checklist = $tarea->checklists()->create($request->validated());
+
             return $this->successResponse($checklist, 'Ítem agregado correctamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al agregar ítem', $e->getMessage());
         }
     }
@@ -71,10 +83,16 @@ class WorkFlowTareaChecklistController extends Controller
             abort_unless($checklist->work_flow_tarea_id === $tarea->id, 404, 'Ítem no pertenece a la tarea');
 
             $checklist->update($request->validated());
+
             return $this->successResponse($checklist->fresh(), 'Ítem actualizado correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al actualizar ítem', $e->getMessage());
         }
     }
@@ -90,10 +108,16 @@ class WorkFlowTareaChecklistController extends Controller
             abort_unless($checklist->work_flow_tarea_id === $tarea->id, 404, 'Ítem no pertenece a la tarea');
 
             $checklist->delete();
+
             return $this->successResponse(null, 'Ítem eliminado correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al eliminar ítem', $e->getMessage());
         }
     }
@@ -107,10 +131,16 @@ class WorkFlowTareaChecklistController extends Controller
         try {
             $data = $request->validated();
             $this->tareaService->reordenarChecklist($tarea, $data['orden']);
+
             return $this->successResponse(null, 'Checklists reordenados correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al reordenar checklists', $e->getMessage());
         }
     }

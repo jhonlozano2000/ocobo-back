@@ -5,6 +5,7 @@ namespace App\Helpers;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\Configuracion\FileClassificationLevel;
+use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivos;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosMetadata;
@@ -13,12 +14,11 @@ use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoArchivos;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoMetadata;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoMetadataHistory;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsMetadata;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivo;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciMetadata;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciMetadataHistory;
-use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
-use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsMetadata;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -494,7 +494,7 @@ class FileMetadataHelper
     public static function crearMetadataArchivoAdjuntoInterno(VentanillaRadicaInternoArchivos $archivo, array $extra = []): ?VentanillaRadicaInternoMetadata
     {
         try {
-            $radicado = $archivo->radicado;
+            $radicado = $archivo->radicaInterno ?? $archivo->radicado;
             if (! $radicado) {
                 Log::warning('No se encontró radicado para archivo adjunto interno', ['archivo_id' => $archivo->id]);
 
@@ -504,9 +504,9 @@ class FileMetadataHelper
                 $radicado,
                 $archivo->id,
                 'adjunto',
-                $archivo->ruta_archivo,
-                $archivo->hash_sha256 ?? $hash ?? '',
-                $archivo->tamano_archivo ?? 0,
+                $archivo->archivo ?? $archivo->ruta_archivo ?? '',
+                $archivo->hash_sha256 ?? '',
+                $archivo->archivo_peso ?? $archivo->tamano_archivo ?? 0,
                 $extra
             );
 
@@ -530,9 +530,8 @@ class FileMetadataHelper
         int $archivoPeso,
         array $extra = []
     ): ?VentanillaRadicaInternoMetadata {
-        $radicado->load(['clasificacionDocumental', 'tercero', 'responsables.userCargo.user', 'usuarioCrea']);
+        $radicado->load(['clasificacionDocumental', 'responsables.userCargo.user', 'usuarioCrea']);
         $clasificacion = $radicado->clasificacionDocumental;
-        $tercero = $radicado->tercero;
         $responsables = $radicado->responsables;
         $nivelClasificacion = self::determinarNivelClasificacion($clasificacion);
         $duenoDocumento = $radicado->usuarioCrea;
@@ -596,8 +595,8 @@ class FileMetadataHelper
             'copias_backups' => json_encode([['fecha' => now()->toIso8601String(), 'ubicacion' => 'Servidor Principal', 'hash' => $hash]]),
             'num_radicado' => $radicado->num_radicado,
             'asunto' => $radicado->asunto,
-            'tercero_nombre' => $tercero?->nom_razo_soci ?? null,
-            'tercero_identificacion' => $tercero?->num_identificacion ?? null,
+            'tercero_nombre' => null,
+            'tercero_identificacion' => null,
             'empresa_nombre' => ConfigVarias::getValor('razon_social_empresa'),
             'sede_nombre' => $radicado->usuarioCrea?->sedes->first()?->nom_sede ?? null,
             'departamento_origen' => $clasificacion?->dependencia ?? null,

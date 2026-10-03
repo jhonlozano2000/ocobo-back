@@ -2,13 +2,13 @@
 
 namespace App\Services;
 
-use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
-use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
-use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
-use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoPrestamo;
 use App\Models\OfiArchivo\OfiArchivoTransferencia;
+use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 
 class ReportesUnificadoService
 {
@@ -126,7 +126,7 @@ class ReportesUnificadoService
 
     public function generarUnificado(string $modulo, array $filtros = []): array
     {
-        if (!isset($this->modulos[$modulo])) {
+        if (! isset($this->modulos[$modulo])) {
             throw new \InvalidArgumentException("Módulo no válido: $modulo");
         }
 
@@ -135,8 +135,8 @@ class ReportesUnificadoService
 
         $this->aplicarFiltros($query, $modulo, $filtros);
 
-        $perPage = min((int)($filtros['per_page'] ?? 50), 100);
-        $page = (int)($filtros['page'] ?? 1);
+        $perPage = min((int) ($filtros['per_page'] ?? 50), 100);
+        $page = (int) ($filtros['page'] ?? 1);
         $total = $query->count();
         $items = $query->with($this->getRelations($modulo))
             ->orderBy('created_at', 'desc')
@@ -153,10 +153,10 @@ class ReportesUnificadoService
             'Por página' => $perPage,
         ];
 
-        if (!empty($filtros['desde'])) {
+        if (! empty($filtros['desde'])) {
             $resumen['Desde'] = $filtros['desde'];
         }
-        if (!empty($filtros['hasta'])) {
+        if (! empty($filtros['hasta'])) {
             $resumen['Hasta'] = $filtros['hasta'];
         }
 
@@ -174,7 +174,7 @@ class ReportesUnificadoService
 
     public function getModulos(): array
     {
-        return array_map(fn($c) => $c['label'], $this->modulos);
+        return array_map(fn ($c) => $c['label'], $this->modulos);
     }
 
     protected function aplicarFiltros($query, string $modulo, array $filtros): void
@@ -186,10 +186,10 @@ class ReportesUnificadoService
             default => 'created_at',
         };
 
-        if (!empty($filtros['desde'])) {
+        if (! empty($filtros['desde'])) {
             $query->whereDate($fechaCol, '>=', $filtros['desde']);
         }
-        if (!empty($filtros['hasta'])) {
+        if (! empty($filtros['hasta'])) {
             $query->whereDate($fechaCol, '<=', $filtros['hasta']);
         }
 
@@ -199,7 +199,7 @@ class ReportesUnificadoService
             default => 'estado',
         };
 
-        if (!empty($filtros['estado'])) {
+        if (! empty($filtros['estado'])) {
             $query->where($estadoCol, $filtros['estado']);
         }
     }

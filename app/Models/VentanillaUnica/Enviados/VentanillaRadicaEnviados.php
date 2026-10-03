@@ -8,8 +8,11 @@ use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\Configuracion\ConfigServerArchivo;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\Gestion\GestionTercero;
+use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
+use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -176,14 +179,12 @@ class VentanillaRadicaEnviados extends Model
     public function recibidos()
     {
         return $this->belongsToMany(
-            \App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci::class,
+            VentanillaRadicaReci::class,
             'ventanilla_radica_enviados_respuestas',
             'radica_enviado_id',
             'radica_reci_id'
         )->withTimestamps();
     }
-
-    
 
     public function firmas()
     {
@@ -192,7 +193,7 @@ class VentanillaRadicaEnviados extends Model
 
     public function firmasEventos()
     {
-        return $this->morphMany(\App\Models\Transversal\FirmaEvento::class, 'documentable');
+        return $this->morphMany(FirmaEvento::class, 'documentable');
     }
 
     public function usuariosFirmas()
@@ -329,7 +330,7 @@ class VentanillaRadicaEnviados extends Model
             return null;
         }
 
-        $grupo = \App\Models\MiBandeja\MiBandejaTemp::where('radicado_id', $this->id)
+        $grupo = MiBandejaTemp::where('radicado_id', $this->id)
             ->where('radicado_tipo', 'enviado')
             ->first();
 

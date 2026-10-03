@@ -54,7 +54,7 @@ class MiBandejaInternosController extends Controller
                 });
             }
 
-            $query->orderBy('created_at', 'desc');
+            $query->orderBy('created_at', 'desc')->orderBy('id', 'desc');
 
             if ($search) {
                 $query->where(function ($q) use ($search) {

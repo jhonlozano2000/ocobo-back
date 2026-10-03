@@ -4,7 +4,7 @@ namespace App\Services\MiBandeja;
 
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ControlAcceso\UserCargo;
-use Illuminate\Support\Facades\DB;
+use App\Models\User;
 
 /**
  * Servicio de filtro jerárquico para Mi Bandeja.
@@ -113,7 +113,7 @@ class MiBandejaFiltroService
      */
     public static function getNivelDelUsuario(int $userId): ?string
     {
-        $user = \App\Models\User::find($userId);
+        $user = User::find($userId);
 
         if (! $user) {
             return null;

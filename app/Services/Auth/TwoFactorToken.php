@@ -15,12 +15,12 @@ class TwoFactorToken
             'nonce' => bin2hex(random_bytes(16)),
         ]);
 
-        return '2fa_' . bin2hex(Crypt::encryptString($payload));
+        return '2fa_'.bin2hex(Crypt::encryptString($payload));
     }
 
     public static function validate(string $token): ?int
     {
-        if (!str_starts_with($token, '2fa_')) {
+        if (! str_starts_with($token, '2fa_')) {
             return null;
         }
 
@@ -28,7 +28,7 @@ class TwoFactorToken
             $decrypted = Crypt::decryptString(hex2bin(substr($token, 4)));
             $payload = json_decode($decrypted, true);
 
-            if (!$payload || !isset($payload['user_id']) || !isset($payload['exp'])) {
+            if (! $payload || ! isset($payload['user_id']) || ! isset($payload['exp'])) {
                 return null;
             }
 
@@ -37,12 +37,12 @@ class TwoFactorToken
             }
 
             $tokenHash = sha1($token);
-            if (Cache::has('2fa_token_used_' . $tokenHash)) {
+            if (Cache::has('2fa_token_used_'.$tokenHash)) {
                 return null;
             }
 
             $remainingSeconds = max(1, $payload['exp'] - now()->timestamp);
-            Cache::put('2fa_token_used_' . $tokenHash, true, $remainingSeconds);
+            Cache::put('2fa_token_used_'.$tokenHash, true, $remainingSeconds);
 
             return (int) $payload['user_id'];
         } catch (\Exception $e) {

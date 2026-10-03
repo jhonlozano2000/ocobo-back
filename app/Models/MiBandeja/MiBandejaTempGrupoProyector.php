@@ -37,8 +37,6 @@ class MiBandejaTempGrupoProyector extends Model
 
     /**
      * Relación con el grupo colaborativo temporal.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function grupo(): BelongsTo
     {
@@ -47,8 +45,6 @@ class MiBandejaTempGrupoProyector extends Model
 
     /**
      * Relación con el usuario proyector.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function user(): BelongsTo
     {
@@ -57,12 +53,10 @@ class MiBandejaTempGrupoProyector extends Model
 
     /**
      * Relación con el cargo del proyector.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function cargo(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Calidad\CalidadOrganigrama::class, 'cargo_id');
+        return $this->belongsTo(CalidadOrganigrama::class, 'cargo_id');
     }
 
     /**

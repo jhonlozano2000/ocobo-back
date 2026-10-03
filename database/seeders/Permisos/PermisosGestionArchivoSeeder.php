@@ -13,6 +13,7 @@ use Spatie\Permission\Models\Role;
  * Administrador y Jefe de Archivo reciben el set completo.
  *
  * @author Jhon Javer Lozano Arce
+ *
  * @date 2026-08-24
  */
 class PermisosGestionArchivoSeeder extends Seeder

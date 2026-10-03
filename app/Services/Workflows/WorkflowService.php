@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Services\Workflows;
 
 use App\Models\Workflows\Workflow;
-use App\Models\Workflows\WorkflowNodo;
 use App\Models\Workflows\WorkflowConexion;
+use App\Models\Workflows\WorkflowNodo;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class WorkflowService
 {
@@ -18,23 +19,23 @@ class WorkflowService
     public function listar(array $filtros = [])
     {
         $query = Workflow::with([
-                'creador:id,nombres,apellidos',
-                'administrador:id,nombres,apellidos',
-            ])->withCount([
-                'nodos',
-                'instancias',
-                'tareasModulo',
-                'tareasModulo as tareas_completadas_count' => fn($q) => $q->where('estado', 'completada'),
-            ]);
+            'creador:id,nombres,apellidos',
+            'administrador:id,nombres,apellidos',
+        ])->withCount([
+            'nodos',
+            'instancias',
+            'tareasModulo',
+            'tareasModulo as tareas_completadas_count' => fn ($q) => $q->where('estado', 'completada'),
+        ]);
 
-        if (!empty($filtros['estado'])) {
+        if (! empty($filtros['estado'])) {
             $query->where('estado', $filtros['estado']);
         }
 
-        if (!empty($filtros['search'])) {
+        if (! empty($filtros['search'])) {
             $query->where(function ($q) use ($filtros) {
                 $q->where('nombre', 'like', "%{$filtros['search']}%")
-                  ->orWhere('descripcion', 'like', "%{$filtros['search']}%");
+                    ->orWhere('descripcion', 'like', "%{$filtros['search']}%");
             });
         }
 
@@ -58,7 +59,7 @@ class WorkflowService
                 'creador_user_id' => auth()->id(),
             ]);
 
-            if (!empty($datos['administrador_user_id'])) {
+            if (! empty($datos['administrador_user_id'])) {
                 $workflow->update(['administrador_user_id' => $datos['administrador_user_id']]);
             }
 
@@ -192,7 +193,7 @@ class WorkflowService
             // No permitir reescribir el canvas si hay instancias en curso
             // (rompería nodo_actual_id y workflow_nodos_instancia)
             if ($workflow->instancias()->where('estado', 'en_curso')->exists()) {
-                throw new \Symfony\Component\HttpKernel\Exception\HttpException(
+                throw new HttpException(
                     422,
                     'No se puede modificar el canvas: el workflow tiene instancias en curso'
                 );

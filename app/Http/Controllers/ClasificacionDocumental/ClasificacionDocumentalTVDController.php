@@ -11,9 +11,13 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTVD;
 use App\Services\ClasificacionDocumental\TVDService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class ClasificacionDocumentalTVDController extends Controller
 {
@@ -31,8 +35,13 @@ class ClasificacionDocumentalTVDController extends Controller
 
             return $this->successResponse($tvd, 'TVD obtenidas exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener las TVD', $e->getMessage(), 500);
         }
     }
@@ -44,8 +53,13 @@ class ClasificacionDocumentalTVDController extends Controller
 
             return $this->successResponse($tvd, 'Elemento TVD creado exitosamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al crear el elemento TVD', $e->getMessage(), 500);
         }
     }
@@ -61,8 +75,13 @@ class ClasificacionDocumentalTVDController extends Controller
 
             return $this->successResponse($tvd, 'Elemento TVD obtenido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el elemento TVD', $e->getMessage(), 500);
         }
     }
@@ -78,8 +97,13 @@ class ClasificacionDocumentalTVDController extends Controller
 
             return $this->successResponse($tvd, 'Elemento TVD actualizado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al actualizar el elemento TVD', $e->getMessage(), 500);
         }
     }
@@ -93,8 +117,13 @@ class ClasificacionDocumentalTVDController extends Controller
 
             return $this->successResponse(null, 'Elemento TVD eliminado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al eliminar el elemento TVD', $e->getMessage(), 500);
         }
     }
@@ -109,15 +138,20 @@ class ClasificacionDocumentalTVDController extends Controller
             $result = $this->service->importFromExcel($request->file('archivo'));
 
             return $this->successResponse($result, 'TVD importada exitosamente');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error de validación.',
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al importar la TVD', $e->getMessage(), 500);
         }
     }
@@ -132,15 +166,20 @@ class ClasificacionDocumentalTVDController extends Controller
             $result = $this->service->validarArchivo($request->file('archivo'));
 
             return $this->successResponse($result, 'Validación completada');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error de validación.',
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al validar la TVD', $e->getMessage(), 500);
         }
     }
@@ -169,8 +208,13 @@ class ClasificacionDocumentalTVDController extends Controller
                 'total_elementos' => ClasificacionDocumentalTVD::where('dependencia_id', $dependenciaId)->count(),
             ], 'Elementos TVD obtenidos exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener elementos TVD', $e->getMessage(), 500);
         }
     }
@@ -209,19 +253,24 @@ class ClasificacionDocumentalTVDController extends Controller
 
             return $this->exportExcel($rows, $headers);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al exportar la TVD', $e->getMessage(), 500);
         }
     }
 
-    private function exportExcel($rows, array $headers): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    private function exportExcel($rows, array $headers): BinaryFileResponse
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         foreach ($headers as $index => $header) {
-            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($index + 1);
+            $col = Coordinate::stringFromColumnIndex($index + 1);
             $sheet->setCellValue($col.'1', $header);
         }
 
@@ -239,7 +288,7 @@ class ClasificacionDocumentalTVDController extends Controller
                 $tvd->disposicion_final,
             ];
             foreach ($values as $index => $value) {
-                $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($index + 1);
+                $col = Coordinate::stringFromColumnIndex($index + 1);
                 $sheet->setCellValue($col.$rowIdx, $value);
             }
             $rowIdx++;
@@ -256,7 +305,7 @@ class ClasificacionDocumentalTVDController extends Controller
         return response()->download($path, $fileName)->deleteFileAfterSend();
     }
 
-    private function exportCsv($rows, array $headers): \Symfony\Component\HttpFoundation\StreamedResponse
+    private function exportCsv($rows, array $headers): StreamedResponse
     {
         $fileName = 'tvd_export_'.date('Ymd_His').'.csv';
 
@@ -288,8 +337,13 @@ class ClasificacionDocumentalTVDController extends Controller
                 'Estadísticas totales obtenidas exitosamente'
             );
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener estadísticas totales', $e->getMessage(), 500);
         }
     }

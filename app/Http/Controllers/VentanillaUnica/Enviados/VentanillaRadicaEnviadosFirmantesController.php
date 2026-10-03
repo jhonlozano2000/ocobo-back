@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Enviados\StoreFirmanteEnviadoRequest;
 use App\Http\Requests\Ventanilla\Enviados\UpdateFirmanteEnviadoRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\ControlAcceso\UserCargo;
 use App\Models\Notificacion;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosFirmas;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class VentanillaRadicaEnviadosFirmantesController extends Controller
 {
@@ -42,8 +44,13 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
 
             return $this->successResponse($firmas, 'Listado de firmantes obtenido exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el listado de firmantes', $e->getMessage(), 500);
         }
     }
@@ -74,7 +81,7 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
                 $firmasCreadas[] = $firma->load(['userCargo.user', 'userCargo.cargo', 'radicado']);
 
                 // Crear notificación in-app para el firmante
-                $userCargo = \App\Models\ControlAcceso\UserCargo::find($item['users_cargos_id']);
+                $userCargo = UserCargo::find($item['users_cargos_id']);
                 if ($userCargo && $userCargo->user) {
                     $radicado = VentanillaRadicaEnviados::find($radicaEnviadoId);
                     Notificacion::create([
@@ -82,7 +89,7 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
                         'type' => 'asignacion_firmante',
                         'title' => 'Firmante asignado',
                         'message' => $radicado
-                            ? 'Se le ha asignado como firmante del radicado ' . $radicado->num_radicado . '.'
+                            ? 'Se le ha asignado como firmante del radicado '.$radicado->num_radicado.'.'
                             : 'Se le ha asignado como firmante de un radicado.',
                         'notifiable_type' => 'App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados',
                         'notifiable_id' => $radicaEnviadoId,
@@ -99,8 +106,12 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
 
             return $this->successResponse($firmasCreadas, 'Firmantes asignados exitosamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar firmantes', $e->getMessage(), 500);
@@ -128,7 +139,7 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
                 $firmasCreadas[] = $firma->load(['userCargo.user', 'userCargo.cargo', 'radicado']);
 
                 // Crear notificación in-app para el firmante
-                $userCargo = \App\Models\ControlAcceso\UserCargo::find($item['users_cargos_id']);
+                $userCargo = UserCargo::find($item['users_cargos_id']);
                 if ($userCargo && $userCargo->user) {
                     $radicado = VentanillaRadicaEnviados::find($radica_enviado_id);
                     Notificacion::create([
@@ -136,7 +147,7 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
                         'type' => 'asignacion_firmante',
                         'title' => 'Firmante asignado',
                         'message' => $radicado
-                            ? 'Se le ha asignado como firmante del radicado ' . $radicado->num_radicado . '.'
+                            ? 'Se le ha asignado como firmante del radicado '.$radicado->num_radicado.'.'
                             : 'Se le ha asignado como firmante de un radicado.',
                         'notifiable_type' => 'App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados',
                         'notifiable_id' => $radica_enviado_id,
@@ -157,8 +168,12 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
 
             return $this->errorResponse('Error de validación', $e->errors(), 422);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al asignar firmantes', $e->getMessage(), 500);
@@ -176,8 +191,13 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
 
             return $this->successResponse($firma, 'Firmante encontrado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener el firmante', $e->getMessage(), 500);
         }
     }
@@ -207,8 +227,12 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
                 'Firmante actualizado exitosamente'
             );
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar el firmante', $e->getMessage(), 500);
@@ -232,8 +256,12 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
 
             return $this->successResponse(null, 'Firmante eliminado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
             DB::rollBack();
 
             return $this->errorResponse('Error al eliminar el firmante', $e->getMessage(), 500);
@@ -261,8 +289,13 @@ class VentanillaRadicaEnviadosFirmantesController extends Controller
 
             return $this->successResponse($firmasData, 'Firmantes del radicado obtenidos exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener los firmantes', $e->getMessage(), 500);
         }
     }

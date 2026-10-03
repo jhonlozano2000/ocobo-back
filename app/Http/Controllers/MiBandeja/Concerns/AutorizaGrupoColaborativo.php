@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
  * Debe invocarse FUERA del try/catch: lanza HttpException 403 / ModelNotFoundException 404.
  *
  * @author Jhon Javer Lozano Arce
+ *
  * @date 2026-08-23
  */
 trait AutorizaGrupoColaborativo

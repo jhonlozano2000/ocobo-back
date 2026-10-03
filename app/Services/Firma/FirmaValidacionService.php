@@ -20,23 +20,23 @@ class FirmaValidacionService
     const DISK_MAP = [
         'radicado_recibido' => 'radicados_recibidos',
         'radicado_enviado' => 'radicados_enviados',
-        'radicado_interno' => 'ventanilla_radica_internos_archivos',
+        'radicado_interno' => 'radicados_internos',
     ];
 
     public function validar(string $tipo, int $id): array
     {
-        if (!isset(self::MODEL_MAP[$tipo])) {
+        if (! isset(self::MODEL_MAP[$tipo])) {
             throw new \InvalidArgumentException("Tipo de documento no válido: $tipo");
         }
 
         $modelClass = self::MODEL_MAP[$tipo];
         $documento = $modelClass::find($id);
 
-        if (!$documento) {
+        if (! $documento) {
             throw new \RuntimeException('Documento no encontrado');
         }
 
-        if (!$documento->archivo_digital) {
+        if (! $documento->archivo_digital) {
             throw new \RuntimeException('El documento no tiene archivo PDF asociado');
         }
 
@@ -44,7 +44,7 @@ class FirmaValidacionService
         $disk = self::DISK_MAP[$tipo];
         $pdfPath = Storage::disk($disk)->path($documento->archivo_digital);
 
-        if (!file_exists($pdfPath)) {
+        if (! file_exists($pdfPath)) {
             throw new \RuntimeException('El archivo PDF no se encuentra en el almacenamiento');
         }
 
@@ -58,7 +58,7 @@ class FirmaValidacionService
             ->orderBy('fecha_firma', 'desc')
             ->first();
 
-        if (!$ultimoEvento) {
+        if (! $ultimoEvento) {
             throw new \RuntimeException('El documento no tiene un evento de firma registrado');
         }
 
@@ -89,7 +89,7 @@ class FirmaValidacionService
             'timestamp_valido' => $timestampValido,
             'timestamp_fecha' => $timestampFecha,
             'firmante' => $ultimoEvento->user ? [
-                'nombres' => trim($ultimoEvento->user->nombres . ' ' . $ultimoEvento->user->apellidos),
+                'nombres' => trim($ultimoEvento->user->nombres.' '.$ultimoEvento->user->apellidos),
                 'email' => $ultimoEvento->user->email,
             ] : null,
             'documento' => [

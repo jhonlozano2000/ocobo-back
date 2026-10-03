@@ -33,8 +33,6 @@ class MiBandejaTempGrupoArchiAdjunto extends Model
 
     /**
      * Relación con el grupo colaborativo temporal.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function grupo(): BelongsTo
     {
@@ -43,8 +41,6 @@ class MiBandejaTempGrupoArchiAdjunto extends Model
 
     /**
      * Relación con el usuario que subió el archivo.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function subidoPor(): BelongsTo
     {

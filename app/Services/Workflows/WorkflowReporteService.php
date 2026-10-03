@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Workflows;
 
 use App\Models\Workflows\Tarea;
-use App\Models\Workflows\WorkFlowTarea;
 use App\Models\Workflows\WorkflowInstancia;
+use App\Models\Workflows\WorkFlowTarea;
 use Illuminate\Support\Facades\DB;
 
 class WorkflowReporteService
@@ -14,7 +14,7 @@ class WorkflowReporteService
     public function resumen(int $workflowId): array
     {
         $tareasModulo = Tarea::where('workflow_id', $workflowId);
-        $tareasNodo = WorkFlowTarea::whereHas('nodo', fn($q) => $q->where('workflow_id', $workflowId));
+        $tareasNodo = WorkFlowTarea::whereHas('nodo', fn ($q) => $q->where('workflow_id', $workflowId));
 
         return [
             'tareas_modulo' => [
@@ -106,8 +106,11 @@ class WorkflowReporteService
     private function tasaCompletitud($query): float
     {
         $total = (clone $query)->count();
-        if ($total === 0) return 0.0;
+        if ($total === 0) {
+            return 0.0;
+        }
         $completadas = (clone $query)->where('estado', 'completada')->count();
+
         return round(($completadas / $total) * 100, 1);
     }
 
@@ -123,7 +126,7 @@ class WorkflowReporteService
 
     private function tiempoPromedioTareasNodo(int $workflowId): ?float
     {
-        $avg = WorkFlowTarea::whereHas('nodo', fn($q) => $q->where('workflow_id', $workflowId))
+        $avg = WorkFlowTarea::whereHas('nodo', fn ($q) => $q->where('workflow_id', $workflowId))
             ->where('estado', 'completada')
             ->whereNotNull('updated_at')
             ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, updated_at)) as promedio')

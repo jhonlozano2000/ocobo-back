@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\StoreWorkFlowArchivoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Services\Workflows\WorkFlowArchivoService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class WorkFlowArchivoController extends Controller
 {
@@ -32,10 +35,16 @@ class WorkFlowArchivoController extends Controller
                 $archivableType,
                 $archivableId
             );
+
             return $this->successResponse($archivos, 'Archivos obtenidos correctamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener archivos', $e->getMessage());
         }
     }
@@ -58,10 +67,16 @@ class WorkFlowArchivoController extends Controller
                 (int) $data['archivable_id'],
                 $data['categoria'] ?? 'adjunto'
             );
+
             return $this->successResponse($archivo, 'Archivo subido correctamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al subir archivo', $e->getMessage());
         }
     }
@@ -71,7 +86,7 @@ class WorkFlowArchivoController extends Controller
         try {
             $ruta = $this->archivoService->obtenerRuta($workflowId, $archivoId);
 
-            if (!Storage::disk($ruta['disk'])->exists($ruta['path'])) {
+            if (! Storage::disk($ruta['disk'])->exists($ruta['path'])) {
                 return $this->errorResponse('El archivo no existe en el servidor', null, 404);
             }
 
@@ -80,11 +95,16 @@ class WorkFlowArchivoController extends Controller
                 $ruta['nombre_original'],
                 ['Content-Type' => $ruta['mime_type']]
             );
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Archivo no encontrado', null, 404);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al descargar archivo', $e->getMessage());
         }
     }
@@ -93,12 +113,18 @@ class WorkFlowArchivoController extends Controller
     {
         try {
             $this->archivoService->eliminar($workflowId, $archivoId);
+
             return $this->successResponse(null, 'Archivo eliminado correctamente');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Archivo no encontrado en este workflow', null, 404);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al eliminar archivo', $e->getMessage());
         }
     }

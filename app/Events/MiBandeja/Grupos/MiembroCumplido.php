@@ -2,7 +2,6 @@
 
 namespace App\Events\MiBandeja\Grupos;
 
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -14,10 +13,15 @@ class MiembroCumplido implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public int $grupoId;
+
     public int $userId;
+
     public string $nombreUsuario;
+
     public string $rol;
+
     public bool $todosCumplidos;
+
     public ?string $nuevoEstado;
 
     public function __construct(int $grupoId, int $userId, string $nombreUsuario, string $rol, bool $todosCumplidos, ?string $nuevoEstado = null)

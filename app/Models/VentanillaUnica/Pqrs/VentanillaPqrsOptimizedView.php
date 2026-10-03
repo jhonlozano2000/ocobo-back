@@ -2,6 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Pqrs;
 
+use App\Models\ControlAcceso\UserCargo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -47,6 +48,7 @@ class VentanillaPqrsOptimizedView extends Model
         if ($hasta) {
             $query->whereDate('created_at', '<=', $hasta);
         }
+
         return $query;
     }
 
@@ -55,6 +57,7 @@ class VentanillaPqrsOptimizedView extends Model
         if ($clasificacionId) {
             return $query->where('clasificacion_documental_trd_id', $clasificacionId);
         }
+
         return $query;
     }
 
@@ -63,6 +66,7 @@ class VentanillaPqrsOptimizedView extends Model
         if ($terceroId) {
             return $query->where('gestion_tercero_id', $terceroId);
         }
+
         return $query;
     }
 
@@ -71,6 +75,7 @@ class VentanillaPqrsOptimizedView extends Model
         if ($tipoId) {
             return $query->where('tipo_pqrs_id', $tipoId);
         }
+
         return $query;
     }
 
@@ -79,6 +84,7 @@ class VentanillaPqrsOptimizedView extends Model
         if ($estado) {
             return $query->where('estado_tramite', $estado);
         }
+
         return $query;
     }
 
@@ -87,6 +93,7 @@ class VentanillaPqrsOptimizedView extends Model
         if ($prioridad) {
             return $query->where('prioridad', $prioridad);
         }
+
         return $query;
     }
 
@@ -95,6 +102,7 @@ class VentanillaPqrsOptimizedView extends Model
         if ($medioId) {
             return $query->where('radicado_medio_recep_id', $medioId);
         }
+
         return $query;
     }
 
@@ -118,7 +126,7 @@ class VentanillaPqrsOptimizedView extends Model
         }
 
         // Obtener códigos de la jerarquía del usuario
-        $cargoActivo = \App\Models\ControlAcceso\UserCargo::cargoActivoDelUsuario($user->id);
+        $cargoActivo = UserCargo::cargoActivoDelUsuario($user->id);
         if (! $cargoActivo || ! $cargoActivo->cargo) {
             return $query->where('usuario_crea', $user->id);
         }
@@ -173,6 +181,7 @@ class VentanillaPqrsOptimizedView extends Model
     public function scopeProximasAVencer(Builder $query, int $dias = 5): Builder
     {
         $fechaLimite = now()->addDays($dias)->toDateString();
+
         return $query->where('fecha_vencimiento', '<=', $fechaLimite)
             ->where('fecha_vencimiento', '>=', now()->toDateString())
             ->whereIn('estado_tramite', ['Pendiente', 'En Tramite']);

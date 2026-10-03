@@ -4,6 +4,7 @@ namespace App\Rules;
 
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Http\UploadedFile;
 
 class MagicMime implements ValidationRule
 {
@@ -27,7 +28,7 @@ class MagicMime implements ValidationRule
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (!$value instanceof \Illuminate\Http\UploadedFile) {
+        if (! $value instanceof UploadedFile) {
             $fail('El archivo no es válido.');
 
             return;
@@ -35,7 +36,7 @@ class MagicMime implements ValidationRule
 
         $extension = strtolower($value->getClientOriginalExtension());
 
-        if (!isset(self::MAP[$extension])) {
+        if (! isset(self::MAP[$extension])) {
             $fail("El formato .{$extension} no está permitido.");
 
             return;
@@ -50,7 +51,7 @@ class MagicMime implements ValidationRule
         if ($mimeReal !== $mimeEsperado) {
             $fail(
                 "El tipo MIME real del archivo ({$mimeReal}) no coincide con la extensión .{$extension}. "
-                . 'Posible manipulación del archivo.'
+                .'Posible manipulación del archivo.'
             );
         }
     }

@@ -36,6 +36,7 @@ class StoreRadicadoEnviadoRequest extends FormRequest
             'asunto' => 'required|string|max:300',
             'radicado_respuesta' => 'nullable|string|max:300',
             'num_radicado' => ['nullable', 'string', 'max:50', $uniqueRule],
+            'grupo_id' => 'nullable|exists:mi_bandeja_temp,id',
         ];
     }
 

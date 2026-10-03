@@ -6,8 +6,8 @@ use App\Models\ControlAcceso\UserCargo;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoCompartirHistorial;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoResponsable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class CompartirHistorialInternoService
 {

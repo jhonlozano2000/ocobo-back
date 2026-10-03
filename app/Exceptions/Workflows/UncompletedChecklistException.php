@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Exceptions\Workflows;
 
+use Illuminate\Http\JsonResponse;
+
 class UncompletedChecklistException extends WorkflowException
 {
     public function __construct(int $pendingCount = 0)
@@ -20,7 +22,7 @@ class UncompletedChecklistException extends WorkflowException
         return 422;
     }
 
-    public function render(): \Illuminate\Http\JsonResponse
+    public function render(): JsonResponse
     {
         return response()->json([
             'message' => $this->getMessage(),

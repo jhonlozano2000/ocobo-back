@@ -8,9 +8,11 @@ use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\Configuracion\ConfigServerArchivo;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\Gestion\GestionTercero;
+use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\User;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use App\Traits\AbacHierarquico;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -206,12 +208,20 @@ class VentanillaRadicaReci extends Model
     }
 
     /**
+     * Obtiene el historial de compartidos (con copia / CC).
+     */
+    public function compartirHistorial()
+    {
+        return $this->hasMany(VentanillaRadicaReciCompartirHistorial::class, 'radica_reci_id');
+    }
+
+    /**
      * Obtiene los radicados enviados que responden a este radicado recibido.
      */
     public function enviados()
     {
         return $this->belongsToMany(
-            \App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados::class,
+            VentanillaRadicaEnviados::class,
             'ventanilla_radica_enviados_respuestas',
             'radica_reci_id',
             'radica_enviado_id'
@@ -445,7 +455,7 @@ class VentanillaRadicaReci extends Model
             return null;
         }
 
-        $grupo = \App\Models\MiBandeja\MiBandejaTemp::where('radicado_id', $this->id)
+        $grupo = MiBandejaTemp::where('radicado_id', $this->id)
             ->where('radicado_tipo', 'recibido')
             ->first();
 

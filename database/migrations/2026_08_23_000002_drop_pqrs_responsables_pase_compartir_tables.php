@@ -12,6 +12,7 @@ return new class extends Migration
      * pases, compartidos y archivos viven en el RADICADO (ventanilla_radica_reci*).
      *
      * @author Jhon Javer Lozano Arce
+     *
      * @date 2026-08-23
      */
     public function up(): void

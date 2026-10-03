@@ -8,11 +8,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Enviados\UploadArchivosAdjuntosEnviadoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
-use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivos;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivoEliminado;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class VentanillaRadicaEnviadosAdjuntosController extends Controller
 {
@@ -91,8 +93,13 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
 
             return $this->successResponse($archivosSubidos, 'Archivos adicionales subidos exitosamente', 201);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al subir archivos adicionales', $e->getMessage(), 500);
         }
     }
@@ -116,8 +123,13 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
 
             return $this->successResponse($archivos, 'Archivos adicionales obtenidos exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al obtener archivos adicionales', $e->getMessage(), 500);
         }
     }
@@ -139,8 +151,13 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
 
             return Storage::disk(self::DISK)->download($archivo->archivo);
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al descargar el archivo', $e->getMessage(), 500);
         }
     }
@@ -172,8 +189,13 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
 
             return $this->successResponse(null, 'Archivo adicional eliminado exitosamente');
         } catch (\Exception $e) {
-        if ($e instanceof \Illuminate\Validation\ValidationException) { throw $e; }
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) { throw $e; }
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
             return $this->errorResponse('Error al eliminar el archivo adicional', $e->getMessage(), 500);
         }
     }
