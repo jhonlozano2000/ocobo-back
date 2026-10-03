@@ -21,9 +21,33 @@ routes/{modulo}.php → Controllers/{Modulo}/ → Requests/{Modulo}/ → Models/
 Reglas fijas:
 - Rutas específicas SIEMPRE antes de `Route::apiResource()` (si no, Laravel las interpreta como `{id}`)
 - Prefijo URL: `api/<modulo>` registrado en `RouteServiceProvider`
-- Controladores usan `ApiResponseTrait` (respuesta: `{status, message, data|error}`)
+- Controladores usan `ApiResponseTrait` (respuesta: `{status, success, message, data|errors}`)
 - Form Requests en español con `rules()`, `messages()`, `attributes()`
 - Transacciones: `DB::beginTransaction()` + `try/catch` + `DB::rollBack()` en toda operación multi-tabla
+
+## Estandarización de Respuestas de API y Códigos de Error (ApiResponseTrait)
+Todos los controladores del backend DEBEN usar `ApiResponseTrait` (`app/Http/Traits/ApiResponseTrait.php`).
+Las respuestas devuelven siempre `{status: bool, success: bool, message: string, data?: mixed, errors?: mixed}`.
+Cada código de estado HTTP se mapea de forma semántica con el tipo de Toast mostrado en el frontend:
+
+| Código HTTP | Significado REST / Negocio | Método en `ApiResponseTrait` | Toast Frontend (`toastr.js`) | Color / Tipo |
+|---|---|---|---|---|
+| **200** | Operación exitosa | `$this->successResponse($data, $message)` | `toastSuccess` | 🟢 Verde |
+| **201** | Recurso creado exitosamente | `$this->createdResponse($data, $message)` | `toastSuccess` | 🟢 Verde |
+| **204** | Sin contenido / Eliminación silenciosa | `$this->noContentResponse()` | — | — |
+| **400** | Solicitud incorrecta / Parámetros inválidos | `$this->badRequestResponse($message, $error)` | `toastWarning` | 🟡 Amarillo |
+| **401** | No autenticado / Sesión expirada | `$this->unauthorizedResponse($message)` | `toastWarning` + redirect login | 🟡 Amarillo |
+| **403** | Sin permisos / Acceso prohibido | `$this->forbiddenResponse($message)` | `toastError` | 🔴 Rojo |
+| **404** | Registro o entidad no encontrada | `$this->notFoundResponse($message)` | `toastInfo` | 🔵 Azul |
+| **409** | Conflicto de concurrencia o estado | `$this->conflictResponse($message, $error)` | `toastWarning` | 🟡 Amarillo |
+| **422** | Validación / Regla de negocio no cumplida | `$this->validationResponse($errors, $msg)` / `$this->warningResponse($msg)` | `toastWarning` | 🟡 Amarillo |
+| **429** | Límite de peticiones superado | `$this->tooManyRequestsResponse($message)` | `toastWarning` | 🟡 Amarillo |
+| **500** | Error interno no controlado del servidor | `$this->serverErrorResponse($message, $error)` | `toastError` | 🔴 Rojo |
+
+**Reglas de negocio para respuestas:**
+- **Validaciones de Formulario (HTTP 422)**: El campo `message` NUNCA debe ser un texto genérico estático como `"Error de validación."`. Debe contener siempre el primer error puntual de la validación (ej. `"El número de documento ya está en uso."`) para que el toast muestre el problema de inmediato, manteniendo el mapa completo en `errors`.
+- **Reglas de Negocio / Advertencias (HTTP 422)**: Cuando una acción no pueda completarse por una regla del negocio (ej. *"El documento ya fue firmado"*, *"El usuario ya es responsable"*), retornar `warningResponse(...)` (HTTP 422) para que se muestre como advertencia (warning) y no como error de servidor 500.
+
 
 ## Módulos (routes/*.php)
 - `ventanilla-recibida.php` — Radicados recibidos (~30 endpoints con rate limiting diferenciado: api, radicacion, uploads, search)
