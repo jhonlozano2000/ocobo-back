@@ -66,7 +66,7 @@ class OfiArchivoPrestamoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado', $e->getMessage());
         }
     }
 
@@ -93,7 +93,7 @@ class OfiArchivoPrestamoController extends Controller
             $expediente = OfiArchivoExpediente::findOrFail($request->expediente_id);
 
             if ($expediente->estado !== 'abierto') {
-                return $this->errorResponse('No se puede prestar un expediente que no está abierto', null, 422);
+                return $this->warningResponse('No se puede prestar un expediente que no está abierto');
             }
 
             $prestamo = OfiArchivoPrestamo::create([
@@ -109,10 +109,9 @@ class OfiArchivoPrestamoController extends Controller
 
             DB::commit();
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $prestamo->load(['expediente', 'solicitante', 'usuarioRegistro']),
-                'Préstamo registrado exitosamente',
-                201
+                'Préstamo registrado exitosamente'
             );
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -123,7 +122,7 @@ class OfiArchivoPrestamoController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al registrar el préstamo', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al registrar el préstamo', $e->getMessage());
         }
     }
 
@@ -148,7 +147,7 @@ class OfiArchivoPrestamoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el préstamo', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el préstamo', $e->getMessage());
         }
     }
 
@@ -169,7 +168,7 @@ class OfiArchivoPrestamoController extends Controller
             if ($prestamo->estado !== 'prestado') {
                 DB::rollBack();
 
-                return $this->errorResponse('Este préstamo ya fue devuelto', null, 422);
+                return $this->warningResponse('Este préstamo ya fue devuelto');
             }
 
             $prestamo->update([
@@ -192,7 +191,7 @@ class OfiArchivoPrestamoController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al registrar la devolución', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al registrar la devolución', $e->getMessage());
         }
     }
 
@@ -222,7 +221,7 @@ class OfiArchivoPrestamoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
         }
     }
 }

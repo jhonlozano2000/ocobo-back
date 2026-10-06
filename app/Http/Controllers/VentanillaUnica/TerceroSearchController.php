@@ -35,11 +35,7 @@ class TerceroSearchController extends Controller
             $tercero = GestionTercero::whereRaw('LOWER(email) = ?', [$email])->first();
 
             if (! $tercero) {
-                return $this->errorResponse(
-                    'No se encontró un tercero con ese correo electrónico',
-                    null,
-                    404
-                );
+                return $this->notFoundResponse('No se encontró un tercero con ese correo electrónico');
             }
 
             return $this->successResponse([
@@ -60,10 +56,9 @@ class TerceroSearchController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse(
+            return $this->serverErrorResponse(
                 'Error al buscar el tercero',
-                $e->getMessage(),
-                500
+                $e->getMessage()
             );
         }
     }

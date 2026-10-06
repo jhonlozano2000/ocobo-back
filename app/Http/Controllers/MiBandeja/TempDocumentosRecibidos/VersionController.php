@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MiBandeja\TempDocumentosRecibidos;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Version;
 use Illuminate\Http\JsonResponse;
@@ -11,10 +12,12 @@ use Illuminate\Support\Facades\DB;
 
 class VersionController extends Controller
 {
+    use ApiResponseTrait;
+
     public function index(Request $request, Documento $documento): JsonResponse
     {
         if (! $documento->tieneAcceso($request->user())) {
-            return response()->json(['message' => 'No tienes acceso'], 403);
+            return $this->forbiddenResponse('No tienes acceso');
         }
 
         $versiones = Version::where('documento_id', $documento->id)
@@ -22,13 +25,13 @@ class VersionController extends Controller
             ->orderBy('numero_version', 'desc')
             ->paginate(20);
 
-        return response()->json($versiones);
+        return $this->successResponse($versiones, 'Versiones obtenidas exitosamente');
     }
 
     public function show(Request $request, Documento $documento, int $versionId): JsonResponse
     {
         if (! $documento->tieneAcceso($request->user())) {
-            return response()->json(['message' => 'No tienes acceso'], 403);
+            return $this->forbiddenResponse('No tienes acceso');
         }
 
         $version = $documento->versiones()->where('id', $versionId)
@@ -36,22 +39,22 @@ class VersionController extends Controller
             ->first();
 
         if (! $version) {
-            return response()->json(['message' => 'Versión no encontrada'], 404);
+            return $this->notFoundResponse('Versión no encontrada');
         }
 
-        return response()->json($version);
+        return $this->successResponse($version, 'Versión obtenida exitosamente');
     }
 
     public function restaurar(Request $request, Documento $documento, int $versionId): JsonResponse
     {
         if (! $documento->puedeEditar($request->user())) {
-            return response()->json(['message' => 'No tienes permisos'], 403);
+            return $this->forbiddenResponse('No tienes permisos');
         }
 
         $version = $documento->versiones()->where('id', $versionId)->first();
 
         if (! $version) {
-            return response()->json(['message' => 'Versión no encontrada'], 404);
+            return $this->notFoundResponse('Versión no encontrada');
         }
 
         return DB::transaction(function () use ($version, $documento, $request) {
@@ -60,29 +63,29 @@ class VersionController extends Controller
 
             Version::crearVersion($documento, $contenido, $request->user(), "Restaurado desde versión {$version->numero_version}");
 
-            return response()->json([
+            return $this->successResponse([
                 'contenido' => $contenido,
                 'version' => $version,
-            ]);
+            ], 'Versión restaurada exitosamente');
         });
     }
 
     public function compararVersiones(Request $request, Documento $documento, int $versionIdA, int $versionIdB): JsonResponse
     {
         if (! $documento->tieneAcceso($request->user())) {
-            return response()->json(['message' => 'No tienes acceso'], 403);
+            return $this->forbiddenResponse('No tienes acceso');
         }
 
         $versionA = $documento->versiones()->where('id', $versionIdA)->first();
         $versionB = $documento->versiones()->where('id', $versionIdB)->first();
 
         if (! $versionA || ! $versionB) {
-            return response()->json(['message' => 'Una o ambas versiones no existen'], 404);
+            return $this->notFoundResponse('Una o ambas versiones no existen');
         }
 
         $diff = $this->calcularDiff($versionA->contenido_yjs ?? [], $versionB->contenido_yjs ?? []);
 
-        return response()->json([
+        return $this->successResponse([
             'version_a' => [
                 'id' => $versionA->id,
                 'numero_version' => $versionA->numero_version,
@@ -98,7 +101,7 @@ class VersionController extends Controller
                 'usuario' => $versionB->usuario->name ?? 'Usuario',
             ],
             'diff' => $diff,
-        ]);
+        ], 'Comparación de versiones realizada exitosamente');
     }
 
     private function calcularDiff(array $contenidoA, array $contenidoB): array

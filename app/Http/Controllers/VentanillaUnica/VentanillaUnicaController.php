@@ -114,7 +114,7 @@ class VentanillaUnicaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado de ventanillas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado de ventanillas', $e->getMessage());
         }
     }
 
@@ -177,10 +177,9 @@ class VentanillaUnicaController extends Controller
 
             DB::commit();
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $ventanilla->load('sede'),
-                'Ventanilla creada exitosamente',
-                201
+                'Ventanilla creada exitosamente'
             );
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -191,7 +190,7 @@ class VentanillaUnicaController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al crear la ventanilla', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear la ventanilla', $e->getMessage());
         }
     }
 
@@ -250,7 +249,7 @@ class VentanillaUnicaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener la ventanilla', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener la ventanilla', $e->getMessage());
         }
     }
 
@@ -332,7 +331,7 @@ class VentanillaUnicaController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al actualizar la ventanilla', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar la ventanilla', $e->getMessage());
         }
     }
 
@@ -372,11 +371,11 @@ class VentanillaUnicaController extends Controller
 
             // Verificar si tiene dependencias antes de eliminar
             if ($ventanilla->usuariosPermitidos()->count() > 0) {
-                return $this->errorResponse('No se puede eliminar la ventanilla porque tiene usuarios asignados', null, 422);
+                return $this->warningResponse('No se puede eliminar la ventanilla porque tiene usuarios asignados');
             }
 
             if ($ventanilla->tiposDocumentales()->count() > 0) {
-                return $this->errorResponse('No se puede eliminar la ventanilla porque tiene tipos documentales configurados', null, 422);
+                return $this->warningResponse('No se puede eliminar la ventanilla porque tiene tipos documentales configurados');
             }
 
             $ventanilla->delete();
@@ -393,7 +392,7 @@ class VentanillaUnicaController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al eliminar la ventanilla', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al eliminar la ventanilla', $e->getMessage());
         }
     }
 
@@ -452,7 +451,7 @@ class VentanillaUnicaController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al configurar los tipos documentales', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al configurar los tipos documentales', $e->getMessage());
         }
     }
 
@@ -506,7 +505,7 @@ class VentanillaUnicaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener los tipos documentales', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener los tipos documentales', $e->getMessage());
         }
     }
 }

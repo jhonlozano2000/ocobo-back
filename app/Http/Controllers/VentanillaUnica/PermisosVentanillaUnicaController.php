@@ -80,7 +80,7 @@ class PermisosVentanillaUnicaController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al asignar permisos', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al asignar permisos', $e->getMessage());
         }
     }
 
@@ -157,7 +157,7 @@ class PermisosVentanillaUnicaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las ventanillas permitidas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las ventanillas permitidas', $e->getMessage());
         }
     }
 
@@ -224,7 +224,7 @@ class PermisosVentanillaUnicaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener los usuarios permitidos', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener los usuarios permitidos', $e->getMessage());
         }
     }
 
@@ -265,7 +265,7 @@ class PermisosVentanillaUnicaController extends Controller
 
             // Verificar que el usuario tenga permisos en la ventanilla
             if (! $ventanilla->usuariosPermitidos()->where('user_id', $usuarioId)->exists()) {
-                return $this->errorResponse('El usuario no tiene permisos en esta ventanilla', null, 422);
+                return $this->warningResponse('El usuario no tiene permisos en esta ventanilla');
             }
 
             $ventanilla->usuariosPermitidos()->detach($usuarioId);
@@ -282,7 +282,7 @@ class PermisosVentanillaUnicaController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al revocar permisos', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al revocar permisos', $e->getMessage());
         }
     }
 }

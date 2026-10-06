@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MiBandeja\Enviados;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados as VentanillaRadicaEnviado;
 use App\Services\MiBandeja\MiBandejaFiltroService;
 use Illuminate\Http\Request;
@@ -12,6 +13,8 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class MiBandejaEnviadosController extends Controller
 {
+    use ApiResponseTrait;
+
     /**
      * Obtener radicados enviados asignados al usuario actual (Mi Bandeja).
      * Filtra por los cargos del usuario a través de ventanilla_radica_enviados_responsable.
@@ -64,17 +67,7 @@ class MiBandejaEnviadosController extends Controller
             $perPage = min((int) $request->get('per_page', 15), 100);
             $radicados = $query->paginate($perPage);
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Mis radicados enviados obtenidos',
-                'data' => $radicados->items(),
-                'pagination' => [
-                    'total' => $radicados->total(),
-                    'per_page' => $radicados->perPage(),
-                    'current_page' => $radicados->currentPage(),
-                    'last_page' => $radicados->lastPage(),
-                ],
-            ]);
+            return $this->successResponse($radicados, 'Mis radicados enviados obtenidos exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -83,11 +76,7 @@ class MiBandejaEnviadosController extends Controller
                 throw $e;
             }
 
-            return response()->json([
-                'status' => false,
-                'message' => 'Error al obtener mis radicados enviados',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->serverErrorResponse('Error al obtener mis radicados enviados', $e->getMessage());
         }
     }
 
@@ -129,15 +118,12 @@ class MiBandejaEnviadosController extends Controller
             $enProceso = (clone $baseQuery)->where('estado_trabajo', 'EN_PROCESO')->count();
             $finalizado = (clone $baseQuery)->where('estado_trabajo', 'FINALIZADO')->count();
 
-            return response()->json([
-                'status' => true,
-                'data' => [
-                    'total' => $total,
-                    'pendiente' => $pendiente,
-                    'enProceso' => $enProceso,
-                    'finalizado' => $finalizado,
-                ],
-            ]);
+            return $this->successResponse([
+                'total' => $total,
+                'pendiente' => $pendiente,
+                'enProceso' => $enProceso,
+                'finalizado' => $finalizado,
+            ], 'Estadísticas obtenidas exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -146,11 +132,7 @@ class MiBandejaEnviadosController extends Controller
                 throw $e;
             }
 
-            return response()->json([
-                'status' => false,
-                'message' => 'Error al obtener estadísticas',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
         }
     }
 }

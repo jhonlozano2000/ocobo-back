@@ -6,18 +6,32 @@ alwaysApply: false
 
 # Respuestas API y Resources
 
-## ApiResponseTrait
+## ApiResponseTrait (OBLIGATORIO)
 
-- En controladores API, **usar** `App\Http\Traits\ApiResponseTrait`.
-- Success:
-  - `return $this->successResponse($data, 'Mensaje', 200|201);`
-- Error:
-  - `return $this->errorResponse('Mensaje', $error, 4xx|5xx);`
+- En **TODOS** los controladores API, está **ESTRICTAMENTE PROHIBIDO** usar `return response()->json(...)` directo.
+- Se DEBE importar e implementar `App\Http\Traits\ApiResponseTrait`.
+- **Éxito (200 / 201)**:
+  - `$this->successResponse($data, 'Mensaje');`
+  - `$this->createdResponse($data, 'Recurso creado');` (201)
+  - Si `$data` es una instancia de Paginador de Laravel (`LengthAwarePaginator` / `Paginator`), `successResponse` extrae automáticamente los items a `data` y agrega los metadatos de `pagination`.
+- **Validaciones / Reglas de Negocio (422 - Warning Toast)**:
+  - `$this->validationResponse($errors, 'Mensaje con primer error puntual');`
+  - `$this->warningResponse('Motivo de negocio por el cual no se puede ejecutar');`
+- **Sin Contenido (204)**:
+  - `$this->noContentResponse();`
+- **Errores HTTP de Servidor / Cliente**:
+  - `$this->badRequestResponse($mensaje, $error);` (400)
+  - `$this->unauthorizedResponse($mensaje);` (401)
+  - `$this->forbiddenResponse($mensaje);` (403)
+  - `$this->notFoundResponse($mensaje);` (404)
+  - `$this->conflictResponse($mensaje, $error);` (409)
+  - `$this->tooManyRequestsResponse($mensaje);` (429)
+  - `$this->serverErrorResponse($mensaje, $e->getMessage());` (500)
 
-Shape esperado:
+Shape uniforme esperado:
 
 ```json
-{ "status": true|false, "message": "...", "data": ... }
+{ "status": true|false, "success": true|false, "message": "...", "data": ..., "pagination": ... }
 ```
 
 ## JsonResource

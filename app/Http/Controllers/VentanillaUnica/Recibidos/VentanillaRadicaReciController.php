@@ -1935,11 +1935,7 @@ class VentanillaRadicaReciController extends Controller
         $query = $searchOcr ?: $searchTerm;
 
         if (strlen($query) < 3) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Mínimo 3 caracteres',
-                'data' => [],
-            ], 422);
+            return $this->warningResponse('Mínimo 3 caracteres', ['data' => []]);
         }
 
         // Si es búsqueda específica de OCR
@@ -1956,11 +1952,7 @@ class VentanillaRadicaReciController extends Controller
                 ->get();
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Búsqueda exitosa',
-            'data' => $radicados,
-        ]);
+        return $this->successResponse($radicados, 'Búsqueda exitosa');
     }
 
     /**

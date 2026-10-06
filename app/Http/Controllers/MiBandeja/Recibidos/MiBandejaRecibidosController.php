@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MiBandeja\Recibidos;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\MiBandeja\MiBandejaFiltroService;
 use Illuminate\Http\Request;
@@ -12,6 +13,8 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class MiBandejaRecibidosController extends Controller
 {
+    use ApiResponseTrait;
+
     /**
      * Obtener radicados asignados al usuario actual (Mi Bandeja).
      * Filtra por los cargos del usuario a través de ventanilla_radica_reci_responsa.
@@ -80,17 +83,7 @@ class MiBandejaRecibidosController extends Controller
                 'compartirHistorial',
             ])->paginate($perPage);
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Mis radicados obtenidos',
-                'data' => $radicados->items(),
-                'pagination' => [
-                    'total' => $radicados->total(),
-                    'per_page' => $radicados->perPage(),
-                    'current_page' => $radicados->currentPage(),
-                    'last_page' => $radicados->lastPage(),
-                ],
-            ]);
+            return $this->successResponse($radicados, 'Mis radicados obtenidos exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -99,11 +92,7 @@ class MiBandejaRecibidosController extends Controller
                 throw $e;
             }
 
-            return response()->json([
-                'status' => false,
-                'message' => 'Error al obtener mis radicados',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->serverErrorResponse('Error al obtener mis radicados', $e->getMessage());
         }
     }
 
@@ -155,20 +144,17 @@ class MiBandejaRecibidosController extends Controller
                 ->where('estado_trabajo', '!=', 'ANULADO')->count();
             $vigentes = $total - $vencido - $porVencer - $finalizado;
 
-            return response()->json([
-                'status' => true,
-                'data' => [
-                    'total' => $total,
-                    'recibido' => $recibido,
-                    'enProceso' => $enProceso,
-                    'finalizado' => $finalizado,
-                    'vencido' => $vencido,
-                    'porVencer' => $porVencer,
-                    'vigentes' => $vigentes,
-                    'sinArchivoDigital' => $sinArchivoDigital,
-                    'porFirmar' => $porFirmar,
-                ],
-            ]);
+            return $this->successResponse([
+                'total' => $total,
+                'recibido' => $recibido,
+                'enProceso' => $enProceso,
+                'finalizado' => $finalizado,
+                'vencido' => $vencido,
+                'porVencer' => $porVencer,
+                'vigentes' => $vigentes,
+                'sinArchivoDigital' => $sinArchivoDigital,
+                'porFirmar' => $porFirmar,
+            ], 'Estadísticas obtenidas exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -177,11 +163,7 @@ class MiBandejaRecibidosController extends Controller
                 throw $e;
             }
 
-            return response()->json([
-                'status' => false,
-                'message' => 'Error al obtener estadísticas',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
         }
     }
 }

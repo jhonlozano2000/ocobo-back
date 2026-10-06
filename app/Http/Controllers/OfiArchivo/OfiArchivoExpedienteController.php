@@ -75,10 +75,9 @@ class OfiArchivoExpedienteController extends Controller
 
             DB::commit();
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $expediente->load(['dependencia', 'serieTrd']),
-                'Expediente abierto exitosamente',
-                201
+                'Expediente abierto exitosamente'
             );
 
         } catch (\Exception $e) {
@@ -90,7 +89,7 @@ class OfiArchivoExpedienteController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al abrir el expediente', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al abrir el expediente', $e->getMessage());
         }
     }
 
@@ -116,7 +115,7 @@ class OfiArchivoExpedienteController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el expediente', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el expediente', $e->getMessage());
         }
     }
 
@@ -162,7 +161,7 @@ class OfiArchivoExpedienteController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar el expediente', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar el expediente', $e->getMessage());
         }
     }
 
@@ -178,7 +177,7 @@ class OfiArchivoExpedienteController extends Controller
             $expediente = OfiArchivoExpediente::findOrFail($id);
 
             if ($expediente->estado !== 'abierto') {
-                return $this->errorResponse('Solo se pueden cerrar expedientes en estado abierto', null, 422);
+                return $this->warningResponse('Solo se pueden cerrar expedientes en estado abierto');
             }
 
             $documentos = $expediente->documentos()
@@ -222,7 +221,7 @@ class OfiArchivoExpedienteController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al cerrar el expediente', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al cerrar el expediente', $e->getMessage());
         }
     }
 
@@ -263,7 +262,7 @@ class OfiArchivoExpedienteController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado', $e->getMessage());
         }
     }
 
@@ -285,7 +284,7 @@ class OfiArchivoExpedienteController extends Controller
             $expediente = OfiArchivoExpediente::findOrFail($expedienteId);
 
             if ($expediente->estado !== 'abierto') {
-                return $this->errorResponse('No se pueden incorporar documentos a un expediente cerrado o transferido', null, 422);
+                return $this->warningResponse('No se pueden incorporar documentos a un expediente cerrado o transferido');
             }
 
             // Mapear el tipo de documento al modelo correspondiente
@@ -304,7 +303,7 @@ class OfiArchivoExpedienteController extends Controller
                 ->exists();
 
             if ($existe) {
-                return $this->errorResponse('Este documento ya se encuentra incorporado en el expediente', null, 422);
+                return $this->warningResponse('Este documento ya se encuentra incorporado en el expediente');
             }
 
             // Crear el registro de índice (La foliación es automática por el boot() del modelo)
@@ -337,7 +336,7 @@ class OfiArchivoExpedienteController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al incorporar el documento', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al incorporar el documento', $e->getMessage());
         }
     }
 
@@ -357,7 +356,7 @@ class OfiArchivoExpedienteController extends Controller
 
         // Validar que tipo_documental sea requerido cuando tipo es 'tipo_documental'
         if ($request->tipo === 'tipo_documental' && empty($request->tipo_documental)) {
-            return $this->errorResponse('El nombre del tipo documental es requerido', null, 422);
+            return $this->warningResponse('El nombre del tipo documental es requerido');
         }
 
         try {
@@ -366,7 +365,7 @@ class OfiArchivoExpedienteController extends Controller
             $expediente = OfiArchivoExpediente::findOrFail($expedienteId);
 
             if ($expediente->estado !== 'abierto') {
-                return $this->errorResponse('No se pueden subir archivos a un expediente cerrado o transferido', null, 422);
+                return $this->warningResponse('No se pueden subir archivos a un expediente cerrado o transferido');
             }
 
             $disk = 'archivo_expedientes';
@@ -378,10 +377,9 @@ class OfiArchivoExpedienteController extends Controller
                 if (! $validacion['valido']) {
                     DB::rollBack();
 
-                    return $this->errorResponse(
+                    return $this->warningResponse(
                         "Archivo no válido: {$archivo->getClientOriginalName()}",
-                        $validacion['error'] ?? 'Error de validación',
-                        422
+                        $validacion['error'] ?? 'Error de validación'
                     );
                 }
 
@@ -395,10 +393,8 @@ class OfiArchivoExpedienteController extends Controller
                 if (! $uploadData || empty($uploadData['path'])) {
                     DB::rollBack();
 
-                    return $this->errorResponse(
-                        "Error al guardar el archivo: {$archivo->getClientOriginalName()}",
-                        null,
-                        500
+                    return $this->serverErrorResponse(
+                        "Error al guardar el archivo: {$archivo->getClientOriginalName()}"
                     );
                 }
 
@@ -440,10 +436,9 @@ class OfiArchivoExpedienteController extends Controller
 
             DB::commit();
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $documentosCreados,
-                count($documentosCreados).' archivo(s) subido(s) y foliado(s) exitosamente',
-                201
+                count($documentosCreados).' archivo(s) subido(s) y foliado(s) exitosamente'
             );
 
         } catch (\Exception $e) {
@@ -455,7 +450,7 @@ class OfiArchivoExpedienteController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al subir los archivos', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al subir los archivos', $e->getMessage());
         }
     }
 
@@ -550,7 +545,7 @@ class OfiArchivoExpedienteController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al generar el índice del expediente', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al generar el índice del expediente', $e->getMessage());
         }
     }
 
@@ -585,7 +580,7 @@ class OfiArchivoExpedienteController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al eliminar el documento', null, 500);
+            return $this->serverErrorResponse('Error al eliminar el documento', $e->getMessage());
         }
     }
 }

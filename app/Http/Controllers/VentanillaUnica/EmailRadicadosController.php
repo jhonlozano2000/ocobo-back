@@ -62,10 +62,9 @@ class EmailRadicadosController extends Controller
             $message = $e->getMessage();
 
             if (str_contains($message, 'incompleta') || str_contains($message, 'host, usuario')) {
-                return $this->errorResponse(
+                return $this->warningResponse(
                     'Configuración IMAP incompleta',
-                    'Debe configurar el host IMAP, puerto y credenciales.',
-                    422
+                    'Debe configurar el host IMAP, puerto y credenciales.'
                 );
             }
 
@@ -78,17 +77,12 @@ class EmailRadicadosController extends Controller
             }
 
             if (str_contains($message, 'credentials') || str_contains($message, 'authenticate')) {
-                return $this->errorResponse(
-                    'Credenciales IMAP incorrectas',
-                    'El usuario o contraseña son incorrectos.',
-                    401
-                );
+                return $this->unauthorizedResponse('Credenciales IMAP incorrectas');
             }
 
-            return $this->errorResponse(
+            return $this->serverErrorResponse(
                 'Error al obtener correos',
-                $message ?: 'Error desconocido.',
-                500
+                $message ?: 'Error desconocido.'
             );
         }
     }
@@ -102,15 +96,14 @@ class EmailRadicadosController extends Controller
             $email = $this->imapService->getMessageDetails($uid);
 
             if (! $email) {
-                return $this->errorResponse('Correo no encontrado', null, 404);
+                return $this->notFoundResponse('Correo no encontrado');
             }
 
             return $this->successResponse($email, 'Correo obtenido exitosamente');
         } catch (\Exception $e) {
-            return $this->errorResponse(
+            return $this->serverErrorResponse(
                 'Error al obtener el correo',
-                $e->getMessage(),
-                500
+                $e->getMessage()
             );
         }
     }
@@ -153,22 +146,20 @@ class EmailRadicadosController extends Controller
                 ? 'Radicado enviado creado exitosamente desde el correo'
                 : 'Radicado recibido creado exitosamente desde el correo';
 
-            return $this->successResponse($resultado, $mensaje, 201);
+            return $this->createdResponse($resultado, $mensaje);
         } catch (\Exception $e) {
             $message = $e->getMessage();
 
             if (str_contains($message, 'medio de recepción')) {
-                return $this->errorResponse(
+                return $this->serverErrorResponse(
                     'Error de configuración',
-                    'No existe el medio de recepción "Correo Electrónico". Contacte al administrador.',
-                    500
+                    'No existe el medio de recepción "Correo Electrónico". Contacte al administrador.'
                 );
             }
 
-            return $this->errorResponse(
+            return $this->serverErrorResponse(
                 'Error al radicar el correo',
-                $message ?: 'Error desconocido al crear el radicado.',
-                500
+                $message ?: 'Error desconocido al crear el radicado.'
             );
         }
     }
@@ -184,7 +175,7 @@ class EmailRadicadosController extends Controller
             $email = $this->imapService->getMessageDetails($uid);
 
             if (! $email) {
-                return $this->errorResponse('Correo no encontrado en el servidor IMAP', null, 404);
+                return $this->notFoundResponse('Correo no encontrado en el servidor IMAP');
             }
 
             $resultado = $this->emailRadicacionService->responderConRadicadoDirecto(
@@ -193,10 +184,9 @@ class EmailRadicadosController extends Controller
             );
 
             if (! $resultado) {
-                return $this->errorResponse(
+                return $this->serverErrorResponse(
                     'No se pudo enviar la respuesta',
-                    'Verifique la configuración SMTP.',
-                    500
+                    'Verifique la configuración SMTP.'
                 );
             }
 
@@ -212,10 +202,9 @@ class EmailRadicadosController extends Controller
                 );
             }
 
-            return $this->errorResponse(
+            return $this->serverErrorResponse(
                 'Error al responder el correo',
-                $message ?: 'Error desconocido.',
-                500
+                $message ?: 'Error desconocido.'
             );
         }
     }
@@ -229,11 +218,7 @@ class EmailRadicadosController extends Controller
             $rotuloPath = $this->emailRadicacionService->descargarRotuloPorNum($numRadicado);
 
             if (! $rotuloPath || ! file_exists($rotuloPath)) {
-                return $this->errorResponse(
-                    'No se encontró el archivo de rótulo.',
-                    null,
-                    404
-                );
+                return $this->notFoundResponse('No se encontró el archivo de rótulo.');
             }
 
             return response()->file($rotuloPath, [
@@ -241,10 +226,9 @@ class EmailRadicadosController extends Controller
                 'Content-Disposition' => 'inline; filename="rotulo.png"',
             ]);
         } catch (\Exception $e) {
-            return $this->errorResponse(
+            return $this->serverErrorResponse(
                 'Error al generar el rótulo',
-                $e->getMessage(),
-                500
+                $e->getMessage()
             );
         }
     }
@@ -285,7 +269,7 @@ class EmailRadicadosController extends Controller
 
             return $this->successResponse($etiquetas, 'Etiquetas obtenidas exitosamente');
         } catch (\Exception $e) {
-            return $this->errorResponse('Error al obtener las etiquetas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las etiquetas', $e->getMessage());
         }
     }
 }

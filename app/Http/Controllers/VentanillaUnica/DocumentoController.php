@@ -56,7 +56,7 @@ class DocumentoController extends Controller
         $path = $request->query('path');
 
         if (! $disk || ! $path) {
-            return $this->errorResponse('Parámetros inválidos', null, 400);
+            return $this->badRequestResponse('Parámetros inválidos');
         }
 
         // Validación estricta de discos permitidos (Path Traversal Protection)
@@ -67,7 +67,7 @@ class DocumentoController extends Controller
                 'ip' => $request->ip(),
             ]);
 
-            return $this->errorResponse('Disco no autorizado', null, 403);
+            return $this->forbiddenResponse('Disco no autorizado');
         }
 
         // Sanitización robusta del path ( OWASP A01 - Path Traversal)
@@ -80,14 +80,14 @@ class DocumentoController extends Controller
                 'ip' => $request->ip(),
             ]);
 
-            return $this->errorResponse('Ruta de documento no válida', null, 400);
+            return $this->badRequestResponse('Ruta de documento no válida');
         }
 
         $storage = Storage::disk($disk);
 
         // Verificar que el archivo existe
         if (! $storage->exists($path)) {
-            return $this->errorResponse('El documento no existe o fue eliminado', null, 404);
+            return $this->notFoundResponse('El documento no existe o fue eliminado');
         }
 
         // Verificar que la extensión sea permitida
@@ -99,7 +99,7 @@ class DocumentoController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            return $this->errorResponse('Tipo de archivo no permitido para visualización', null, 403);
+            return $this->forbiddenResponse('Tipo de archivo no permitido para visualización');
         }
 
         $mimeType = $storage->mimeType($path);
@@ -112,7 +112,7 @@ class DocumentoController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            return $this->errorResponse('Tipo de contenido no permitido', null, 403);
+            return $this->forbiddenResponse('Tipo de contenido no permitido');
         }
 
         // Obtener el nombre base seguro para el Content-Disposition

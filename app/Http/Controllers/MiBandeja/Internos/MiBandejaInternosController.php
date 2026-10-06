@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MiBandeja\Internos;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Services\MiBandeja\MiBandejaFiltroService;
 use Illuminate\Http\Request;
@@ -12,6 +13,8 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class MiBandejaInternosController extends Controller
 {
+    use ApiResponseTrait;
+
     /**
      * Obtener radicados internos asignados al usuario actual (Mi Bandeja).
      * Filtra por los cargos del usuario a través de ventanilla_radica_internos_responsa.
@@ -74,17 +77,7 @@ class MiBandejaInternosController extends Controller
 
             $radicados->getCollection()->each->append('dependencia_origen');
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Mis radicados internos obtenidos',
-                'data' => $radicados->items(),
-                'pagination' => [
-                    'total' => $radicados->total(),
-                    'per_page' => $radicados->perPage(),
-                    'current_page' => $radicados->currentPage(),
-                    'last_page' => $radicados->lastPage(),
-                ],
-            ]);
+            return $this->successResponse($radicados, 'Mis radicados internos obtenidos exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -93,11 +86,7 @@ class MiBandejaInternosController extends Controller
                 throw $e;
             }
 
-            return response()->json([
-                'status' => false,
-                'message' => 'Error al obtener mis radicados internos',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->serverErrorResponse('Error al obtener mis radicados internos', $e->getMessage());
         }
     }
 
@@ -145,15 +134,12 @@ class MiBandejaInternosController extends Controller
             $enProceso = (clone $baseQuery)->where('estado_trabajo', 'EN_PROCESO')->count();
             $finalizado = (clone $baseQuery)->where('estado_trabajo', 'FINALIZADO')->count();
 
-            return response()->json([
-                'status' => true,
-                'data' => [
-                    'total' => $total,
-                    'borrador' => $borrador,
-                    'enProceso' => $enProceso,
-                    'finalizado' => $finalizado,
-                ],
-            ]);
+            return $this->successResponse([
+                'total' => $total,
+                'borrador' => $borrador,
+                'enProceso' => $enProceso,
+                'finalizado' => $finalizado,
+            ], 'Estadísticas de radicados internos obtenidas exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -162,11 +148,7 @@ class MiBandejaInternosController extends Controller
                 throw $e;
             }
 
-            return response()->json([
-                'status' => false,
-                'message' => 'Error al obtener estadísticas',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
         }
     }
 }

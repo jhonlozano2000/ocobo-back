@@ -26,17 +26,10 @@ class MetadataController extends Controller
         $resultado = FileMetadataHelper::obtenerMetadataConInfo($archivoId, $tipo);
 
         if (! $resultado) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Metadatos no encontrados',
-            ], 404);
+            return $this->notFoundResponse('Metadatos no encontrados');
         }
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Metadatos obtenidos correctamente',
-            'data' => $resultado,
-        ]);
+        return $this->successResponse($resultado, 'Metadatos obtenidos correctamente');
     }
 
     public function historial(int $archivoId, string $tipo = 'reci'): JsonResponse
@@ -45,11 +38,7 @@ class MetadataController extends Controller
 
         $historial = FileMetadataHelper::obtenerHistorialPorArchivo($archivoId, $tipo);
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Historial obtenido correctamente',
-            'data' => $historial,
-        ]);
+        return $this->successResponse($historial, 'Historial obtenido correctamente');
     }
 
     public function exportar(Request $request, string $tipo = 'reci'): StreamedResponse
@@ -67,11 +56,7 @@ class MetadataController extends Controller
             ->orderBy('nivel_sensibilidad')
             ->get();
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Niveles de clasificación obtenidos',
-            'data' => $niveles,
-        ]);
+        return $this->successResponse($niveles, 'Niveles de clasificación obtenidos');
     }
 
     /**
@@ -100,13 +85,13 @@ class MetadataController extends Controller
         $modelo = $this->resolverModelo($tipo);
 
         if (! $modelo) {
-            return $this->errorResponse('Tipo de metadata no válido. Use: reci, enviados, interno', null, 422);
+            return $this->warningResponse('Tipo de metadata no válido. Use: reci, enviados, interno');
         }
 
         $metadata = $modelo::where('archivo_id', $archivoId)->first();
 
         if (! $metadata) {
-            return $this->errorResponse('Metadatos no encontrados para el archivo indicado', null, 404);
+            return $this->notFoundResponse('Metadatos no encontrados para el archivo indicado');
         }
 
         $campos = array_filter([

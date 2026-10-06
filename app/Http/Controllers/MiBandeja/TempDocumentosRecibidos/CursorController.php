@@ -4,6 +4,7 @@ namespace App\Http\Controllers\MiBandeja\TempDocumentosRecibidos;
 
 use App\Events\MiBandeja\TempReci\CursorActualizado;
 use App\Http\Controllers\Controller;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Cursor;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +18,8 @@ use Illuminate\Http\Request;
  */
 class CursorController extends Controller
 {
+    use ApiResponseTrait;
+
     /**
      * Obtiene los cursores activos del documento.
      *
@@ -48,7 +51,7 @@ class CursorController extends Controller
             ->get()
             ->map(fn ($cursor) => $cursor->toArray());
 
-        return response()->json(['cursores' => $cursores]);
+        return $this->successResponse(['cursores' => $cursores], 'Cursores obtenidos exitosamente');
     }
 
     private function limpiarCursoresHuerfanos(int $segundos = 60): void
@@ -96,7 +99,7 @@ class CursorController extends Controller
         ]);
 
         if (! $documento->puedeEditar($request->user())) {
-            return response()->json(['message' => 'No tienes permisos'], 403);
+            return $this->forbiddenResponse('No tienes permisos');
         }
 
         $cursor = $documento->cursores()
@@ -104,7 +107,7 @@ class CursorController extends Controller
             ->first();
 
         if (! $cursor) {
-            return response()->json(['message' => 'Cursor no encontrado'], 404);
+            return $this->notFoundResponse('Cursor no encontrado');
         }
 
         $cursor->actualizarPosicion(
@@ -115,7 +118,7 @@ class CursorController extends Controller
 
         event(new CursorActualizado($documento->id, $cursor->toArray()));
 
-        return response()->json(['cursor' => $cursor->toArray()]);
+        return $this->successResponse(['cursor' => $cursor->toArray()], 'Cursor actualizado exitosamente');
     }
 
     /**

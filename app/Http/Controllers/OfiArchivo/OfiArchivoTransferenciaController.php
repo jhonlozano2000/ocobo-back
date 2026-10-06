@@ -67,7 +67,7 @@ class OfiArchivoTransferenciaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener transferencias', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener transferencias', $e->getMessage());
         }
     }
 
@@ -102,10 +102,9 @@ class OfiArchivoTransferenciaController extends Controller
 
             DB::commit();
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $transferencia->load(['expediente', 'responsableOrigen', 'responsableDestino']),
-                'Transferencia registrada exitosamente',
-                201
+                'Transferencia registrada exitosamente'
             );
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -116,7 +115,7 @@ class OfiArchivoTransferenciaController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al registrar la transferencia', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al registrar la transferencia', $e->getMessage());
         }
     }
 
@@ -143,7 +142,7 @@ class OfiArchivoTransferenciaController extends Controller
 
         // Rechazo exige observaciones (trazabilidad AGN 004/2019)
         if ($request->estado === 'rechazada' && trim((string) $request->observaciones) === '') {
-            return $this->errorResponse('Las observaciones son obligatorias al rechazar la transferencia', null, 422);
+            return $this->warningResponse('Las observaciones son obligatorias al rechazar la transferencia');
         }
 
         try {
@@ -153,11 +152,7 @@ class OfiArchivoTransferenciaController extends Controller
 
             // Máquina de estados: una transferencia ya decidida es inmutable
             if (in_array($transferencia->estado, ['aprobada', 'rechazada'], true)) {
-                return $this->errorResponse(
-                    "La transferencia ya fue {$transferencia->estado} y no puede modificarse",
-                    null,
-                    422
-                );
+                return $this->warningResponse("La transferencia ya fue {$transferencia->estado} y no puede modificarse");
             }
 
             $transferencia->update([
@@ -184,7 +179,7 @@ class OfiArchivoTransferenciaController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al procesar la transferencia', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al procesar la transferencia', $e->getMessage());
         }
     }
 
@@ -217,7 +212,7 @@ class OfiArchivoTransferenciaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener eliminaciones', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener eliminaciones', $e->getMessage());
         }
     }
 
@@ -241,7 +236,7 @@ class OfiArchivoTransferenciaController extends Controller
             $expediente = OfiArchivoExpediente::findOrFail($request->expediente_id);
 
             if ($expediente->estado !== 'cerrado') {
-                return $this->errorResponse('Solo se pueden eliminar expedientes cerrados', null, 422);
+                return $this->warningResponse('Solo se pueden eliminar expedientes cerrados');
             }
 
             $eliminacion = OfiArchivoEliminacion::create([
@@ -256,10 +251,9 @@ class OfiArchivoTransferenciaController extends Controller
 
             DB::commit();
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $eliminacion->load(['expediente', 'aprobadoPor']),
-                'Eliminación registrada exitosamente',
-                201
+                'Eliminación registrada exitosamente'
             );
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -270,7 +264,7 @@ class OfiArchivoTransferenciaController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al registrar la eliminación', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al registrar la eliminación', $e->getMessage());
         }
     }
 
@@ -297,7 +291,7 @@ class OfiArchivoTransferenciaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
         }
     }
 }

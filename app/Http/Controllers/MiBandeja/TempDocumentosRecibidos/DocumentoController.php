@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\MiBandeja\TempReci\ConfiguracionPaginaRequest;
 use App\Http\Requests\MiBandeja\TempReci\DocumentoRequest;
 use App\Http\Resources\MiBandeja\TempReci\DocumentoResource;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Contenido;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\MiBandeja\TempDocumentosRecibidos\DocumentoUsuario;
@@ -15,7 +16,6 @@ use App\Models\MiBandeja\TempDocumentosRecibidos\Version;
 use App\Services\MiBandeja\TempDocumentosRecibidos\CursorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -28,6 +28,8 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
  */
 class DocumentoController extends Controller
 {
+    use ApiResponseTrait;
+
     public function __construct(
         protected CursorService $cursorService
     ) {}
@@ -39,7 +41,7 @@ class DocumentoController extends Controller
      * Incluye contenido, creador y paginación.
      *
      * @param  Request  $request  Solicitud HTTP
-     * @return AnonymousResourceCollection Lista paginada de documentos
+     * @return JsonResponse Lista paginada de documentos
      *
      * @queryParam per_page integer Elementos por página (por defecto: 20). Example: 20
      *
@@ -56,7 +58,7 @@ class DocumentoController extends Controller
      *   "total": 50
      * }
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): JsonResponse
     {
         $documentos = Documento::whereHas('usuarios', function ($query) use ($request) {
             $query->where('user_id', $request->user()->id);
@@ -65,7 +67,7 @@ class DocumentoController extends Controller
             ->orderBy('updated_at', 'desc')
             ->paginate(20);
 
-        return DocumentoResource::collection($documentos);
+        return $this->successResponse(DocumentoResource::collection($documentos), 'Documentos obtenidos exitosamente');
     }
 
     /**
@@ -118,9 +120,10 @@ class DocumentoController extends Controller
             'hash_contenido' => '',
         ]);
 
-        return (new DocumentoResource($documento->load(['contenido', 'creador'])))
-            ->response()
-            ->setStatusCode(201);
+        return $this->createdResponse(
+            new DocumentoResource($documento->load(['contenido', 'creador'])),
+            'Documento creado exitosamente'
+        );
     }
 
     /**
@@ -131,7 +134,7 @@ class DocumentoController extends Controller
      *
      * @param  Request  $request  Solicitud HTTP
      * @param  Documento  $documento  Documento a mostrar
-     * @return DocumentoResource|JsonResponse Documento con relaciones o error 403
+     * @return JsonResponse Documento con relaciones o error 403
      *
      * @response 200 {
      *   "data": {
@@ -145,10 +148,10 @@ class DocumentoController extends Controller
      *   "message": "No tienes acceso a este documento"
      * }
      */
-    public function show(Request $request, Documento $documento): DocumentoResource|JsonResponse
+    public function show(Request $request, Documento $documento): JsonResponse
     {
         if (! $documento->tieneAcceso($request->user())) {
-            return response()->json(['message' => 'No tienes acceso a este documento'], 403);
+            return $this->forbiddenResponse('No tienes acceso a este documento');
         }
 
         if ($documento->cursores()->count() === 0) {
@@ -171,7 +174,10 @@ class DocumentoController extends Controller
             \Log::warning('Broadcast UsuarioConectado falló: '.$e->getMessage());
         }
 
-        return new DocumentoResource($documento->load(['contenido', 'cursores', 'usuarios.usuario']));
+        return $this->successResponse(
+            new DocumentoResource($documento->load(['contenido', 'cursores', 'usuarios.usuario'])),
+            'Documento obtenido exitosamente'
+        );
     }
 
     /**
@@ -182,7 +188,7 @@ class DocumentoController extends Controller
      *
      * @param  DocumentoRequest  $request  Solicitud validada
      * @param  Documento  $documento  Documento a actualizar
-     * @return DocumentoResource|JsonResponse Documento actualizado o error 403
+     * @return JsonResponse Documento actualizado o error 403
      *
      * @bodyParam titulo string Nuevo título. Example: "Oficio corregido"
      * @bodyParam estado string Estado: borrador|en_revision|firmado. Example: "en_revision"
@@ -198,15 +204,18 @@ class DocumentoController extends Controller
      *   "message": "No tienes permisos para editar este documento"
      * }
      */
-    public function update(DocumentoRequest $request, Documento $documento): DocumentoResource|JsonResponse
+    public function update(DocumentoRequest $request, Documento $documento): JsonResponse
     {
         if (! $documento->puedeEditar($request->user())) {
-            return response()->json(['message' => 'No tienes permisos para editar este documento'], 403);
+            return $this->forbiddenResponse('No tienes permisos para editar este documento');
         }
 
         $documento->update($request->validated());
 
-        return new DocumentoResource($documento->fresh(['contenido', 'creador']));
+        return $this->successResponse(
+            new DocumentoResource($documento->fresh(['contenido', 'creador'])),
+            'Documento actualizado exitosamente'
+        );
     }
 
     /**
@@ -229,12 +238,12 @@ class DocumentoController extends Controller
     public function destroy(Request $request, Documento $documento): JsonResponse
     {
         if ($documento->user_id !== $request->user()->id) {
-            return response()->json(['message' => 'Solo el creador puede eliminar el documento'], 403);
+            return $this->forbiddenResponse('Solo el creador puede eliminar el documento');
         }
 
         $documento->delete();
 
-        return response()->json(['message' => 'Documento eliminado correctamente']);
+        return $this->successResponse(null, 'Documento eliminado correctamente');
     }
 
     /**
@@ -266,7 +275,7 @@ class DocumentoController extends Controller
     public function sincronizar(Request $request, Documento $documento): JsonResponse
     {
         if (! $documento->puedeEditar($request->user())) {
-            return response()->json(['message' => 'No tienes permisos para editar'], 403);
+            return $this->forbiddenResponse('No tienes permisos para editar');
         }
 
         $contenido = $request->input('contenido');
@@ -283,7 +292,7 @@ class DocumentoController extends Controller
                     'actualizado_por' => $request->user()->id,
                 ]);
             } elseif ($contenidoDoc->hash_contenido === $hashCliente) {
-                return response()->json([
+                return $this->successResponse([
                     'sincronizado' => true,
                     'hash' => $hashCliente,
                 ]);
@@ -311,7 +320,7 @@ class DocumentoController extends Controller
                 \Log::warning('Broadcast falló en sincronizar: '.$e->getMessage());
             }
 
-            return response()->json([
+            return $this->successResponse([
                 'sincronizado' => true,
                 'hash' => $hashCliente,
                 'contenido' => $contenidoDoc->contenido_yjs,
@@ -396,19 +405,19 @@ class DocumentoController extends Controller
     public function obtenerContenido(Request $request, Documento $documento): JsonResponse
     {
         if (! $documento->tieneAcceso($request->user())) {
-            return response()->json(['message' => 'No tienes acceso'], 403);
+            return $this->forbiddenResponse('No tienes acceso');
         }
 
         $contenido = $documento->contenido;
 
         if (! $contenido) {
-            return response()->json([
+            return $this->successResponse([
                 'contenido' => [],
                 'hash' => null,
             ]);
         }
 
-        return response()->json([
+        return $this->successResponse([
             'contenido' => $contenido->contenido_yjs ?? [],
             'hash' => $contenido->hash_contenido,
         ]);
@@ -436,7 +445,7 @@ class DocumentoController extends Controller
     public function crearVersion(Request $request, Documento $documento): JsonResponse
     {
         if (! $documento->puedeEditar($request->user())) {
-            return response()->json(['message' => 'No tienes permisos'], 403);
+            return $this->forbiddenResponse('No tienes permisos');
         }
 
         $version = Version::crearVersion(
@@ -446,15 +455,14 @@ class DocumentoController extends Controller
             $request->input('descripcion')
         );
 
-        return response()->json([
-            'message' => 'Versión creada correctamente',
+        return $this->createdResponse([
             'version' => [
                 'id' => $version->id,
                 'numero_version' => $version->numero_version,
                 'descripcion' => $version->descripcion,
                 'created_at' => $version->created_at->toISOString(),
             ],
-        ]);
+        ], 'Versión creada correctamente');
     }
 
     /**
@@ -476,7 +484,7 @@ class DocumentoController extends Controller
             ->orderBy('numero_version', 'desc')
             ->get();
 
-        return response()->json(['versiones' => $versiones]);
+        return $this->successResponse(['versiones' => $versiones], 'Versiones obtenidas exitosamente');
     }
 
     /**
@@ -504,11 +512,11 @@ class DocumentoController extends Controller
     public function restaurarVersion(Request $request, Documento $documento, Version $version): JsonResponse
     {
         if (! $documento->puedeEditar($request->user())) {
-            return response()->json(['message' => 'No tienes permisos'], 403);
+            return $this->forbiddenResponse('No tienes permisos');
         }
 
         if ($version->documento_id !== $documento->id) {
-            return response()->json(['message' => 'La versión no pertenece a este documento'], 400);
+            return $this->badRequestResponse('La versión no pertenece a este documento');
         }
 
         return DB::transaction(function () use ($request, $documento, $version) {
@@ -517,10 +525,9 @@ class DocumentoController extends Controller
 
             Version::crearVersion($documento, $contenido, $request->user(), "Restaurado desde versión {$version->numero_version}");
 
-            return response()->json([
-                'message' => 'Versión restaurada correctamente',
+            return $this->successResponse([
                 'contenido' => $contenido,
-            ]);
+            ], 'Versión restaurada correctamente');
         });
     }
 
@@ -547,7 +554,7 @@ class DocumentoController extends Controller
     public function asignarUsuarios(Request $request, Documento $documento): JsonResponse
     {
         if ($documento->user_id !== $request->user()->id) {
-            return response()->json(['message' => 'Solo el creador puede asignar usuarios'], 403);
+            return $this->forbiddenResponse('Solo el creador puede asignar usuarios');
         }
 
         $usuarios = $request->input('usuarios', []);
@@ -565,14 +572,14 @@ class DocumentoController extends Controller
                 );
             }
 
-            return response()->json(['message' => 'Usuarios asignados correctamente']);
+            return $this->successResponse(null, 'Usuarios asignados correctamente');
         });
     }
 
     public function guardarConfiguracionPagina(ConfiguracionPaginaRequest $request, Documento $documento): JsonResponse
     {
         if (! $documento->puedeEditar($request->user())) {
-            return response()->json(['message' => 'No tienes permisos para editar este documento'], 403);
+            return $this->forbiddenResponse('No tienes permisos para editar este documento');
         }
 
         $validated = $request->validated();
@@ -605,10 +612,9 @@ class DocumentoController extends Controller
 
         $documento->update($updateData);
 
-        return response()->json([
-            'message' => 'Configuración guardada correctamente',
+        return $this->successResponse([
             'configuracion' => $documento->getConfiguracionPagina(),
-        ]);
+        ], 'Configuración guardada correctamente');
     }
 
     /**

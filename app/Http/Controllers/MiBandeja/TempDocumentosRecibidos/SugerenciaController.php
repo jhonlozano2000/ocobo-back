@@ -4,6 +4,7 @@ namespace App\Http\Controllers\MiBandeja\TempDocumentosRecibidos;
 
 use App\Helpers\OutputSanitizer;
 use App\Http\Controllers\Controller;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Sugerencia;
 use Illuminate\Http\JsonResponse;
@@ -12,10 +13,12 @@ use Illuminate\Support\Facades\DB;
 
 class SugerenciaController extends Controller
 {
+    use ApiResponseTrait;
+
     public function index(Request $request, Documento $documento): JsonResponse
     {
         if (! $documento->tieneAcceso($request->user())) {
-            return response()->json(['message' => 'No tienes acceso'], 403);
+            return $this->forbiddenResponse('No tienes acceso');
         }
 
         $estado = $request->query('estado');
@@ -33,13 +36,13 @@ class SugerenciaController extends Controller
 
         $sugerencias = $query->orderBy('created_at', 'desc')->paginate(20);
 
-        return response()->json($sugerencias);
+        return $this->successResponse($sugerencias, 'Sugerencias obtenidas exitosamente');
     }
 
     public function store(Request $request, Documento $documento): JsonResponse
     {
         if (! $documento->puedeEditar($request->user())) {
-            return response()->json(['message' => 'No tienes permisos para editar'], 403);
+            return $this->forbiddenResponse('No tienes permisos para editar');
         }
 
         $validated = $request->validate([
@@ -56,7 +59,7 @@ class SugerenciaController extends Controller
         if ($request->input('parent_id')) {
             $padre = Sugerencia::findOrFail($request->input('parent_id'));
             if ($padre->documento_id !== $documento->id) {
-                return response()->json(['message' => 'La sugerencia padre no pertenece a este documento'], 400);
+                return $this->badRequestResponse('La sugerencia padre no pertenece a este documento');
             }
         }
 
@@ -70,24 +73,23 @@ class SugerenciaController extends Controller
             'parent_id' => $validated['parent_id'] ?? null,
         ]);
 
-        return response()->json([
-            'message' => 'Sugerencia creada correctamente',
+        return $this->createdResponse([
             'sugerencia' => $sugerencia->load('usuario:id,name'),
-        ], 201);
+        ], 'Sugerencia creada correctamente');
     }
 
     public function aceptar(Request $request, Documento $documento, Sugerencia $sugerencia): JsonResponse
     {
         if (! $documento->puedeEditar($request->user())) {
-            return response()->json(['message' => 'No tienes permisos'], 403);
+            return $this->forbiddenResponse('No tienes permisos');
         }
 
         if ($sugerencia->documento_id !== $documento->id) {
-            return response()->json(['message' => 'La sugerencia no pertenece a este documento'], 400);
+            return $this->badRequestResponse('La sugerencia no pertenece a este documento');
         }
 
         if ($sugerencia->estado !== 'pendiente') {
-            return response()->json(['message' => 'La sugerencia ya fue resuelta'], 400);
+            return $this->badRequestResponse('La sugerencia ya fue resuelta');
         }
 
         return DB::transaction(function () use ($request, $documento, $sugerencia) {
@@ -102,54 +104,52 @@ class SugerenciaController extends Controller
                 }
             }
 
-            return response()->json([
-                'message' => 'Sugerencia aceptada y aplicada al documento',
+            return $this->successResponse([
                 'sugerencia' => $sugerencia->load('resueltoPor:id,name'),
-            ]);
+            ], 'Sugerencia aceptada y aplicada al documento');
         });
     }
 
     public function rechazar(Request $request, Documento $documento, Sugerencia $sugerencia): JsonResponse
     {
         if (! $documento->puedeEditar($request->user())) {
-            return response()->json(['message' => 'No tienes permisos'], 403);
+            return $this->forbiddenResponse('No tienes permisos');
         }
 
         if ($sugerencia->documento_id !== $documento->id) {
-            return response()->json(['message' => 'La sugerencia no pertenece a este documento'], 400);
+            return $this->badRequestResponse('La sugerencia no pertenece a este documento');
         }
 
         if ($sugerencia->estado !== 'pendiente') {
-            return response()->json(['message' => 'La sugerencia ya fue resuelta'], 400);
+            return $this->badRequestResponse('La sugerencia ya fue resuelta');
         }
 
         $sugerencia->rechazar($request->user());
 
-        return response()->json([
-            'message' => 'Sugerencia rechazada',
+        return $this->successResponse([
             'sugerencia' => $sugerencia->load('resueltoPor:id,name'),
-        ]);
+        ], 'Sugerencia rechazada');
     }
 
     public function destroy(Request $request, Documento $documento, Sugerencia $sugerencia): JsonResponse
     {
         if ($sugerencia->user_id !== $request->user()->id && $documento->user_id !== $request->user()->id) {
-            return response()->json(['message' => 'No tienes permisos para eliminar esta sugerencia'], 403);
+            return $this->forbiddenResponse('No tienes permisos para eliminar esta sugerencia');
         }
 
         if ($sugerencia->documento_id !== $documento->id) {
-            return response()->json(['message' => 'La sugerencia no pertenece a este documento'], 400);
+            return $this->badRequestResponse('La sugerencia no pertenece a este documento');
         }
 
         $sugerencia->delete();
 
-        return response()->json(['message' => 'Sugerencia eliminada']);
+        return $this->successResponse(null, 'Sugerencia eliminada');
     }
 
     public function estadisticas(Request $request, Documento $documento): JsonResponse
     {
         if (! $documento->tieneAcceso($request->user())) {
-            return response()->json(['message' => 'No tienes acceso'], 403);
+            return $this->forbiddenResponse('No tienes acceso');
         }
 
         $estadisticas = [
@@ -163,6 +163,6 @@ class SugerenciaController extends Controller
                 ->pluck('count', 'tipo'),
         ];
 
-        return response()->json($estadisticas);
+        return $this->successResponse($estadisticas, 'Estadísticas de sugerencias obtenidas');
     }
 }

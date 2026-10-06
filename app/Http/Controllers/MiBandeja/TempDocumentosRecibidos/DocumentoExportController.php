@@ -3,15 +3,18 @@
 namespace App\Http\Controllers\MiBandeja\TempDocumentosRecibidos;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Services\MiBandeja\TempDocumentosRecibidos\DocumentoExportService;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class DocumentoExportController extends Controller
 {
+    use ApiResponseTrait;
+
     public function __construct(
         protected DocumentoExportService $exportService
     ) {}
@@ -19,7 +22,7 @@ class DocumentoExportController extends Controller
     public function exportar(Request $request, Documento $documento, string $formato): Response
     {
         if (! $documento->tieneAcceso($request->user())) {
-            return response()->json(['message' => 'No tienes acceso a este documento'], 403);
+            return $this->forbiddenResponse('No tienes acceso a este documento');
         }
 
         $metodos = [
@@ -30,9 +33,7 @@ class DocumentoExportController extends Controller
         ];
 
         if (! isset($metodos[$formato])) {
-            return response()->json([
-                'message' => 'Formato no soportado. Use: pdf, docx, html, txt',
-            ], 400);
+            return $this->badRequestResponse('Formato no soportado. Use: pdf, docx, html, txt');
         }
 
         try {
@@ -51,10 +52,7 @@ class DocumentoExportController extends Controller
                 throw $e;
             }
 
-            return response()->json([
-                'message' => 'Error al exportar el documento',
-                'error' => $e->getMessage(),
-            ], 500);
+            return $this->serverErrorResponse('Error al exportar el documento', $e->getMessage());
         }
     }
 

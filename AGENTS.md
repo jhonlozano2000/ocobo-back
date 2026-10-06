@@ -26,8 +26,14 @@ Reglas fijas:
 - Transacciones: `DB::beginTransaction()` + `try/catch` + `DB::rollBack()` en toda operación multi-tabla
 
 ## Estandarización de Respuestas de API y Códigos de Error (ApiResponseTrait)
-Todos los controladores del backend DEBEN usar `ApiResponseTrait` (`app/Http/Traits/ApiResponseTrait.php`).
-Las respuestas devuelven siempre `{status: bool, success: bool, message: string, data?: mixed, errors?: mixed}`.
+> [!IMPORTANT]
+> **REGLA ESTRICTA DE CONTROLADORES**:
+> Está **ESTRICTAMENTE PROHIBIDO** usar `return response()->json(...)` de forma directa en cualquier controlador de la API.
+> **Todas las respuestas de API DEBEN emitirse exclusivamente mediante los métodos de `App\Http\Traits\ApiResponseTrait.php`**.
+> Cada controlador debe incluir `use ApiResponseTrait;`.
+> Las respuestas devuelven siempre la estructura uniforme `{status: bool, success: bool, message: string, data?: mixed, errors?: mixed}`.
+> Si se retorna un paginador (`LengthAwarePaginator` / `Paginator`), `$this->successResponse($paginator)` extrae automáticamente los items a `data` y agrega los metadatos a `pagination` (`total`, `per_page`, `current_page`, `last_page`).
+
 Cada código de estado HTTP se mapea de forma semántica con el tipo de Toast mostrado en el frontend:
 
 | Código HTTP | Significado REST / Negocio | Método en `ApiResponseTrait` | Toast Frontend (`toastr.js`) | Color / Tipo |
@@ -45,8 +51,11 @@ Cada código de estado HTTP se mapea de forma semántica con el tipo de Toast mo
 | **500** | Error interno no controlado del servidor | `$this->serverErrorResponse($message, $error)` | `toastError` | 🔴 Rojo |
 
 **Reglas de negocio para respuestas:**
+- **Prohibido `response()->json()` directo**: Reemplazar todo `return response()->json(...)` por el método semántico correspondiente del trait.
+- **Paginadores de Laravel**: Pasar directamente la instancia paginada a `$this->successResponse($paginados, '...')`; el trait desacopla `items()` en `data` y agrega el bloque `pagination` preservando compatibilidad completa con el frontend.
 - **Validaciones de Formulario (HTTP 422)**: El campo `message` NUNCA debe ser un texto genérico estático como `"Error de validación."`. Debe contener siempre el primer error puntual de la validación (ej. `"El número de documento ya está en uso."`) para que el toast muestre el problema de inmediato, manteniendo el mapa completo en `errors`.
 - **Reglas de Negocio / Advertencias (HTTP 422)**: Cuando una acción no pueda completarse por una regla del negocio (ej. *"El documento ya fue firmado"*, *"El usuario ya es responsable"*), retornar `warningResponse(...)` (HTTP 422) para que se muestre como advertencia (warning) y no como error de servidor 500.
+- **Errores no controlados (HTTP 500)**: En los bloques `catch (\Exception $e)`, usar `$this->serverErrorResponse($mensaje, $e->getMessage())`. NUNCA retornar 500 manualmente con `response()->json(..., 500)`.
 
 
 ## Módulos (routes/*.php)

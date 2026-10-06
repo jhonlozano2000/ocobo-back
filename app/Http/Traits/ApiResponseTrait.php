@@ -2,7 +2,10 @@
 
 namespace App\Http\Traits;
 
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\MessageBag;
 
 /**
@@ -37,12 +40,47 @@ trait ApiResponseTrait
      */
     protected function successResponse($data, string $message = 'Operación realizada exitosamente', int $code = 200): JsonResponse
     {
-        return response()->json([
+        $response = [
             'status' => true,
             'success' => true,
             'message' => $message,
-            'data' => $data,
-        ], $code);
+        ];
+
+        if ($data instanceof LengthAwarePaginator) {
+            $response['data'] = $data->items();
+            $response['pagination'] = [
+                'total' => $data->total(),
+                'per_page' => $data->perPage(),
+                'current_page' => $data->currentPage(),
+                'last_page' => $data->lastPage(),
+            ];
+        } elseif ($data instanceof Paginator) {
+            $response['data'] = $data->items();
+            $response['pagination'] = [
+                'per_page' => $data->perPage(),
+                'current_page' => $data->currentPage(),
+                'has_more' => $data->hasMorePages(),
+            ];
+        } elseif ($data instanceof AnonymousResourceCollection && $data->resource instanceof LengthAwarePaginator) {
+            $response['data'] = $data;
+            $response['pagination'] = [
+                'total' => $data->resource->total(),
+                'per_page' => $data->resource->perPage(),
+                'current_page' => $data->resource->currentPage(),
+                'last_page' => $data->resource->lastPage(),
+            ];
+        } elseif ($data instanceof AnonymousResourceCollection && $data->resource instanceof Paginator) {
+            $response['data'] = $data;
+            $response['pagination'] = [
+                'per_page' => $data->resource->perPage(),
+                'current_page' => $data->resource->currentPage(),
+                'has_more' => $data->resource->hasMorePages(),
+            ];
+        } else {
+            $response['data'] = $data;
+        }
+
+        return response()->json($response, $code);
     }
 
     /**

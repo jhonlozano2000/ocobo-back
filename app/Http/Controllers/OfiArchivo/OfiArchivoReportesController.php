@@ -53,7 +53,7 @@ class OfiArchivoReportesController extends Controller
             };
 
             if (! $reporte) {
-                return $this->errorResponse('Tipo de reporte no válido', null, 422);
+                return $this->warningResponse('Tipo de reporte no válido');
             }
 
             return $this->successResponse($reporte, 'Reporte generado exitosamente');
@@ -65,7 +65,7 @@ class OfiArchivoReportesController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al generar el reporte', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al generar el reporte', $e->getMessage());
         }
     }
 
@@ -91,7 +91,7 @@ class OfiArchivoReportesController extends Controller
         };
 
         if (! $reporte) {
-            return $this->errorResponse('Tipo de reporte no válido', null, 422);
+            return $this->warningResponse('Tipo de reporte no válido');
         }
 
         $nombre = 'reporte_'.$tipo;
@@ -134,7 +134,7 @@ class OfiArchivoReportesController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
         }
     }
 }

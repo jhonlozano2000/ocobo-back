@@ -58,7 +58,7 @@ class OfiArchivoPlantillaDocumentoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado', $e->getMessage());
         }
     }
 
@@ -70,10 +70,9 @@ class OfiArchivoPlantillaDocumentoController extends Controller
                 $request->file('archivo')
             );
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $plantilla->load('creador'),
-                'Plantilla subida exitosamente',
-                201
+                'Plantilla subida exitosamente'
             );
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -83,7 +82,7 @@ class OfiArchivoPlantillaDocumentoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al subir la plantilla', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al subir la plantilla', $e->getMessage());
         }
     }
 
@@ -102,7 +101,7 @@ class OfiArchivoPlantillaDocumentoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener la plantilla', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener la plantilla', $e->getMessage());
         }
     }
 
@@ -127,7 +126,7 @@ class OfiArchivoPlantillaDocumentoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar la plantilla', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar la plantilla', $e->getMessage());
         }
     }
 
@@ -145,7 +144,7 @@ class OfiArchivoPlantillaDocumentoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al desactivar la plantilla', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al desactivar la plantilla', $e->getMessage());
         }
     }
 
@@ -155,7 +154,7 @@ class OfiArchivoPlantillaDocumentoController extends Controller
             $filePath = $this->plantillaService->descargarPlantilla($plantilla);
 
             if (! file_exists($filePath)) {
-                return $this->errorResponse('El archivo no existe en el servidor', null, 404);
+                return $this->notFoundResponse('El archivo no existe en el servidor');
             }
 
             return response()->download($filePath, $plantilla->nombre_original);
@@ -167,7 +166,7 @@ class OfiArchivoPlantillaDocumentoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al descargar la plantilla', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al descargar la plantilla', $e->getMessage());
         }
     }
 
@@ -190,7 +189,7 @@ class OfiArchivoPlantillaDocumentoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al verificar integridad', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al verificar integridad', $e->getMessage());
         }
     }
 
@@ -226,7 +225,7 @@ class OfiArchivoPlantillaDocumentoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
         }
     }
 }

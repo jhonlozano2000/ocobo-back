@@ -4,6 +4,7 @@ namespace App\Http\Controllers\MiBandeja\TempDocumentosRecibidos;
 
 use App\Helpers\OutputSanitizer;
 use App\Http\Controllers\Controller;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Comentario;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +18,8 @@ use Illuminate\Http\Request;
  */
 class ComentarioController extends Controller
 {
+    use ApiResponseTrait;
+
     /**
      * Lista los comentarios de un documento.
      *
@@ -45,7 +48,7 @@ class ComentarioController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json(['comentarios' => $comentarios]);
+        return $this->successResponse(['comentarios' => $comentarios], 'Comentarios obtenidos exitosamente');
     }
 
     /**
@@ -85,13 +88,13 @@ class ComentarioController extends Controller
         ]);
 
         if (! $documento->tieneAcceso($request->user())) {
-            return response()->json(['message' => 'No tienes acceso'], 403);
+            return $this->forbiddenResponse('No tienes acceso');
         }
 
         if ($request->input('parent_id')) {
             $padre = Comentario::findOrFail($request->input('parent_id'));
             if ($padre->documento_id !== $documento->id) {
-                return response()->json(['message' => 'El comentario padre no pertenece a este documento'], 400);
+                return $this->badRequestResponse('El comentario padre no pertenece a este documento');
             }
         }
 
@@ -104,10 +107,9 @@ class ComentarioController extends Controller
             'parent_id' => $request->input('parent_id'),
         ]);
 
-        return response()->json([
-            'message' => 'Comentario creado correctamente',
+        return $this->createdResponse([
             'comentario' => $comentario->load('usuario:id,name'),
-        ], 201);
+        ], 'Comentario creado correctamente');
     }
 
     /**
@@ -132,7 +134,7 @@ class ComentarioController extends Controller
     public function update(Request $request, Comentario $comentario): JsonResponse
     {
         if ($comentario->user_id !== $request->user()->id) {
-            return response()->json(['message' => 'Solo el autor puede editar el comentario'], 403);
+            return $this->forbiddenResponse('Solo el autor puede editar el comentario');
         }
 
         $request->validate([
@@ -141,10 +143,9 @@ class ComentarioController extends Controller
 
         $comentario->update(['contenido' => OutputSanitizer::sanitize($request->input('contenido'))]);
 
-        return response()->json([
-            'message' => 'Comentario actualizado',
+        return $this->successResponse([
             'comentario' => $comentario,
-        ]);
+        ], 'Comentario actualizado');
     }
 
     /**
@@ -167,12 +168,12 @@ class ComentarioController extends Controller
     public function destroy(Request $request, Comentario $comentario): JsonResponse
     {
         if ($comentario->user_id !== $request->user()->id) {
-            return response()->json(['message' => 'Solo el autor puede eliminar el comentario'], 403);
+            return $this->forbiddenResponse('Solo el autor puede eliminar el comentario');
         }
 
         $comentario->delete();
 
-        return response()->json(['message' => 'Comentario eliminado']);
+        return $this->successResponse(null, 'Comentario eliminado');
     }
 
     /**
@@ -197,12 +198,12 @@ class ComentarioController extends Controller
         // Gate 'gestionar-comentarios' no existía (siempre 403). Ahora: quien
         // puede editar el documento puede resolver comentarios en él.
         if (! $request->user()->can('editar', $comentario->documento)) {
-            return response()->json(['message' => 'No tienes permiso para resolver comentarios'], 403);
+            return $this->forbiddenResponse('No tienes permiso para resolver comentarios');
         }
 
         $comentario->resolver();
 
-        return response()->json(['message' => 'Comentario resuelto']);
+        return $this->successResponse(null, 'Comentario resuelto');
     }
 
     /**
@@ -221,11 +222,11 @@ class ComentarioController extends Controller
     public function desresolver(Request $request, Comentario $comentario): JsonResponse
     {
         if (! $request->user()->can('editar', $comentario->documento)) {
-            return response()->json(['message' => 'No tienes permiso para gestionar comentarios'], 403);
+            return $this->forbiddenResponse('No tienes permiso para gestionar comentarios');
         }
 
         $comentario->desmarcarResuelto();
 
-        return response()->json(['message' => 'Comentario marcado como pendiente']);
+        return $this->successResponse(null, 'Comentario marcado como pendiente');
     }
 }
