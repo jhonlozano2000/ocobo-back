@@ -41,7 +41,7 @@ class ConfigListaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado de listas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado de listas', $e->getMessage());
         }
     }
 
@@ -53,10 +53,9 @@ class ConfigListaController extends Controller
         try {
             $lista = $this->service->create($request->validated());
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $lista->load('detalles'),
-                'Lista creada exitosamente',
-                201
+                'Lista creada exitosamente'
             );
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -66,7 +65,7 @@ class ConfigListaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al crear la lista', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear la lista', $e->getMessage());
         }
     }
 
@@ -122,7 +121,7 @@ class ConfigListaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener la lista', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener la lista', $e->getMessage());
         }
     }
 
@@ -135,7 +134,7 @@ class ConfigListaController extends Controller
             $lista = $this->service->update($id, $request->validated());
 
             if (! $lista) {
-                return $this->errorResponse('Lista no encontrada', null, 404);
+                return $this->notFoundResponse('Lista no encontrada');
             }
 
             return $this->successResponse(
@@ -150,7 +149,7 @@ class ConfigListaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar la lista', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar la lista', $e->getMessage());
         }
     }
 
@@ -264,7 +263,7 @@ class ConfigListaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las listas con detalles', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las listas con detalles', $e->getMessage());
         }
     }
 
@@ -289,7 +288,7 @@ class ConfigListaController extends Controller
             }
             \Log::error('listaCabeza error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
-            return $this->errorResponse('Error al obtener las listas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las listas', $e->getMessage());
         }
     }
 
@@ -300,10 +299,8 @@ class ConfigListaController extends Controller
     {
         try {
             if (! $this->service->delete($id)) {
-                return $this->errorResponse(
-                    'No se puede eliminar porque tiene detalles asociados',
-                    null,
-                    409
+                return $this->conflictResponse(
+                    'No se puede eliminar porque tiene detalles asociados'
                 );
             }
 
@@ -316,7 +313,7 @@ class ConfigListaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al eliminar la lista', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al eliminar la lista', $e->getMessage());
         }
     }
 }

@@ -38,7 +38,7 @@ class ConfigVariasController extends Controller
 
             return $this->successResponse($configs, 'Listado de configuraciones obtenido exitosamente');
         } catch (ValidationException $e) {
-            return $this->errorResponse('Error de validación', $e->errors(), 422);
+            return $this->validationResponse($e->errors(), 'Error de validación');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -47,7 +47,7 @@ class ConfigVariasController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado', $e->getMessage());
         }
     }
 
@@ -58,7 +58,7 @@ class ConfigVariasController extends Controller
 
             $config = $this->service->create($validated);
 
-            return $this->successResponse($config, 'Configuración creada exitosamente', 201);
+            return $this->createdResponse($config, 'Configuración creada exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -67,7 +67,7 @@ class ConfigVariasController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al crear', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear', $e->getMessage());
         }
     }
 
@@ -84,7 +84,7 @@ class ConfigVariasController extends Controller
 
             return $config
                 ? $this->successResponse($config, 'Configuración actualizada exitosamente')
-                : $this->errorResponse('Configuración no encontrada', null, 404);
+                : $this->notFoundResponse('Configuración no encontrada');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -93,7 +93,7 @@ class ConfigVariasController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar', $e->getMessage());
         }
     }
 
@@ -110,7 +110,7 @@ class ConfigVariasController extends Controller
 
             return $this->successResponse($results, 'Configuraciones actualizadas exitosamente');
         } catch (ValidationException $e) {
-            return $this->errorResponse('Error de validación', $e->errors(), 422);
+            return $this->validationResponse($e->errors(), 'Error de validación');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -119,7 +119,7 @@ class ConfigVariasController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar configuraciones', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar configuraciones', $e->getMessage());
         }
     }
 
@@ -138,7 +138,7 @@ class ConfigVariasController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener', $e->getMessage());
         }
     }
 
@@ -159,7 +159,7 @@ class ConfigVariasController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar', $e->getMessage());
         }
     }
 

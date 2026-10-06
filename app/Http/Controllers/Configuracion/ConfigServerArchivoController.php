@@ -97,7 +97,7 @@ class ConfigServerArchivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado de servidores', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado de servidores', $e->getMessage());
         }
     }
 
@@ -162,10 +162,9 @@ class ConfigServerArchivoController extends Controller
 
             DB::commit();
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $server->load('proceso'),
-                'Servidor de archivos creado exitosamente',
-                201
+                'Servidor de archivos creado exitosamente'
             );
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -176,7 +175,7 @@ class ConfigServerArchivoController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al crear el servidor', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear el servidor', $e->getMessage());
         }
     }
 
@@ -233,7 +232,7 @@ class ConfigServerArchivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el servidor', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el servidor', $e->getMessage());
         }
     }
 
@@ -324,7 +323,7 @@ class ConfigServerArchivoController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al actualizar el servidor', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar el servidor', $e->getMessage());
         }
     }
 
@@ -368,7 +367,7 @@ class ConfigServerArchivoController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al eliminar el servidor', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al eliminar el servidor', $e->getMessage());
         }
     }
 
@@ -437,7 +436,7 @@ class ConfigServerArchivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las estadísticas', $e->getMessage());
         }
     }
 }

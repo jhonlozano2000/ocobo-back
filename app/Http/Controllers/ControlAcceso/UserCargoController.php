@@ -125,7 +125,7 @@ class UserCargoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las asignaciones de cargos', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las asignaciones de cargos', $e->getMessage());
         }
     }
 
@@ -174,10 +174,8 @@ class UserCargoController extends Controller
             if (! $cargo->puedeAsignarUsuarios()) {
                 DB::rollBack();
 
-                return $this->errorResponse(
-                    'Error en la asignación',
-                    'El elemento seleccionado no es un cargo válido',
-                    422
+                return $this->warningResponse(
+                    'El elemento seleccionado no es un cargo válido'
                 );
             }
 
@@ -206,7 +204,7 @@ class UserCargoController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al asignar el cargo', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al asignar el cargo', $e->getMessage());
         }
     }
 
@@ -258,10 +256,8 @@ class UserCargoController extends Controller
             if (! $asignacion->estaActivo()) {
                 DB::rollBack();
 
-                return $this->errorResponse(
-                    'Error al finalizar',
-                    'La asignación del cargo ya está finalizada',
-                    422
+                return $this->warningResponse(
+                    'La asignación del cargo ya está finalizada'
                 );
             }
 
@@ -272,10 +268,8 @@ class UserCargoController extends Controller
             if ($cargoActivoUsuario && $cargoActivoUsuario->id === $asignacion->id) {
                 DB::rollBack();
 
-                return $this->errorResponse(
-                    'Error al finalizar',
-                    'No se puede finalizar el cargo actual del usuario. Debe asignar un nuevo cargo primero o finalizar un cargo diferente.',
-                    422
+                return $this->warningResponse(
+                    'No se puede finalizar el cargo actual del usuario. Debe asignar un nuevo cargo primero o finalizar un cargo diferente.'
                 );
             }
 
@@ -308,7 +302,7 @@ class UserCargoController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al finalizar el cargo', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al finalizar el cargo', $e->getMessage());
         }
     }
 
@@ -378,7 +372,7 @@ class UserCargoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el cargo activo del usuario', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el cargo activo del usuario', $e->getMessage());
         }
     }
 
@@ -436,7 +430,7 @@ class UserCargoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el historial del usuario', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el historial del usuario', $e->getMessage());
         }
     }
 
@@ -476,10 +470,8 @@ class UserCargoController extends Controller
             $cargo = CalidadOrganigrama::findOrFail($cargoId);
 
             if (! $cargo->puedeAsignarUsuarios()) {
-                return $this->errorResponse(
-                    'Error de consulta',
-                    'El elemento seleccionado no es un cargo válido',
-                    422
+                return $this->warningResponse(
+                    'El elemento seleccionado no es un cargo válido'
                 );
             }
 
@@ -513,7 +505,7 @@ class UserCargoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener los usuarios del cargo', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener los usuarios del cargo', $e->getMessage());
         }
     }
 
@@ -603,7 +595,7 @@ class UserCargoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
         }
     }
 
@@ -673,7 +665,7 @@ class UserCargoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener los cargos disponibles', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener los cargos disponibles', $e->getMessage());
         }
     }
 
@@ -722,7 +714,7 @@ class UserCargoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Asignación no encontrada', null, 404);
+            return $this->notFoundResponse('Asignación no encontrada');
         }
     }
 }

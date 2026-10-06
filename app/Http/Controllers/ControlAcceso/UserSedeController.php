@@ -104,7 +104,7 @@ class UserSedeController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado de relaciones usuario-sede', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado de relaciones usuario-sede', $e->getMessage());
         }
     }
 
@@ -167,17 +167,16 @@ class UserSedeController extends Controller
                 ->first();
 
             if ($existingRelation) {
-                return $this->errorResponse('La relación usuario-sede ya existe', null, 422);
+                return $this->warningResponse('La relación usuario-sede ya existe');
             }
 
             $relacion = UsersSede::create($validatedData);
 
             DB::commit();
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $relacion->load(['user', 'sede']),
-                'Relación usuario-sede creada exitosamente',
-                201
+                'Relación usuario-sede creada exitosamente'
             );
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -188,7 +187,7 @@ class UserSedeController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al crear la relación usuario-sede', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear la relación usuario-sede', $e->getMessage());
         }
     }
 
@@ -249,7 +248,7 @@ class UserSedeController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener la relación usuario-sede', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener la relación usuario-sede', $e->getMessage());
         }
     }
 
@@ -324,7 +323,7 @@ class UserSedeController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al actualizar la relación usuario-sede', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar la relación usuario-sede', $e->getMessage());
         }
     }
 
@@ -368,7 +367,7 @@ class UserSedeController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al eliminar la relación usuario-sede', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al eliminar la relación usuario-sede', $e->getMessage());
         }
     }
 
@@ -428,7 +427,7 @@ class UserSedeController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las sedes del usuario', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las sedes del usuario', $e->getMessage());
         }
     }
 
@@ -542,7 +541,7 @@ class UserSedeController extends Controller
         } catch (ValidationException $e) {
             DB::rollBack();
 
-            return $this->errorResponse('Error de validación', $e->errors(), 422);
+            return $this->validationResponse($e->errors(), 'Error de validación');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -552,7 +551,7 @@ class UserSedeController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al sincronizar las sedes del usuario', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al sincronizar las sedes del usuario', $e->getMessage());
         }
     }
 
@@ -612,7 +611,7 @@ class UserSedeController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener los usuarios de la sede', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener los usuarios de la sede', $e->getMessage());
         }
     }
 }

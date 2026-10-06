@@ -102,7 +102,7 @@ class UserSessionController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las sesiones', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las sesiones', $e->getMessage());
         }
     }
 
@@ -151,7 +151,7 @@ class UserSessionController extends Controller
             $user = User::find($userId);
 
             if (! $user) {
-                return $this->errorResponse('Usuario no encontrado', null, 404);
+                return $this->notFoundResponse('Usuario no encontrado');
             }
 
             $limit = $request->validated('limit') ?? 15;
@@ -190,7 +190,7 @@ class UserSessionController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las sesiones', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las sesiones', $e->getMessage());
         }
     }
 
@@ -226,7 +226,7 @@ class UserSessionController extends Controller
             $session = $user->sessions()->find($sessionId);
 
             if (! $session) {
-                return $this->errorResponse('Sesión no encontrada', null, 404);
+                return $this->notFoundResponse('Sesión no encontrada');
             }
 
             $session->delete();
@@ -240,7 +240,7 @@ class UserSessionController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al eliminar la sesión', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al eliminar la sesión', $e->getMessage());
         }
     }
 

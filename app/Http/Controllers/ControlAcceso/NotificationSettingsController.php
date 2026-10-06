@@ -98,7 +98,7 @@ class NotificationSettingsController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener la configuración', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener la configuración', $e->getMessage());
         }
     }
 
@@ -241,7 +241,7 @@ class NotificationSettingsController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al actualizar la configuración', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar la configuración', $e->getMessage());
         }
     }
 
@@ -283,7 +283,7 @@ class NotificationSettingsController extends Controller
             $user = User::find($userId);
 
             if (! $user) {
-                return $this->errorResponse('Usuario no encontrado', null, 404);
+                return $this->notFoundResponse('Usuario no encontrado');
             }
 
             $settings = $user->notificationSettings()->firstOrCreate(
@@ -334,7 +334,7 @@ class NotificationSettingsController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener la configuración', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener la configuración', $e->getMessage());
         }
     }
 
@@ -383,7 +383,7 @@ class NotificationSettingsController extends Controller
             $user = User::find($userId);
 
             if (! $user) {
-                return $this->errorResponse('Usuario no encontrado', null, 404);
+                return $this->notFoundResponse('Usuario no encontrado');
             }
 
             $validatedData = $request->validated();
@@ -469,7 +469,7 @@ class NotificationSettingsController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al actualizar la configuración', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar la configuración', $e->getMessage());
         }
     }
 }

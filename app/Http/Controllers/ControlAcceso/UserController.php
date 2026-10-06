@@ -42,7 +42,7 @@ class UserController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado', $e->getMessage());
         }
     }
 
@@ -60,10 +60,9 @@ class UserController extends Controller
 
             $user = $this->service->create($validated);
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $user->load('roles')->append(['avatar_url', 'firma_url']),
-                'Usuario creado exitosamente',
-                201
+                'Usuario creado exitosamente'
             );
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -73,7 +72,7 @@ class UserController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al crear el usuario', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear el usuario', $e->getMessage());
         }
     }
 
@@ -86,7 +85,7 @@ class UserController extends Controller
             $user = $this->service->getById($id);
 
             if (! $user) {
-                return $this->errorResponse('Usuario no encontrado', null, 404);
+                return $this->notFoundResponse('Usuario no encontrado');
             }
 
             return $this->successResponse($user, 'Usuario encontrado exitosamente');
@@ -98,7 +97,7 @@ class UserController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el usuario', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el usuario', $e->getMessage());
         }
     }
 
@@ -117,7 +116,7 @@ class UserController extends Controller
             $user = $this->service->update($id, $validated);
 
             if (! $user) {
-                return $this->errorResponse('Usuario no encontrado', null, 404);
+                return $this->notFoundResponse('Usuario no encontrado');
             }
 
             return $this->successResponse(
@@ -132,7 +131,7 @@ class UserController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar el usuario', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar el usuario', $e->getMessage());
         }
     }
 
@@ -143,7 +142,7 @@ class UserController extends Controller
     {
         try {
             if (! $this->service->delete($id)) {
-                return $this->errorResponse('Usuario no encontrado', null, 404);
+                return $this->notFoundResponse('Usuario no encontrado');
             }
 
             return $this->successResponse(null, 'Usuario eliminado exitosamente');
@@ -155,7 +154,7 @@ class UserController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al eliminar el usuario', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al eliminar el usuario', $e->getMessage());
         }
     }
 
@@ -177,7 +176,7 @@ class UserController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
         }
     }
 
@@ -202,7 +201,7 @@ class UserController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar el perfil', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar el perfil', $e->getMessage());
         }
     }
 
@@ -215,7 +214,7 @@ class UserController extends Controller
             $user = Auth::user();
 
             if (! $user) {
-                return $this->errorResponse('Usuario no autenticado', null, 401);
+                return $this->unauthorizedResponse('Usuario no autenticado');
             }
 
             if (! Hash::check($request->validated('current_password'), $user->password)) {
@@ -231,7 +230,7 @@ class UserController extends Controller
 
             return $this->successResponse(null, 'Contraseña actualizada exitosamente');
         } catch (ValidationException $e) {
-            return $this->errorResponse('Datos de validación incorrectos', $e->errors(), 422);
+            return $this->validationResponse($e->errors(), 'Datos de validación incorrectos');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -240,7 +239,7 @@ class UserController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar la contraseña', $e->getMessage().' - '.$e->getFile().':'.$e->getLine(), 500);
+            return $this->serverErrorResponse('Error al actualizar la contraseña', $e->getMessage().' - '.$e->getFile().':'.$e->getLine());
         }
     }
 
@@ -253,7 +252,7 @@ class UserController extends Controller
         try {
             $user = User::with(['roles', 'sedes', 'cargoActivo.cargo'])->find($id);
             if (! $user) {
-                return $this->errorResponse('Usuario no encontrado', null, 404);
+                return $this->notFoundResponse('Usuario no encontrado');
             }
 
             return $this->successResponse([
@@ -272,7 +271,7 @@ class UserController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el perfil', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el perfil', $e->getMessage());
         }
     }
 
@@ -284,7 +283,7 @@ class UserController extends Controller
         try {
             $user = User::find($id);
             if (! $user) {
-                return $this->errorResponse('Usuario no encontrado', null, 404);
+                return $this->notFoundResponse('Usuario no encontrado');
             }
 
             $roles = $user->roles()->with('permissions')->get();
@@ -316,7 +315,7 @@ class UserController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener permisos', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener permisos', $e->getMessage());
         }
     }
 
@@ -381,7 +380,7 @@ class UserController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener historial', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener historial', $e->getMessage());
         }
     }
 
@@ -407,7 +406,7 @@ class UserController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener conexiones', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener conexiones', $e->getMessage());
         }
     }
 
@@ -445,7 +444,7 @@ class UserController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener actividad', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener actividad', $e->getMessage());
         }
     }
 
@@ -458,7 +457,7 @@ class UserController extends Controller
         try {
             $user = User::find($id);
             if (! $user) {
-                return $this->errorResponse('Usuario no encontrado', null, 404);
+                return $this->notFoundResponse('Usuario no encontrado');
             }
 
             $validated = $request->validate([
@@ -496,7 +495,7 @@ class UserController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al sincronizar permisos', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al sincronizar permisos', $e->getMessage());
         }
     }
 
@@ -518,7 +517,7 @@ class UserController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener cargo', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener cargo', $e->getMessage());
         }
     }
 }

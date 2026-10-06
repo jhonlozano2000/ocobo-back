@@ -38,7 +38,7 @@ class ConfigDiviPoliController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado', $e->getMessage());
         }
     }
 
@@ -50,10 +50,9 @@ class ConfigDiviPoliController extends Controller
         try {
             $model = $this->service->create($request->validated());
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $model->load(['padre', 'children']),
-                'División política creada exitosamente',
-                201
+                'División política creada exitosamente'
             );
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -63,7 +62,7 @@ class ConfigDiviPoliController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al crear', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear', $e->getMessage());
         }
     }
 
@@ -85,7 +84,7 @@ class ConfigDiviPoliController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener', $e->getMessage());
         }
     }
 
@@ -109,7 +108,7 @@ class ConfigDiviPoliController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar', $e->getMessage());
         }
     }
 
@@ -120,10 +119,8 @@ class ConfigDiviPoliController extends Controller
     {
         try {
             if (! $this->service->delete($id)) {
-                return $this->errorResponse(
-                    'No se puede eliminar porque tiene divisiones políticas asociadas',
-                    null,
-                    409
+                return $this->conflictResponse(
+                    'No se puede eliminar porque tiene divisiones políticas asociadas'
                 );
             }
 
@@ -136,7 +133,7 @@ class ConfigDiviPoliController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al eliminar', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al eliminar', $e->getMessage());
         }
     }
 
@@ -158,7 +155,7 @@ class ConfigDiviPoliController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener países', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener países', $e->getMessage());
         }
     }
 
@@ -180,7 +177,7 @@ class ConfigDiviPoliController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener departamentos', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener departamentos', $e->getMessage());
         }
     }
 
@@ -202,7 +199,7 @@ class ConfigDiviPoliController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener municipios', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener municipios', $e->getMessage());
         }
     }
 
@@ -213,10 +210,8 @@ class ConfigDiviPoliController extends Controller
     {
         try {
             if (! $this->service->isTipoValido($tipo)) {
-                return $this->errorResponse(
-                    'Tipo de división política no válido',
-                    null,
-                    400
+                return $this->warningResponse(
+                    'Tipo de división política no válido'
                 );
             }
 
@@ -235,7 +230,7 @@ class ConfigDiviPoliController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado', $e->getMessage());
         }
     }
 
@@ -257,7 +252,7 @@ class ConfigDiviPoliController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
         }
     }
 
@@ -279,7 +274,7 @@ class ConfigDiviPoliController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener estructura', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener estructura', $e->getMessage());
         }
     }
 
@@ -294,7 +289,7 @@ class ConfigDiviPoliController extends Controller
             \Log::info('cargarRecursivo result', ['result' => $result]);
 
             if (! $result) {
-                return $this->errorResponse('División política no encontrada', null, 404);
+                return $this->notFoundResponse('División política no encontrada');
             }
 
             return $this->successResponse(
@@ -310,7 +305,7 @@ class ConfigDiviPoliController extends Controller
             }
             \Log::error('cargarRecursivo error: '.$e->getMessage());
 
-            return $this->errorResponse('Error al obtener división política', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener división política', $e->getMessage());
         }
     }
 }

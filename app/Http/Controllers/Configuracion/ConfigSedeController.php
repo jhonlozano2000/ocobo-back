@@ -97,7 +97,7 @@ class ConfigSedeController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado de sedes', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado de sedes', $e->getMessage());
         }
     }
 
@@ -163,10 +163,9 @@ class ConfigSedeController extends Controller
 
             DB::commit();
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $sede->load('divisionPolitica'),
-                'Sede creada exitosamente',
-                201
+                'Sede creada exitosamente'
             );
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -177,7 +176,7 @@ class ConfigSedeController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al crear la sede', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear la sede', $e->getMessage());
         }
     }
 
@@ -229,7 +228,7 @@ class ConfigSedeController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener la sede', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener la sede', $e->getMessage());
         }
     }
 
@@ -314,7 +313,7 @@ class ConfigSedeController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al actualizar la sede', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar la sede', $e->getMessage());
         }
     }
 
@@ -358,7 +357,7 @@ class ConfigSedeController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al eliminar la sede', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al eliminar la sede', $e->getMessage());
         }
     }
 
@@ -413,7 +412,7 @@ class ConfigSedeController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado de sedes activas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado de sedes activas', $e->getMessage());
         }
     }
 
@@ -463,7 +462,7 @@ class ConfigSedeController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las estadísticas', $e->getMessage());
         }
     }
 }

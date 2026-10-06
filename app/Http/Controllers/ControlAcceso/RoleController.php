@@ -38,7 +38,7 @@ class RoleController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado', $e->getMessage());
         }
     }
 
@@ -60,7 +60,7 @@ class RoleController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado', $e->getMessage());
         }
     }
 
@@ -82,7 +82,7 @@ class RoleController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener roles con usuarios', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener roles con usuarios', $e->getMessage());
         }
     }
 
@@ -94,7 +94,7 @@ class RoleController extends Controller
         try {
             $role = $this->service->create($request->validated());
 
-            return $this->successResponse($role->load('permissions'), 'Rol creado exitosamente', 201);
+            return $this->createdResponse($role->load('permissions'), 'Rol creado exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -103,7 +103,7 @@ class RoleController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al crear el rol', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear el rol', $e->getMessage());
         }
     }
 
@@ -116,7 +116,7 @@ class RoleController extends Controller
             $role = Role::with('permissions')->find($id);
 
             if (! $role) {
-                return $this->errorResponse('Rol no encontrado', null, 404);
+                return $this->notFoundResponse('Rol no encontrado');
             }
 
             return $this->successResponse($role, 'Rol encontrado exitosamente');
@@ -128,7 +128,7 @@ class RoleController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el rol', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el rol', $e->getMessage());
         }
     }
 
@@ -149,7 +149,7 @@ class RoleController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar el rol', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar el rol', $e->getMessage());
         }
     }
 
@@ -162,11 +162,18 @@ class RoleController extends Controller
             $result = $this->service->delete($id);
 
             if (! $result['success']) {
-                return $this->errorResponse(
-                    $result['message'],
-                    $result['code'] === 409 ? ['users_count' => $result['users_count'] ?? null] : null,
-                    $result['code']
-                );
+                if ($result['code'] === 409) {
+                    return $this->conflictResponse(
+                        $result['message'],
+                        ['users_count' => $result['users_count'] ?? null]
+                    );
+                }
+
+                if ($result['code'] === 404) {
+                    return $this->notFoundResponse($result['message']);
+                }
+
+                return $this->warningResponse($result['message']);
             }
 
             return $this->successResponse(null, 'Rol eliminado exitosamente');
@@ -178,7 +185,7 @@ class RoleController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al eliminar el rol', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al eliminar el rol', $e->getMessage());
         }
     }
 
@@ -200,7 +207,7 @@ class RoleController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
         }
     }
 
@@ -222,7 +229,7 @@ class RoleController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener roles y permisos', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener roles y permisos', $e->getMessage());
         }
     }
 }

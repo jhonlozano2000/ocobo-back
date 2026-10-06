@@ -57,7 +57,7 @@ class ConfigNumRadicadoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener la configuración', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener la configuración', $e->getMessage());
         }
     }
 
@@ -121,7 +121,7 @@ class ConfigNumRadicadoController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al actualizar la configuración', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar la configuración', $e->getMessage());
         }
     }
 }

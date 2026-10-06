@@ -98,7 +98,7 @@ class ConfigVentanillasController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado de ventanillas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado de ventanillas', $e->getMessage());
         }
     }
 
@@ -162,10 +162,9 @@ class ConfigVentanillasController extends Controller
 
             DB::commit();
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $ventanilla->load('sede'),
-                'Ventanilla creada exitosamente',
-                201
+                'Ventanilla creada exitosamente'
             );
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -176,7 +175,7 @@ class ConfigVentanillasController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al crear la ventanilla', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear la ventanilla', $e->getMessage());
         }
     }
 
@@ -232,7 +231,7 @@ class ConfigVentanillasController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener la ventanilla', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener la ventanilla', $e->getMessage());
         }
     }
 
@@ -306,7 +305,7 @@ class ConfigVentanillasController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al actualizar la ventanilla', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar la ventanilla', $e->getMessage());
         }
     }
 
@@ -350,7 +349,7 @@ class ConfigVentanillasController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al eliminar la ventanilla', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al eliminar la ventanilla', $e->getMessage());
         }
     }
 
@@ -530,7 +529,7 @@ class ConfigVentanillasController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las estadísticas', $e->getMessage());
         }
     }
 }

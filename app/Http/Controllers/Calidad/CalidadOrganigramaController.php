@@ -43,7 +43,7 @@ class CalidadOrganigramaController extends Controller
             }
             \Log::error('Organigrama index error: '.$e->getMessage());
 
-            return $this->errorResponse('Error al obtener el organigrama', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el organigrama', $e->getMessage());
         }
     }
 
@@ -55,7 +55,7 @@ class CalidadOrganigramaController extends Controller
         try {
             $organigrama = $this->service->create($request->validated());
 
-            return $this->successResponse($organigrama, 'Nodo creado correctamente', 201);
+            return $this->createdResponse($organigrama, 'Nodo creado correctamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -64,7 +64,7 @@ class CalidadOrganigramaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al crear el nodo', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear el nodo', $e->getMessage());
         }
     }
 
@@ -85,7 +85,7 @@ class CalidadOrganigramaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el nodo', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el nodo', $e->getMessage());
         }
     }
 
@@ -106,7 +106,7 @@ class CalidadOrganigramaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar el nodo', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar el nodo', $e->getMessage());
         }
     }
 
@@ -117,7 +117,7 @@ class CalidadOrganigramaController extends Controller
     {
         try {
             if (! $this->service->delete($id)) {
-                return $this->errorResponse('No se puede eliminar el nodo porque tiene subelementos', null, 400);
+                return $this->warningResponse('No se puede eliminar el nodo porque tiene subelementos');
             }
 
             return $this->successResponse(null, 'Nodo eliminado correctamente');
@@ -129,7 +129,7 @@ class CalidadOrganigramaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al eliminar el nodo', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al eliminar el nodo', $e->getMessage());
         }
     }
 
@@ -151,7 +151,7 @@ class CalidadOrganigramaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las dependencias', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las dependencias', $e->getMessage());
         }
     }
 
@@ -173,7 +173,7 @@ class CalidadOrganigramaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las oficinas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las oficinas', $e->getMessage());
         }
     }
 
@@ -195,7 +195,7 @@ class CalidadOrganigramaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las estadísticas', $e->getMessage());
         }
     }
 }

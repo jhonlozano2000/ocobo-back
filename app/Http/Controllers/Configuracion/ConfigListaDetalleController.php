@@ -94,7 +94,7 @@ class ConfigListaDetalleController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado de detalles', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado de detalles', $e->getMessage());
         }
     }
 
@@ -158,10 +158,9 @@ class ConfigListaDetalleController extends Controller
 
             DB::commit();
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $detalle->load('lista'),
-                'Detalle de lista creado exitosamente',
-                201
+                'Detalle de lista creado exitosamente'
             );
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -172,7 +171,7 @@ class ConfigListaDetalleController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al crear el detalle', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear el detalle', $e->getMessage());
         }
     }
 
@@ -229,7 +228,7 @@ class ConfigListaDetalleController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el detalle', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el detalle', $e->getMessage());
         }
     }
 
@@ -310,7 +309,7 @@ class ConfigListaDetalleController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al actualizar el detalle', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar el detalle', $e->getMessage());
         }
     }
 
@@ -369,7 +368,7 @@ class ConfigListaDetalleController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al eliminar el detalle', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al eliminar el detalle', $e->getMessage());
         }
     }
 
@@ -419,7 +418,7 @@ class ConfigListaDetalleController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las estadísticas', $e->getMessage());
         }
     }
 }

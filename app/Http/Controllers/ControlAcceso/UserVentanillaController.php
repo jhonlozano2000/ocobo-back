@@ -97,7 +97,7 @@ class UserVentanillaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el listado de asignaciones', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el listado de asignaciones', $e->getMessage());
         }
     }
 
@@ -158,21 +158,16 @@ class UserVentanillaController extends Controller
                 ->first();
 
             if ($existingAssignment) {
-                return $this->errorResponse(
-                    'El usuario ya tiene asignada esta ventanilla',
-                    null,
-                    409
-                );
+                return $this->conflictResponse('El usuario ya tiene asignada esta ventanilla');
             }
 
             $asignacion = UserVentanilla::create($request->validated());
 
             DB::commit();
 
-            return $this->successResponse(
+            return $this->createdResponse(
                 $asignacion->load(['user', 'ventanilla']),
-                'Asignación de ventanilla creada exitosamente',
-                201
+                'Asignación de ventanilla creada exitosamente'
             );
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -183,7 +178,7 @@ class UserVentanillaController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al crear la asignación', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear la asignación', $e->getMessage());
         }
     }
 
@@ -243,7 +238,7 @@ class UserVentanillaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener la asignación', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener la asignación', $e->getMessage());
         }
     }
 
@@ -306,11 +301,7 @@ class UserVentanillaController extends Controller
                     ->first();
 
                 if ($existingAssignment) {
-                    return $this->errorResponse(
-                        'El usuario ya tiene asignada esta ventanilla',
-                        null,
-                        409
-                    );
+                    return $this->conflictResponse('El usuario ya tiene asignada esta ventanilla');
                 }
             }
 
@@ -331,7 +322,7 @@ class UserVentanillaController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al actualizar la asignación', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar la asignación', $e->getMessage());
         }
     }
 
@@ -375,7 +366,7 @@ class UserVentanillaController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al eliminar la asignación', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al eliminar la asignación', $e->getMessage());
         }
     }
 
@@ -546,7 +537,7 @@ class UserVentanillaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las estadísticas', $e->getMessage());
         }
     }
 }

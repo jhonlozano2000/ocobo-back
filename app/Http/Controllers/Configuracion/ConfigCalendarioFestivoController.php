@@ -38,7 +38,7 @@ class ConfigCalendarioFestivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener los días festivos', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener los días festivos', $e->getMessage());
         }
     }
 
@@ -56,9 +56,9 @@ class ConfigCalendarioFestivoController extends Controller
             $festivo = ConfigCalendarioFestivo::create($validated);
             $this->businessDaysService->clearCache($validated['anio']);
 
-            return $this->successResponse($festivo, 'Día no hábil creado exitosamente', 201);
+            return $this->createdResponse($festivo, 'Día no hábil creado exitosamente');
         } catch (ValidationException $e) {
-            return $this->errorResponse('Datos inválidos', $e->errors(), 422);
+            return $this->validationResponse($e->errors(), 'Datos inválidos');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -67,7 +67,7 @@ class ConfigCalendarioFestivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al crear el día no hábil', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear el día no hábil', $e->getMessage());
         }
     }
 
@@ -77,7 +77,7 @@ class ConfigCalendarioFestivoController extends Controller
             $festivo = ConfigCalendarioFestivo::find($id);
 
             if (! $festivo) {
-                return $this->errorResponse('Día no hábil no encontrado', null, 404);
+                return $this->notFoundResponse('Día no hábil no encontrado');
             }
 
             $validated = $request->validate([
@@ -95,7 +95,7 @@ class ConfigCalendarioFestivoController extends Controller
 
             return $this->successResponse($festivo->fresh(), 'Día no hábil actualizado exitosamente');
         } catch (ValidationException $e) {
-            return $this->errorResponse('Datos inválidos', $e->errors(), 422);
+            return $this->validationResponse($e->errors(), 'Datos inválidos');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -104,7 +104,7 @@ class ConfigCalendarioFestivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar el día no hábil', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar el día no hábil', $e->getMessage());
         }
     }
 
@@ -114,7 +114,7 @@ class ConfigCalendarioFestivoController extends Controller
             $festivo = ConfigCalendarioFestivo::find($id);
 
             if (! $festivo) {
-                return $this->errorResponse('Día no hábil no encontrado', null, 404);
+                return $this->notFoundResponse('Día no hábil no encontrado');
             }
 
             $anio = $festivo->anio;
@@ -130,7 +130,7 @@ class ConfigCalendarioFestivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al eliminar el día no hábil', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al eliminar el día no hábil', $e->getMessage());
         }
     }
 
@@ -155,7 +155,7 @@ class ConfigCalendarioFestivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al verificar la fecha', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al verificar la fecha', $e->getMessage());
         }
     }
 
@@ -173,7 +173,7 @@ class ConfigCalendarioFestivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener los festivos del año', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener los festivos del año', $e->getMessage());
         }
     }
 
@@ -196,7 +196,7 @@ class ConfigCalendarioFestivoController extends Controller
                 'fecha_vencimiento' => $fechaVencimiento->format('Y-m-d'),
             ], 'Vencimiento calculado exitosamente');
         } catch (ValidationException $e) {
-            return $this->errorResponse('Datos inválidos', $e->errors(), 422);
+            return $this->validationResponse($e->errors(), 'Datos inválidos');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -205,7 +205,7 @@ class ConfigCalendarioFestivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al calcular vencimiento', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al calcular vencimiento', $e->getMessage());
         }
     }
 
@@ -223,7 +223,7 @@ class ConfigCalendarioFestivoController extends Controller
 
             return $this->successResponse($resultados, 'Festivos importados exitosamente');
         } catch (ValidationException $e) {
-            return $this->errorResponse('Datos inválidos', $e->errors(), 422);
+            return $this->validationResponse($e->errors(), 'Datos inválidos');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -232,7 +232,7 @@ class ConfigCalendarioFestivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al importar festivos', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al importar festivos', $e->getMessage());
         }
     }
 
@@ -265,7 +265,7 @@ class ConfigCalendarioFestivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al generar festivos', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al generar festivos', $e->getMessage());
         }
     }
 
@@ -283,7 +283,7 @@ class ConfigCalendarioFestivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al limpiar caché', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al limpiar caché', $e->getMessage());
         }
     }
 }
