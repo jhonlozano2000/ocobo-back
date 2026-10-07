@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -27,9 +28,53 @@ class SecurityHeadersMiddleware
         // Solo agregar headers a respuestas que no sean para downloads
         if ($this->shouldApplyHeaders($response)) {
             $this->applySecurityHeaders($response, $request);
+            $this->cleanConflictingCookies($response, $request);
         }
 
         return $response;
+    }
+
+    /**
+     * Elimina cookies residuales host-only (sin atributo Domain) si el navegador
+     * envía cookies duplicadas con el mismo nombre (ej. ocobo_session o XSRF-TOKEN).
+     * Esto cura automáticamente estados donde el navegador guardó cookies host-only y de dominio.
+     */
+    private function cleanConflictingCookies(Response $response, Request $request): void
+    {
+        $cookieHeader = $request->header('Cookie', '');
+        $sessionCookieName = config('session.cookie', 'ocobo_session');
+
+        if (
+            substr_count($cookieHeader, $sessionCookieName.'=') > 1 ||
+            substr_count($cookieHeader, 'XSRF-TOKEN=') > 1
+        ) {
+            $response->headers->setCookie(
+                new Cookie(
+                    $sessionCookieName,
+                    null,
+                    1,
+                    '/',
+                    null,
+                    false,
+                    true,
+                    false,
+                    'lax'
+                )
+            );
+            $response->headers->setCookie(
+                new Cookie(
+                    'XSRF-TOKEN',
+                    null,
+                    1,
+                    '/',
+                    null,
+                    false,
+                    false,
+                    false,
+                    'lax'
+                )
+            );
+        }
     }
 
     /**
