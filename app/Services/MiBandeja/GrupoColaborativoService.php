@@ -428,6 +428,15 @@ class GrupoColaborativoService
                     } catch (\Throwable $e) {
                         Log::warning('No se pudo estampar firma al marcar cumplido: '.$e->getMessage());
                     }
+
+                    $grupo->refresh();
+                    if ($grupo->todosFirmantesHanFirmado()) {
+                        try {
+                            $this->estamparFirmaSistema($grupo);
+                        } catch (\Throwable $e) {
+                            Log::warning('No se pudo estampar firma del sistema al marcar cumplido: '.$e->getMessage());
+                        }
+                    }
                 }
             }
 
