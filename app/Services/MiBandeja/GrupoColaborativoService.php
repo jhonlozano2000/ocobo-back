@@ -750,6 +750,7 @@ class GrupoColaborativoService
         // Fechas y Horas
         $ahora = Carbon::now();
         $fechaHoy = $ahora->format('Y-m-d');
+        $fechaHoyCorta = $ahora->format('d/m/Y');
         $fechaHoyLarga = $ahora->locale('es')->translatedFormat('j \d\e F \d\e Y');
         $horaHoy = $ahora->format('h:i A');
         $anioHoy = $ahora->format('Y');
@@ -915,12 +916,22 @@ class GrupoColaborativoService
             'DESTINATARIOS' => $destinatariosNombres,
 
             // Fechas y Tiempos
-            'FECHA_DOCUMENTO' => $fechaHoy,
             'FECHA_ACTUAL' => $fechaHoy,
+            'FECHA_DE_SISTEMA' => $fechaHoy,
+            'FECHA_DEL_SISTEMA' => $fechaHoy,
+            'FECHA_SISTEMA' => $fechaHoy,
+            'FECHA_DOCUMENTO' => $fechaHoy,
+            'FECHA_ACTUAL_CORTA' => $fechaHoyCorta,
+            'FECHA_SISTEMA_CORTA' => $fechaHoyCorta,
             'FECHA_LARGA' => $fechaHoyLarga,
+            'FECHA_ACTUAL_LARGA' => $fechaHoyLarga,
+            'FECHA_SISTEMA_LARGA' => $fechaHoyLarga,
             'CIUDAD_FECHA' => $ciudadFecha,
             'HORA_ACTUAL' => $horaHoy,
+            'HORA_SISTEMA' => $horaHoy,
+            'HORA_DE_SISTEMA' => $horaHoy,
             'ANIO_ACTUAL' => $anioHoy,
+            'ANIO_SISTEMA' => $anioHoy,
 
             // Radicados Relacionados (Origen / Respuesta)
             'NUM_RADICADO_ORIGEN' => $radicado?->num_radicado ?? '',
@@ -1014,12 +1025,22 @@ class GrupoColaborativoService
             'PROYECTORES' => 'Elaboró / Proyectó',
             'APROBADORES' => 'Revisó / Aprobó',
             'DESTINATARIOS' => 'Destinatarios del documento',
-            'FECHA_DOCUMENTO' => 'Fecha del documento (YYYY-MM-DD)',
             'FECHA_ACTUAL' => 'Fecha actual del sistema (YYYY-MM-DD)',
+            'FECHA_DE_SISTEMA' => 'Fecha de sistema (YYYY-MM-DD)',
+            'FECHA_DEL_SISTEMA' => 'Fecha del sistema (YYYY-MM-DD)',
+            'FECHA_SISTEMA' => 'Fecha de sistema (YYYY-MM-DD)',
+            'FECHA_DOCUMENTO' => 'Fecha del documento (YYYY-MM-DD)',
+            'FECHA_ACTUAL_CORTA' => 'Fecha actual en formato DD/MM/YYYY',
+            'FECHA_SISTEMA_CORTA' => 'Fecha de sistema en formato DD/MM/YYYY',
             'FECHA_LARGA' => 'Fecha actual formateada en español',
+            'FECHA_ACTUAL_LARGA' => 'Fecha actual en texto formal español',
+            'FECHA_SISTEMA_LARGA' => 'Fecha de sistema en texto formal español',
             'CIUDAD_FECHA' => 'Ciudad y fecha en español',
             'HORA_ACTUAL' => 'Hora actual formateada',
+            'HORA_SISTEMA' => 'Hora de sistema formateada',
+            'HORA_DE_SISTEMA' => 'Hora de sistema formateada',
             'ANIO_ACTUAL' => 'Año actual (4 dígitos)',
+            'ANIO_SISTEMA' => 'Año de sistema (4 dígitos)',
             'NUM_RADICADO_ORIGEN' => 'Número de radicado de origen',
             'FECHA_RADICADO_ORIGEN' => 'Fecha del radicado de origen',
             'ASUNTO_ORIGEN' => 'Asunto del radicado de origen',
