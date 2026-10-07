@@ -368,6 +368,16 @@ class MiBandejaTempGrupoFirmanteController extends Controller
                 \Log::warning("No se pudo estampar firma en el documento físico del grupo {$grupoId}: ".$e->getMessage());
             }
 
+            // Si todos los firmantes ya suscribieron, estampar la Firma y Sello Electrónico del Sistema (ISO 27001)
+            $grupo->refresh();
+            if ($grupo->todosFirmantesHanFirmado()) {
+                try {
+                    $this->grupoService->estamparFirmaSistema($grupo);
+                } catch (\Throwable $e) {
+                    \Log::warning("No se pudo estampar firma del sistema en el grupo {$grupoId}: ".$e->getMessage());
+                }
+            }
+
             // Actualizar estado del grupo si todos los miembros cumplieron su labor
             $grupo->refresh();
             if ($grupo->todosTerminados()) {

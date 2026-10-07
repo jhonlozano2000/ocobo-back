@@ -28,8 +28,9 @@ class StoreMiBandejaTempRequest extends FormRequest
      */
     public function rules(): array
     {
+        $radicadoId = $this->input('radicado_id');
         $tablaRadicado = match ($this->input('radicado_tipo')) {
-            'enviado' => 'ventanilla_radica_envia',
+            'enviado' => 'ventanilla_radica_enviados',
             'interno' => 'ventanilla_radica_internos',
             default => 'ventanilla_radica_reci',
         };
@@ -37,8 +38,12 @@ class StoreMiBandejaTempRequest extends FormRequest
         return [
             'nombre' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
-            'radicado_id' => "required|integer|exists:{$tablaRadicado},id",
-            'radicado_tipo' => ['required', Rule::in(['recibido', 'enviado', 'interno'])],
+            'radicado_id' => [
+                'nullable',
+                'integer',
+                $radicadoId ? "exists:{$tablaRadicado},id" : 'nullable',
+            ],
+            'radicado_tipo' => ['nullable', Rule::in(['recibido', 'enviado', 'interno'])],
             'estado' => ['nullable', Rule::in(['borrador', 'activo', 'finalizado', 'archivado'])],
             'estado_grupo' => ['nullable', Rule::in(['activo', 'inactivo', 'anulado'])],
             'asunto' => 'nullable|string|max:255',
@@ -58,9 +63,7 @@ class StoreMiBandejaTempRequest extends FormRequest
     {
         return [
             'nombre.required' => 'El nombre del grupo es obligatorio.',
-            'radicado_id.required' => 'El radicado es obligatorio.',
             'radicado_id.exists' => 'El radicado seleccionado no existe.',
-            'radicado_tipo.required' => 'El tipo de radicado es obligatorio.',
             'radicado_tipo.in' => 'El tipo de radicado no es válido.',
         ];
     }

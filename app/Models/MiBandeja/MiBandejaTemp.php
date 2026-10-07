@@ -209,4 +209,19 @@ class MiBandejaTemp extends Model
 
         return $todosRevisores && $todosFirmantes && $todosProyectores && $todosAprobadores;
     }
+
+    /**
+     * Verifica si todos los firmantes asignados al grupo han suscrito el documento.
+     *
+     * @return bool true si todos los firmantes han firmado y existe al menos uno, false de lo contrario
+     */
+    public function todosFirmantesHanFirmado(): bool
+    {
+        $totalFirmantes = $this->firmantes()->count();
+        if ($totalFirmantes === 0) {
+            return false;
+        }
+
+        return $this->firmantes()->whereNotNull('fechor_firmado')->count() === $totalFirmantes;
+    }
 }
