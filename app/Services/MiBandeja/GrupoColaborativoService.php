@@ -5,6 +5,8 @@ namespace App\Services\MiBandeja;
 use App\Events\MiBandeja\Grupos\DocumentoBloqueado;
 use App\Events\MiBandeja\Grupos\DocumentoLiberado;
 use App\Events\MiBandeja\Grupos\MiembroCumplido;
+use App\Models\Configuracion\ConfigDiviPoli;
+use App\Models\Configuracion\ConfigVarias;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempArchivoVersion;
 use App\Models\MiBandeja\MiBandejaTempAuditLog;
@@ -520,6 +522,16 @@ class GrupoColaborativoService
                 }
             }
 
+            // Asegurar que la firma y certificación del sistema esté estampada antes de despachar
+            if ($grupo->todosFirmantesHanFirmado()) {
+                try {
+                    $this->estamparFirmaSistema($grupo);
+                    $grupo->refresh();
+                } catch (\Throwable $e) {
+                    Log::warning('No se pudo estampar firma del sistema en enviarTramite: '.$e->getMessage());
+                }
+            }
+
             // Copiar el documento final firmado y sellado a los adjuntos oficiales del radicado
             $ultimaVersion = $grupo->ultimaVersion;
             if ($radicado && $ultimaVersion) {
@@ -684,59 +696,247 @@ class GrupoColaborativoService
         $plantilla = $grupo->plantilla;
         $radicado = $grupo->radicado;
         $tercero = $radicado?->tercero;
+        $clasif = $radicado?->clasificacionDocumental;
+
+        // Jerarquía de Clasificación Documental (TRD)
+        $serieNom = '';
+        $serieCod = '';
+        $subserieNom = '';
+        $subserieCod = '';
+        $tipoDocNom = '';
+        $tipoDocCod = '';
+        $clasificaCod = '';
+        $clasificaNom = '';
+
+        if ($clasif) {
+            $clasificaCod = $clasif->getCodigoCompleto();
+            $clasificaNom = $clasif->getNombreCompleto();
+            $jerarquia = $clasif->getJerarquia();
+            $serieItem = collect($jerarquia)->firstWhere('tipo', 'Serie');
+            if ($serieItem) {
+                $serieNom = $serieItem['nom'] ?? '';
+                $serieCod = $serieItem['cod'] ?? '';
+            }
+            $subserieItem = collect($jerarquia)->firstWhere('tipo', 'SubSerie');
+            if ($subserieItem) {
+                $subserieNom = $subserieItem['nom'] ?? '';
+                $subserieCod = $subserieItem['cod'] ?? '';
+            }
+            $tipoDocItem = collect($jerarquia)->firstWhere('tipo', 'TipoDocumento');
+            if ($tipoDocItem) {
+                $tipoDocNom = $tipoDocItem['nom'] ?? '';
+                $tipoDocCod = $tipoDocItem['cod'] ?? '';
+            }
+        }
+
+        // Datos Institucionales (Empresa / Entidad)
+        $nombreEntidad = ConfigVarias::getValor('razon_social_empresa') ?: config('app.entidad_nombre', 'OCOBO');
+        $nitEntidad = ConfigVarias::getValor('nit_empresa') ?: config('app.entidad_nit', '');
+        $dirEntidad = ConfigVarias::getValor('direccion_empresa') ?: config('app.entidad_direccion', '');
+        $telEntidad = ConfigVarias::getValor('telefono_empresa') ?: config('app.entidad_telefono', '');
+        $emailEntidad = ConfigVarias::getValor('correo_electronico_empresa') ?: config('app.entidad_email', '');
+        $webEntidad = ConfigVarias::getValor('web_empresa') ?: config('app.entidad_web', '');
+
+        $ciudadEntidad = '';
+        $diviPoliId = ConfigVarias::getValor('divi_poli_id_empresa');
+        if ($diviPoliId) {
+            $diviPoli = ConfigDiviPoli::find($diviPoliId);
+            $ciudadEntidad = $diviPoli?->nombre ?? '';
+        }
+        if (! $ciudadEntidad) {
+            $ciudadEntidad = config('app.entidad_ciudad', 'Ibagué');
+        }
+
+        // Fechas y Horas
+        $ahora = Carbon::now();
+        $fechaHoy = $ahora->format('Y-m-d');
+        $fechaHoyLarga = $ahora->locale('es')->translatedFormat('j \d\e F \d\e Y');
+        $horaHoy = $ahora->format('h:i A');
+        $anioHoy = $ahora->format('Y');
+        $ciudadFecha = "{$ciudadEntidad}, {$fechaHoyLarga}";
+
+        // Fechas y tiempos del radicado
+        $fechaRadicado = $radicado?->created_at?->format('Y-m-d') ?? '';
+        $fechaRadicadoLarga = $radicado?->created_at ? Carbon::parse($radicado->created_at)->locale('es')->translatedFormat('j \d\e F \d\e Y') : '';
+        $horaRadicado = $radicado?->created_at ? Carbon::parse($radicado->created_at)->format('H:i:s') : '';
+        $fechaVencimiento = $radicado?->fec_venci ? Carbon::parse($radicado->fec_venci)->format('Y-m-d') : '';
+
+        // Dependencia y Funcionario
+        $dep = $user->cargo?->dependencia;
+        $nombreDep = $dep?->nombre ?? ($dep?->nom_organico ?? '');
+        $siglaDep = $dep?->sigla ?? '';
+        $codDep = $dep?->cod_organico ?? '';
+
+        // Miembros y Actores
         $miembrosNombres = fn ($items) => $items->map(fn ($m) => trim(($m->user?->nombres ?? '').' '.($m->user?->apellidos ?? '')))->filter()->implode(', ');
+        $firmantesCargos = $grupo->firmantes->map(function ($m) {
+            $u = $m->user;
+            if (! $u) {
+                return '';
+            }
+            $nombre = trim(($u->nombres ?? '').' '.($u->apellidos ?? ''));
+            $cargo = $u->cargo?->nombre;
+
+            return $cargo ? "{$nombre} ({$cargo})" : $nombre;
+        })->filter()->implode(', ');
+
+        // Destinatarios
+        $destinatariosNombres = '';
+        if ($radicado && method_exists($radicado, 'destinatarios') && $radicado->destinatarios()->exists()) {
+            $destinatariosNombres = $radicado->destinatarios->map(function ($d) {
+                return $d->destinatario_nombre ?? ($d->user ? trim($d->user->nombres.' '.$d->user->apellidos) : '');
+            })->filter()->implode(', ');
+        }
+        if (! $destinatariosNombres && $tercero) {
+            $destinatariosNombres = $tercero->nom_razo_soci ?? '';
+        }
+
+        // PQRSD si aplica
+        $tipoPqrs = $radicado?->pqrs?->tipoPqrs?->nombre ?? '';
+        $prioridadPqrs = $radicado?->pqrs?->prioridad ?? '';
+        $diasPqrs = (string) ($radicado?->pqrs?->dias_termino ?? '');
+
+        // Tercero
+        $muniTercero = $tercero?->divisionPolitica?->nombre ?? '';
+        $deptoTercero = $tercero?->divisionPolitica?->padre?->nombre ?? '';
+        $paisTercero = $tercero?->divisionPolitica?->padre?->padre?->nombre ?? 'Colombia';
+        $medioNotifica = $tercero?->notifica_email ? 'Correo electrónico' : ($tercero?->notifica_msm ? 'Mensaje de texto' : 'Físico');
+
+        // Folios y Anexos (con conversión a letras y detección de medios magnéticos)
+        $numFolios = $radicado?->num_folios ?? '';
+        $foliosLetras = '';
+        if (is_numeric($numFolios) && (int) $numFolios > 0 && class_exists(\NumberFormatter::class)) {
+            try {
+                $formatter = new \NumberFormatter('es', \NumberFormatter::SPELLOUT);
+                $foliosLetras = $formatter->format((int) $numFolios);
+            } catch (\Throwable) {
+                $foliosLetras = '';
+            }
+        }
+
+        $numAnexos = $radicado?->num_anexos ?? '';
+        $descripAnexos = $radicado?->descrip_anexos ?? ($radicado?->anexos ?? '');
+        $anexosCd = '0';
+        if (is_string($descripAnexos) && preg_match('/(\d+)\s*(?:dvd|cd)/i', $descripAnexos, $matches)) {
+            $anexosCd = $matches[1];
+        }
+
+        // Roles en singular y plural
+        $proyectoresLista = $miembrosNombres($grupo->proyectores);
+        $revisoresLista = $miembrosNombres($grupo->revisores);
+        $aprobadoresLista = $miembrosNombres($grupo->aprobadores);
 
         $defaults = [
+            // Radicación
             'NUM_RADICADO' => $radicado?->num_radicado ?? '',
-            'FECHA_RADICADO' => $radicado?->created_at?->format('Y-m-d') ?? '',
-            'ASUNTO' => $grupo->asunto ?? '',
-            'MEDIO_RESPUESTA' => '',
-            'DIAS_RESPUESTA' => '',
+            'FECHA_RADICADO' => $fechaRadicado,
+            'FECHA_RADICADO_LARGA' => $fechaRadicadoLarga,
+            'HORA_RADICADO' => $horaRadicado,
+            'CODIGO_VERIFICACION' => $radicado?->codigo_verificacion ?? '',
+            'ASUNTO' => $grupo->asunto ?? $radicado?->asunto ?? '',
+            'MEDIO_RECEPCION' => $radicado?->medioRecepcion?->nombre ?? '',
+            'MEDIO_RESPUESTA' => $medioNotifica,
+            'DIAS_RESPUESTA' => $diasPqrs ?: ($radicado?->fec_venci ? (string) (int) ceil(max(0, Carbon::now()->diffInDays(Carbon::parse($radicado->fec_venci), false))) : ''),
+            'FECHA_VENCIMIENTO' => $fechaVencimiento,
+
+            // Folios y Anexos
+            'NUMERO_FOLIOS' => (string) ($numFolios ?: ''),
+            'FOLIOS' => (string) ($numFolios ?: ''),
+            'FOLIOS_LETRAS' => $foliosLetras,
+            'NUMERO_ANEXOS' => (string) ($numAnexos ?: ''),
+            'NUM_ANEXOS' => (string) ($numAnexos ?: ''),
+            'DESCRIP_ANEXOS' => (string) $descripAnexos,
+            'ANEXOS' => (string) ($descripAnexos ?: ($numAnexos ? "{$numAnexos} anexos" : '')),
+            'NUMERO_CD' => (string) $anexosCd,
+            'ANEXOS_CD' => (string) $anexosCd,
+
+            // PQRSD
+            'TIPO_PQRS' => $tipoPqrs,
+            'PRIORIDAD_PQRS' => $prioridadPqrs,
+            'DIAS_TERMINO_PQRS' => $diasPqrs,
+
+            // Tercero
             'TERCERO' => $tercero?->nom_razo_soci ?? '',
-            'TERCERO_TIPO_DOC' => '',
+            'TERCERO_TIPO_DOC' => $tercero?->tipo_docu ?? '',
             'TERCERO_NUM_DOC' => $tercero?->num_docu_nit ?? '',
             'TERCERO_TIPO_PERSONA' => $tercero?->tipo ?? '',
             'TERCERO_DIRECCION' => $tercero?->direccion ?? '',
             'TERCERO_TELEFONO' => $tercero?->telefono ?? '',
             'TERCERO_EMAIL' => $tercero?->email ?? '',
-            'TERCERO_MUNICIPIO' => $tercero?->divisionPolitica?->nombre ?? '',
-            'TERCERO_DEPARTAMENTO' => '',
-            'NOMBRE_ENTIDAD' => config('app.entidad_nombre', ''),
-            'NIT_ENTIDAD' => config('app.entidad_nit', ''),
-            'NOMBRE_DEPENDENCIA' => $user->cargo?->dependencia?->nombre ?? '',
-            'SIGLA_DEPENDENCIA' => $user->cargo?->dependencia?->sigla ?? '',
-            'CIUDAD' => '',
-            'CLASIFICA_DOCUMENTAL' => '',
-            'SERIE' => '',
-            'SUB_SERIE' => '',
-            'TIPO_DOCUMENTAL' => '',
-            'CODIGO_SERIE' => '',
-            'CODIGO_SUB_SERIE' => '',
-            'RESPONSABLES' => $miembrosNombres($grupo->revisores),
-            'FIRMANTES' => $miembrosNombres($grupo->firmantes),
-            'PROYECTORES' => $miembrosNombres($grupo->proyectores),
-            'APROBADORES' => $miembrosNombres($grupo->aprobadores),
-            'DESTINATARIOS' => '',
+            'TERCERO_MUNICIPIO' => $muniTercero,
+            'TERCERO_DEPARTAMENTO' => $deptoTercero,
+            'TERCERO_PAIS' => $paisTercero,
+
+            // Notificación
+            'NOTIFICACION_DIRECCION' => $tercero?->direccion ?? '',
+            'NOTIFICACION_CIUDAD' => $muniTercero,
+            'NOTIFICACION_EMAIL' => $tercero?->email ?? '',
+            'NOTIFICACION_FECHA' => $fechaHoy,
+            'NOTIFICACION_MEDIO' => $medioNotifica,
+
+            // Entidad Institucional
+            'NOMBRE_ENTIDAD' => $nombreEntidad,
+            'NIT_ENTIDAD' => $nitEntidad,
+            'DIRECCION_ENTIDAD' => $dirEntidad,
+            'TELEFONO_ENTIDAD' => $telEntidad,
+            'EMAIL_ENTIDAD' => $emailEntidad,
+            'WEB_ENTIDAD' => $webEntidad,
+            'CIUDAD' => $ciudadEntidad,
+
+            // Dependencia y Funcionario Emisor
+            'NOMBRE_DEPENDENCIA' => $nombreDep,
+            'SIGLA_DEPENDENCIA' => $siglaDep,
+            'CODIGO_DEPENDENCIA' => $codDep,
             'FUNCIONARIO_ACTUAL' => trim(($user->nombres ?? '').' '.($user->apellidos ?? '')),
             'CARGO_ACTUAL' => $user->cargo?->nombre ?? '',
-            'FECHA_DOCUMENTO' => now()->format('Y-m-d'),
-            'FECHA_ACTUAL' => now()->format('Y-m-d'),
-            'CIUDAD_FECHA' => '',
-            'NUMERO_FOLIOS' => '',
-            'ANEXOS' => '',
+            'EMAIL_FUNCIONARIO' => $user->email ?? '',
+
+            // Clasificación Documental (TRD)
+            'CLASIFICA_DOCUMENTAL' => $clasificaCod,
+            'CLASIFICACION_NOMBRE' => $clasificaNom,
+            'SERIE' => $serieNom,
+            'CODIGO_SERIE' => $serieCod,
+            'SUB_SERIE' => $subserieNom,
+            'CODIGO_SUB_SERIE' => $subserieCod,
+            'TIPO_DOCUMENTAL' => $tipoDocNom,
+            'CODIGO_TIPO_DOCUMENTAL' => $tipoDocCod,
+
+            // Miembros y Actores del Documento (Singular y Plural)
+            'PROYECTO' => $proyectoresLista,
+            'PROYECTORES' => $proyectoresLista,
+            'ELABORO' => $proyectoresLista,
+            'REVISO' => $revisoresLista,
+            'REVISORES' => $revisoresLista,
+            'RESPONSABLES' => $revisoresLista,
+            'APROBO' => $aprobadoresLista,
+            'APROBADORES' => $aprobadoresLista,
+            'FIRMANTES' => $miembrosNombres($grupo->firmantes),
+            'FIRMANTES_CARGOS' => $firmantesCargos,
+            'DESTINATARIOS' => $destinatariosNombres,
+
+            // Fechas y Tiempos
+            'FECHA_DOCUMENTO' => $fechaHoy,
+            'FECHA_ACTUAL' => $fechaHoy,
+            'FECHA_LARGA' => $fechaHoyLarga,
+            'CIUDAD_FECHA' => $ciudadFecha,
+            'HORA_ACTUAL' => $horaHoy,
+            'ANIO_ACTUAL' => $anioHoy,
+
+            // Radicados Relacionados (Origen / Respuesta)
+            'NUM_RADICADO_ORIGEN' => $radicado?->num_radicado ?? '',
+            'FECHA_RADICADO_ORIGEN' => $fechaRadicado,
+            'ASUNTO_ORIGEN' => $radicado?->asunto ?? '',
             'NUM_RADICADO_RESPUESTA' => '',
             'FECHA_RADICADO_RESPUESTA' => '',
-            'ASUNTO_RESPUESTA' => '',
-            'NUM_RADICADO_ORIGEN' => '',
-            'FECHA_RADICADO_ORIGEN' => '',
-            'ASUNTO_ORIGEN' => '',
-            'NOTIFICACION_DIRECCION' => $tercero?->direccion ?? '',
-            'NOTIFICACION_CIUDAD' => $tercero?->divisionPolitica?->nombre ?? '',
-            'NOTIFICACION_FECHA' => '',
-            'NOTIFICACION_MEDIO' => '',
+            'ASUNTO_RESPUESTA' => $grupo->asunto ?? '',
+
+            // Marcadores de Firma y Certificación (ISO 27001)
+            'ESTAMPA_FIRMA_ELECTRONICA' => '',
             'FIRMA' => '',
             'FIRMAS' => '',
             'FIRMA_DIGITAL' => '',
+            'FIRMA_SISTEMA' => '',
+            'SELLO_SISTEMA' => '',
         ];
 
         $variables = array_map(fn ($key, $default) => [
@@ -758,54 +958,92 @@ class GrupoColaborativoService
     {
         $etiquetas = [
             'NUM_RADICADO' => 'Número de radicado',
-            'FECHA_RADICADO' => 'Fecha de radicado',
-            'ASUNTO' => 'Asunto',
-            'MEDIO_RESPUESTA' => 'Medio de respuesta',
-            'DIAS_RESPUESTA' => 'Días de respuesta',
-            'TERCERO' => 'Tercero (razón social)',
+            'FECHA_RADICADO' => 'Fecha de radicado (YYYY-MM-DD)',
+            'FECHA_RADICADO_LARGA' => 'Fecha de radicado en texto largo',
+            'HORA_RADICADO' => 'Hora de radicación',
+            'CODIGO_VERIFICACION' => 'Código de verificación pública',
+            'ASUNTO' => 'Asunto del trámite',
+            'MEDIO_RECEPCION' => 'Medio o canal de recepción',
+            'MEDIO_RESPUESTA' => 'Medio preferido de respuesta',
+            'DIAS_RESPUESTA' => 'Días término para respuesta',
+            'FECHA_VENCIMIENTO' => 'Fecha límite de vencimiento',
+            'NUMERO_FOLIOS' => 'Número de folios',
+            'ANEXOS' => 'Descripción o cantidad de anexos',
+            'TIPO_PQRS' => 'Tipo de PQRSD',
+            'PRIORIDAD_PQRS' => 'Prioridad de la PQRSD',
+            'DIAS_TERMINO_PQRS' => 'Días de término legal PQRSD',
+            'TERCERO' => 'Tercero (razón social / nombre completo)',
             'TERCERO_TIPO_DOC' => 'Tipo de documento del tercero',
             'TERCERO_NUM_DOC' => 'Número de documento del tercero',
-            'TERCERO_TIPO_PERSONA' => 'Tipo de persona',
-            'TERCERO_DIRECCION' => 'Dirección del tercero',
-            'TERCERO_TELEFONO' => 'Teléfono del tercero',
-            'TERCERO_EMAIL' => 'Email del tercero',
-            'TERCERO_MUNICIPIO' => 'Municipio del tercero',
+            'TERCERO_TIPO_PERSONA' => 'Tipo de persona (Natural / Jurídica)',
+            'TERCERO_DIRECCION' => 'Dirección física del tercero',
+            'TERCERO_TELEFONO' => 'Teléfono de contacto del tercero',
+            'TERCERO_EMAIL' => 'Correo electrónico del tercero',
+            'TERCERO_MUNICIPIO' => 'Municipio / Ciudad del tercero',
             'TERCERO_DEPARTAMENTO' => 'Departamento del tercero',
-            'NOMBRE_ENTIDAD' => 'Nombre de la entidad',
-            'NIT_ENTIDAD' => 'NIT de la entidad',
-            'NOMBRE_DEPENDENCIA' => 'Nombre de la dependencia',
-            'SIGLA_DEPENDENCIA' => 'Sigla de la dependencia',
-            'CIUDAD' => 'Ciudad',
-            'CLASIFICA_DOCUMENTAL' => 'Clasificación documental',
-            'SERIE' => 'Serie documental',
-            'SUB_SERIE' => 'Subserie documental',
-            'TIPO_DOCUMENTAL' => 'Tipo documental',
-            'CODIGO_SERIE' => 'Código de serie',
-            'CODIGO_SUB_SERIE' => 'Código de subserie',
-            'RESPONSABLES' => 'Responsables',
-            'FIRMANTES' => 'Firmantes',
-            'PROYECTORES' => 'Proyectores',
-            'DESTINATARIOS' => 'Destinatarios',
-            'FUNCIONARIO_ACTUAL' => 'Funcionario actual',
-            'CARGO_ACTUAL' => 'Cargo actual',
-            'FECHA_DOCUMENTO' => 'Fecha del documento',
-            'FECHA_ACTUAL' => 'Fecha actual',
-            'CIUDAD_FECHA' => 'Ciudad y fecha',
-            'NUMERO_FOLIOS' => 'Número de folios',
-            'ANEXOS' => 'Anexos',
-            'NUM_RADICADO_RESPUESTA' => 'Número de radicado de respuesta',
-            'FECHA_RADICADO_RESPUESTA' => 'Fecha de radicado de respuesta',
-            'ASUNTO_RESPUESTA' => 'Asunto de respuesta',
-            'NUM_RADICADO_ORIGEN' => 'Número de radicado de origen',
-            'FECHA_RADICADO_ORIGEN' => 'Fecha de radicado de origen',
-            'ASUNTO_ORIGEN' => 'Asunto de origen',
+            'TERCERO_PAIS' => 'País del tercero',
             'NOTIFICACION_DIRECCION' => 'Dirección de notificación',
             'NOTIFICACION_CIUDAD' => 'Ciudad de notificación',
+            'NOTIFICACION_EMAIL' => 'Correo para notificación electrónica',
             'NOTIFICACION_FECHA' => 'Fecha de notificación',
-            'NOTIFICACION_MEDIO' => 'Medio de notificación',
-            'FIRMA' => 'Firma digital / electrónica',
-            'FIRMAS' => 'Firmas de los funcionarios',
-            'FIRMA_DIGITAL' => 'Estampa de firma digital (ISO 27001)',
+            'NOTIFICACION_MEDIO' => 'Medio oficial de notificación',
+            'NOMBRE_ENTIDAD' => 'Nombre institucional de la entidad',
+            'NIT_ENTIDAD' => 'NIT de la entidad',
+            'DIRECCION_ENTIDAD' => 'Dirección física institucional',
+            'TELEFONO_ENTIDAD' => 'Teléfono de la entidad',
+            'EMAIL_ENTIDAD' => 'Correo oficial de la entidad',
+            'WEB_ENTIDAD' => 'Sitio web de la entidad',
+            'CIUDAD' => 'Ciudad sede de la entidad',
+            'NOMBRE_DEPENDENCIA' => 'Nombre de la dependencia de origen',
+            'SIGLA_DEPENDENCIA' => 'Sigla de la dependencia',
+            'CODIGO_DEPENDENCIA' => 'Código orgánico de la dependencia',
+            'FUNCIONARIO_ACTUAL' => 'Funcionario en sesión',
+            'CARGO_ACTUAL' => 'Cargo del funcionario en sesión',
+            'EMAIL_FUNCIONARIO' => 'Correo del funcionario en sesión',
+            'CLASIFICA_DOCUMENTAL' => 'Código completo de clasificación TRD',
+            'CLASIFICACION_NOMBRE' => 'Nombre completo de la clasificación TRD',
+            'SERIE' => 'Serie documental',
+            'CODIGO_SERIE' => 'Código de la serie documental',
+            'SUB_SERIE' => 'Subserie documental',
+            'CODIGO_SUB_SERIE' => 'Código de la subserie documental',
+            'TIPO_DOCUMENTAL' => 'Tipo documental',
+            'CODIGO_TIPO_DOCUMENTAL' => 'Código del tipo documental',
+            'RESPONSABLES' => 'Responsables del proceso',
+            'FIRMANTES' => 'Nombres de los firmantes',
+            'FIRMANTES_CARGOS' => 'Nombres y cargos de los firmantes',
+            'PROYECTORES' => 'Elaboró / Proyectó',
+            'APROBADORES' => 'Revisó / Aprobó',
+            'DESTINATARIOS' => 'Destinatarios del documento',
+            'FECHA_DOCUMENTO' => 'Fecha del documento (YYYY-MM-DD)',
+            'FECHA_ACTUAL' => 'Fecha actual del sistema (YYYY-MM-DD)',
+            'FECHA_LARGA' => 'Fecha actual formateada en español',
+            'CIUDAD_FECHA' => 'Ciudad y fecha en español',
+            'HORA_ACTUAL' => 'Hora actual formateada',
+            'ANIO_ACTUAL' => 'Año actual (4 dígitos)',
+            'NUM_RADICADO_ORIGEN' => 'Número de radicado de origen',
+            'FECHA_RADICADO_ORIGEN' => 'Fecha del radicado de origen',
+            'ASUNTO_ORIGEN' => 'Asunto del radicado de origen',
+            'NUM_RADICADO_RESPUESTA' => 'Número de radicado de respuesta formal',
+            'FECHA_RADICADO_RESPUESTA' => 'Fecha de radicado de respuesta',
+            'ASUNTO_RESPUESTA' => 'Asunto de respuesta formal',
+            'PROYECTO' => 'Proyectó (Elaboró el documento)',
+            'REVISO' => 'Revisó (Revisó el documento)',
+            'APROBO' => 'Aprobó (Aprobó el documento)',
+            'ELABORO' => 'Elaboró (Proyectó el documento)',
+            'REVISORES' => 'Nombres de los revisores',
+            'FOLIOS' => 'Cantidad de folios del documento',
+            'FOLIOS_LETRAS' => 'Cantidad de folios escrita en letras',
+            'NUMERO_ANEXOS' => 'Cantidad numérica de anexos',
+            'NUM_ANEXOS' => 'Número de anexos adjuntos',
+            'DESCRIP_ANEXOS' => 'Descripción detallada de los anexos',
+            'NUMERO_CD' => 'Cantidad de anexos DVD / CD',
+            'ANEXOS_CD' => 'Cantidad de anexos en medio magnético DVD / CD',
+            'ESTAMPA_FIRMA_ELECTRONICA' => 'Estampa visual de firma electrónica individual',
+            'FIRMA' => 'Estampa de firma electrónica individual (alias)',
+            'FIRMAS' => 'Bloque conjunto de firmas de funcionarios',
+            'FIRMA_DIGITAL' => 'Estampa de firma digital con trazabilidad ISO 27001',
+            'FIRMA_SISTEMA' => 'Firma y sello electrónico de cierre del sistema OCOBO',
+            'SELLO_SISTEMA' => 'Sello técnico de certificación de entidad (ISO 27001)',
         ];
 
         return $etiquetas[$clave] ?? $clave;
@@ -935,7 +1173,7 @@ class GrupoColaborativoService
                     continue;
                 }
                 $contenido = $zip->getFromName($nombre);
-                if ($contenido !== false && str_contains($contenido, '${NUM_RADICADO}')) {
+                if ($contenido !== false && str_contains($contenido, '${')) {
                     $tienePlaceholders = true;
                     break;
                 }
@@ -945,6 +1183,11 @@ class GrupoColaborativoService
                 $variables = $this->obtenerVariablesPlantilla($grupo, $user);
                 $valores = [];
                 foreach ($variables as $v) {
+                    // PRESERVAR marcadores de firma y sellos intactos en el archivo DOCX
+                    // para que los funcionarios y el sistema puedan estamparlos durante el flujo
+                    if (in_array($v['clave'], ['ESTAMPA_FIRMA_ELECTRONICA', 'FIRMA', 'FIRMAS', 'FIRMA_DIGITAL', 'FIRMA_SISTEMA', 'SELLO_SISTEMA'])) {
+                        continue;
+                    }
                     $valores[$v['clave']] = $v['valor_defecto'];
                 }
                 $zip->close();
@@ -1099,12 +1342,25 @@ class GrupoColaborativoService
                             $bloqueInsercion .= $leyendaXmlDocx;
 
                             // Reemplazar marcadores ${FIRMA}, ${FIRMAS}, ${FIRMA_DIGITAL} o anexar al cuerpo
-                            if (str_contains($docXml, '${FIRMA}')) {
-                                $docXml = str_replace('${FIRMA}', $bloqueInsercion, $docXml);
-                            } elseif (str_contains($docXml, '${FIRMAS}')) {
-                                $docXml = str_replace('${FIRMAS}', $bloqueInsercion, $docXml);
+                            // Si aún quedan otros firmantes asignados en el grupo, preservamos el marcador para el siguiente firmante
+                            $quedanPendientes = $grupo->firmantes()
+                                ->where('user_id', '!=', $user->id)
+                                ->where(function ($q) {
+                                    $q->whereNull('cumplido')->orWhere('cumplido', false);
+                                })->exists();
+
+                            $siguienteFirmas = $quedanPendientes ? '${FIRMAS}' : '';
+                            $siguienteFirma = $quedanPendientes ? '${FIRMA}' : '';
+                            $siguienteDigital = $quedanPendientes ? '${FIRMA_DIGITAL}' : '';
+
+                            if (str_contains($docXml, '${FIRMAS}')) {
+                                $docXml = str_replace('${FIRMAS}', $bloqueInsercion.$siguienteFirmas, $docXml);
+                            } elseif (str_contains($docXml, '${ESTAMPA_FIRMA_ELECTRONICA}')) {
+                                $docXml = str_replace('${ESTAMPA_FIRMA_ELECTRONICA}', $bloqueInsercion.$siguienteFirma, $docXml);
+                            } elseif (str_contains($docXml, '${FIRMA}')) {
+                                $docXml = str_replace('${FIRMA}', $bloqueInsercion.$siguienteFirma, $docXml);
                             } elseif (str_contains($docXml, '${FIRMA_DIGITAL}')) {
-                                $docXml = str_replace('${FIRMA_DIGITAL}', $bloqueInsercion, $docXml);
+                                $docXml = str_replace('${FIRMA_DIGITAL}', $bloqueInsercion.$siguienteDigital, $docXml);
                             } else {
                                 $docXml = str_replace('</w:body>', $bloqueInsercion.'</w:body>', $docXml);
                             }
@@ -1119,10 +1375,18 @@ class GrupoColaborativoService
                     $contenido = file_get_contents($diskPath);
                     if ($contenido !== false) {
                         $bloqueTexto = "\n\n".$leyendaIso;
-                        if (str_contains($contenido, '${FIRMA}')) {
-                            $contenido = str_replace('${FIRMA}', $bloqueTexto, $contenido);
-                        } elseif (str_contains($contenido, '${FIRMAS}')) {
-                            $contenido = str_replace('${FIRMAS}', $bloqueTexto, $contenido);
+                        $quedanPendientes = $grupo->firmantes()
+                            ->where('user_id', '!=', $user->id)
+                            ->where(function ($q) {
+                                $q->whereNull('cumplido')->orWhere('cumplido', false);
+                            })->exists();
+
+                        if (str_contains($contenido, '${FIRMAS}')) {
+                            $contenido = str_replace('${FIRMAS}', $bloqueTexto.($quedanPendientes ? '${FIRMAS}' : ''), $contenido);
+                        } elseif (str_contains($contenido, '${ESTAMPA_FIRMA_ELECTRONICA}')) {
+                            $contenido = str_replace('${ESTAMPA_FIRMA_ELECTRONICA}', $bloqueTexto.($quedanPendientes ? '${ESTAMPA_FIRMA_ELECTRONICA}' : ''), $contenido);
+                        } elseif (str_contains($contenido, '${FIRMA}')) {
+                            $contenido = str_replace('${FIRMA}', $bloqueTexto.($quedanPendientes ? '${FIRMA}' : ''), $contenido);
                         } else {
                             $contenido .= $bloqueTexto;
                         }
@@ -1149,6 +1413,121 @@ class GrupoColaborativoService
                 'ip_address' => request()->ip() ?? '127.0.0.1',
                 'user_agent' => request()->userAgent() ?? 'Sistema Ocobo - Mi Bandeja Grupos',
                 'fecha_firma' => $fechaFirma,
+            ]);
+
+            return $hayArchivo ? $ultimaVersion->fresh() : null;
+        });
+    }
+
+    /**
+     * Estampa el sello y certificación electrónica del sistema (OCOBO SGDEA)
+     * una vez completadas las firmas de los funcionarios (ISO 27001 / Ley 527 de 1999).
+     */
+    public function estamparFirmaSistema(MiBandejaTemp $grupo): ?MiBandejaTempArchivoVersion
+    {
+        return DB::transaction(function () use ($grupo) {
+            // Evitar duplicar el sello del sistema si ya fue estampado
+            $yaSellado = FirmaEvento::where('documentable_id', $grupo->id)
+                ->where('documentable_type', get_class($grupo))
+                ->where('otp_utilizado', 'SISTEMA_SGDEA')
+                ->exists();
+
+            if ($yaSellado) {
+                return $grupo->ultimaVersion;
+            }
+
+            $ultimaVersion = $grupo->ultimaVersion;
+            $diskPath = $ultimaVersion ? Storage::disk(self::DISCO)->path($ultimaVersion->ruta_completa) : null;
+            $hayArchivo = $diskPath && file_exists($diskPath);
+
+            $fechaSello = now();
+            $fechaFormateada = $fechaSello->format('Y-m-d H:i:s');
+            $ip = request()->ip() ?? '127.0.0.1';
+
+            $hashOriginal = $hayArchivo ? hash_file('sha256', $diskPath) : hash('sha256', "sistema_{$grupo->id}_{$fechaFormateada}");
+            $hashFirmado = $hashOriginal;
+
+            $leyendaIsoSistema = sprintf(
+                "CERTIFICACIÓN Y SELLO ELECTRÓNICO DEL SISTEMA (ISO 27001 / Ley 527 de 1999)\nEmisor: Sistema OCOBO SGDEA - Sello Electrónico de Entidad\nFecha y Hora de Emisión: %s | IP: %s\nConstancia: El presente documento ha sido suscrito digitalmente por la totalidad de los funcionarios firmantes asignados.\nHash SHA-256 de Cierre: %s",
+                $fechaFormateada,
+                $ip,
+                $hashOriginal
+            );
+
+            $leyendaXmlDocxSistema = '<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                .'<w:pPr>'
+                .'<w:pBdr>'
+                .'<w:top w:val="single" w:sz="12" w:space="6" w:color="2B579A"/>'
+                .'<w:bottom w:val="single" w:sz="12" w:space="6" w:color="2B579A"/>'
+                .'<w:left w:val="single" w:sz="12" w:space="6" w:color="2B579A"/>'
+                .'<w:right w:val="single" w:sz="12" w:space="6" w:color="2B579A"/>'
+                .'</w:pBdr>'
+                .'<w:shd w:val="clear" w:color="auto" w:fill="F4F6F9"/>'
+                .'<w:jc w:val="left"/>'
+                .'<w:spacing w:before="180" w:after="180"/>'
+                .'</w:pPr>'
+                .'<w:r><w:rPr><w:b/><w:sz w:val="16"/><w:color w:val="2B579A"/></w:rPr><w:t>CERTIFICACIÓN Y SELLO ELECTRÓNICO DEL SISTEMA (ISO 27001 / Ley 527 de 1999)</w:t></w:r>'
+                .'<w:r><w:br/><w:rPr><w:sz w:val="15"/><w:color w:val="333333"/></w:rPr><w:t>Emisor: Sistema OCOBO SGDEA | Sello Electrónico de Entidad</w:t></w:r>'
+                .'<w:r><w:br/><w:rPr><w:sz w:val="15"/><w:color w:val="333333"/></w:rPr><w:t>Fecha y Hora de Emisión: '.$fechaFormateada.' | IP del Servidor: '.$ip.'</w:t></w:r>'
+                .'<w:r><w:br/><w:rPr><w:sz w:val="14"/><w:color w:val="555555"/><w:i/></w:rPr><w:t>Constancia: El presente documento ha sido suscrito digitalmente por la totalidad de los funcionarios firmantes asignados.</w:t></w:r>'
+                .'<w:r><w:br/><w:rPr><w:sz w:val="14"/><w:color w:val="777777"/><w:i/></w:rPr><w:t>Hash SHA-256 de Cierre: '.$hashOriginal.'</w:t></w:r>'
+                .'</w:p>';
+
+            if ($hayArchivo) {
+                $handle = fopen($diskPath, 'rb');
+                $magicBytes = fread($handle, 4);
+                fclose($handle);
+                $esZip = $magicBytes === "PK\x03\x04" || $magicBytes === "PK\x05\x06" || $magicBytes === "PK\x07\x08";
+
+                if ($esZip) {
+                    $zip = new \ZipArchive;
+                    if ($zip->open($diskPath) === true) {
+                        $docXml = $zip->getFromName('word/document.xml');
+                        if ($docXml !== false) {
+                            if (str_contains($docXml, '${SELLO_SISTEMA}')) {
+                                $docXml = str_replace('${SELLO_SISTEMA}', $leyendaXmlDocxSistema, $docXml);
+                            } elseif (str_contains($docXml, '${FIRMA_SISTEMA}')) {
+                                $docXml = str_replace('${FIRMA_SISTEMA}', $leyendaXmlDocxSistema, $docXml);
+                            } else {
+                                $docXml = str_replace('</w:body>', $leyendaXmlDocxSistema.'</w:body>', $docXml);
+                            }
+                            $zip->addFromString('word/document.xml', $docXml);
+                        }
+                        $zip->close();
+                    }
+                } else {
+                    $contenido = file_get_contents($diskPath);
+                    if ($contenido !== false) {
+                        $bloqueTexto = "\n\n".$leyendaIsoSistema;
+                        if (str_contains($contenido, '${SELLO_SISTEMA}')) {
+                            $contenido = str_replace('${SELLO_SISTEMA}', $bloqueTexto, $contenido);
+                        } elseif (str_contains($contenido, '${FIRMA_SISTEMA}')) {
+                            $contenido = str_replace('${FIRMA_SISTEMA}', $bloqueTexto, $contenido);
+                        } else {
+                            $contenido .= $bloqueTexto;
+                        }
+                        file_put_contents($diskPath, $contenido, LOCK_EX);
+                    }
+                }
+
+                $hashFirmado = hash_file('sha256', $diskPath);
+                $ultimaVersion->updateQuietly([
+                    'hash_seguridad' => $hashFirmado,
+                    'peso' => round(filesize($diskPath) / 1024, 2),
+                ]);
+            }
+
+            // Registrar trazabilidad inmutable de la firma del sistema en firmas_eventos
+            FirmaEvento::create([
+                'documentable_id' => $grupo->id,
+                'documentable_type' => get_class($grupo),
+                'user_id' => auth()->id() ?? $grupo->usua_crea_id,
+                'hash_original' => $hashOriginal,
+                'hash_firmado' => $hashFirmado,
+                'otp_utilizado' => 'SISTEMA_SGDEA',
+                'ip_address' => $ip,
+                'user_agent' => 'Sistema OCOBO SGDEA - Sello de Entidad',
+                'fecha_firma' => $fechaSello,
             ]);
 
             return $hayArchivo ? $ultimaVersion->fresh() : null;

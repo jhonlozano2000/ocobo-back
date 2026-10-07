@@ -141,60 +141,15 @@ class PlantillaDocumentoService
 
     public function reemplazarVariables(string $contenido, array $variables): string
     {
-        $placeholders = [
-            '${NUM_RADICADO}',
-            '${FECHA_RADICADO}',
-            '${ASUNTO}',
-            '${MEDIO_RESPUESTA}',
-            '${DIAS_RESPUESTA}',
-            '${TERCERO}',
-            '${TERCERO_TIPO_DOC}',
-            '${TERCERO_NUM_DOC}',
-            '${TERCERO_TIPO_PERSONA}',
-            '${TERCERO_DIRECCION}',
-            '${TERCERO_TELEFONO}',
-            '${TERCERO_EMAIL}',
-            '${TERCERO_MUNICIPIO}',
-            '${TERCERO_DEPARTAMENTO}',
-            '${NOMBRE_ENTIDAD}',
-            '${NIT_ENTIDAD}',
-            '${NOMBRE_DEPENDENCIA}',
-            '${SIGLA_DEPENDENCIA}',
-            '${CIUDAD}',
-            '${CLASIFICA_DOCUMENTAL}',
-            '${SERIE}',
-            '${SUB_SERIE}',
-            '${TIPO_DOCUMENTAL}',
-            '${CODIGO_SERIE}',
-            '${CODIGO_SUB_SERIE}',
-            '${RESPONSABLES}',
-            '${FIRMANTES}',
-            '${PROYECTORES}',
-            '${DESTINATARIOS}',
-            '${FUNCIONARIO_ACTUAL}',
-            '${CARGO_ACTUAL}',
-            '${FECHA_DOCUMENTO}',
-            '${FECHA_ACTUAL}',
-            '${CIUDAD_FECHA}',
-            '${NUMERO_FOLIOS}',
-            '${ANEXOS}',
-            '${NUM_RADICADO_RESPUESTA}',
-            '${FECHA_RADICADO_RESPUESTA}',
-            '${ASUNTO_RESPUESTA}',
-            '${NUM_RADICADO_ORIGEN}',
-            '${FECHA_RADICADO_ORIGEN}',
-            '${ASUNTO_ORIGEN}',
-            '${NOTIFICACION_DIRECCION}',
-            '${NOTIFICACION_CIUDAD}',
-            '${NOTIFICACION_FECHA}',
-            '${NOTIFICACION_MEDIO}',
-            '${FIRMA}',
-            '${FIRMAS}',
-            '${FIRMA_DIGITAL}',
-        ];
+        $search = [];
+        $replace = [];
 
-        $reemplazos = array_map(fn ($key) => $variables[str_replace(['${', '}'], '', $key)] ?? '', $placeholders);
+        foreach ($variables as $key => $val) {
+            $limpia = str_replace(['${', '}'], '', (string) $key);
+            $search[] = '${'.$limpia.'}';
+            $replace[] = (string) ($val ?? '');
+        }
 
-        return str_replace($placeholders, $reemplazos, $contenido);
+        return str_replace($search, $replace, $contenido);
     }
 }
