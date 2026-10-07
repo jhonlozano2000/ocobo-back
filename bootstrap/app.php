@@ -71,8 +71,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->group('api', [
             EnsureFrontendRequestsAreStateful::class,
-            StartSession::class,
-            AddQueuedCookiesToResponse::class,
             SecurityHeadersMiddleware::class,
             AuditLogMiddleware::class,
             ValidateContentType::class,
