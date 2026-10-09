@@ -26,6 +26,9 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('grupos-colaborativo
     // Grupo principal
     Route::get('/', [MiBandejaTempController::class, 'index'])->name('index')->middleware('can:'.$permMiBandeja.'Ver');
     Route::post('/', [MiBandejaTempController::class, 'store'])->name('store')->middleware('can:'.$permMiBandeja.'Crear');
+    Route::get('/buscar-radicados', [MiBandejaTempController::class, 'buscarRadicados'])
+        ->name('buscar-radicados')
+        ->middleware('can:'.$permMiBandeja.'Ver');
     Route::get('/{id}', [MiBandejaTempController::class, 'show'])->name('show')->middleware('can:'.$permMiBandeja.'Ver');
     Route::put('/{id}', [MiBandejaTempController::class, 'update'])->name('update')->middleware('can:'.$permMiBandeja.'Editar');
     Route::delete('/{id}', [MiBandejaTempController::class, 'destroy'])->name('destroy')->middleware('can:'.$permMiBandeja.'Eliminar');

@@ -9,6 +9,9 @@ use App\Http\Requests\MiBandeja\StoreMiBandejaTempRequest;
 use App\Http\Requests\MiBandeja\UpdateMiBandejaTempRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\MiBandejaTemp;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Rules\MagicMime;
 use App\Services\MiBandeja\GrupoColaborativoService;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
@@ -35,7 +38,7 @@ class MiBandejaTempController extends Controller
     public function __construct(
         private readonly GrupoColaborativoService $grupoService,
     ) {
-        $this->middleware('can:'.self::PERM.'Ver')->only(['index', 'show']);
+        $this->middleware('can:'.self::PERM.'Ver')->only(['index', 'show', 'buscarRadicados']);
         $this->middleware('can:'.self::PERM.'Crear')->only(['store']);
         $this->middleware('can:'.self::PERM.'Editar')->only(['update']);
         $this->middleware('can:'.self::PERM.'Eliminar')->only(['destroy']);
@@ -105,6 +108,120 @@ class MiBandejaTempController extends Controller
             }
 
             return $this->errorResponse('Error al obtener grupos', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Busca radicados (recibidos, internos, enviados) elegibles para vincular a un grupo colaborativo.
+     *
+     * @param  Request  $request  Solicitud HTTP con parámetros 'q', 'tipo' y 'limit'
+     * @return JsonResponse Lista de radicados encontrados
+     */
+    public function buscarRadicados(Request $request): JsonResponse
+    {
+        try {
+            $q = trim((string) $request->get('q', ''));
+            $tipo = $request->get('tipo', 'todos');
+            $limit = min((int) $request->get('limit', 15), 50);
+
+            $resultados = collect();
+
+            // 1. Recibidos
+            if ($tipo === 'todos' || $tipo === 'recibido') {
+                $queryReci = VentanillaRadicaReci::with('tercero')
+                    ->select('id', 'num_radicado', 'asunto', 'tercero_id', 'created_at', 'num_folios')
+                    ->orderBy('created_at', 'desc');
+
+                if ($q !== '') {
+                    $queryReci->where(function ($query) use ($q) {
+                        $query->where('num_radicado', 'like', "%{$q}%")
+                            ->orWhere('asunto', 'like', "%{$q}%")
+                            ->orWhereHas('tercero', function ($qt) use ($q) {
+                                $qt->where('nom_razo_soci', 'like', "%{$q}%")
+                                    ->orWhere('num_docu_nit', 'like', "%{$q}%");
+                            });
+                    });
+                }
+
+                $recibidos = $queryReci->take($limit)->get()->map(function ($r) {
+                    return [
+                        'id' => $r->id,
+                        'radicado_tipo' => 'recibido',
+                        'num_radicado' => $r->num_radicado,
+                        'asunto' => $r->asunto,
+                        'fecha' => $r->created_at?->format('Y-m-d'),
+                        'tercero' => $r->tercero?->nom_razo_soci,
+                        'tercero_nit' => $r->tercero?->num_docu_nit,
+                        'num_folios' => $r->num_folios,
+                    ];
+                });
+                $resultados = $resultados->merge($recibidos);
+            }
+
+            // 2. Internos
+            if ($tipo === 'todos' || $tipo === 'interno') {
+                $queryInt = VentanillaRadicaInterno::with('dependenciaOrigen')
+                    ->select('id', 'num_radicado', 'asunto', 'dependencia_origen_id', 'created_at', 'num_folios')
+                    ->orderBy('created_at', 'desc');
+
+                if ($q !== '') {
+                    $queryInt->where(function ($query) use ($q) {
+                        $query->where('num_radicado', 'like', "%{$q}%")
+                            ->orWhere('asunto', 'like', "%{$q}%");
+                    });
+                }
+
+                $internos = $queryInt->take($limit)->get()->map(function ($r) {
+                    return [
+                        'id' => $r->id,
+                        'radicado_tipo' => 'interno',
+                        'num_radicado' => $r->num_radicado,
+                        'asunto' => $r->asunto,
+                        'fecha' => $r->created_at?->format('Y-m-d'),
+                        'dependencia' => $r->dependenciaOrigen?->nom_organico,
+                        'tercero' => null,
+                        'tercero_nit' => null,
+                        'num_folios' => $r->num_folios,
+                    ];
+                });
+                $resultados = $resultados->merge($internos);
+            }
+
+            // 3. Enviados
+            if ($tipo === 'todos' || $tipo === 'enviado') {
+                $queryEnv = VentanillaRadicaEnviados::with('tercero')
+                    ->select('id', 'num_radicado', 'asunto', 'tercero_id', 'created_at', 'num_folios')
+                    ->orderBy('created_at', 'desc');
+
+                if ($q !== '') {
+                    $queryEnv->where(function ($query) use ($q) {
+                        $query->where('num_radicado', 'like', "%{$q}%")
+                            ->orWhere('asunto', 'like', "%{$q}%")
+                            ->orWhereHas('tercero', function ($qt) use ($q) {
+                                $qt->where('nom_razo_soci', 'like', "%{$q}%")
+                                    ->orWhere('num_docu_nit', 'like', "%{$q}%");
+                            });
+                    });
+                }
+
+                $enviados = $queryEnv->take($limit)->get()->map(function ($r) {
+                    return [
+                        'id' => $r->id,
+                        'radicado_tipo' => 'enviado',
+                        'num_radicado' => $r->num_radicado,
+                        'asunto' => $r->asunto,
+                        'fecha' => $r->created_at?->format('Y-m-d'),
+                        'tercero' => $r->tercero?->nom_razo_soci,
+                        'tercero_nit' => $r->tercero?->num_docu_nit,
+                        'num_folios' => $r->num_folios,
+                    ];
+                });
+                $resultados = $resultados->merge($enviados);
+            }
+
+            return $this->successResponse($resultados->values()->all(), 'Radicados encontrados');
+        } catch (\Exception $e) {
+            return $this->serverErrorResponse('Error al buscar radicados', $e->getMessage());
         }
     }
 
@@ -202,14 +319,18 @@ class MiBandejaTempController extends Controller
         try {
             $datos = $request->validated();
 
-            // Si se solicita cambiar la plantilla asignada al grupo
-            if (array_key_exists('plantilla_id', $datos) && (int) ($datos['plantilla_id'] ?? 0) !== (int) ($grupo->plantilla_id ?? 0)) {
-                // Si algún firmante ya estampó firma electrónica, se prohíbe cambiar la plantilla
+            // Si se solicita cambiar la plantilla asignada o el radicado vinculado
+            $cambioPlantilla = array_key_exists('plantilla_id', $datos) && (int) ($datos['plantilla_id'] ?? 0) !== (int) ($grupo->plantilla_id ?? 0);
+            $cambioRadicado = (array_key_exists('radicado_id', $datos) && (int) ($datos['radicado_id'] ?? 0) !== (int) ($grupo->radicado_id ?? 0))
+                || (array_key_exists('radicado_tipo', $datos) && ($datos['radicado_tipo'] ?? '') !== ($grupo->radicado_tipo ?? ''));
+
+            if ($cambioPlantilla || $cambioRadicado) {
+                // Si algún firmante ya estampó firma electrónica, se prohíbe cambiar la plantilla o radicado
                 if ($grupo->firmantes()->whereNotNull('fechor_firmado')->exists()) {
-                    return $this->warningResponse('No se puede cambiar la plantilla porque el documento ya tiene firmas electrónicas suscritas.');
+                    return $this->warningResponse('No se puede cambiar la plantilla o radicado porque el documento ya tiene firmas electrónicas suscritas.');
                 }
 
-                // Si ya existían versiones previas generadas de la plantilla anterior, eliminarlas para inicializar la nueva plantilla limpia
+                // Si ya existían versiones previas, eliminarlas para regenerar con la nueva plantilla/radicado
                 $versiones = $grupo->versiones;
                 if ($versiones->isNotEmpty()) {
                     foreach ($versiones as $ver) {
