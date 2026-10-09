@@ -4,7 +4,7 @@ namespace App\Services\ControlAcceso;
 
 use App\Helpers\ArchivoHelper;
 use App\Models\User;
-use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 
@@ -52,18 +52,22 @@ class UserService
      */
     public function create(array $data): User
     {
-        if (! empty($data['avatar'])) {
-            $data['avatar'] = ArchivoHelper::guardarArchivo(
-                new Request(['avatar' => $data['avatar']]),
-                'avatar', 'avatars', null
-            );
+        if (isset($data['avatar']) && $data['avatar'] instanceof UploadedFile) {
+            $upload = ArchivoHelper::guardarUploadedConHash($data['avatar'], 'avatars');
+            $data['avatar'] = $upload ? $upload['nombre_almacenado'] : null;
+        } elseif (array_key_exists('avatar', $data) && ! ($data['avatar'] instanceof UploadedFile)) {
+            if (empty($data['avatar'])) {
+                unset($data['avatar']);
+            }
         }
 
-        if (! empty($data['firma'])) {
-            $data['firma'] = ArchivoHelper::guardarArchivo(
-                new Request(['firma' => $data['firma']]),
-                'firma', 'firmas', null
-            );
+        if (isset($data['firma']) && $data['firma'] instanceof UploadedFile) {
+            $upload = ArchivoHelper::guardarUploadedConHash($data['firma'], 'firmas');
+            $data['firma'] = $upload ? $upload['nombre_almacenado'] : null;
+        } elseif (array_key_exists('firma', $data) && ! ($data['firma'] instanceof UploadedFile)) {
+            if (empty($data['firma'])) {
+                unset($data['firma']);
+            }
         }
 
         if (! empty($data['password'])) {
@@ -93,6 +97,26 @@ class UserService
     public function update(string $id, array $data): ?User
     {
         $user = User::findOrFail($id);
+
+        if (isset($data['avatar']) && $data['avatar'] instanceof UploadedFile) {
+            ArchivoHelper::eliminarArchivo($user->avatar, 'avatars');
+            $upload = ArchivoHelper::guardarUploadedConHash($data['avatar'], 'avatars');
+            $data['avatar'] = $upload ? $upload['nombre_almacenado'] : null;
+        } elseif (array_key_exists('avatar', $data) && ! ($data['avatar'] instanceof UploadedFile)) {
+            if (empty($data['avatar'])) {
+                unset($data['avatar']);
+            }
+        }
+
+        if (isset($data['firma']) && $data['firma'] instanceof UploadedFile) {
+            ArchivoHelper::eliminarArchivo($user->firma, 'firmas');
+            $upload = ArchivoHelper::guardarUploadedConHash($data['firma'], 'firmas');
+            $data['firma'] = $upload ? $upload['nombre_almacenado'] : null;
+        } elseif (array_key_exists('firma', $data) && ! ($data['firma'] instanceof UploadedFile)) {
+            if (empty($data['firma'])) {
+                unset($data['firma']);
+            }
+        }
 
         if (! empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);

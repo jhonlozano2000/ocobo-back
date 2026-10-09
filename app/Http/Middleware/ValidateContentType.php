@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\FileBag;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -195,6 +196,14 @@ class ValidateContentType
      */
     private function hasFileUpload(Request $request): bool
     {
+        if (count($request->allFiles()) > 0) {
+            return true;
+        }
+
+        if ($request->files instanceof FileBag && $request->files->count() > 0) {
+            return true;
+        }
+
         return $request->hasFile('file') ||
                $request->hasFile('files') ||
                $request->hasFile('archivo') ||
@@ -202,6 +211,7 @@ class ValidateContentType
                $request->hasFile('documento') ||
                $request->hasFile('anexos') ||
                $request->hasFile('archivos') ||
-               (is_array($request->files) && count($request->files) > 0);
+               $request->hasFile('avatar') ||
+               $request->hasFile('firma');
     }
 }
