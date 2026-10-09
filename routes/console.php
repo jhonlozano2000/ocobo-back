@@ -20,7 +20,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('pqrs:marcar-vencidas')->dailyAt('00:05');
-Schedule::command('email:sync-radicados')->everyFiveMinutes()->withoutOverlapping();
+// La radicación por email es manual (EmailRadicadosController); no hay sincronización programada.
 
 // M16: Alertas de vencimiento (Ley 1437/2011)
 // Notifica a responsables 1 y 3 días antes del vencimiento de radicados/PQRS

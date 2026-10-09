@@ -64,16 +64,10 @@ class AppServiceProvider extends ServiceProvider
         // RATE LIMITING - OWASP A07:2021, ISO 27001 A.12.4.2
         // =========================================================================
 
-        // Rate limit general API: 60 req/min por IP o usuario
+        // Rate limit general API: 120 req/min por usuario o IP.
+        // Sin ->response(): el 429 lo renderiza bootstrap/app.php con el envoltorio estándar.
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)
-                ->by($request->user()?->id ?: $request->ip())
-                ->response(function (Request $request, array $headers) {
-                    return response()->json([
-                        'message' => 'Demasiadas solicitudes. Por favor espere.',
-                        'retry_after' => $headers['Retry-After'] ?? 60,
-                    ], 429);
-                });
+            return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
         });
 
         // Rate limit autenticación: doble capa contra fuerza bruta y password spraying (ISO 27001 / OWASP)
@@ -174,14 +168,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Rate limit operaciones de configuración: 30 req/min por usuario
         RateLimiter::for('config-operations', function (Request $request) {
-            return Limit::perMinute(30)
-                ->by($request->user()?->id ?: $request->ip())
-                ->response(function (Request $request, array $headers) {
-                    return response()->json([
-                        'message' => 'Límite de operaciones de configuración alcanzado.',
-                        'retry_after' => $headers['Retry-After'] ?? 60,
-                    ], 429);
-                });
+            return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
         });
 
         // Rate limit documentos colaborativos: 120 req/min por usuario (sincronización frecuente)
