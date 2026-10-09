@@ -704,7 +704,7 @@ class GrupoColaborativoService
     {
         $plantilla = $grupo->plantilla;
         $radicado = $grupo->radicado;
-        $tercero = $radicado?->tercero;
+        $tercero = ($radicado && method_exists($radicado, 'tercero')) ? $radicado->tercero : null;
         $clasif = $radicado?->clasificacionDocumental;
 
         // Jerarquía de Clasificación Documental (TRD)
@@ -794,7 +794,13 @@ class GrupoColaborativoService
         $destinatariosNombres = '';
         if ($radicado && method_exists($radicado, 'destinatarios') && $radicado->destinatarios()->exists()) {
             $destinatariosNombres = $radicado->destinatarios->map(function ($d) {
-                return $d->destinatario_nombre ?? ($d->user ? trim($d->user->nombres.' '.$d->user->apellidos) : '');
+                $nombre = $d->destinatario_nombre ?? '';
+                if (! $nombre) {
+                    $u = $d->user ?? $d->userCargo?->user;
+                    $nombre = $u ? trim($u->nombres.' '.$u->apellidos) : '';
+                }
+
+                return $nombre;
             })->filter()->implode(', ');
         }
         if (! $destinatariosNombres && $tercero) {
