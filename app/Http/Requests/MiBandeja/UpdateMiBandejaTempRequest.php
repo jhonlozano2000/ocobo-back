@@ -28,10 +28,21 @@ class UpdateMiBandejaTempRequest extends FormRequest
      */
     public function rules(): array
     {
+        $radicadoId = $this->input('radicado_id');
+        $tablaRadicado = match ($this->input('radicado_tipo')) {
+            'enviado' => 'ventanilla_radica_enviados',
+            'interno' => 'ventanilla_radica_internos',
+            default => 'ventanilla_radica_reci',
+        };
+
         return [
             'nombre' => 'nullable|string|max:255',
             'descripcion' => 'nullable|string',
-            'radicado_id' => 'nullable|integer|exists:ventanilla_radica_reci,id',
+            'radicado_id' => [
+                'nullable',
+                'integer',
+                $radicadoId ? "exists:{$tablaRadicado},id" : 'nullable',
+            ],
             'radicado_tipo' => ['nullable', Rule::in(['recibido', 'enviado', 'interno'])],
             'estado' => ['nullable', Rule::in(['borrador', 'activo', 'finalizado', 'archivado'])],
             'estado_grupo' => ['nullable', Rule::in(['activo', 'inactivo', 'anulado'])],

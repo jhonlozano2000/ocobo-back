@@ -16,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -60,6 +61,7 @@ class MiBandejaTempController extends Controller
                 'proyectores.user.cargo',
                 'aprobadores.user.cargo',
                 'adjuntos',
+                'plantilla',
             ])
             // Visibilidad: creador O cualquier miembro. Agrupado para que los
             // orWhere no rompan los filtros de búsqueda/estado.
@@ -170,6 +172,7 @@ class MiBandejaTempController extends Controller
                 'aprobadores.user.cargo',
                 'adjuntos',
                 'creadoPor',
+                'plantilla',
             ]);
 
             return $this->successResponse($grupo, 'Detalle del grupo');
@@ -181,7 +184,7 @@ class MiBandejaTempController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener grupo', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener grupo', $e->getMessage());
         }
     }
 
@@ -197,10 +200,38 @@ class MiBandejaTempController extends Controller
         $grupo = $this->autorizarGrupo($id);
 
         try {
-            $grupo->update($request->validated());
+            $datos = $request->validated();
+
+            // Si se solicita cambiar la plantilla asignada al grupo
+            if (array_key_exists('plantilla_id', $datos) && (int) ($datos['plantilla_id'] ?? 0) !== (int) ($grupo->plantilla_id ?? 0)) {
+                // Si algún firmante ya estampó firma electrónica, se prohíbe cambiar la plantilla
+                if ($grupo->firmantes()->whereNotNull('fechor_firmado')->exists()) {
+                    return $this->warningResponse('No se puede cambiar la plantilla porque el documento ya tiene firmas electrónicas suscritas.');
+                }
+
+                // Si ya existían versiones previas generadas de la plantilla anterior, eliminarlas para inicializar la nueva plantilla limpia
+                $versiones = $grupo->versiones;
+                if ($versiones->isNotEmpty()) {
+                    foreach ($versiones as $ver) {
+                        if ($ver->ruta_completa && Storage::disk('plantillas_grupos')->exists($ver->ruta_completa)) {
+                            Storage::disk('plantillas_grupos')->delete($ver->ruta_completa);
+                        }
+                        $ver->delete();
+                    }
+                    $datos['plantilla_cargada'] = false;
+                }
+
+                // Restablecer el estado de descarga de plantilla para los miembros con tarea pendiente
+                $grupo->revisores()->where('estado_tarea', '!=', 'cumplido')->update(['descargo_plantilla' => false, 'subio_plantilla' => false]);
+                $grupo->proyectores()->where('estado_tarea', '!=', 'cumplido')->update(['descargo_plantilla' => false, 'subio_plantilla' => false]);
+                $grupo->aprobadores()->where('estado_tarea', '!=', 'cumplido')->update(['descargo_plantilla' => false, 'subio_plantilla' => false]);
+                $grupo->firmantes()->where('estado_tarea', '!=', 'cumplido')->update(['descargo_plantilla' => false, 'subio_plantilla' => false]);
+            }
+
+            $grupo->update($datos);
 
             return $this->successResponse(
-                $grupo->load(['revisores.user.cargo', 'firmantes.user.cargo', 'proyectores.user.cargo', 'aprobadores.user.cargo', 'adjuntos']),
+                $grupo->load(['revisores.user.cargo', 'firmantes.user.cargo', 'proyectores.user.cargo', 'aprobadores.user.cargo', 'adjuntos', 'plantilla']),
                 'Grupo actualizado exitosamente'
             );
         } catch (\Exception $e) {
@@ -211,7 +242,7 @@ class MiBandejaTempController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar grupo', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar grupo', $e->getMessage());
         }
     }
 

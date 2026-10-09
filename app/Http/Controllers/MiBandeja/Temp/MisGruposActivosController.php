@@ -38,6 +38,7 @@ class MisGruposActivosController extends Controller
                 'radicadoRecibido.tercero',
                 'radicadoEnviado.tercero',
                 'radicadoInterno',
+                'plantilla:id,nombre_original',
             ])
                 ->where('estado_grupo', 'activo')
                 ->where(function ($q) use ($user) {
