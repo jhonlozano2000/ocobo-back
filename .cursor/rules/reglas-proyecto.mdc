@@ -58,7 +58,7 @@ class UserController extends Controller
             return $this->successResponse($user, 'Usuario creado exitosamente', 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            return $this->errorResponse('Error al crear el usuario', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear el usuario', $e->getMessage());
         }
     }
 }
@@ -68,7 +68,7 @@ class UserController extends Controller
 
 TODAS las respuestas JSON deben usar ApiResponseTrait:
 - Éxito: `return $this->successResponse($data, 'Mensaje', 201);`
-- Error: `return $this->errorResponse('Mensaje', $error, 500);`
+- Error: `return $this->serverErrorResponse('Mensaje', $error);` (regla de negocio que bloquea: `warningResponse`, 422)
 
 Formato de respuesta:
 ```json
@@ -299,7 +299,7 @@ Organización:
 - `routes/configuracion.php` - Configuración
 - `routes/calidad.php` - Calidad
 - `routes/clasifica_documental.php` - Clasificación documental
-- `routes/ventanilla.php` - Ventanilla única
+- `routes/ventanilla-{recibida,enviada,interno,pqrs,email-radicados}.php` - Ventanilla única
 - `routes/gestion.php` - Gestión
 
 Prefijos configurados en RouteServiceProvider:
@@ -383,7 +383,7 @@ php artisan test                    # Ejecutar tests
 
 ## Referencias
 
-- Laravel 10.x Documentation
+- Laravel 12.x Documentation
 - PSR-12 Coding Standard
 - Spatie Laravel-Permission
 - Laravel Sanctum

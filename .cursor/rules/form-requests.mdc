@@ -12,12 +12,13 @@ alwaysApply: false
 - **Reglas**:
   - Preferir `rules(): array` y reglas en **array** cuando se use `Rule::unique(...)`, closures o lógica condicional.
   - Mensajes/atributos en **español** (estándar del repo).
-- **Respuesta 422 uniforme**: implementar `failedValidation()` devolviendo:
+- **Respuesta 422 uniforme**: no hace falta `failedValidation()`; `bootstrap/app.php` ya renderiza la `ValidationException`. Si se sobrescribe (como en `SanitizedFormRequest`), `message` debe ser el primer error concreto:
 
 ```php
 response()->json([
     'status'  => false,
-    'message' => 'Errores de validación.',
+    'success' => false,
+    'message' => $validator->errors()->first(),
     'errors'  => $validator->errors(),
 ], 422);
 ```

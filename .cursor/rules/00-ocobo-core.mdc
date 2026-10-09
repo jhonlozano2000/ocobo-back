@@ -5,7 +5,7 @@ alwaysApply: true
 
 # OCOBO-BACK (núcleo)
 
-- **Stack**: Laravel 10 + Sanctum + Spatie Permission.
+- **Stack**: Laravel 12 + Sanctum (SPA, cookies) + Spatie Permission.
 - **API responses**: usar `ApiResponseTrait` (`status`, `message`, `data|error`).
 - **Rutas**: por módulo en `routes/*.php`, registradas en `RouteServiceProvider` con prefijo `api/<modulo>`.
 - **Regla crítica de rutas**: rutas específicas **antes** de `Route::apiResource(...)`.

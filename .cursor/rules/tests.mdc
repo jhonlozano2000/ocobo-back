@@ -16,7 +16,7 @@ alwaysApply: false
 - Nombrar métodos `test_...` (estilo actual del repo).
 - En Feature tests, preferir:
   - `actingAs()` / `Laravel\Sanctum\Sanctum::actingAs($user)` cuando el endpoint requiera `auth:sanctum`.
-  - `RefreshDatabase` si el test toca BD (habilitar DB de testing antes).
+  - `DatabaseTransactions` si el test toca BD (BD `ocobo_back_testing` migrada y con seeds). Nunca `RefreshDatabase`: borra la BD de testing.
 
 ## Aserciones API (proyecto)
 

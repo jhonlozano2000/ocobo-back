@@ -14,7 +14,7 @@ En `RouteServiceProvider` se cargan archivos por módulo, con estos prefijos:
 - `routes/configuracion.php` → `/api/config`
 - `routes/clasifica_documental.php` → `/api/clasifica-documental`
 - `routes/gestion.php` → `/api/gestion`
-- `routes/ventanilla.php` → `/api/ventanilla`
+- `routes/ventanilla-{recibida,enviada,interno,pqrs,email-radicados}.php` → `/api/ventanilla`
 
 Regla: si creas `routes/<nuevo>.php`, regístralo aquí con `Route::middleware('api')->prefix('api/<nuevo>')->group(...)`.
 

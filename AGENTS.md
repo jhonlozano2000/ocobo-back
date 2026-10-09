@@ -142,7 +142,7 @@ Cada código de estado HTTP se mapea de forma semántica con el tipo de Toast mo
 
 ## Archivos de Configuración Clave
 - `.env` — `APP_URL=http://ocobo.test`, `SANCTUM_STATEFUL_DOMAINS=ocobo.test:3000`, `SESSION_DRIVER=cookie`
-- `routes/ventanilla-recibida.php` — rate limits: `api` (60/min), `radicacion` (30/min), `uploads` (10/min), `search` (30/min)
+- `routes/ventanilla-recibida.php` — rate limits: `api` (120/min), `radicacion` (30/min), `uploads` (10/min), `search` (30/min)
 - `.cursor/rules/` — ~20 reglas MDC detalladas (estructura módulo, naming, tests, migraciones, rutas, archivos, modelos)
 
 ## Mi Bandeja — Documentos Colaborativos (TempDocumentosRecibidos)

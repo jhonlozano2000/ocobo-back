@@ -98,7 +98,7 @@ try {
     return $this->successResponse($data, 'Operación exitosa');
 } catch (\Exception $e) {
     DB::rollBack();
-    return $this->errorResponse('Error', $e->getMessage(), 500);
+    return $this->serverErrorResponse('Error', $e->getMessage());
 }
 ```
 
@@ -178,7 +178,7 @@ try {
         Storage::disk('avatars')->delete($validatedData['avatar']);
     }
 
-    return $this->errorResponse('Mensaje de error', $e->getMessage(), 500);
+    return $this->serverErrorResponse('Mensaje de error', $e->getMessage());
 }
 ```
 
@@ -197,7 +197,7 @@ SIEMPRE usar `ApiResponseTrait` con códigos HTTP apropiados:
 return $this->successResponse($data, 'Mensaje de éxito', 201);
 
 // Error
-return $this->errorResponse('Mensaje de error', $errorDetails, 500);
+return $this->serverErrorResponse('Mensaje de error', $errorDetails);
 ```
 
 ## Método estadisticas()
@@ -222,7 +222,7 @@ public function estadisticas(): JsonResponse
 
         return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');
     } catch (\Exception $e) {
-        return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
+        return $this->serverErrorResponse('Error al obtener las estadísticas', $e->getMessage());
     }
 }
 ```
