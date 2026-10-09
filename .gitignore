@@ -70,3 +70,6 @@ debug*.php
 test_*.php
 check_*.php
 phpinfo.php
+
+# Scripts sueltos de benchmark
+bench*.php
