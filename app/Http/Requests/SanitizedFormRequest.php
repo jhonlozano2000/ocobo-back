@@ -182,14 +182,16 @@ abstract class SanitizedFormRequest extends FormRequest
     }
 
     /**
-     * Maneja una validación fallida
+     * Maneja una validación fallida con el mismo envoltorio que bootstrap/app.php:
+     * el frontend muestra `message` en el toast, por eso debe ser el primer error concreto.
      */
     protected function failedValidation(Validator $validator): void
     {
         throw new HttpResponseException(
             response()->json([
+                'status' => false,
                 'success' => false,
-                'message' => 'Error de validación',
+                'message' => $validator->errors()->first() ?: 'Error de validación.',
                 'errors' => $validator->errors(),
                 'error' => 'VALIDATION_ERROR',
             ], 422)
