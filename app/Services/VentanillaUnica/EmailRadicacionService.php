@@ -8,6 +8,7 @@ use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -123,7 +124,8 @@ class EmailRadicacionService
             try {
                 $replyResult = $this->responderConRadicadoDirecto(
                     $emailData,
-                    'Su correo ha sido radicado exitosamente con el número '.$numRadicado.'. Adjunto rótulo del radicado.'
+                    'Su correo ha sido radicado exitosamente con el número '.$numRadicado.'. Adjunto rótulo del radicado.',
+                    $radicado
                 );
             } catch (\Exception $e) {
                 Log::warning('EmailRadicacionService: Error al enviar respuesta automática', [
@@ -237,7 +239,8 @@ class EmailRadicacionService
             try {
                 $replyResult = $this->responderConRadicadoDirecto(
                     $emailData,
-                    'Su correo ha sido radicado exitosamente con el número '.$numRadicado.'. Adjunto rótulo del radicado.'
+                    'Su correo ha sido radicado exitosamente con el número '.$numRadicado.'. Adjunto rótulo del radicado.',
+                    $radicado
                 );
             } catch (\Exception $e) {
                 Log::warning('EmailRadicacionService: Error al enviar respuesta automática (enviado)', [
@@ -433,21 +436,20 @@ class EmailRadicacionService
 
     /**
      * Envía un correo de respuesta con el rótulo de radicado adjunto.
-     * Recibe datos del email directamente (array).
+     *
+     * M05-01: el radicado nunca se busca por asunto/remitente (filtraba datos de
+     * trámites ajenos). Se recibe el radicado recién creado o, si no se indica,
+     * solo se usa el radicado recibido vinculado a ese mismo correo (imap_uid).
      */
-    public function responderConRadicadoDirecto(array $emailData, string $mensajeRespuesta): bool
+    public function responderConRadicadoDirecto(array $emailData, string $mensajeRespuesta, ?Model $radicado = null): bool
     {
         try {
-            $numRadicado = $this->obtenerSiguienteNumeroRadicado();
-
-            // Buscar el radicado más reciente del remitente
-            $radicado = VentanillaRadicaReci::where('nom_origi', 'like', '%'.$emailData['remitente_email'].'%')
-                ->orWhere('asunto', $emailData['asunto'] ?? '')
-                ->latest()
-                ->first();
+            $radicado ??= $this->radicadoVinculadoAlCorreo($emailData);
 
             if (! $radicado) {
-                Log::warning('EmailRadicacionService: No se encontró radicado para responder');
+                Log::warning('EmailRadicacionService: el correo no está vinculado a ningún radicado; no se envía respuesta', [
+                    'uid' => $emailData['uid'] ?? '',
+                ]);
 
                 return false;
             }
@@ -488,6 +490,20 @@ class EmailRadicacionService
 
             return false;
         }
+    }
+
+    /**
+     * Radicado recibido creado a partir de este correo (vínculo por UID de IMAP).
+     */
+    public function radicadoVinculadoAlCorreo(array $emailData): ?VentanillaRadicaReci
+    {
+        $uid = (string) ($emailData['uid'] ?? '');
+
+        if ($uid === '') {
+            return null;
+        }
+
+        return VentanillaRadicaReci::where('imap_uid', $uid)->latest('id')->first();
     }
 
     /**

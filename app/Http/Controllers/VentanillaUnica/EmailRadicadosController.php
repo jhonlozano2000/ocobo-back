@@ -178,6 +178,15 @@ class EmailRadicadosController extends Controller
                 return $this->notFoundResponse('Correo no encontrado en el servidor IMAP');
             }
 
+            // M05-01: solo se responde con el rótulo del radicado creado a partir de este correo
+            if (! $this->emailRadicacionService->radicadoVinculadoAlCorreo($email)) {
+                return $this->errorResponse(
+                    'El correo no ha sido radicado',
+                    'Radique el correo antes de responder con el rótulo.',
+                    422
+                );
+            }
+
             $resultado = $this->emailRadicacionService->responderConRadicadoDirecto(
                 $email,
                 $request->mensaje
