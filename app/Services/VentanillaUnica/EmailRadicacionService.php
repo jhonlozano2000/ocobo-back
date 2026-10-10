@@ -6,7 +6,9 @@ use App\Helpers\MailConfigHelper;
 use App\Mail\RespuestaRadicadoMail;
 use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\Configuracion\ConfigVarias;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivos;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivo;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -96,7 +98,7 @@ class EmailRadicacionService
 
             // Guardar adjuntos desde IMAP
             if (! empty($emailData['tiene_adjuntos']) && ! empty($adjuntosInfo)) {
-                $this->guardarAdjuntosDesdeImap($emailData['uid'], $radicado);
+                $this->guardarAdjuntosDesdeImap($emailData['uid'], $radicado, 'radicados_recibidos');
             }
 
             // Convertir email a PDF
@@ -191,28 +193,7 @@ class EmailRadicacionService
 
             // Guardar adjuntos desde IMAP
             if (! empty($emailData['tiene_adjuntos']) && ! empty($adjuntosInfo)) {
-                try {
-                    $mailbox = $this->imapService->connect();
-                    $inbox = $mailbox->inbox();
-                    $message = $inbox->messages()
-                        ->withBody()
-                        ->withBodyStructure()
-                        ->findOrFail((int) $emailData['uid']);
-
-                    $directorio = 'radicados_enviados/'.$radicado->num_radicado;
-
-                    foreach ($message->attachments() as $attachment) {
-                        $this->imapService->saveAttachment($attachment, $directorio);
-                    }
-
-                    $mailbox->disconnect();
-                } catch (\Exception $e) {
-                    Log::error('EmailRadicacionService: Error al guardar adjuntos del correo enviado', [
-                        'uid' => $emailData['uid'] ?? '',
-                        'radicado_id' => $radicado->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
+                $this->guardarAdjuntosDesdeImap($emailData['uid'], $radicado, 'radicados_enviados');
             }
 
             // Convertir email a PDF
@@ -524,9 +505,11 @@ class EmailRadicacionService
     }
 
     /**
-     * Guarda los adjuntos del correo desde IMAP usando el UID.
+     * Guarda los adjuntos del correo desde IMAP usando el UID y los registra en BD.
+     *
+     * @param  string  $disco  radicados_recibidos|radicados_enviados
      */
-    protected function guardarAdjuntosDesdeImap(string $uid, VentanillaRadicaReci $radicado): void
+    protected function guardarAdjuntosDesdeImap(string $uid, Model $radicado, string $disco): void
     {
         try {
             $mailbox = $this->imapService->connect();
@@ -537,10 +520,11 @@ class EmailRadicacionService
                 ->withBodyStructure()
                 ->findOrFail((int) $uid);
 
-            $directorio = 'radicados_recibidos/'.$radicado->num_radicado;
+            $directorio = $disco.'/'.$radicado->num_radicado;
 
             foreach ($message->attachments() as $attachment) {
-                $this->imapService->saveAttachment($attachment, $directorio);
+                $ruta = $this->imapService->saveAttachment($attachment, $directorio);
+                $this->registrarAdjunto($radicado, $disco, $ruta, $attachment->filename() ?: basename($ruta));
             }
 
             $mailbox->disconnect();
@@ -548,8 +532,36 @@ class EmailRadicacionService
             Log::error('EmailRadicacionService: Error al guardar adjuntos del correo', [
                 'uid' => $uid,
                 'radicado_id' => $radicado->id,
+                'disco' => $disco,
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Registra un adjunto de correo en la tabla de archivos del radicado.
+     *
+     * M08-01: sin este registro el adjunto original queda "huérfano" y la depuración
+     * programada (archivo:depurar-digital) lo mueve a cuarentena.
+     *
+     * @param  string  $rutaApp  Ruta relativa a storage/app (incluye el disco como prefijo)
+     */
+    public function registrarAdjunto(Model $radicado, string $disco, string $rutaApp, string $nomOrigi): Model
+    {
+        $storage = Storage::disk($disco);
+        $ruta = str_starts_with($rutaApp, $disco.'/') ? substr($rutaApp, strlen($disco) + 1) : $rutaApp;
+
+        $datos = [
+            'subido_por' => auth()->id(),
+            'archivo' => $ruta,
+            'archivo_tipo' => $storage->mimeType($ruta) ?: null,
+            'nom_origi' => mb_substr($nomOrigi, 0, 255),
+            'archivo_peso' => $storage->size($ruta),
+            'hash_sha256' => hash_file('sha256', $storage->path($ruta)),
+        ];
+
+        return $disco === 'radicados_enviados'
+            ? VentanillaRadicaEnviadosArchivos::create($datos + ['radica_enviado_id' => $radicado->id])
+            : VentanillaRadicaReciArchivo::create($datos + ['radicado_id' => $radicado->id]);
     }
 }
