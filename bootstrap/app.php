@@ -96,6 +96,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'cache.headers' => SetCacheHeaders::class,
             'can' => Authorize::class,
             'password.strength' => ValidatePasswordStrength::class,
+            'propio_o_can' => \App\Http\Middleware\PropioOPermiso::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

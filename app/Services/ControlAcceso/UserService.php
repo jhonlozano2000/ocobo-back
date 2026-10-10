@@ -5,6 +5,7 @@ namespace App\Services\ControlAcceso;
 use App\Helpers\ArchivoHelper;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 
@@ -52,6 +53,8 @@ class UserService
      */
     public function create(array $data): User
     {
+        $this->autorizarCambioRoles(null, $data);
+
         if (isset($data['avatar']) && $data['avatar'] instanceof UploadedFile) {
             $upload = ArchivoHelper::guardarUploadedConHash($data['avatar'], 'avatars');
             $data['avatar'] = $upload ? $upload['nombre_almacenado'] : null;
@@ -97,6 +100,8 @@ class UserService
     public function update(string $id, array $data): ?User
     {
         $user = User::findOrFail($id);
+
+        $this->autorizarCambioRoles($user, $data);
 
         if (isset($data['avatar']) && $data['avatar'] instanceof UploadedFile) {
             ArchivoHelper::eliminarArchivo($user->avatar, 'avatars');
@@ -180,6 +185,77 @@ class UserService
                 'total_users_inactivos' => (int) ($stats->inactivos ?? 0),
             ];
         });
+    }
+
+    /**
+     * Listado mínimo de usuarios activos para selectores (sin datos sensibles).
+     */
+    public function getForSelector(?string $search = null)
+    {
+        $query = User::query()
+            ->with('cargoActivo.cargo')
+            ->where('estado', 1)
+            ->select(['id', 'nombres', 'apellidos', 'email', 'avatar']);
+
+        if ($search) {
+            $query->where(fn ($q) => $q
+                ->where('nombres', 'like', "%{$search}%")
+                ->orWhere('apellidos', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")
+            );
+        }
+
+        return $query->orderBy('nombres')->orderBy('apellidos')->get()
+            ->map(function ($user) {
+                $data = [
+                    'id' => $user->id,
+                    'nombres' => $user->nombres,
+                    'apellidos' => $user->apellidos,
+                    'email' => $user->email,
+                    'avatar_url' => $user->avatar_url,
+                    'cargo' => null, 'oficina' => null, 'dependencia' => null,
+                ];
+
+                if ($user->cargoActivo?->cargo) {
+                    $this->mapCargo($user, $data);
+                    unset($data['cargo']['observaciones']);
+                }
+
+                return $data;
+            });
+    }
+
+    /**
+     * RBAC-001: cambiar roles o cargo exige 'Asignar Roles' y nunca sobre uno mismo.
+     */
+    private function autorizarCambioRoles(?User $user, array $data): void
+    {
+        $cambiaRoles = ! empty($data['roles']);
+        $cambiaCargo = array_key_exists('cargo_id', $data);
+
+        if (! $cambiaRoles && ! $cambiaCargo) {
+            return;
+        }
+
+        $actor = Auth::user();
+
+        if ($cambiaRoles && ! $actor?->can('Control de acceso - Usuarios -> Asignar Roles')) {
+            abort(403, 'No tiene permiso para asignar roles.');
+        }
+
+        if ($cambiaCargo && ! $actor?->can('Control de acceso - Cargos -> Asignar')) {
+            abort(403, 'No tiene permiso para asignar cargos.');
+        }
+
+        if ($user && $actor && $user->id === $actor->id) {
+            $rolesActuales = $user->getRoleNames()->sort()->values()->all();
+            $rolesNuevos = collect($data['roles'] ?? $rolesActuales)->sort()->values()->all();
+            $cargoActual = $user->cargoActivo?->cargo_id;
+
+            if ($rolesNuevos !== $rolesActuales || ($cambiaCargo && (int) $data['cargo_id'] !== (int) $cargoActual)) {
+                abort(403, 'No puede modificar sus propios roles o cargo.');
+            }
+        }
     }
 
     /**

@@ -14,49 +14,63 @@ use Illuminate\Support\Facades\Route;
  */
 Route::middleware(['throttle:config-operations', 'auth:sanctum'])->group(function () {
     /**
-     * Perfil y autenticación de usuario
+     * Perfil y autenticación de usuario (propio, sin permiso adicional)
      */
     Route::put('/user/changePassword', [UserController::class, 'updatePassword']);
     Route::put('/user/profile-information', [UserController::class, 'updateUserProfile']);
-    Route::post('/user/activar-inactivar', [UserController::class, 'activarInactivar']);
 
     /**
-     * Usuarios - Rutas específicas PRIMERO para evitar conflictos con resource
+     * RBAC-001 / M14-001: toda la gestión de usuarios exige permiso explícito.
      */
-    Route::get('/users/estadisticas', [UserController::class, 'estadisticas']);
-    Route::get('/users/usuarios-con-cargos', [UserController::class, 'listarUsuariosConCargos']);
-    Route::get('/users/usuarios-activos-con-oficina-dependencia', [UserController::class, 'usuariosActivosConOficinaYDependencia']);
-    Route::get('/users/usuarios-con-cargos-activos', [UserController::class, 'usuariosConCargosActivos']);
-    Route::get('/users/debug-relaciones', [UserController::class, 'debugUsuariosRelaciones']);
-    Route::get('/users/debug-oficinas-cargos', [UserController::class, 'debugOficinasYCargos']);
-    Route::get('/users/debug-organigrama-estructura', [UserController::class, 'debugOrganigramaEstructura']);
+    $permUsers = 'Control de acceso - Usuarios -> ';
+    Route::post('/user/activar-inactivar', [UserController::class, 'activarInactivar'])->middleware('can:'.$permUsers.'Editar');
 
     /**
-     * Usuarios - Rutas específicas con parámetros (antes del resource)
+     * Listado mínimo para selectores (cualquier usuario autenticado, sin datos sensibles)
      */
-    Route::get('/users/{userId}/perfil-completo', [UserController::class, 'getPerfilCompleto'])->name('users.perfil-completo');
-    Route::get('/users/{userId}/actividad', [UserController::class, 'getActividad'])->name('users.actividad');
-    Route::get('/users/{userId}/historial', [UserController::class, 'getHistorial'])->name('users.historial');
-    Route::get('/users/{userId}/historial-cargos', [UserController::class, 'getHistorialCargos'])->name('users.historial-cargos');
-    Route::get('/users/{userId}/historial-sedes', [UserController::class, 'getHistorialSedes'])->name('users.historial-sedes');
-    Route::get('/users/{userId}/historial-roles', [UserController::class, 'getHistorialRoles'])->name('users.historial-roles');
-    Route::get('/users/{userId}/conexiones', [UserController::class, 'getConexiones'])->name('users.conexiones');
-    Route::get('/users/{userId}/permisos', [UserController::class, 'getPermisos'])->name('users.permisos');
-    Route::put('/users/{userId}/otros-permisos', [UserController::class, 'syncOtrosPermisos'])->name('users.otros-permisos');
-    Route::get('/users/{userId}/cargo', [UserController::class, 'getUserCargo'])->name('users.cargo');
+    Route::get('/users/selector', [UserController::class, 'selector'])->name('users.selector');
 
     /**
-     * Configuración de notificaciones (ANTES del resource para evitar conflicto con GET /users/{user})
+     * Usuarios - Rutas específicas PRIMERO para evitar conflictos con las rutas con parámetro
+     */
+    Route::get('/users/estadisticas', [UserController::class, 'estadisticas'])->middleware('can:'.$permUsers.'Listar');
+    Route::get('/users/usuarios-con-cargos', [UserController::class, 'listarUsuariosConCargos'])->middleware('can:'.$permUsers.'Listar');
+    Route::get('/users/usuarios-activos-con-oficina-dependencia', [UserController::class, 'usuariosActivosConOficinaYDependencia'])->middleware('can:'.$permUsers.'Listar');
+    Route::get('/users/usuarios-con-cargos-activos', [UserController::class, 'usuariosConCargosActivos'])->middleware('can:'.$permUsers.'Listar');
+
+    /**
+     * Configuración de notificaciones propia (ANTES de GET /users/{user})
      */
     Route::get('/users/notification-settings', [NotificationSettingsController::class, 'show']);
     Route::put('/users/notification-settings', [NotificationSettingsController::class, 'update']);
-    Route::get('/users/{userId}/notification-settings', [NotificationSettingsController::class, 'getUserSettings']);
-    Route::put('/users/{userId}/notification-settings', [NotificationSettingsController::class, 'updateUserSettings']);
 
     /**
-     * Usuarios - Resource routes
+     * Usuarios - Rutas específicas con parámetros
      */
-    Route::resource('/users', UserController::class)->except('create', 'edit');
+    Route::middleware('propio_o_can:'.$permUsers.'Mostrar')->group(function () {
+        Route::get('/users/{userId}/perfil-completo', [UserController::class, 'getPerfilCompleto'])->name('users.perfil-completo');
+        Route::get('/users/{userId}/actividad', [UserController::class, 'getActividad'])->name('users.actividad');
+        Route::get('/users/{userId}/historial', [UserController::class, 'getHistorial'])->name('users.historial');
+        Route::get('/users/{userId}/historial-cargos', [UserController::class, 'getHistorialCargos'])->name('users.historial-cargos');
+        Route::get('/users/{userId}/historial-sedes', [UserController::class, 'getHistorialSedes'])->name('users.historial-sedes');
+        Route::get('/users/{userId}/historial-roles', [UserController::class, 'getHistorialRoles'])->name('users.historial-roles');
+        Route::get('/users/{userId}/conexiones', [UserController::class, 'getConexiones'])->name('users.conexiones');
+        Route::get('/users/{userId}/permisos', [UserController::class, 'getPermisos'])->name('users.permisos');
+        Route::get('/users/{userId}/cargo', [UserController::class, 'getUserCargo'])->name('users.cargo');
+        Route::get('/users/{userId}/notification-settings', [NotificationSettingsController::class, 'getUserSettings']);
+        Route::get('/users/{userId}/sessions', [UserSessionController::class, 'getUserSessions']);
+    });
+    Route::put('/users/{userId}/otros-permisos', [UserController::class, 'syncOtrosPermisos'])->name('users.otros-permisos')->middleware('can:'.$permUsers.'Asignar Roles');
+    Route::put('/users/{userId}/notification-settings', [NotificationSettingsController::class, 'updateUserSettings'])->middleware('can:'.$permUsers.'Editar');
+
+    /**
+     * Usuarios - CRUD
+     */
+    Route::get('/users', [UserController::class, 'index'])->name('users.index')->middleware('can:'.$permUsers.'Listar');
+    Route::post('/users', [UserController::class, 'store'])->name('users.store')->middleware('can:'.$permUsers.'Crear');
+    Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show')->middleware('can:'.$permUsers.'Mostrar');
+    Route::match(['put', 'patch'], '/users/{user}', [UserController::class, 'update'])->name('users.update')->middleware('can:'.$permUsers.'Editar');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy')->middleware('can:'.$permUsers.'Eliminar');
 
     /**
      * Roles y permisos
@@ -77,50 +91,52 @@ Route::middleware(['throttle:config-operations', 'auth:sanctum'])->group(functio
     Route::get('/permisos', [RoleController::class, 'listPermisos'])->name('permisos.show')->middleware('can:'.$permRoles.'Listar');
 
     /**
-     * Sesiones de usuario
+     * Sesiones propias
      */
     Route::get('/user/recent-devices', [UserSessionController::class, 'index']);
-    Route::get('/users/{userId}/sessions', [UserSessionController::class, 'getUserSessions']);
     Route::delete('/user/sessions/{sessionId}', [UserSessionController::class, 'destroy']);
 
     /**
      * Gestión de ventanillas por usuario
      */
-    Route::get('/users-ventanillas/estadisticas', [UserVentanillaController::class, 'estadisticas']);
-    Route::resource('/users-ventanillas', UserVentanillaController::class)->except('create', 'edit');
+    Route::get('/users-ventanillas/estadisticas', [UserVentanillaController::class, 'estadisticas'])->middleware('can:'.$permUsers.'Listar');
+    Route::get('/users-ventanillas', [UserVentanillaController::class, 'index'])->middleware('can:'.$permUsers.'Listar');
+    Route::get('/users-ventanillas/{userVentanilla}', [UserVentanillaController::class, 'show'])->middleware('can:'.$permUsers.'Mostrar');
+    Route::post('/users-ventanillas', [UserVentanillaController::class, 'store'])->middleware('can:'.$permUsers.'Editar');
+    Route::match(['put', 'patch'], '/users-ventanillas/{userVentanilla}', [UserVentanillaController::class, 'update'])->middleware('can:'.$permUsers.'Editar');
+    Route::delete('/users-ventanillas/{userVentanilla}', [UserVentanillaController::class, 'destroy'])->middleware('can:'.$permUsers.'Editar');
 
     /**
      * Gestión de relaciones usuario-sede
      */
-    Route::resource('/user-sedes', UserSedeController::class)->except('create', 'edit');
-    Route::get('/users/{userId}/sedes', [UserSedeController::class, 'getUserSedes']);
-    Route::put('/users/{userId}/sedes', [UserSedeController::class, 'updateUserSedes']);
-    Route::get('/sedes/{sedeId}/users', [UserSedeController::class, 'getSedeUsers']);
+    Route::get('/user-sedes', [UserSedeController::class, 'index'])->middleware('can:'.$permUsers.'Listar');
+    Route::get('/user-sedes/{userSede}', [UserSedeController::class, 'show'])->middleware('can:'.$permUsers.'Mostrar');
+    Route::post('/user-sedes', [UserSedeController::class, 'store'])->middleware('can:'.$permUsers.'Editar');
+    Route::match(['put', 'patch'], '/user-sedes/{userSede}', [UserSedeController::class, 'update'])->middleware('can:'.$permUsers.'Editar');
+    Route::delete('/user-sedes/{userSede}', [UserSedeController::class, 'destroy'])->middleware('can:'.$permUsers.'Editar');
+    Route::get('/users/{userId}/sedes', [UserSedeController::class, 'getUserSedes'])->middleware('can:'.$permUsers.'Mostrar');
+    Route::put('/users/{userId}/sedes', [UserSedeController::class, 'updateUserSedes'])->middleware('can:'.$permUsers.'Editar');
+    Route::get('/sedes/{sedeId}/users', [UserSedeController::class, 'getSedeUsers'])->middleware('can:'.$permUsers.'Listar');
 
     /**
      * ==================== GESTIÓN DE CARGOS USUARIOS ====================
+     * M17-01: asignar/finalizar cargos exige permiso propio (antes: cualquier autenticado)
      */
-
-    // Rutas principales de gestión de cargos
-    Route::prefix('user-cargos')->group(function () {
+    $permCargos = 'Control de acceso - Cargos -> ';
+    Route::prefix('user-cargos')->group(function () use ($permCargos) {
         // Rutas específicas SIN parámetros (más específicas primero)
-        Route::get('/estadisticas', [UserCargoController::class, 'estadisticas'])->name('user-cargos.estadisticas');
-        Route::get('/cargos-disponibles', [UserCargoController::class, 'cargosDisponibles'])->name('user-cargos.disponibles');
-        Route::post('/asignar', [UserCargoController::class, 'asignarCargo'])->name('user-cargos.asignar');
+        Route::get('/estadisticas', [UserCargoController::class, 'estadisticas'])->name('user-cargos.estadisticas')->middleware('can:'.$permCargos.'Listar');
+        Route::get('/cargos-disponibles', [UserCargoController::class, 'cargosDisponibles'])->name('user-cargos.disponibles')->middleware('can:'.$permCargos.'Listar');
+        Route::post('/asignar', [UserCargoController::class, 'asignarCargo'])->name('user-cargos.asignar')->middleware('can:'.$permCargos.'Asignar');
 
         // Rutas específicas CON parámetros (después de las sin parámetros)
-        Route::get('/usuario/{userId}/activo', [UserCargoController::class, 'cargoActivoUsuario'])->name('user-cargos.usuario.activo');
-        Route::get('/usuario/{userId}/historial', [UserCargoController::class, 'historialUsuario'])->name('user-cargos.usuario.historial');
-        Route::get('/cargo/{cargoId}/usuarios', [UserCargoController::class, 'usuariosCargo'])->name('user-cargos.cargo.usuarios');
-        Route::put('/finalizar/{asignacionId}', [UserCargoController::class, 'finalizarCargo'])->name('user-cargos.finalizar');
+        Route::get('/usuario/{userId}/activo', [UserCargoController::class, 'cargoActivoUsuario'])->name('user-cargos.usuario.activo')->middleware('can:'.$permCargos.'Listar');
+        Route::get('/usuario/{userId}/historial', [UserCargoController::class, 'historialUsuario'])->name('user-cargos.usuario.historial')->middleware('can:'.$permCargos.'Listar');
+        Route::get('/cargo/{cargoId}/usuarios', [UserCargoController::class, 'usuariosCargo'])->name('user-cargos.cargo.usuarios')->middleware('can:'.$permCargos.'Listar');
+        Route::put('/finalizar/{asignacionId}', [UserCargoController::class, 'finalizarCargo'])->name('user-cargos.finalizar')->middleware('can:'.$permCargos.'Finalizar');
 
-        // Resource route (debe ir al final)
-        Route::apiResource('', UserCargoController::class)
-            ->parameters(['' => 'userCargo'])
-            ->names([
-                'index' => 'index',
-                'show' => 'show',
-            ])->only('index', 'show');
+        Route::get('/', [UserCargoController::class, 'index'])->name('user-cargos.index')->middleware('can:'.$permCargos.'Listar');
+        Route::get('/{userCargo}', [UserCargoController::class, 'show'])->name('user-cargos.show')->middleware('can:'.$permCargos.'Listar');
     });
 
 }); // Fin throttle

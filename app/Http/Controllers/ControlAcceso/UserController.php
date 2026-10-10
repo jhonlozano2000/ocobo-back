@@ -47,6 +47,27 @@ class UserController extends Controller
     }
 
     /**
+     * Listado mínimo de usuarios activos para selectores.
+     */
+    public function selector(Request $request)
+    {
+        try {
+            $search = $request->string('search')->limit(100, '')->toString() ?: null;
+
+            return $this->successResponse(
+                $this->service->getForSelector($search),
+                'Listado de usuarios obtenido exitosamente'
+            );
+        } catch (\Exception $e) {
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
+            return $this->serverErrorResponse('Error al obtener el listado', $e->getMessage());
+        }
+    }
+
+    /**
      * Crea un nuevo usuario.
      */
     public function store(StoreUserRequest $request)

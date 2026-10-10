@@ -170,6 +170,13 @@ class UserCargoController extends Controller
             $user = User::findOrFail($validatedData['user_id']);
             $cargo = CalidadOrganigrama::findOrFail($validatedData['cargo_id']);
 
+            // M17-01: el cargo define la jerarquía ABAC; nadie puede asignárselo a sí mismo
+            if ($user->id === $request->user()->id) {
+                DB::rollBack();
+
+                return $this->forbiddenResponse('No puede asignarse un cargo a sí mismo');
+            }
+
             // Verificar que es un cargo válido
             if (! $cargo->puedeAsignarUsuarios()) {
                 DB::rollBack();
