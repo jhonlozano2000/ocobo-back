@@ -131,4 +131,24 @@ class FirmaOtpFirmanteTest extends TestCase
         $this->assertTrue($service->validarOtpPorDocumento($otp, 'radicado_recibido', $id, $uid));
         $this->assertFalse($service->validarOtpPorDocumento($otp, 'radicado_recibido', $id, $uid));
     }
+
+    public function test_flujo_legado_solo_acepta_tipos_de_la_lista_blanca(): void
+    {
+        $legado = '/api/transversal/firma-electronica';
+
+        // M06-04: antes se instanciaba 'App\Models\'.documento_type (cualquier modelo)
+        $this->actingAs($this->firmante)
+            ->postJson($legado.'/firmar', ['otp' => '123456', 'documento_type' => 'User', 'documento_id' => $this->ajeno->id])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('documento_type');
+
+        $this->actingAs($this->ajeno)
+            ->postJson($legado.'/solicitar-otp', ['documento_type' => 'radicado_recibido', 'documento_id' => $this->radicado->id])
+            ->assertForbidden();
+
+        $this->actingAs($this->firmante)
+            ->postJson($legado.'/solicitar-otp', ['documento_type' => 'radicado_recibido', 'documento_id' => $this->radicado->id])
+            ->assertOk();
+        Mail::assertSent(OtpFirmaMail::class, fn ($mail) => $mail->hasTo($this->firmante->email));
+    }
 }

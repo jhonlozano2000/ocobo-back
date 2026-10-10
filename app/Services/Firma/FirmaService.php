@@ -72,27 +72,6 @@ class FirmaService
         return $this->verificarOtp($this->claveOtp($documentableType, $documentableId, $userId), $otp);
     }
 
-    /**
-     * Flujo legado: OTP ligado solo al usuario.
-     */
-    public function generarYEnviarOtp($user)
-    {
-        $otp = $this->guardarOtp('otp_firma_'.$user->id);
-
-        MailConfigHelper::configureFromConfigVarias();
-        Mail::to($user->email)->send(new OtpFirmaMail($otp, $user->name));
-
-        return true;
-    }
-
-    /**
-     * Flujo legado: valida el OTP ligado solo al usuario.
-     */
-    public function validarOtp($user, $otp)
-    {
-        return $this->verificarOtp('otp_firma_'.$user->id, (string) $otp);
-    }
-
     protected function claveOtp(string $documentableType, int $documentableId, ?int $userId): string
     {
         $suffix = $userId ? "_{$userId}" : '';

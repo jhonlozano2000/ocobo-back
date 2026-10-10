@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Firma\FirmaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -19,11 +20,27 @@ class FirmaController extends Controller
     }
 
     /**
-     * Solicita un código OTP para el usuario autenticado.
+     * Reglas comunes: M06-04, solo tipos de documento de la lista blanca (antes se
+     * instanciaba 'App\\Models\\'.documento_type, es decir, cualquier modelo).
+     */
+    private function reglasDocumento(): array
+    {
+        return [
+            'documento_type' => ['required', 'string', Rule::in(array_keys(FirmaService::TIPOS_DOCUMENTO))],
+            'documento_id' => 'required|integer',
+        ];
+    }
+
+    /**
+     * Solicita un código OTP para firmar un documento (solo firmante designado).
      */
     public function solicitarOtp(Request $request)
     {
+        $request->validate($this->reglasDocumento());
+
         $user = Auth::user();
+        $tipo = $request->documento_type;
+        $id = (int) $request->documento_id;
 
         if (! $user->email) {
             return response()->json([
@@ -32,12 +49,20 @@ class FirmaController extends Controller
             ], 400);
         }
 
+        if (! $this->firmaService->esFirmanteDesignado($tipo, $id, $user->id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No es firmante designado de este documento.',
+            ], 403);
+        }
+
         try {
-            $this->firmaService->generarYEnviarOtp($user);
+            $nombre = trim("{$user->nombres} {$user->apellidos}");
+            $this->firmaService->generarYEnviarOtpParaEmail($user->email, $nombre, $tipo, $id, $user->id);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Código de seguridad enviado a su correo ('.$user->email.').',
+                'message' => 'Código de seguridad enviado a su correo electrónico.',
             ]);
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -59,34 +84,18 @@ class FirmaController extends Controller
      */
     public function validarYFirmar(Request $request)
     {
-        $request->validate([
+        $request->validate($this->reglasDocumento() + [
             'otp' => 'required|digits:6',
-            'documento_id' => 'required',
-            'documento_type' => 'required|string',
             'hash_original' => 'nullable|string',
         ]);
 
         $user = Auth::user();
         $otp = $request->otp;
+        $tipo = $request->documento_type;
+        $id = (int) $request->documento_id;
 
-        // 1. Validar OTP
-        if (! $this->firmaService->validarOtp($user, $otp)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Código OTP inválido o expirado.',
-            ], 422);
-        }
-
-        // 2. Resolver el modelo (Polimórfico)
-        $modelClass = 'App\\Models\\'.$request->documento_type;
-        if (! class_exists($modelClass)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Tipo de documento no válido.',
-            ], 400);
-        }
-
-        $documento = $modelClass::find($request->documento_id);
+        [$modelClass] = FirmaService::TIPOS_DOCUMENTO[$tipo];
+        $documento = $modelClass::find($id);
         if (! $documento) {
             return response()->json([
                 'success' => false,
@@ -94,12 +103,27 @@ class FirmaController extends Controller
             ], 404);
         }
 
-        // 3. Registrar Firma
+        if (! $this->firmaService->esFirmanteDesignado($tipo, $id, $user->id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No es firmante designado de este documento.',
+            ], 403);
+        }
+
+        // Validar OTP ligado a documento + usuario
+        if (! $this->firmaService->validarOtpPorDocumento($otp, $tipo, $id, $user->id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Código OTP inválido o expirado.',
+            ], 422);
+        }
+
+        // Registrar Firma
         try {
             $this->firmaService->registrarEventoFirma($user, $documento, [
                 'otp' => $otp,
                 'hash_original' => $request->hash_original,
-                // Aqu� se podr�a generar un nuevo hash si se estampara el PDF f�sicamente
+                // Aquí se podría generar un nuevo hash si se estampara el PDF físicamente
                 'hash_firmado' => null,
             ]);
 
