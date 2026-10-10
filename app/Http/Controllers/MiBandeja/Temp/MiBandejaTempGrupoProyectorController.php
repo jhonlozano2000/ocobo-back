@@ -135,6 +135,13 @@ class MiBandejaTempGrupoProyectorController extends Controller
      */
     public function update(Request $request, $grupoId, $id)
     {
+        $this->autorizarGrupo($grupoId);
+
+        // M07-01: el estado de la tarea solo cambia mediante marcarTerminado()
+        $datos = $request->validate([
+            'cargo_id' => ['sometimes', 'nullable', 'integer', 'exists:calidad_organigrama,id'],
+        ]);
+
         try {
             $proyector = MiBandejaTempGrupoProyector::where('grupo_id', $grupoId)->find($id);
 
@@ -142,7 +149,7 @@ class MiBandejaTempGrupoProyectorController extends Controller
                 return $this->errorResponse('Proyector no encontrado', null, 404);
             }
 
-            $proyector->update($request->only(['cargo_id', 'subio_plantilla', 'descargo_plantilla', 'fechor_terminado']));
+            $proyector->update($datos);
 
             $proyector->load(['user.cargo', 'cargo']);
 
@@ -168,6 +175,8 @@ class MiBandejaTempGrupoProyectorController extends Controller
      */
     public function destroy($grupoId, $id)
     {
+        $this->autorizarGrupo($grupoId);
+
         try {
             $proyector = MiBandejaTempGrupoProyector::where('grupo_id', $grupoId)->find($id);
 
@@ -199,11 +208,17 @@ class MiBandejaTempGrupoProyectorController extends Controller
      */
     public function marcarTerminado($grupoId, $id)
     {
+        $this->autorizarGrupo($grupoId);
+
         try {
             $proyector = MiBandejaTempGrupoProyector::where('grupo_id', $grupoId)->find($id);
 
             if (! $proyector) {
                 return $this->errorResponse('Proyector no encontrado', null, 404);
+            }
+
+            if ((int) $proyector->user_id !== (int) auth()->id()) {
+                return $this->errorResponse('Solo el usuario titular puede marcar su tarea como terminada.', null, 403);
             }
 
             $proyector->update([

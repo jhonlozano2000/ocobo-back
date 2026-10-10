@@ -4,6 +4,7 @@ namespace Tests\Feature\MiBandeja;
 
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempGrupoFirmante;
+use App\Models\MiBandeja\MiBandejaTempGrupoRevisor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Schema;
@@ -99,6 +100,24 @@ class GrupoFirmantesAutorizacionTest extends TestCase
         $this->actingAs($this->firmanteUser)->postJson($this->url('/marcar-terminado'))->assertOk();
 
         $this->assertNotNull($this->firmante->fresh()->fechor_terminado);
+    }
+
+    public function test_revisores_exigen_pertenencia_y_titularidad(): void
+    {
+        $revisor = MiBandejaTempGrupoRevisor::create([
+            'grupo_id' => $this->grupo->id,
+            'user_id' => $this->firmanteUser->id,
+            'estado_tarea' => 'pendiente',
+        ]);
+        $url = "/api/mi-bandeja/grupos-colaborativos/{$this->grupo->id}/revisores/{$revisor->id}";
+
+        $this->actingAs($this->ajeno)->putJson($url, ['fechor_terminado' => now()->toDateTimeString()])->assertForbidden();
+        $this->actingAs($this->ajeno)->deleteJson($url)->assertForbidden();
+        $this->actingAs($this->creador)->putJson($url, ['fechor_terminado' => now()->toDateTimeString()])->assertOk();
+        $this->assertNull($revisor->fresh()->fechor_terminado);
+
+        $this->actingAs($this->creador)->postJson($url.'/marcar-terminado')->assertForbidden();
+        $this->actingAs($this->firmanteUser)->postJson($url.'/marcar-terminado')->assertOk();
     }
 
     public function test_no_se_retira_ni_modifica_un_firmante_que_ya_firmo(): void

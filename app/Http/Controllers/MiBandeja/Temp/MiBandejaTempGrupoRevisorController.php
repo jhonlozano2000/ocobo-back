@@ -105,6 +105,13 @@ class MiBandejaTempGrupoRevisorController extends Controller
 
     public function update(Request $request, $grupoId, $id)
     {
+        $this->autorizarGrupo($grupoId);
+
+        // M07-01: el estado de la tarea solo cambia mediante marcarTerminado()
+        $datos = $request->validate([
+            'cargo_id' => ['sometimes', 'nullable', 'integer', 'exists:calidad_organigrama,id'],
+        ]);
+
         try {
             $revisor = MiBandejaTempGrupoRevisor::where('grupo_id', $grupoId)->find($id);
 
@@ -112,7 +119,7 @@ class MiBandejaTempGrupoRevisorController extends Controller
                 return $this->errorResponse('Revisor no encontrado', null, 404);
             }
 
-            $revisor->update($request->only(['cargo_id', 'subio_plantilla', 'descargo_plantilla', 'fechor_terminado']));
+            $revisor->update($datos);
 
             $revisor->load(['user.cargo', 'cargo']);
 
@@ -131,6 +138,8 @@ class MiBandejaTempGrupoRevisorController extends Controller
 
     public function destroy($grupoId, $id)
     {
+        $this->autorizarGrupo($grupoId);
+
         try {
             $revisor = MiBandejaTempGrupoRevisor::where('grupo_id', $grupoId)->find($id);
 
@@ -155,11 +164,17 @@ class MiBandejaTempGrupoRevisorController extends Controller
 
     public function marcarTerminado($grupoId, $id)
     {
+        $this->autorizarGrupo($grupoId);
+
         try {
             $revisor = MiBandejaTempGrupoRevisor::where('grupo_id', $grupoId)->find($id);
 
             if (! $revisor) {
                 return $this->errorResponse('Revisor no encontrado', null, 404);
+            }
+
+            if ((int) $revisor->user_id !== (int) auth()->id()) {
+                return $this->errorResponse('Solo el usuario titular puede marcar su tarea como terminada.', null, 403);
             }
 
             $revisor->update([
