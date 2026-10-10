@@ -195,41 +195,87 @@ class BusinessDaysService
         return $resultados;
     }
 
+    /**
+     * Genera los festivos nacionales del año. Antes de importar elimina los festivos
+     * nacionales que este mismo generador creó con una fecha errada (mismo nombre,
+     * fecha distinta); no toca festivos regionales, empresariales ni nombres manuales.
+     */
     public function generarFestivosColombia(int $anio): array
     {
         $festivosColombia = $this->getFestivosNacionalesColombia($anio);
+        $fechas = array_column($festivosColombia, 'fecha');
+        $nombres = array_column($festivosColombia, 'nombre');
 
-        return $this->importarFestivos($festivosColombia);
+        $corregidos = ConfigCalendarioFestivo::where('anio', $anio)
+            ->where('tipo', 'Nacional')
+            ->whereIn('nombre', $nombres)
+            ->whereNotIn('fecha', $fechas)
+            ->delete();
+
+        $resultados = $this->importarFestivos($festivosColombia);
+        $resultados['corregidos'] = $corregidos;
+
+        return $resultados;
     }
 
+    /**
+     * Festivos nacionales de Colombia (18 por año): Ley 51 de 1983 ("Ley Emiliani")
+     * traslada al lunes siguiente los festivos que no caen en lunes, salvo los fijos
+     * y la Semana Santa.
+     */
     public function getFestivosNacionalesColombia(int $anio): array
     {
-        $easterDate = $this->calculateEaster($anio);
+        $pascua = $this->calculateEaster($anio);
 
-        $festivos = [
-            ['fecha' => "{$anio}-01-01", 'nombre' => 'Año Nuevo', 'tipo' => 'Nacional'],
-            ['fecha' => "{$anio}-05-01", 'nombre' => 'Día del Trabajo', 'tipo' => 'Nacional'],
-            ['fecha' => "{$anio}-07-20", 'nombre' => 'Día de la Independencia', 'tipo' => 'Nacional'],
-            ['fecha' => "{$anio}-08-07", 'nombre' => 'Batalla de Boyacá', 'tipo' => 'Nacional'],
-            ['fecha' => "{$anio}-12-08", 'nombre' => 'Inmaculada Concepción', 'tipo' => 'Nacional'],
-            ['fecha' => "{$anio}-12-25", 'nombre' => 'Navidad', 'tipo' => 'Nacional'],
+        $fijos = [
+            '01-01' => 'Año Nuevo',
+            '05-01' => 'Día del Trabajo',
+            '07-20' => 'Día de la Independencia',
+            '08-07' => 'Batalla de Boyacá',
+            '12-08' => 'Inmaculada Concepción',
+            '12-25' => 'Navidad',
         ];
 
-        $juevesSanto = $easterDate->copy()->subDays(3);
-        $viernesSanto = $easterDate->copy()->subDays(2);
-        $ascension = $easterDate->copy()->addDays(39);
-        $corpusChristi = $easterDate->copy()->addDays(60);
-        $sagradoCorazon = $easterDate->copy()->addDays(68);
+        $trasladables = [
+            '01-06' => 'Reyes Magos',
+            '03-19' => 'San José',
+            '06-29' => 'San Pedro y San Pablo',
+            '08-15' => 'Asunción de la Virgen',
+            '10-12' => 'Día de la Raza',
+            '11-01' => 'Todos los Santos',
+            '11-11' => 'Independencia de Cartagena',
+        ];
 
-        $festivos[] = ['fecha' => $juevesSanto->format('Y-m-d'), 'nombre' => 'Jueves Santo', 'tipo' => 'Nacional'];
-        $festivos[] = ['fecha' => $viernesSanto->format('Y-m-d'), 'nombre' => 'Viernes Santo', 'tipo' => 'Nacional'];
-        $festivos[] = ['fecha' => $ascension->format('Y-m-d'), 'nombre' => 'Ascensión del Señor', 'tipo' => 'Nacional'];
-        $festivos[] = ['fecha' => $corpusChristi->format('Y-m-d'), 'nombre' => 'Corpus Christi', 'tipo' => 'Nacional'];
-        $festivos[] = ['fecha' => $sagradoCorazon->format('Y-m-d'), 'nombre' => 'Sagrado Corazón', 'tipo' => 'Nacional'];
+        $festivos = [];
+
+        foreach ($fijos as $mesDia => $nombre) {
+            $festivos[] = $this->festivo(Carbon::parse("{$anio}-{$mesDia}"), $nombre);
+        }
+
+        foreach ($trasladables as $mesDia => $nombre) {
+            $festivos[] = $this->festivo($this->lunesEmiliani(Carbon::parse("{$anio}-{$mesDia}")), $nombre);
+        }
+
+        $festivos[] = $this->festivo($pascua->copy()->subDays(3), 'Jueves Santo');
+        $festivos[] = $this->festivo($pascua->copy()->subDays(2), 'Viernes Santo');
+        // Ascensión (+39), Corpus Christi (+60) y Sagrado Corazón (+68) caen jueves/viernes → lunes siguiente
+        $festivos[] = $this->festivo($this->lunesEmiliani($pascua->copy()->addDays(39)), 'Ascensión del Señor');
+        $festivos[] = $this->festivo($this->lunesEmiliani($pascua->copy()->addDays(60)), 'Corpus Christi');
+        $festivos[] = $this->festivo($this->lunesEmiliani($pascua->copy()->addDays(68)), 'Sagrado Corazón');
 
         usort($festivos, fn ($a, $b) => strcmp($a['fecha'], $b['fecha']));
 
         return $festivos;
+    }
+
+    private function lunesEmiliani(Carbon $fecha): Carbon
+    {
+        return $fecha->isMonday() ? $fecha->copy() : $fecha->copy()->next(Carbon::MONDAY);
+    }
+
+    private function festivo(Carbon $fecha, string $nombre): array
+    {
+        return ['fecha' => $fecha->format('Y-m-d'), 'nombre' => $nombre, 'tipo' => 'Nacional'];
     }
 
     private function calculateEaster(int $year): Carbon

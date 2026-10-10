@@ -19,7 +19,8 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('pqrs:marcar-vencidas')->dailyAt('00:05');
+// Las horas se interpretan en app.schedule_timezone (America/Bogota por defecto, M13-01)
+Schedule::command('pqrs:marcar-vencidas')->dailyAt('00:05')->withoutOverlapping();
 Schedule::command('email:sync-radicados')->everyFiveMinutes()->withoutOverlapping();
 
 // M16: Alertas de vencimiento (Ley 1437/2011)

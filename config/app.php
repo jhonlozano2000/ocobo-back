@@ -79,6 +79,13 @@ return [
     'timezone' => 'UTC',
 
     /*
+    | Zona horaria del scheduler: las horas de routes/console.php (alertas,
+    | vencimientos, depuración) son hora de Colombia, no UTC (M13-01).
+    */
+
+    'schedule_timezone' => env('SCHEDULE_TIMEZONE', 'America/Bogota'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
