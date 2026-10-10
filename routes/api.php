@@ -76,7 +76,7 @@ Route::middleware('auth:sanctum')->prefix('archivo')->group(function () use ($pe
     Route::get('/expedientes/{id}/indice', [OfiArchivoExpedienteController::class, 'generarIndicePdf'])->middleware('can:'.$permExp.'Ver');
 
     // RUTAS DE GESTIÓN DE TERCEROS (VISTA 360)
-    Route::get('/terceros/{identificacion}/historial', [GestionTerceroController::class, 'showHistory']);
+    Route::get('/terceros/{identificacion}/historial', [GestionTerceroController::class, 'showHistory'])->middleware('can:Gestión - Terceros -> Mostrar');
 
     // RUTAS DE FIRMA ELECTRÓNICA (LEY 527)
     Route::prefix('firma-electronica')->group(function () {

@@ -81,7 +81,7 @@ class GestionTerceroController extends Controller
 
             // Búsqueda por nombre/razón social o documento
             if ($request->filled('search')) {
-                $search = $request->search;
+                $search = mb_substr((string) $request->search, 0, 100);
                 $query->where(function ($q) use ($search) {
                     $q->where('nom_razo_soci', 'like', "%{$search}%")
                         ->orWhere('num_docu_nit', 'like', "%{$search}%");
@@ -91,13 +91,9 @@ class GestionTerceroController extends Controller
             // Ordenar por nombre
             $query->orderBy('nom_razo_soci', 'asc');
 
-            // Paginación si se solicita
-            if ($request->filled('per_page')) {
-                $perPage = $request->per_page;
-                $terceros = $query->paginate($perPage);
-            } else {
-                $terceros = $query->get();
-            }
+            // M16-02: siempre paginado; nunca se devuelve la tabla completa
+            $perPage = min(max((int) $request->input('per_page', 20), 1), 100);
+            $terceros = $query->paginate($perPage);
 
             return $this->successResponse($terceros, 'Terceros obtenidos exitosamente');
         } catch (\Exception $e) {

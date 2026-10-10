@@ -7,6 +7,8 @@ use App\Http\Middleware\DataIntegrity;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\EnsureApiAuthenticated;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
+use App\Http\Middleware\PropioOPermiso;
+use App\Http\Middleware\PuedeAlguno;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\SanitizeResponse;
 use App\Http\Middleware\SecurityHeadersMiddleware;
@@ -96,7 +98,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'cache.headers' => SetCacheHeaders::class,
             'can' => Authorize::class,
             'password.strength' => ValidatePasswordStrength::class,
-            'propio_o_can' => \App\Http\Middleware\PropioOPermiso::class,
+            'propio_o_can' => PropioOPermiso::class,
+            'can_any' => PuedeAlguno::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
