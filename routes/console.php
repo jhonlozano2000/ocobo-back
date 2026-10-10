@@ -28,10 +28,11 @@ Schedule::command('email:sync-radicados')->everyFiveMinutes()->withoutOverlappin
 Schedule::command('alertas:vencimiento --dias=1,3')->dailyAt('07:00')->withoutOverlapping();
 
 // M17: Depuración de archivos digitales huérfanos (AGN Acuerdo 003/2015, ISO 27001)
-// Corre cada domingo a la 1am — modo cuarentena (nunca borra directamente)
-Schedule::command('archivo:depurar-digital --disco=radicados_recibidos --dias=30')
+// Corre cada domingo a la 1am. M08-01: solo reporta (--dry-run) hasta conciliar los adjuntos
+// de correo con archivo:conciliar-adjuntos-correo y definir acta de eliminación (Acuerdo 004/2019).
+Schedule::command('archivo:depurar-digital --disco=radicados_recibidos --dias=30 --dry-run')
     ->weekly()->sundays()->at('01:00')->withoutOverlapping();
-Schedule::command('archivo:depurar-digital --disco=radicados_enviados --dias=30')
+Schedule::command('archivo:depurar-digital --disco=radicados_enviados --dias=30 --dry-run')
     ->weekly()->sundays()->at('01:30')->withoutOverlapping();
 
 // Grupos Colaborativos: liberar bloqueos expirados cada hora

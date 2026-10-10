@@ -64,25 +64,32 @@ class DepuracionDigitalCommand extends Command
         $this->info("Total archivos en disco: {$archivosEnDisco->count()}");
 
         // Obtener rutas registradas en BD
-        $rutasEnBd = $this->obtenerRutasEnBd($disco);
+        $rutasEnBd = $this->obtenerRutasEnBd($disco)->flip();
 
-        $huerfanos = $archivosEnDisco->filter(function ($archivo) use ($rutasEnBd, $storage, $dias) {
+        // M08-01: la carpeta de un radicado existente ({num_radicado}/...) contiene evidencia
+        // original (adjuntos de correo, versiones previas) y nunca se depura automáticamente.
+        $carpetasRadicados = $this->obtenerCarpetasRadicados($disco)->flip();
+        $limite = now()->subDays($dias)->getTimestamp();
+
+        $huerfanos = $archivosEnDisco->filter(function ($archivo) use ($rutasEnBd, $carpetasRadicados, $storage, $limite) {
             // Ignorar archivos en carpeta de cuarentena
             if (str_starts_with($archivo, 'cuarentena/')) {
                 return false;
             }
 
             // Verificar si está en BD
-            if ($rutasEnBd->contains($archivo)) {
+            if ($rutasEnBd->has($archivo)) {
+                return false;
+            }
+
+            $carpeta = str_contains($archivo, '/') ? strstr($archivo, '/', true) : null;
+            if ($carpeta !== null && $carpetasRadicados->has($carpeta)) {
                 return false;
             }
 
             // Verificar antigüedad del archivo
             try {
-                $ultimaModificacion = $storage->lastModified($archivo);
-                $diasDesdeModificacion = now()->diffInDays(now()->createFromTimestamp($ultimaModificacion));
-
-                return $diasDesdeModificacion >= $dias;
+                return $storage->lastModified($archivo) <= $limite;
             } catch (\Exception $e) {
                 return false;
             }
@@ -155,5 +162,16 @@ class DepuracionDigitalCommand extends Command
         }
 
         return collect();
+    }
+
+    /**
+     * Carpetas de los radicados existentes en el disco (una por num_radicado).
+     */
+    private function obtenerCarpetasRadicados(string $disco): Collection
+    {
+        $modelo = $disco === 'radicados_enviados' ? VentanillaRadicaEnviados::class : VentanillaRadicaReci::class;
+
+        return $modelo::query()->withoutGlobalScopes()->whereNotNull('num_radicado')
+            ->pluck('num_radicado')->map(fn ($num) => (string) $num)->unique()->values();
     }
 }

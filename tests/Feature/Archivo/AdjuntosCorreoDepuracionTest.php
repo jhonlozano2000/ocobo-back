@@ -57,4 +57,35 @@ class AdjuntosCorreoDepuracionTest extends TestCase
             'subido_por' => auth()->id(),
         ]);
     }
+
+    private function archivoAntiguo(string $ruta, int $dias): void
+    {
+        $disco = Storage::disk('radicados_recibidos');
+        $disco->put($ruta, 'x');
+        touch($disco->path($ruta), now()->subDays($dias)->getTimestamp());
+    }
+
+    public function test_depuracion_no_aparta_archivos_de_carpetas_de_radicados(): void
+    {
+        $this->archivoAntiguo('M08-TEST-0001/adjunto-sin-registro.pdf', 90);
+        $this->archivoAntiguo('huerfano-antiguo.pdf', 90);
+        $this->archivoAntiguo('huerfano-reciente.pdf', 5);
+
+        $this->artisan('archivo:depurar-digital', ['--disco' => 'radicados_recibidos', '--dias' => 30])->assertSuccessful();
+
+        $disco = Storage::disk('radicados_recibidos');
+        $disco->assertExists('M08-TEST-0001/adjunto-sin-registro.pdf');
+        $disco->assertExists('huerfano-reciente.pdf');
+        $disco->assertMissing('huerfano-antiguo.pdf');
+        $disco->assertExists('cuarentena/'.now()->format('Y-m-d').'/huerfano-antiguo.pdf');
+    }
+
+    public function test_depuracion_en_dry_run_no_mueve_nada(): void
+    {
+        $this->archivoAntiguo('huerfano-antiguo.pdf', 90);
+
+        $this->artisan('archivo:depurar-digital', ['--disco' => 'radicados_recibidos', '--dias' => 30, '--dry-run' => true])->assertSuccessful();
+
+        Storage::disk('radicados_recibidos')->assertExists('huerfano-antiguo.pdf');
+    }
 }
