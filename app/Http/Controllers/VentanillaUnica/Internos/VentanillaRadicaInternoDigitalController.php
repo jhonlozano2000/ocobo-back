@@ -290,12 +290,27 @@ class VentanillaRadicaInternoDigitalController extends Controller
         }
     }
 
+    /**
+     * Mismo control de acceso que show() (M03-13): permiso de ventanilla, o permiso de
+     * bandeja y participación en el radicado.
+     */
     public function historialEliminaciones($id)
     {
         try {
+            $user = auth()->user();
+            $puedeVerVentanilla = $user?->can('Radicar -> Cores. Interna -> Mostrar');
+
+            if (! $puedeVerVentanilla && ! $user?->can('Mi Bandeja - Internos -> Ver')) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado interno', null, 403);
+            }
+
             $radicado = VentanillaRadicaInterno::find($id);
             if (! $radicado) {
                 return $this->errorResponse('Radicado interno no encontrado', null, 404);
+            }
+
+            if (! $puedeVerVentanilla && ! $radicado->tieneAccesoUsuario($user)) {
+                return $this->errorResponse('No tiene permisos para consultar este radicado interno', null, 403);
             }
 
             $historial = VentanillaRadicaInternoArchivosEliminados::where('radica_interno_id', $id)

@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -1510,11 +1511,34 @@ class VentanillaRadicaEnviadosController extends Controller
     /**
      * Actualizar estado de un radicado enviado
      */
+    /**
+     * Cambio manual de estado de trabajo (M03-07). Solo estados del flujo de trabajo:
+     * ANULADO se asigna únicamente con el proceso formal de anulación, y un radicado
+     * anulado no puede cambiar de estado.
+     */
     public function updateEstado($id, Request $request)
     {
         try {
+            $request->validate([
+                'estado' => ['required', 'string', Rule::in(RadicadoEstadoTrabajoService::ESTADOS_MANUALES)],
+            ], [
+                'estado.in' => 'Estado no permitido. La anulación se tramita con la solicitud formal de anulación.',
+            ]);
+
             $radicado = VentanillaRadicaEnviados::findOrFail($id);
+
+            if ($radicado->estado_trabajo === 'ANULADO') {
+                return $this->errorResponse('El radicado está anulado y su estado no puede modificarse', null, 422);
+            }
+
+            $estadoAnterior = $radicado->estado_trabajo;
             $radicado->update(['estado_trabajo' => $request->estado]);
+
+            $this->auditVentanilla($radicado, 'updated', (string) $radicado->num_radicado, [
+                'campo' => 'estado_trabajo',
+                'anterior' => $estadoAnterior,
+                'nuevo' => $request->estado,
+            ]);
 
             return $this->successResponse($radicado, 'Estado actualizado');
         } catch (\Exception $e) {

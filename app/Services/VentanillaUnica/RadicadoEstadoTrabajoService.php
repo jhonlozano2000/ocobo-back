@@ -19,6 +19,16 @@ class RadicadoEstadoTrabajoService
 
     public const ESTADO_TRAMITADO = 'TRAMITADO';
 
+    /** Estados que se pueden asignar manualmente (sin ANULADO: solo por anulación formal). */
+    public const ESTADOS_MANUALES = [
+        self::ESTADO_RECIBIDO,
+        self::ESTADO_EN_PROCESO,
+        self::ESTADO_POR_VENCER,
+        self::ESTADO_VENCIDO,
+        self::ESTADO_FINALIZADO,
+        self::ESTADO_TRAMITADO,
+    ];
+
     public const DIAS_PROXIMO_VENCER = 5;
 
     public function calcularEstadoAutomatico(VentanillaRadicaReci $radicado): string
