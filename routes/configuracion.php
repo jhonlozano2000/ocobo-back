@@ -54,9 +54,11 @@ Route::middleware(['auth:sanctum', 'throttle:config-operations'])->group(functio
     Route::get('/listas-con-detalle', [ConfigListaController::class, 'listaDetalle'])->name('listas.detalle')->middleware('can:'.$p.'Listar');
     Route::get('/listas-cabeza', [ConfigListaController::class, 'listaCabeza'])->name('listas.cabeza')->middleware('can:'.$p.'Listar');
 
-    Route::get('/listas', [ConfigListaController::class, 'index'])->name('listas.index');
+    // M15-02: catálogo mínimo para selectores; el resto exige permiso
+    Route::get('/listas/catalogo/{cod}', [ConfigListaController::class, 'catalogo'])->name('listas.catalogo');
+    Route::get('/listas', [ConfigListaController::class, 'index'])->name('listas.index')->middleware('can:'.$p.'Listar');
     Route::post('/listas', [ConfigListaController::class, 'store'])->name('listas.store')->middleware('can:'.$p.'Crear');
-    Route::get('/listas/{lista}', [ConfigListaController::class, 'show'])->name('listas.show');
+    Route::get('/listas/{lista}', [ConfigListaController::class, 'show'])->name('listas.show')->middleware('can:'.$p.'Mostrar');
     Route::put('/listas/{lista}', [ConfigListaController::class, 'update'])->name('listas.update')->middleware('can:'.$p.'Editar');
     Route::delete('/listas/{lista}', [ConfigListaController::class, 'destroy'])->name('listas.destroy')->middleware('can:'.$p.'Eliminar');
 
@@ -86,7 +88,9 @@ Route::middleware(['auth:sanctum', 'throttle:config-operations'])->group(functio
     // ────────────────────────────────────────────────────────────────
     $p = 'Config - Otras configuraciones -> ';
 
-    Route::get('config-varias', [ConfigVariasController::class, 'index'])->name('config.varias.list');
+    // M15-01 / M05-03: listado completo solo con permiso; el público excluye credenciales
+    Route::get('config-varias/publicas', [ConfigVariasController::class, 'publicas'])->name('config.varias.publicas');
+    Route::get('config-varias', [ConfigVariasController::class, 'index'])->name('config.varias.list')->middleware('can:'.$p.'Listar');
     Route::post('config-varias', [ConfigVariasController::class, 'store'])->name('config.varias.store')->middleware('can:'.$p.'Editar');
     Route::put('config-varias/{clave}', [ConfigVariasController::class, 'update'])->name('config.varias.update')->middleware('can:'.$p.'Editar');
     Route::post('config-varias/batch', [ConfigVariasController::class, 'updateBatch'])->name('config.varias.update.batch')->middleware('can:'.$p.'Editar');

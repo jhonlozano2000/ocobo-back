@@ -112,13 +112,13 @@ class MailConfigHelper
             return null;
         }
 
-        // Verificar si está encriptada (Laravel encryption usa un formato específico)
         try {
             return decrypt($encryptedPassword);
         } catch (\Exception $e) {
-            // Si no se puede desencriptar, intentar retornarla como está
-            // (podría ser una contraseña guardada antes de la encriptación)
-            return $encryptedPassword;
+            // M05-02: no usar el valor crudo; un valor no cifrado indica un defecto o una APP_KEY distinta
+            Log::error('MailConfigHelper: la contraseña de correo no está cifrada o no se puede descifrar');
+
+            return null;
         }
     }
 

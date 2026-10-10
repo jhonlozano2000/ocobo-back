@@ -51,6 +51,17 @@ class ConfigVariasController extends Controller
         }
     }
 
+    /**
+     * Configuraciones no sensibles para cualquier usuario autenticado.
+     */
+    public function publicas(): JsonResponse
+    {
+        return $this->successResponse(
+            $this->service->getPublicas(),
+            'Configuraciones públicas obtenidas exitosamente'
+        );
+    }
+
     public function store(StoreConfigVariasRequest $request): JsonResponse
     {
         try {

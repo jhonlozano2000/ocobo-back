@@ -3,6 +3,7 @@
 namespace App\Models\Configuracion;
 
 use App\Helpers\ArchivoHelper;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -16,6 +17,61 @@ class ConfigVarias extends Model
     protected $fillable = ['clave', 'valor', 'descripcion', 'tipo', 'estado'];
 
     protected $appends = ['logo_url'];
+
+    /**
+     * M05-02 / M15-01: claves cuyo valor se guarda cifrado y nunca se expone en respuestas.
+     */
+    public const CLAVES_SECRETAS = ['correo_password'];
+
+    /**
+     * Prefijo de claves de infraestructura excluidas del endpoint público.
+     */
+    public const PREFIJO_PRIVADO = 'correo_';
+
+    protected static function booted(): void
+    {
+        static::saving(function (ConfigVarias $config) {
+            if ($config->esSecreta() && $config->isDirty('valor') && filled($config->valor)
+                && ! self::estaCifrado($config->valor)) {
+                $config->valor = encrypt((string) $config->valor);
+            }
+        });
+    }
+
+    public function esSecreta(): bool
+    {
+        return in_array($this->clave, self::CLAVES_SECRETAS, true);
+    }
+
+    public static function estaCifrado(?string $valor): bool
+    {
+        if (blank($valor)) {
+            return false;
+        }
+
+        try {
+            decrypt($valor);
+
+            return true;
+        } catch (DecryptException) {
+            return false;
+        }
+    }
+
+    /**
+     * Nunca serializa el valor de una clave secreta; solo indica si está configurada.
+     */
+    public function toArray(): array
+    {
+        $data = parent::toArray();
+
+        if ($this->esSecreta()) {
+            $data['configurado'] = filled($this->valor);
+            $data['valor'] = null;
+        }
+
+        return $data;
+    }
 
     /**
      * Obtiene la URL de cualquier archivo usando ArchivoHelper.
@@ -464,20 +520,21 @@ class ConfigVarias extends Model
     }
 
     /**
+     * Crea o actualiza una configuración (las claves secretas se cifran en el evento saving).
+     */
+    public static function setValor(string $clave, $valor): bool
+    {
+        return self::actualizarConfiguracion($clave, $valor);
+    }
+
+    /**
      * Método auxiliar para actualizar configuraciones.
      *
-     * @param  string  $clave
      * @param  mixed  $valor
-     * @return bool
      */
     private static function actualizarConfiguracion($clave, $valor)
     {
-        // Encriptar contraseña de correo
-        if ($clave === 'correo_password' && ! empty($valor)) {
-            $valorString = encrypt((string) $valor);
-        } else {
-            $valorString = (string) $valor;
-        }
+        $valorString = (string) $valor;
 
         $config = self::where('clave', $clave)->first();
 

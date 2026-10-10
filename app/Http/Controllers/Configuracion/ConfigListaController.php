@@ -156,6 +156,24 @@ class ConfigListaController extends Controller
     /**
      * Obtiene todas las listas maestras con el detalle activas.
      */
+    /**
+     * Detalles activos de una lista por su código, para selectores de cualquier
+     * usuario autenticado (solo id, código y nombre).
+     */
+    public function catalogo(string $cod)
+    {
+        $lista = ConfigLista::where('cod', $cod)->where('estado', true)->first();
+
+        if (! $lista) {
+            return $this->notFoundResponse('Lista no encontrada');
+        }
+
+        return $this->successResponse(
+            $lista->detalles()->where('estado', true)->orderBy('nombre')->get(['id', 'codigo', 'nombre']),
+            'Catálogo obtenido exitosamente'
+        );
+    }
+
     public function listasActivasDetalle(int $id)
     {
         return $this->successResponse(

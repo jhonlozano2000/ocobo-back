@@ -19,7 +19,10 @@ class ConfigVariasService
         if (! empty($filters['search'])) {
             $query->where(fn ($q) => $q
                 ->where('clave', 'like', "%{$filters['search']}%")
-                ->orWhere('valor', 'like', "%{$filters['search']}%")
+                ->orWhere(fn ($q2) => $q2
+                    ->where('valor', 'like', "%{$filters['search']}%")
+                    ->whereNotIn('clave', ConfigVarias::CLAVES_SECRETAS)
+                )
             );
         }
 
@@ -38,6 +41,21 @@ class ConfigVariasService
             : $query->get();
 
         return $this->injectLogoUrl($result);
+    }
+
+    /**
+     * Configuraciones no sensibles que necesita cualquier usuario autenticado
+     * (semáforo, datos de la empresa, logo...). Excluye credenciales de correo.
+     */
+    public function getPublicas(): Collection
+    {
+        $configs = ConfigVarias::query()
+            ->where('clave', 'not like', ConfigVarias::PREFIJO_PRIVADO.'%')
+            ->whereNotIn('clave', ConfigVarias::CLAVES_SECRETAS)
+            ->orderBy('clave')
+            ->get();
+
+        return $this->injectLogoUrl($configs);
     }
 
     /**
@@ -67,6 +85,10 @@ class ConfigVariasService
             return null;
         }
 
+        if ($config->esSecreta() && $this->esValorSecretoVacio($data['valor'] ?? null)) {
+            unset($data['valor']);
+        }
+
         $config->fill($data)->save();
 
         return $config;
@@ -84,6 +106,15 @@ class ConfigVariasService
             $valor = $configData['valor'];
 
             $config = ConfigVarias::where('clave', $clave)->first();
+
+            // Un secreto vacío significa "conservar el actual" (el GET nunca lo devuelve)
+            if (in_array($clave, ConfigVarias::CLAVES_SECRETAS, true) && $this->esValorSecretoVacio($valor)) {
+                if ($config) {
+                    $results[] = $config;
+                }
+
+                continue;
+            }
 
             if ($config) {
                 $config->update(['valor' => $valor]);
@@ -117,6 +148,11 @@ class ConfigVariasService
     public function setNumeracionUnificada(bool $value): void
     {
         ConfigVarias::setNumeracionUnificada($value);
+    }
+
+    private function esValorSecretoVacio($valor): bool
+    {
+        return blank($valor) || $valor === '********';
     }
 
     /**
