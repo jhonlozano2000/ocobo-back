@@ -68,8 +68,18 @@ class FirmaMasivaController extends Controller
         $otp = $item['otp'];
 
         try {
+            // M06-02: solo el firmante designado, con el OTP emitido para él y este documento
+            if (! $this->firmaService->esFirmanteDesignado($documentableType, (int) $documentableId, $user->id)) {
+                return [
+                    'documentable_id' => $documentableId,
+                    'documentable_type' => $documentableType,
+                    'success' => false,
+                    'error' => 'No es firmante designado de este documento',
+                ];
+            }
+
             // 1. Validar OTP
-            $otpValido = $this->firmaService->validarOtpPorDocumento($otp, $documentableType, $documentableId);
+            $otpValido = $this->firmaService->validarOtpPorDocumento($otp, $documentableType, (int) $documentableId, $user->id);
             if (! $otpValido) {
                 return [
                     'documentable_id' => $documentableId,

@@ -29,7 +29,9 @@ class FirmaElectronicaController extends Controller
 
     /**
      * Solicita un código OTP para firmar un documento.
-     * Envía el OTP al correo del custodio/responsable del radicado.
+     *
+     * M06-02: solo un firmante designado del documento puede solicitarlo; el OTP se envía
+     * a su propio correo y queda ligado al documento y al usuario.
      */
     public function solicitarOtp(Request $request)
     {
@@ -38,66 +40,31 @@ class FirmaElectronicaController extends Controller
             'documentable_id' => 'required|integer',
         ]);
 
+        $user = Auth::user();
+        $tipo = $request->documentable_type;
+        $id = (int) $request->documentable_id;
+
+        [$modelo] = FirmaService::TIPOS_DOCUMENTO[$tipo];
+        if (! $modelo::whereKey($id)->exists()) {
+            return $this->errorResponse('Documento no encontrado', null, 404);
+        }
+
+        if (! $this->firmaService->esFirmanteDesignado($tipo, $id, $user->id)) {
+            return $this->errorResponse('No es firmante designado de este documento.', null, 403);
+        }
+
+        if (empty($user->email)) {
+            return $this->errorResponse('El usuario no tiene un correo electrónico configurado.', null, 422);
+        }
+
         try {
-            $emailDestino = null;
-            $nombreDestino = null;
+            $nombre = trim("{$user->nombres} {$user->apellidos}");
+            $this->firmaService->generarYEnviarOtpParaEmail($user->email, $nombre, $tipo, $id, $user->id);
 
-            // Buscar el custodio/responsable del radicado
-            $radicado = match ($request->documentable_type) {
-                'radicado_enviado' => VentanillaRadicaEnviados::with('usuariosResponsables.user')->find($request->documentable_id),
-                'radicado_recibido' => VentanillaRadicaReci::with('usuariosResponsables.user')->find($request->documentable_id),
-                'radicado_interno' => VentanillaRadicaInterno::with('responsables.userCargo.user')->find($request->documentable_id),
-            };
-
-            if ($radicado) {
-                if ($request->documentable_type === 'radicado_interno') {
-                    // Internos: relación diferente (responsables → userCargo → user)
-                    $responsables = $radicado->responsables;
-                    $responsable = $responsables->first();
-                    if ($responsable && $responsable->userCargo && $responsable->userCargo->user) {
-                        $emailDestino = $responsable->userCargo->user->email;
-                        $nombreDestino = trim("{$responsable->userCargo->user->nombres} {$responsable->userCargo->user->apellidos}");
-                    }
-                } else {
-                    // Recibidos/Enviados: usuariosResponsables con pivot custodio
-                    $responsables = $radicado->usuariosResponsables;
-                    $custodio = $responsables->first(fn ($r) => $r->pivot->custodio);
-                    $responsable = $custodio ?? $responsables->first();
-                    if ($responsable && $responsable->user) {
-                        $emailDestino = $responsable->user->email;
-                        $nombreDestino = trim("{$responsable->user->nombres} {$responsable->user->apellidos}");
-                    }
-                }
-            }
-
-            // Fallback: usuario autenticado
-            if (empty($emailDestino)) {
-                $user = Auth::user();
-                $emailDestino = $user->email;
-                $nombreDestino = trim("{$user->nombres} {$user->apellidos}");
-            }
-
-            if (empty($emailDestino)) {
-                return $this->errorResponse('No se encontró un correo electrónico válido para enviar el OTP', null, 422);
-            }
-
-            $this->firmaService->generarYEnviarOtpParaEmail(
-                $emailDestino,
-                $nombreDestino,
-                $request->documentable_type,
-                $request->documentable_id
-            );
-
-            return $this->successResponse(null, "Código OTP enviado al correo del funcionario {$nombreDestino}");
+            return $this->successResponse(null, 'Código OTP enviado a su correo electrónico.');
         } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
             Log::error('Error al enviar OTP de firma', [
-                'user_id' => Auth::id(),
+                'user_id' => $user->id,
                 'error' => $e->getMessage(),
             ]);
 
@@ -121,8 +88,13 @@ class FirmaElectronicaController extends Controller
 
         $user = Auth::user();
 
-        // 1. Validar OTP por documento
-        $otpValido = $this->firmaService->validarOtpPorDocumento($request->otp, $request->documentable_type, $request->documentable_id);
+        // M06-02: solo el firmante designado, con el OTP emitido para él y este documento
+        if (! $this->firmaService->esFirmanteDesignado($request->documentable_type, (int) $request->documentable_id, $user->id)) {
+            return $this->errorResponse('No es firmante designado de este documento.', null, 403);
+        }
+
+        // 1. Validar OTP por documento y usuario
+        $otpValido = $this->firmaService->validarOtpPorDocumento($request->otp, $request->documentable_type, (int) $request->documentable_id, $user->id);
         if (! $otpValido) {
             return $this->errorResponse('Código OTP inválido o expirado', null, 403);
         }

@@ -1294,9 +1294,12 @@ class GrupoColaborativoService
             $nombreFirmante = trim(($user->nombres ?? '').' '.($user->apellidos ?? ''));
             $cargoFirmante = $firmante->cargo?->nombre ?? $user->cargo?->nombre ?? 'Funcionario';
 
+            // M06-07: el OTP nunca se guarda ni se estampa completo
+            $otpMascara = ($otpUtilizado && ctype_digit($otpUtilizado)) ? '***'.substr($otpUtilizado, -3) : $otpUtilizado;
+
             $metodoTexto = in_array($otpUtilizado, ['PASSWORD', 'PASSWORD_REAUTH', 'CLAVE'])
                 ? 'Re-autenticación con contraseña'
-                : ($otpUtilizado ? "OTP correo institucional ({$otpUtilizado})" : 'Autenticación en sesión');
+                : ($otpUtilizado ? "OTP correo institucional ({$otpMascara})" : 'Autenticación en sesión');
 
             $hashOriginal = $hayArchivo ? hash_file('sha256', $diskPath) : hash('sha256', "grupo_{$grupo->id}_{$user->id}_{$fechaFormateada}");
             $hashFirmado = $hashOriginal;
@@ -1445,7 +1448,7 @@ class GrupoColaborativoService
                 'user_id' => $user->id,
                 'hash_original' => $hashOriginal,
                 'hash_firmado' => $hashFirmado,
-                'otp_utilizado' => substr($otpUtilizado ?? 'PASSWORD', 0, 10),
+                'otp_utilizado' => substr($otpMascara ?? 'PASSWORD', 0, 10),
                 'ip_address' => request()->ip() ?? '127.0.0.1',
                 'user_agent' => request()->userAgent() ?? 'Sistema Ocobo - Mi Bandeja Grupos',
                 'fecha_firma' => $fechaFirma,

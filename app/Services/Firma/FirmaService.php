@@ -4,38 +4,58 @@ namespace App\Services\Firma;
 
 use App\Helpers\MailConfigHelper;
 use App\Mail\OtpFirmaMail;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 
 class FirmaService
 {
     /**
-     * Genera un OTP de 6 digitos y lo envia al correo del usuario (PQRS).
+     * Tipos de documento firmables: alias => [modelo, disco].
      */
-    public function generarYEnviarOtp($user)
+    public const TIPOS_DOCUMENTO = [
+        'radicado_recibido' => [VentanillaRadicaReci::class, 'radicados_recibidos'],
+        'radicado_enviado' => [VentanillaRadicaEnviados::class, 'radicados_enviados'],
+        'radicado_interno' => [VentanillaRadicaInterno::class, 'radicados_internos'],
+    ];
+
+    public const OTP_MINUTOS = 5;
+
+    public const OTP_MAX_INTENTOS = 5;
+
+    /**
+     * M06-02: el usuario es firmante designado del documento.
+     * Recibidos: responsable. Enviados: firmante o responsable. Internos: firmante o responsable.
+     */
+    public function esFirmanteDesignado(string $documentableType, int $documentableId, int $userId): bool
     {
-        $otp = rand(100000, 999999);
-        $cacheKey = 'otp_firma_'.$user->id;
+        $porCargo = fn (string $tabla, string $columna) => DB::table($tabla)
+            ->join('users_cargos', 'users_cargos.id', '=', "{$tabla}.users_cargos_id")
+            ->where("{$tabla}.{$columna}", $documentableId)
+            ->where('users_cargos.user_id', $userId)
+            ->exists();
 
-        Cache::put($cacheKey, $otp, now()->addMinutes(5));
-
-        MailConfigHelper::configureFromConfigVarias();
-        Mail::to($user->email)->send(new OtpFirmaMail($otp, $user->name));
-
-        return true;
+        return match ($documentableType) {
+            'radicado_recibido' => $porCargo('ventanilla_radica_reci_responsa', 'radica_reci_id'),
+            'radicado_enviado' => $porCargo('ventanilla_radica_enviados_firmas', 'radica_enviado_id')
+                || $porCargo('ventanilla_radica_enviados_responsable', 'radica_enviado_id'),
+            'radicado_interno' => DB::table('ventanilla_radica_internos_firmantes')
+                ->where('radica_interno_id', $documentableId)->where('users_id', $userId)->exists()
+                || $porCargo('ventanilla_radica_internos_responsa', 'radica_interno_id'),
+            default => false,
+        };
     }
 
     /**
-     * Genera un OTP de 6 digitos y lo envia al correo de un email especifico (tercero o funcionario).
+     * Genera un OTP de 6 digitos ligado al documento (y al usuario, si se indica) y lo envia por correo.
      */
     public function generarYEnviarOtpParaEmail(string $email, ?string $nombre, string $documentableType, int $documentableId, ?int $userId = null): bool
     {
-        $otp = (string) random_int(100000, 999999);
-        $suffix = $userId ? "_{$userId}" : '';
-        $cacheKey = "otp_firma_{$documentableType}_{$documentableId}{$suffix}";
-
-        Cache::put($cacheKey, $otp, now()->addMinutes(5));
+        $otp = $this->guardarOtp($this->claveOtp($documentableType, $documentableId, $userId));
 
         MailConfigHelper::configureFromConfigVarias();
         Mail::to($email)->send(new OtpFirmaMail($otp, $nombre ?? 'Usuario'));
@@ -44,38 +64,78 @@ class FirmaService
     }
 
     /**
-     * Valida que el OTP sea correcto y no haya expirado (por usuario - PQRS).
+     * Valida OTP por documento (recibidos/enviados/internos/grupos colaborativos).
+     * El OTP es de un solo uso y se invalida tras OTP_MAX_INTENTOS fallidos.
      */
-    public function validarOtp($user, $otp)
+    public function validarOtpPorDocumento(string $otp, string $documentableType, int $documentableId, ?int $userId = null): bool
     {
-        $cacheKey = 'otp_firma_'.$user->id;
-        $otpGuardado = Cache::get($cacheKey);
+        return $this->verificarOtp($this->claveOtp($documentableType, $documentableId, $userId), $otp);
+    }
 
-        if (! $otpGuardado || $otpGuardado != $otp) {
-            return false;
-        }
+    /**
+     * Flujo legado: OTP ligado solo al usuario.
+     */
+    public function generarYEnviarOtp($user)
+    {
+        $otp = $this->guardarOtp('otp_firma_'.$user->id);
 
-        Cache::forget($cacheKey);
+        MailConfigHelper::configureFromConfigVarias();
+        Mail::to($user->email)->send(new OtpFirmaMail($otp, $user->name));
 
         return true;
     }
 
     /**
-     * Valida OTP por documento (recibidos/enviados/internos/grupos colaborativos).
+     * Flujo legado: valida el OTP ligado solo al usuario.
      */
-    public function validarOtpPorDocumento(string $otp, string $documentableType, int $documentableId, ?int $userId = null): bool
+    public function validarOtp($user, $otp)
+    {
+        return $this->verificarOtp('otp_firma_'.$user->id, (string) $otp);
+    }
+
+    protected function claveOtp(string $documentableType, int $documentableId, ?int $userId): string
     {
         $suffix = $userId ? "_{$userId}" : '';
-        $cacheKey = "otp_firma_{$documentableType}_{$documentableId}{$suffix}";
-        $otpGuardado = Cache::get($cacheKey);
 
-        if (! $otpGuardado || $otpGuardado != $otp) {
+        return "otp_firma_{$documentableType}_{$documentableId}{$suffix}";
+    }
+
+    /**
+     * M06-06/07: OTP con random_int y guardado solo como hash.
+     */
+    protected function guardarOtp(string $clave): string
+    {
+        $otp = (string) random_int(100000, 999999);
+        $expira = now()->addMinutes(self::OTP_MINUTOS);
+
+        Cache::put($clave, ['hash' => Hash::make($otp), 'intentos' => 0, 'expira' => $expira->getTimestamp()], $expira);
+
+        return $otp;
+    }
+
+    protected function verificarOtp(string $clave, string $otp): bool
+    {
+        $datos = Cache::get($clave);
+
+        if (! is_array($datos) || empty($datos['hash'])) {
             return false;
         }
 
-        Cache::forget($cacheKey);
+        if (Hash::check($otp, $datos['hash'])) {
+            // Un solo uso: solo una petición concurrente logra retirarlo
+            return Cache::pull($clave) !== null;
+        }
 
-        return true;
+        $datos['intentos'] = ($datos['intentos'] ?? 0) + 1;
+        $restante = ($datos['expira'] ?? 0) - now()->getTimestamp();
+
+        if ($datos['intentos'] >= self::OTP_MAX_INTENTOS || $restante <= 0) {
+            Cache::forget($clave);
+        } else {
+            Cache::put($clave, $datos, $restante);
+        }
+
+        return false;
     }
 
     /**
@@ -89,7 +149,7 @@ class FirmaService
             'user_id' => $user->id,
             'hash_original' => $data['hash_original'] ?? null,
             'hash_firmado' => $data['hash_firmado'] ?? null,
-            'otp_utilizado' => $data['otp'],
+            'otp_utilizado' => '***'.substr((string) $data['otp'], -3),
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
             'fecha_firma' => now(),

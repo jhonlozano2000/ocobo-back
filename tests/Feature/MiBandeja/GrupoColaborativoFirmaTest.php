@@ -164,9 +164,13 @@ class GrupoColaborativoFirmaTest extends TestCase
             $this->user->id
         );
 
-        // Obtener el OTP de caché
-        $cacheKey = "otp_firma_grupo_colaborativo_{$this->grupo->id}_{$this->user->id}";
-        $otpGenerado = cache()->get($cacheKey);
+        // Obtener el OTP del correo enviado (en caché solo se guarda su hash)
+        $otpGenerado = null;
+        Mail::assertSent(OtpFirmaMail::class, function ($mail) use (&$otpGenerado) {
+            $otpGenerado = (string) $mail->otp;
+
+            return true;
+        });
         $this->assertNotNull($otpGenerado);
 
         $response = $this->actingAs($this->user)
@@ -186,7 +190,7 @@ class GrupoColaborativoFirmaTest extends TestCase
             'documentable_id' => $this->grupo->id,
             'documentable_type' => MiBandejaTemp::class,
             'user_id' => $this->user->id,
-            'otp_utilizado' => (string) $otpGenerado,
+            'otp_utilizado' => '***'.substr((string) $otpGenerado, -3),
         ]);
     }
 
