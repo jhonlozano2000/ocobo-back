@@ -141,6 +141,15 @@ class MiBandejaTempGrupoFirmanteController extends Controller
      */
     public function update(Request $request, $grupoId, $id)
     {
+        $this->autorizarGrupo($grupoId);
+
+        // M07-01: el estado de la firma (fechor_firmado, fechor_terminado, plantillas) solo
+        // cambia mediante firmar()/marcarTerminado(); aquí solo datos de la asignación.
+        $datos = $request->validate([
+            'cargo_id' => ['sometimes', 'nullable', 'integer', 'exists:calidad_organigrama,id'],
+            'orden_firma' => ['sometimes', 'integer', 'min:1', 'max:100'],
+        ]);
+
         try {
             $firmante = MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->find($id);
 
@@ -148,7 +157,11 @@ class MiBandejaTempGrupoFirmanteController extends Controller
                 return $this->errorResponse('Firmante no encontrado', null, 404);
             }
 
-            $firmante->update($request->only(['cargo_id', 'orden_firma', 'subio_plantilla', 'descargo_plantilla', 'fechor_terminado', 'fechor_firmado']));
+            if ($firmante->fechor_firmado) {
+                return $this->errorResponse('El firmante ya firmó; su asignación no puede modificarse.', null, 422);
+            }
+
+            $firmante->update($datos);
 
             $firmante->load(['user.cargo', 'cargo']);
 
@@ -174,11 +187,17 @@ class MiBandejaTempGrupoFirmanteController extends Controller
      */
     public function destroy($grupoId, $id)
     {
+        $this->autorizarGrupo($grupoId);
+
         try {
             $firmante = MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->find($id);
 
             if (! $firmante) {
                 return $this->errorResponse('Firmante no encontrado', null, 404);
+            }
+
+            if ($firmante->fechor_firmado) {
+                return $this->errorResponse('No se puede retirar a un firmante que ya firmó el documento.', null, 422);
             }
 
             $totalFirmantes = MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->count();
@@ -210,11 +229,17 @@ class MiBandejaTempGrupoFirmanteController extends Controller
      */
     public function marcarTerminado($grupoId, $id)
     {
+        $this->autorizarGrupo($grupoId);
+
         try {
             $firmante = MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->find($id);
 
             if (! $firmante) {
                 return $this->errorResponse('Firmante no encontrado', null, 404);
+            }
+
+            if ((int) $firmante->user_id !== (int) auth()->id()) {
+                return $this->errorResponse('Solo el usuario titular puede marcar su tarea como terminada.', null, 403);
             }
 
             $firmante->update([
