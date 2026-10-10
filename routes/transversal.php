@@ -9,8 +9,8 @@ use App\Http\Controllers\Transversal\NotificacionesController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->prefix('firma-electronica')->group(function () {
-    Route::post('/solicitar-otp', [FirmaController::class, 'solicitarOtp']);
-    Route::post('/firmar', [FirmaController::class, 'validarYFirmar']);
+    Route::post('/solicitar-otp', [FirmaController::class, 'solicitarOtp'])->middleware('throttle:firma-otp');
+    Route::post('/firmar', [FirmaController::class, 'validarYFirmar'])->middleware('throttle:firma');
 });
 
 // M16 — Notificaciones y Alertas (Ley 1437/2011)
@@ -36,4 +36,4 @@ Route::middleware('auth:sanctum')->prefix('firma-eventos')->group(function () {
 Route::middleware('auth:sanctum')->post('firma-validar', [FirmaValidacionController::class, 'validar']);
 
 // M13 — Firma masiva de documentos
-Route::middleware('auth:sanctum')->post('firma-electronica/firmar-masivo', [FirmaMasivaController::class, 'firmarMasivo']);
+Route::middleware(['auth:sanctum', 'throttle:firma'])->post('firma-electronica/firmar-masivo', [FirmaMasivaController::class, 'firmarMasivo']);

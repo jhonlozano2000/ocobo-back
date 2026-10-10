@@ -160,6 +160,19 @@ class AppServiceProvider extends ServiceProvider
                 });
         });
 
+        // M06-03: solicitud de OTP de firma. Más holgado que 'firma' porque la firma masiva
+        // pide un OTP por documento; la fuerza bruta la frena el límite de intentos por OTP.
+        RateLimiter::for('firma-otp', function (Request $request) {
+            return Limit::perMinute(20)
+                ->by('firma-otp:'.($request->user()?->id ?: $request->ip()))
+                ->response(function (Request $request, array $headers) {
+                    return response()->json([
+                        'message' => 'Límite de solicitudes de código de firma alcanzado.',
+                        'retry_after' => $headers['Retry-After'] ?? 60,
+                    ], 429);
+                });
+        });
+
         // Rate limit específico para API de terceros (protección enumeration)
         RateLimiter::for('terceros', function (Request $request) {
             return Limit::perMinute(20)

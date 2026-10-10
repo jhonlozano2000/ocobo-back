@@ -80,8 +80,8 @@ Route::middleware('auth:sanctum')->prefix('archivo')->group(function () use ($pe
 
     // RUTAS DE FIRMA ELECTRÓNICA (LEY 527)
     Route::prefix('firma-electronica')->group(function () {
-        Route::post('/solicitar-otp', [FirmaElectronicaController::class, 'solicitarOtp']);
-        Route::post('/firmar', [FirmaElectronicaController::class, 'firmarDocumento']);
+        Route::post('/solicitar-otp', [FirmaElectronicaController::class, 'solicitarOtp'])->middleware('throttle:firma-otp');
+        Route::post('/firmar', [FirmaElectronicaController::class, 'firmarDocumento'])->middleware('throttle:firma');
     });
 
     // RUTAS SEGURAS DE DOCUMENTOS (ISO 27001)

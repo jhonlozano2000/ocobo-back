@@ -223,7 +223,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.solicitar-otp-firma
          */
-        Route::post('/pqrs/{id}/solicitar-otp-firma', [VentanillaPqrsController::class, 'solicitarOtpFirma'])->name('pqrs.solicitar-otp-firma');
+        Route::post('/pqrs/{id}/solicitar-otp-firma', [VentanillaPqrsController::class, 'solicitarOtpFirma'])->name('pqrs.solicitar-otp-firma')->middleware('throttle:firma-otp');
 
         /**
          * POST /api/pqrs/{id}/validar-otp-firma
@@ -231,7 +231,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.validar-otp-firma
          */
-        Route::post('/pqrs/{id}/validar-otp-firma', [VentanillaPqrsController::class, 'validarOtpFirma'])->name('pqrs.validar-otp-firma');
+        Route::post('/pqrs/{id}/validar-otp-firma', [VentanillaPqrsController::class, 'validarOtpFirma'])->name('pqrs.validar-otp-firma')->middleware('throttle:firma');
 
         /**
          * POST /api/pqrs/{id}/guardar-firma
@@ -239,7 +239,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.guardar-firma
          */
-        Route::post('/pqrs/{id}/guardar-firma', [VentanillaPqrsController::class, 'guardarFirma'])->name('pqrs.guardar-firma');
+        Route::post('/pqrs/{id}/guardar-firma', [VentanillaPqrsController::class, 'guardarFirma'])->name('pqrs.guardar-firma')->middleware('throttle:firma');
 
         /**
          * POST /api/pqrs/{id}/solicitar-anulacion

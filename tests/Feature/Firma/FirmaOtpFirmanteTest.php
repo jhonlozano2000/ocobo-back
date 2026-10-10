@@ -132,6 +132,16 @@ class FirmaOtpFirmanteTest extends TestCase
         $this->assertFalse($service->validarOtpPorDocumento($otp, 'radicado_recibido', $id, $uid));
     }
 
+    public function test_firmar_tiene_limite_de_peticiones(): void
+    {
+        // M06-03: limiter 'firma' (5/min por usuario)
+        for ($i = 0; $i < 5; $i++) {
+            $this->actingAs($this->firmante)->postJson(self::URL.'/firmar', $this->payload(['otp' => '000000']))->assertForbidden();
+        }
+
+        $this->actingAs($this->firmante)->postJson(self::URL.'/firmar', $this->payload(['otp' => '000000']))->assertStatus(429);
+    }
+
     public function test_flujo_legado_solo_acepta_tipos_de_la_lista_blanca(): void
     {
         $legado = '/api/transversal/firma-electronica';

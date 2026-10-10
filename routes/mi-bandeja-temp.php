@@ -59,11 +59,11 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('grupos-colaborativo
     Route::prefix('{grupo}/firmantes')->name('firmantes.')->group(function () use ($permMiBandeja) {
         Route::get('/', [MiBandejaTempGrupoFirmanteController::class, 'index'])->name('index')->middleware('can:'.$permMiBandeja.'Ver');
         Route::post('/', [MiBandejaTempGrupoFirmanteController::class, 'store'])->name('store')->middleware('can:'.$permMiBandeja.'Gestionar Miembros');
-        Route::post('/solicitar-otp', [MiBandejaTempGrupoFirmanteController::class, 'solicitarOtp'])->name('solicitar-otp')->middleware('can:'.$permMiBandeja.'Ver');
+        Route::post('/solicitar-otp', [MiBandejaTempGrupoFirmanteController::class, 'solicitarOtp'])->name('solicitar-otp')->middleware(['can:'.$permMiBandeja.'Ver', 'throttle:firma-otp']);
         Route::put('/{id}', [MiBandejaTempGrupoFirmanteController::class, 'update'])->name('update')->middleware('can:'.$permMiBandeja.'Gestionar Miembros');
         Route::delete('/{id}', [MiBandejaTempGrupoFirmanteController::class, 'destroy'])->name('destroy')->middleware('can:'.$permMiBandeja.'Gestionar Miembros');
         Route::post('/{id}/marcar-terminado', [MiBandejaTempGrupoFirmanteController::class, 'marcarTerminado'])->name('marcar-terminado')->middleware('can:'.$permMiBandeja.'Ver');
-        Route::post('/{id}/firmar', [MiBandejaTempGrupoFirmanteController::class, 'firmar'])->name('firmar')->middleware('can:'.$permMiBandeja.'Ver');
+        Route::post('/{id}/firmar', [MiBandejaTempGrupoFirmanteController::class, 'firmar'])->name('firmar')->middleware(['can:'.$permMiBandeja.'Ver', 'throttle:firma']);
     });
 
     // Aprobadores
