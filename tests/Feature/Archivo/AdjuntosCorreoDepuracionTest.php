@@ -88,4 +88,25 @@ class AdjuntosCorreoDepuracionTest extends TestCase
 
         Storage::disk('radicados_recibidos')->assertExists('huerfano-antiguo.pdf');
     }
+
+    public function test_conciliacion_restaura_de_cuarentena_y_registra_adjuntos(): void
+    {
+        $disco = Storage::disk('radicados_recibidos');
+        $disco->put('M08-TEST-0001/correo-M08-TEST-0001.pdf', 'pdf del correo');
+        $disco->put('M08-TEST-0001/factura.xlsx', 'adjunto en su sitio');
+        $disco->put('cuarentena/2026-09-27/M08-TEST-0001/anexo.pdf', 'adjunto apartado');
+        $this->radicado->update(['archivo_digital' => 'M08-TEST-0001/correo-M08-TEST-0001.pdf']);
+
+        $this->artisan('archivo:conciliar-adjuntos-correo', ['--restaurar-cuarentena' => true])->assertSuccessful();
+
+        $disco->assertExists('M08-TEST-0001/anexo.pdf');
+        $disco->assertMissing('cuarentena/2026-09-27/M08-TEST-0001/anexo.pdf');
+
+        $archivos = \DB::table('ventanilla_radica_reci_archivos')->where('radicado_id', $this->radicado->id)->pluck('archivo')->sort()->values()->all();
+        $this->assertSame(['M08-TEST-0001/anexo.pdf', 'M08-TEST-0001/factura.xlsx'], $archivos);
+
+        // Idempotente
+        $this->artisan('archivo:conciliar-adjuntos-correo')->assertSuccessful();
+        $this->assertSame(2, \DB::table('ventanilla_radica_reci_archivos')->where('radicado_id', $this->radicado->id)->count());
+    }
 }
