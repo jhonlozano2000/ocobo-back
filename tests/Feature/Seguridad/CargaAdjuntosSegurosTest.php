@@ -2,9 +2,12 @@
 
 namespace Tests\Feature\Seguridad;
 
+use App\Http\Requests\MiBandeja\StoreGrupoAdjuntoRequest;
 use App\Http\Requests\Ventanilla\Enviados\UploadArchivosAdjuntosEnviadoRequest;
 use App\Http\Requests\Ventanilla\Internos\UploadArchivosAdjuntosInternoRequest;
+use App\Http\Requests\Ventanilla\Pqrs\UploadPqrsAdjuntosRequest;
 use App\Http\Requests\Ventanilla\Recibidos\UploadArchivosAdjuntosRecibidoRequest;
+use App\Models\Configuracion\ConfigVarias;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
@@ -53,6 +56,7 @@ class CargaAdjuntosSegurosTest extends TestCase
             'recibidos' => [UploadArchivosAdjuntosRecibidoRequest::class],
             'enviados' => [UploadArchivosAdjuntosEnviadoRequest::class],
             'internos' => [UploadArchivosAdjuntosInternoRequest::class],
+            'pqrs' => [UploadPqrsAdjuntosRequest::class],
         ];
     }
 
@@ -79,5 +83,16 @@ class CargaAdjuntosSegurosTest extends TestCase
 
         $exe = $this->subido("MZ\x90\x00".str_repeat("\x00", 200), 'factura.exe');
         $this->assertTrue(Validator::make(['archivos' => [$exe]], $rules)->fails());
+    }
+
+    public function test_adjunto_de_grupo_valida_contenido_y_tamano_en_kb(): void
+    {
+        $rules = (new StoreGrupoAdjuntoRequest)->rules();
+
+        $this->assertTrue(Validator::make(['archivo' => $this->pdf()], $rules)->passes());
+        $this->assertTrue(Validator::make(['archivo' => $this->subido('<?php echo 1; ?>', 'oficio.pdf')], $rules)->fails());
+
+        // max se expresa en KB: antes se multiplicaba por 1024 (≈10 GB permitidos).
+        $this->assertContains('max:'.ConfigVarias::getValor('max_tamano_archivo', 10240), $rules['archivo']);
     }
 }

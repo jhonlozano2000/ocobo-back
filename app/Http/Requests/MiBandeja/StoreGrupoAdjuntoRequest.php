@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\MiBandeja;
 
+use App\Models\Configuracion\ConfigVarias;
+use App\Rules\ArchivoSeguro;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -28,13 +30,12 @@ class StoreGrupoAdjuntoRequest extends FormRequest
      */
     public function rules(): array
     {
-        $maxSize = config('config_varias.max_tamano_archivo', 10240) * 1024; // KB a bytes
-
         return [
             'archivo' => [
                 'required',
                 'file',
-                'max:'.$maxSize,
+                'max:'.$this->maxSizeKB(), // la regla max de archivos se expresa en KB
+                new ArchivoSeguro,
             ],
             'tipo' => ['nullable', Rule::in(['respuesta', 'anexo', 'evidencia'])],
         ];
@@ -47,12 +48,20 @@ class StoreGrupoAdjuntoRequest extends FormRequest
      */
     public function messages(): array
     {
-        $maxSizeKB = config('config_varias.max_tamano_archivo', 10240);
+        $maxSizeKB = $this->maxSizeKB();
 
         return [
             'archivo.required' => 'El archivo es obligatorio.',
             'archivo.file' => 'El archivo debe ser un archivo válido.',
             'archivo.max' => "El archivo no puede superar los {$maxSizeKB} KB.",
         ];
+    }
+
+    /**
+     * Tamaño máximo en KB (ConfigVarias max_tamano_archivo).
+     */
+    private function maxSizeKB(): int
+    {
+        return (int) ConfigVarias::getValor('max_tamano_archivo', 10240);
     }
 }

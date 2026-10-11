@@ -23,6 +23,7 @@ use App\Models\VentanillaUnica\Recibidos\RadicadoRespuesta;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivo;
 use App\Services\Firma\FirmaService;
 use App\Services\OfiArchivo\PlantillaDocumentoService;
+use App\Services\Seguridad\InspectorArchivos;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
@@ -258,7 +259,7 @@ class GrupoColaborativoService
                 }
             }
 
-            $extension = $archivo->getClientOriginalExtension();
+            $extension = InspectorArchivos::extensionSegura($archivo->getRealPath(), $archivo->getClientOriginalName());
             $pesoKB = round($archivo->getSize() / 1024, 2);
             $uuid = Str::uuid().'.'.$extension;
 
@@ -643,7 +644,7 @@ class GrupoColaborativoService
     public function subirVersionInicial(MiBandejaTemp $grupo, User $user, UploadedFile $archivo): MiBandejaTempArchivoVersion
     {
         return DB::transaction(function () use ($grupo, $user, $archivo) {
-            $extension = $archivo->getClientOriginalExtension();
+            $extension = InspectorArchivos::extensionSegura($archivo->getRealPath(), $archivo->getClientOriginalName());
             $pesoKB = round($archivo->getSize() / 1024, 2);
             $uuid = Str::uuid().'.'.$extension;
 

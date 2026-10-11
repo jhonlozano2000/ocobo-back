@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Ventanilla\Pqrs;
 
 use App\Models\Configuracion\ConfigVarias;
+use App\Rules\ArchivoSeguro;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -69,6 +70,7 @@ class UploadPqrsAdjuntosRequest extends FormRequest
                 'file',
                 'max:'.$config['maxSize'],
                 'mimes:'.implode(',', $allowedExtensions),
+                new ArchivoSeguro(array_map('strtolower', $allowedExtensions)),
             ],
             'descripcion' => ['nullable', 'string', 'max:500'],
             'palabras_clave' => ['nullable', 'string', 'max:500'],
