@@ -2,15 +2,15 @@
 
 Aplicación gestora del proceso de gestión documental desarrollada en Laravel.
 
-![Laravel](https://img.shields.io/badge/Laravel-11.x-FF2D20?style=flat-square&logo=laravel)
-![PHP](https://img.shields.io/badge/PHP-8.4+-777BB4?style=flat-square&logo=php)
+![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=flat-square&logo=laravel)
+![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?style=flat-square&logo=php)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
-![Version](https://img.shields.io/badge/Version-2.5-blue?style=flat-square)
+![Version](https://img.shields.io/badge/Version-2.7-blue?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Producci%C3%B3n-green?style=flat-square)
 
-**Versión**: 2.5  
-**Última actualización**: Junio 2026  
-**Estado**: Producción — 18/18 módulos completados (100%)
+**Versión**: 2.7  
+**Última actualización**: Octubre 2026  
+**Estado**: Producción — en remediación de la auditoría integral 2026-10 (ver `ocobo-documents/AUDITORIA-INTEGRAL-OCOBO-2026-10.md`)
 
 ## 📋 Descripción
 
@@ -18,31 +18,25 @@ OCOBO-BACK es una aplicación web desarrollada en Laravel que gestiona procesos 
 
 ## 🚀 Características Principales
 
-- **Autenticación y Autorización**: Sistema completo de autenticación con Sanctum (cookies HttpOnly) y control de acceso basado en roles
-- **Gestión de Usuarios**: CRUD completo de usuarios con gestión de archivos (avatars, firmas)
-- **Control de Acceso**: Sistema de roles y permisos con Spatie Laravel-Permission
-- **Gestión de Cargos**: Sistema completo de asignación de cargos a usuarios con historial y estadísticas
-- **Gestión de Terceros**: CRUD de terceros con filtros y estadísticas
-- **Configuración del Sistema**: Módulos de configuración para división política, sedes, listas, etc.
-- **Gestión Documental**: Procesos de radicación y clasificación documental
-- **Clasificación Documental**: Sistema completo de TRD/TVD con versiones
-- **Control de Calidad**: Gestión de organigramas y estructuras organizacionales
-- **Ventanilla Única**: Sistema completo de gestión de ventanillas y radicaciones (recibidos, enviados, internos, PQRS)
-- **Firma Electrónica**: OTP + PDF stamping (FPDI) + registro de eventos ISO 27001 para recibidos, enviados, internos y PQRS (Ley 527/1999)
-- **Anulación de PQRS**: Flujo de anulación con motivo + cambio de estado a Vencida
-- **Bandeja de Correo**: Integración IMAP, generación PDF, rótulos PNG, respuesta automática (ISO 27001)
-- **Gestión de Archivo**: Expedientes electrónicos, préstamos, transferencias, eliminaciones, reportes, dashboard (AGN 003/2015)
-- **Notificaciones y Alertas**: Alertas de vencimiento por email (diario 7am), endpoint de pendientes para badge del frontend (Ley 1437/2011)
-- **Depuración Digital**: Comando semanal de cuarentena de archivos huérfanos (AGN 060, ISO 27001 A.8.3)
-- **Metadata Extendida**: Write endpoint + sugerencia automática de TRD por palabras clave del asunto
-- **Scheduler**: 5 comandos programados (marcar PQRS vencidas, sync email, alertas vencimiento, depuración recibidos/enviados)
-- **Calendario Días No Hábiles**: Gestión de festivos con cálculo de vencimientos (ISO 27001)
-- **Semáforo de Vencimientos**: Sistema configurable de alertas visuales para términos legales
-- **API RESTful**: Endpoints bien documentados y estructurados
-- **Validaciones Robustas**: Form Request classes para validaciones centralizadas
-- **Manejo de Errores**: Sistema consistente de respuestas de error
-- **Estadísticas Avanzadas**: Análisis detallado de datos y métricas
-- **Trazabilidad ISO 27001**: Sistema de logs de autenticación y actividad
+- **Autenticación**: Sanctum SPA con cookie HttpOnly, CSRF, 2FA TOTP, bloqueo de cuenta (5 intentos → 15 min), sesión máxima de 12 h, expulsión inmediata de usuarios desactivados o sesiones revocadas y aviso de sesiones simultáneas
+- **Autorización**: RBAC con Spatie Permission (permiso por módulo y acción en cada ruta) + ABAC jerárquico por dependencia (`AbacHierarquico`, middleware `acceso_radicado`, que responde 404 a registros ajenos)
+- **Control de Acceso**: Usuarios, roles, permisos directos ("otros permisos"), cargos y sedes
+- **Configuración**: División política, sedes, listas maestras, numeración de radicados, semáforo, SMTP/IMAP (credencial cifrada)
+- **Clasificación Documental**: TRD versionada (TEMP → ACTIVO → HISTÓRICO) con aprobación del Jefe de Archivo, segregación (quien elabora no aprueba) e inmutabilidad de versiones aprobadas; importación desde Excel; TVD con aprobación por dependencia
+- **Ventanilla Única**: Radicación recibida, enviada, interna y PQRS con consecutivo atómico (`RadicadoConsecutivoService`), líneas de tiempo, acuses digitales, anulación con aprobación, relación enviados↔recibidos
+- **PQRS**: Términos de la Ley 1755 por tipo en días hábiles, prioridad Tutela, prórroga, notificación por modo, reserva de identidad en denuncias y PQRS anónimas (`es_anonimo` + permiso `Radicar -> PQRSF -> Ver identidad reservada`)
+- **Firma Electrónica**: OTP ligado al firmante designado y al documento (hash, 5 min, 5 intentos, un solo uso); sello de texto en el PDF con FPDI, hash SHA-256 antes/después, estampa TSA RFC 3161 en firmas de PDF; DOCX con estampa en grupos colaborativos; firma de PQRS atómica con hash del contenido
+- **Bandeja de Correo**: Lectura del buzón IMAP en vivo, radicación manual de un correo como recibido/enviado, PDF del correo, rótulo PNG con código de barras y respuesta al remitente con el rótulo
+- **Gestión de Archivo**: Expedientes con foliado automático, índice electrónico con hash por folio, cierre sellado (`hash_indice`), préstamos, transferencias y eliminaciones con precondiciones TRD y aprobador distinto (AGN 003/2015)
+- **Mi Bandeja**: Grupos colaborativos (proyector, revisor, aprobador, firmante), plantillas DOCX con variables, check-in/check-out, notas en tiempo real, Mi Disco
+- **Workflows**: Diseñador visual, instancias, tareas, checklists, tablero Kanban y reportes
+- **Uploads seguros**: `InspectorArchivos` (contenido real, extensiones y MIME peligrosos, zip-bomb) vía regla `ArchivoSeguro`, también en adjuntos IMAP; nombres de adjunto sin path traversal
+- **OCR**: Microservicio PaddleOCR autenticado por token y solo en loopback, con fallback a Tesseract; búsqueda por contenido
+- **Notificaciones**: In-app (centro de notificaciones), correos a responsables y terceros, acuse de recibo automático, alertas de vencimiento (diario) y de retención TRD (30/7/1 días)
+- **Calendario Días No Hábiles**: 18 festivos de Colombia por año (fijos, Ley Emiliani y Semana Santa), todo en hora de Colombia
+- **Auditoría ISO 27001**: Canal `audit` con retención de 365 días, logs de autenticación con IP y user agent, `VentanillaAuditTrait` por documento
+- **Exportaciones**: Excel/CSV/PDF en servidor protegidas contra inyección de fórmulas (`ExportSeguroHelper`)
+- **Respuestas API homogéneas**: `ApiResponseTrait` con métodos semánticos (ver tabla en Documentación de la API)
 
 ---
 
@@ -80,8 +74,8 @@ GET /sanctum/csrf-cookie
 POST /api/login
 Content-Type: application/json
 {
-    "email": "admin@admin.com",
-    "password": "123456"
+    "email": "usuario@entidad.gov.co",
+    "password": "********"
 }
 
 # Logout
@@ -131,12 +125,13 @@ app/
 │   │   ├── Auth/              # Controladores de autenticación
 │   │   ├── Configuracion/     # Módulos de configuración
 │   │   ├── ControlAcceso/     # Gestión de usuarios y permisos
-│   │   ├── Calidad/           # Gestión de calidad
+│   │   ├── Calidad/           # Organigrama
 │   │   ├── ClasificacionDocumental/
 │   │   ├── Gestion/
 │   │   └── VentanillaUnica/
 │   ├── Middleware/
-│   │   └── VerifySession.php # Middleware de verificación (deshabilitado temporalmente)
+│   │   ├── Authenticate.php   # Sesión: usuario activo, sesión no revocada, vida máxima 12 h
+│   │   └── AccesoRadicado.php # ABAC por id de radicado (404 si no es accesible)
 │   ├── Requests/             # Form Request validations
 │   └── Resources/            # API Resources
 ├── Models/
@@ -185,7 +180,7 @@ routes/
 ## 📦 Instalación
 
 ### Requisitos Previos
-- PHP 8.4+
+- PHP 8.2+ (Laravel 12)
 - Composer
 - MySQL/MariaDB
 - Node.js y NPM
@@ -245,12 +240,21 @@ php artisan cache:clear
 
 ### Códigos de Estado HTTP
 
-- `200` - OK
-- `201` - Created
-- `401` - Unauthorized (no autenticado)
-- `403` - Forbidden (sin permisos)
-- `422` - Validation Error
-- `500` - Server Error
+Todos los controladores responden con los métodos semánticos de `app/Http/Traits/ApiResponseTrait.php`; el front asigna el color del toast según el código (`toastFromStatus`).
+
+| Método | Código | Toast | Uso |
+|---|---|---|---|
+| `successResponse` / `createdResponse` | 200 / 201 | verde | Operación exitosa |
+| `badRequestResponse` | 400 | amarillo | Solicitud mal formada |
+| `unauthorizedResponse` | 401 | amarillo | No autenticado |
+| `forbiddenResponse` | 403 | rojo | Sin permiso |
+| `notFoundResponse` | 404 | azul | No existe o no es accesible (ABAC) |
+| `conflictResponse` | 409 | amarillo | Conflicto con el estado del recurso |
+| `validationResponse` / `warningResponse` | 422 | amarillo | Validación y reglas de negocio |
+| `tooManyRequestsResponse` | 429 | amarillo | Límite de peticiones |
+| `serverErrorResponse` | 500 | rojo | Error inesperado |
+
+Las violaciones de reglas de negocio (p. ej. aprobar lo que uno mismo elaboró) se responden con `warningResponse` (422), no con 403.
 
 ---
 
@@ -271,8 +275,8 @@ php artisan cache:clear
 - Numeración de radicados
 
 ### Calidad
-- Organigramas
-- Estructura organizacional
+- Organigrama (árbol de dependencias, cargos y unidades)
+- Validación contra ciclos `parent` y recorridos de jerarquía acotados
 
 ### Clasificación Documental
 - TRD (Tabla de Retención Documental)
@@ -289,16 +293,15 @@ php artisan cache:clear
 - Asignación de responsables
 
 ### Bandeja de Correo (Email Radicados)
-- Conexión IMAP a buzón de correo electrónico
-- Sincronización automática de emails entrantes
-- Radicado de emails recibidos con formularios EXACTOS de radicación
+- Lectura del buzón IMAP en vivo (`directorytree/imapengine`); no hay sincronización programada, la radicación es manual
+- Radicado de emails recibidos con los mismos formularios de radicación
 - Radicado de emails enviados con conversión PDF
-- Generación automática de rótulo PNG con código de barras
-- Respuesta automática al remitente con rótulo adjunto
+- Generación de rótulo PNG con código de barras y hash SHA-256
+- Respuesta al remitente con el rótulo del radicado de ese correo (botón «Responder»)
 - Búsqueda de terceros por email
-- Gestión de adjuntos (descarga, previsualización)
-- Estadísticas de bandeja (pendientes, radicados, respondidos, errores)
-- Integración ISO 27001 — hash SHA-256 para integridad de documentos
+- Adjuntos inspeccionados (`InspectorArchivos`) y registrados en BD; nombre seguro sin path traversal ni sobrescritura
+- Marca de correos ya radicados en la bandeja
+- Comando `archivo:conciliar-adjuntos-correo` para registrar adjuntos antiguos y restaurarlos de cuarentena
 
 ### Mi Bandeja - Documentos Colaborativos
 
@@ -449,7 +452,8 @@ Route::middleware('auth:sanctum')->prefix('comunicaciones-recibidas')->group(fun
 - Gestión de días festivos y no hábiles
 - Cálculo automático de vencimientos
 - Service `BusinessDaysService` con caché
-- Festivos de Colombia pre-configurados
+- Generación de los 18 festivos de Colombia (fijos, Ley Emiliani y Semana Santa) desde la UI o con `php artisan festivos:sincronizar-colombia`; corrige fechas del generador anterior
+- "Hoy" e inicio de términos en hora de Colombia
 - Integración con `ConfigVarias` para configuración de días hábiles
 - Trait `Loggable` para auditoría ISO 27001
 
@@ -489,14 +493,14 @@ Route::middleware('auth:sanctum')->prefix('comunicaciones-recibidas')->group(fun
 
 #### Flujo de Radicado desde Email
 ```
-1. Sync IMAP → Descargar emails nuevos
+1. El usuario abre la bandeja (lectura IMAP en vivo) y elige «Radicar»
 2. Buscar tercero por email en gestion_terceros
 3. Si no existe, crear tercero automáticamente
 4. Crear radicado (recibido o enviado)
 5. Guardar adjuntos en {disk}/{num_radicado}/
 6. Convertir email a PDF → guardar en {disk}/{num_radicado}/
 7. Generar rótulo PNG con código de barras → guardar en {disk}/{num_radicado}/rotulos/
-8. Respuesta automática al remitente con rótulo adjunto
+8. (Opcional) «Responder» al remitente con el rótulo adjunto
 ```
 
 #### Seguridad ISO 27001
@@ -508,10 +512,10 @@ Route::middleware('auth:sanctum')->prefix('comunicaciones-recibidas')->group(fun
 ### OCR - Extracción de Texto (PaddleOCR)
 - Extracción automática de texto desde documentos escaneados
 - Motor **PaddleOCR** (más preciso para español) con fallback a Tesseract
-- Microservicio Python en `storage/app/ocr-service/`
+- Microservicio Python (FastAPI) en `storage/app/ocr-service/`, escucha solo en 127.0.0.1 y exige token compartido (`config/services.php`)
 - Gestionado con comando Artisan: `php artisan ocr {start|stop|status}`
 - Soporte para PDF, PNG, JPG, TIFF, BMP
-- Extracción de datos estructurados:
+- Extracción de datos estructurados (implementada en el servicio, aún no expuesta por ningún endpoint):
   - Números de identificación (CC, NIT, RC, CE, Pasaporte, TI)
   - Fechas (DD/MM/YYYY, YYYY-MM-DD, Mes DD, YYYY)
   - Correos electrónicos
@@ -528,17 +532,42 @@ Route::middleware('auth:sanctum')->prefix('comunicaciones-recibidas')->group(fun
 
 ### Medidas Implementadas
 
-1. **Cookies HttpOnly**: No exposición de tokens al JavaScript
-2. **CSRF Protection**: Token automático con Sanctum
-3. **Session Fixation Prevention**: Regeneración de sesión en login
-4. **Rate Limiting**: 60 requests/minuto
-5. **CORS Configurado**: Orígenes permitidos explícitos
-6. **Logs de Auditoría**: Registro de eventos de seguridad
-7. **Principio de Privilegio Mínimo**: Datos mínimos en respuestas
+1. **Cookies HttpOnly** (SameSite Lax, `secure` en HTTPS) y **CSRF** con Sanctum SPA
+2. **Session fixation**: regeneración de sesión en login
+3. **2FA TOTP**, **bloqueo de cuenta** (5 intentos fallidos → 15 min) y aviso de **sesiones simultáneas**
+4. **Sesión**: inactividad de 480 min, vida absoluta de 12 h; usuario desactivado o sesión revocada → 401 (SES-001/002)
+5. **RBAC** (`can:` en las rutas) + **ABAC jerárquico** en listados y rutas por id de Recibidas, Enviadas, Internas, PQRS y Expedientes
+6. **Rate limiting** (`AppServiceProvider`): login 5/min, firma 5/min, OTP de firma 20/min, uploads 10/min; API general 120/min (`RouteServiceProvider`)
+7. **Uploads**: `InspectorArchivos` + regla `ArchivoSeguro` (contenido real, MIME/extensiones peligrosos, zip-bomb)
+8. **Firma**: OTP hasheado, ligado a firmante + documento, 5 intentos, un solo uso; enmascarado (`***` + 3 dígitos) en eventos
+9. **Exportaciones** sin inyección de fórmulas (`ExportSeguroHelper`)
+10. **Headers**: nosniff, X-Frame-Options DENY, Referrer-Policy, Permissions-Policy; CSP y HSTS en producción (`SecurityHeadersMiddleware`)
+11. **Auditoría**: canal `audit` 365 días, `auth` 30 días; contraseñas y tokens nunca se registran
+12. **Credencial SMTP cifrada** en `config_varias`
+
+Pendientes conocidos (ver auditoría): los datos personales de terceros **no** están cifrados en BD; la verificación TSA solo busca el hash en la respuesta; la CSP del backend conserva un placeholder de nonce.
 
 ---
 
 ## 📋 Changelog
+
+### v2.7 (Octubre 2026) — Remediación de la auditoría integral
+
+Rama `fix/auditoria-p1`. Detalle y estado de cada hallazgo en `ocobo-documents/AUDITORIA-INTEGRAL-OCOBO-2026-10.md`.
+
+- ✅ **Autorización**: `can:` en usuarios, cargos, configuración y terceros (RBAC-001, M14-001, M15-01/02, M16-01/02, M17-01); ABAC en Recibidas, Enviadas, Internas, PQRS, Expedientes y búsqueda OCR (M01-01/05, M02-01/02/03, M03-03, M04-01/02, M08-03/04/05, M12-01)
+- ✅ **Sesiones**: usuarios desactivados y sesiones revocadas pierden la cookie (SES-001/002)
+- ✅ **Firma**: OTP ligado al firmante designado y al documento, límites de peticiones, lista blanca del flujo legado (M06-02/03/04/06/07); firma de PQRS atómica con `hash_original` (M04-04)
+- ✅ **Uploads**: `InspectorArchivos` en Recibidas, Enviadas, Internas, PQRS, grupos y adjuntos IMAP; nombre de adjunto seguro (M01-04, M02-04, M03-10, M05-05/06)
+- ✅ **Correo**: respuesta solo con el rótulo del propio radicado; adjuntos registrados en BD + comando de conciliación (M05-01, M08-01)
+- ✅ **Archivo**: folios y números de expediente nunca se reutilizan; expedientes cerrados bloqueados; precondiciones TRD en eliminación y transferencia (M08-07/08, M08-10/11)
+- ✅ **TRD/TVD**: inmutabilidad de versiones aprobadas, segregación elaborador/aprobador, aprobación de TVD por dependencia (M10-01/02, M11-03)
+- ✅ **PQRS**: reserva de identidad en denuncias y PQRS anónimas, migración `es_anonimo` (M04-03)
+- ✅ **Calendario**: 18 festivos con Ley Emiliani, scheduler y vencimientos en hora de Colombia (M13-01/02/03/04)
+- ✅ **Integridad**: `num_radicado` y autoría no editables desde el cliente (M01-02, M02-07); consecutivo de Enviadas con contador bloqueado (M02-08); exportaciones sin inyección de fórmulas (M11-01); organigrama sin ciclos (M17-02)
+- ✅ **OCR**: microservicio versionado, autenticado por token y solo en loopback (M12-02)
+- ✅ **Bugs**: eliminar respuesta de recibido, `config-num-radicado`, búsqueda de terceros sin ruta (M01-09, M15-03, M16-08)
+- ✅ Pruebas feature con `DatabaseTransactions` sobre BD de pruebas separada (130 pasan, 1 omitida)
 
 ### v2.6 (Julio 2026) — In-App Notifications en Tiempo Real (Reverb)
 
@@ -616,7 +645,7 @@ Route::middleware('auth:sanctum')->prefix('comunicaciones-recibidas')->group(fun
 - ✅ Laravel Sanctum configurado para SPA
 - ✅ Logs de auditoría ISO 27001 (UsersAuthenticationLog)
 - ✅ Control de sesiones con dispositivo/navegador/OS
-- ✅ Middleware VerifySession (deshabilitado temporalmente)
+- ✅ Middleware VerifySession (luego reemplazado por la verificación en `Authenticate`, v2.7)
 - ✅ Rate limiting en rutas públicas de autenticación
 
 ---
@@ -668,7 +697,7 @@ SESSION_SECURE_COOKIE=false
 
 ### Verificación de Cookies
 
-Después de hacer login,，你应该在浏览器中看到：
+Después de hacer login, en el navegador deberías ver:
 - `ocobo_session` - Cookie de sesión (HttpOnly, dominio=ocobo.test)
 - `XSRF-TOKEN` - Token CSRF (legible por JS, usado como header)
 
