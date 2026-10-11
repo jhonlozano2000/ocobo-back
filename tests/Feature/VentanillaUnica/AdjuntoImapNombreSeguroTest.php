@@ -30,35 +30,40 @@ class AdjuntoImapNombreSeguroTest extends TestCase
         parent::tearDown();
     }
 
-    private function adjunto(?string $nombre, string $contenido = 'x'): Attachment
+    private function adjunto(?string $nombre, string $contenido = "contenido de prueba\n"): Attachment
     {
         return new Attachment($nombre, null, 'application/pdf', 'attachment', Utils::streamFor($contenido));
+    }
+
+    private static function pdf(string $marca): string
+    {
+        return "%PDF-1.4\n% {$marca}\n1 0 obj << /Type /Catalog >> endobj\n%%EOF\n";
     }
 
     public function test_nombre_con_path_traversal_queda_dentro_del_directorio(): void
     {
         $servicio = app(ImapEmailService::class);
 
-        foreach (['../../../evil.php', '..\\..\\evil2.php', '/etc/passwd', '.htaccess'] as $nombre) {
+        foreach (['../../../evil.txt', '..\\..\\evil2.txt', '/etc/passwd', '.htaccess'] as $nombre) {
             $ruta = $servicio->saveAttachment($this->adjunto($nombre), $this->directorio);
 
             $this->assertSame($this->directorio, dirname($ruta), $nombre);
             $this->assertFileExists(storage_path('app/'.$ruta));
         }
 
-        $this->assertFileDoesNotExist(storage_path('app/evil.php'));
-        $this->assertFileDoesNotExist(storage_path('evil2.php'));
+        $this->assertFileDoesNotExist(storage_path('app/evil.txt'));
+        $this->assertFileDoesNotExist(storage_path('evil2.txt'));
     }
 
     public function test_no_sobrescribe_archivos_existentes(): void
     {
         $servicio = app(ImapEmailService::class);
 
-        $primera = $servicio->saveAttachment($this->adjunto('correo-RAD-0001.pdf', 'original'), $this->directorio);
-        $segunda = $servicio->saveAttachment($this->adjunto('correo-RAD-0001.pdf', 'ataque'), $this->directorio);
+        $primera = $servicio->saveAttachment($this->adjunto('correo-RAD-0001.pdf', self::pdf('original')), $this->directorio);
+        $segunda = $servicio->saveAttachment($this->adjunto('correo-RAD-0001.pdf', self::pdf('ataque')), $this->directorio);
 
         $this->assertNotSame($primera, $segunda);
-        $this->assertSame('original', file_get_contents(storage_path('app/'.$primera)));
+        $this->assertSame(self::pdf('original'), file_get_contents(storage_path('app/'.$primera)));
         $this->assertStringEndsWith('correo-RAD-0001_1.pdf', $segunda);
     }
 

@@ -524,6 +524,9 @@ class EmailRadicacionService
 
             foreach ($message->attachments() as $attachment) {
                 $ruta = $this->imapService->saveAttachment($attachment, $directorio);
+                if ($ruta === null) {
+                    continue; // M05-06: rechazado (queda registrado en el log)
+                }
                 $this->registrarAdjunto($radicado, $disco, $ruta, ImapEmailService::nombreSeguroAdjunto($attachment->filename(), $attachment->extension()));
             }
 

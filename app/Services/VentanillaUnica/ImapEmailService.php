@@ -5,6 +5,7 @@ namespace App\Services\VentanillaUnica;
 use App\Helpers\MailConfigHelper;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\Seguridad\InspectorArchivos;
 use DirectoryTree\ImapEngine\Attachment;
 use DirectoryTree\ImapEngine\Mailbox;
 use DirectoryTree\ImapEngine\MessageInterface;
@@ -243,18 +244,36 @@ class ImapEmailService
         return $attachments;
     }
 
+    /** Tamaño mínimo aceptado para adjuntos de correo (límite habitual de los servidores). */
+    public const MIN_MAX_ADJUNTO = 25 * 1024 * 1024;
+
     /**
      * Guarda un adjunto en el disco.
      *
+     * M05-06: se rechazan (sin guardar) los adjuntos que superan el tamaño máximo, tienen
+     * contenido ejecutable, no corresponden con su extensión o son zip-bomb. El correo
+     * original sigue en el buzón IMAP.
+     *
      * @param  Attachment  $attachment  Instancia del adjunto IMAP
      * @param  string  $directory  Directorio destino dentro del disco
-     * @return string Ruta relativa del archivo guardado
+     * @return string|null Ruta relativa del archivo guardado, o null si fue rechazado
      *
      * @throws \Exception Si falla al guardar el archivo
      */
-    public function saveAttachment(Attachment $attachment, string $directory): string
+    public function saveAttachment(Attachment $attachment, string $directory): ?string
     {
         $filename = self::nombreSeguroAdjunto($attachment->filename(), $attachment->extension());
+
+        $tamano = $attachment->contentStream()->getSize() ?? strlen($attachment->contents());
+        if ($tamano > self::maxBytesAdjunto()) {
+            Log::warning('ImapEmailService: adjunto rechazado por tamaño', [
+                'nombre' => $filename,
+                'bytes' => $tamano,
+                'max_bytes' => self::maxBytesAdjunto(),
+            ]);
+
+            return null;
+        }
 
         $baseDir = storage_path('app/'.$directory);
         if (! is_dir($baseDir)) {
@@ -279,7 +298,27 @@ class ImapEmailService
             throw new \Exception("No se pudo guardar el adjunto: {$filename}");
         }
 
+        $error = InspectorArchivos::inspeccionar($fullPath, $filename);
+        if ($error !== null) {
+            @unlink($fullPath);
+            Log::warning('ImapEmailService: adjunto rechazado por inspección de contenido', [
+                'nombre' => $filename,
+                'directorio' => $directory,
+                'motivo' => $error,
+            ]);
+
+            return null;
+        }
+
         return $directory.'/'.$filename;
+    }
+
+    /**
+     * Tamaño máximo de un adjunto de correo: max_tamano_archivo (KB) o 25 MB, el mayor.
+     */
+    public static function maxBytesAdjunto(): int
+    {
+        return max((int) ConfigVarias::getValor('max_tamano_archivo', 10240) * 1024, self::MIN_MAX_ADJUNTO);
     }
 
     /**
