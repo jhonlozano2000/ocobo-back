@@ -365,6 +365,7 @@ class VentanillaRadicaReciController extends Controller
                     'fallo_judicial' => $validatedData['fallo_judicial'] ?? 'No',
                     'observaciones' => $validatedData['observaciones_pqrs'] ?? null,
                     'clasificacion_documental_trd_id' => $validatedData['clasifica_documen_id'],
+                    'es_anonimo' => (bool) ($validatedData['es_anonimo'] ?? false),
                 ];
                 $pqrsCreada = $this->pqrsService->crearDesdeRadicado($radicado->id, $datosPqrs);
 

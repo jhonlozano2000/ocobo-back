@@ -140,6 +140,7 @@ class VentanillaPqrsController extends Controller
                     $item->tercero = $pqrsCompleto->tercero;
                     $item->tipoPqrs = $pqrsCompleto->tipoPqrs;
                     $item->clasificacionDocumental = $pqrsCompleto->clasificacionDocumental;
+                    $this->reservarIdentidadEnListado($item, $pqrsCompleto);
                 }
 
                 return $item;
@@ -182,8 +183,13 @@ class VentanillaPqrsController extends Controller
                 $q->whereHas('radicado', function ($q) use ($request) {
                     $q->where('num_radicado', 'like', "%{$request->search}%")
                         ->orWhere('asunto', 'like', "%{$request->search}%");
-                })->orWhere('nom_afectado', 'like', "%{$request->search}%")
-                    ->orWhere('num_docu_afectado', 'like', "%{$request->search}%");
+                })->orWhere(function ($q) use ($request) {
+                    $q->where(function ($q) use ($request) {
+                        $q->where('nom_afectado', 'like', "%{$request->search}%")
+                            ->orWhere('num_docu_afectado', 'like', "%{$request->search}%");
+                    });
+                    VentanillaPqrs::restringirBusquedaIdentidad($q, $request->user());
+                });
             });
         }
 
@@ -213,15 +219,17 @@ class VentanillaPqrsController extends Controller
 
         $pqrsList = $query->latest()->get();
 
-        $datos = $pqrsList->map(function ($p) {
+        $datos = $pqrsList->map(function ($p) use ($request) {
+            $ocultar = $p->ocultaIdentidadPara($request->user());
+
             return [
                 'id' => $p->id,
                 'num_radicado' => $p->radicado?->num_radicado ?? '',
                 'tipo_pqrs' => $p->tipoPqrs?->nombre ?? '',
                 'estado_tramite' => $p->estado_tramite ?? '',
                 'prioridad' => $p->prioridad ?? '',
-                'nom_afectado' => $p->nom_afectado ?? '',
-                'num_docu_afectado' => $p->num_docu_afectado ?? '',
+                'nom_afectado' => $ocultar ? $p->etiquetaIdentidadReservada() : ($p->nom_afectado ?? ''),
+                'num_docu_afectado' => $ocultar ? '' : ($p->num_docu_afectado ?? ''),
                 'fecha_vencimiento' => $p->fecha_vencimiento?->format('Y-m-d') ?? '',
                 'clasificacion' => $p->clasificacionDocumental?->nom ?? '',
                 'created_at' => $p->created_at,
@@ -348,6 +356,11 @@ class VentanillaPqrsController extends Controller
             }
 
             $validated = $request->validated();
+
+            if ($pqrs->es_anonimo && array_key_exists('es_anonimo', $validated) && ! $validated['es_anonimo']
+                && ! VentanillaPqrs::puedeVerIdentidadReservada($request->user())) {
+                return $this->warningResponse('Solo quien puede ver identidades reservadas puede quitar la reserva de identidad');
+            }
 
             $pqrs->update($validated);
 
@@ -1030,13 +1043,14 @@ class VentanillaPqrsController extends Controller
     public function imprimirRotulo(int $id): Response|JsonResponse
     {
         try {
-            $pqrs = VentanillaPqrs::withTrashed()->with(['radicado.tercero'])->find($id);
+            $pqrs = VentanillaPqrs::withTrashed()->with(['radicado.tercero', 'tipoPqrs'])->find($id);
 
             if (! $pqrs) {
                 return $this->errorResponse('PQRS no encontrada', null, 404);
             }
 
             $radicado = $pqrs->radicado;
+            $ocultar = $pqrs->ocultaIdentidadPara(auth()->user());
 
             $data = [
                 'entidad' => config('app.name', 'Entidad'),
@@ -1048,8 +1062,8 @@ class VentanillaPqrsController extends Controller
                     'fec_radi' => $radicado?->fec_radi ?? now()->format('Y-m-d'),
                     'hor_radi' => $radicado?->hor_radi ?? now()->format('H:i:s'),
                     'tercero' => [
-                        'nom_razo_soci' => $radicado?->tercero?->nom_razo_soci ?? $pqrs->nom_afectado ?? 'N/A',
-                        'num_identific' => $radicado?->tercero?->num_identific ?? $pqrs->num_docu_afectado ?? 'N/A',
+                        'nom_razo_soci' => $ocultar ? $pqrs->etiquetaIdentidadReservada() : ($radicado?->tercero?->nom_razo_soci ?? $pqrs->nom_afectado ?? 'N/A'),
+                        'num_identific' => $ocultar ? 'N/A' : ($radicado?->tercero?->num_identific ?? $pqrs->num_docu_afectado ?? 'N/A'),
                     ],
                     'num_folios' => $radicado?->num_folios ?? '0',
                     'num_anexos' => $radicado?->num_anexos ?? '0',
@@ -1392,6 +1406,26 @@ class VentanillaPqrsController extends Controller
     }
 
     /**
+     * Oculta los datos del tercero en una fila del listado cuando la identidad está reservada (M04-03).
+     */
+    private function reservarIdentidadEnListado($item, VentanillaPqrs $pqrsCompleto): void
+    {
+        $item->es_anonimo = (bool) $pqrsCompleto->es_anonimo;
+        $item->identidad_reservada = $pqrsCompleto->tieneIdentidadReservada();
+
+        if (! $pqrsCompleto->ocultaIdentidadPara(auth()->user())) {
+            return;
+        }
+
+        $item->tercero_nombre = $pqrsCompleto->etiquetaIdentidadReservada();
+        foreach (['gestion_tercero_id', 'tercero_documento', 'tercero_direccion', 'tercero_telefono', 'tercero_email', 'tercero_tipo'] as $campo) {
+            $item->{$campo} = null;
+        }
+        $item->tercero = null;
+        $item->radicado?->unsetRelation('tercero');
+    }
+
+    /**
      * Lista PQRS con firma pendiente.
      */
     public function pendientesFirma(): JsonResponse
@@ -1463,6 +1497,7 @@ class VentanillaPqrsController extends Controller
                     $item->tercero = $pqrsCompleto->tercero;
                     $item->tipoPqrs = $pqrsCompleto->tipoPqrs;
                     $item->clasificacionDocumental = $pqrsCompleto->clasificacionDocumental;
+                    $this->reservarIdentidadEnListado($item, $pqrsCompleto);
                 }
 
                 return $item;

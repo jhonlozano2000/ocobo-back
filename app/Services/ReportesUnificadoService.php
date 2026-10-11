@@ -71,7 +71,9 @@ class ReportesUnificadoService
                         'ID' => $item->id,
                         'Radicado' => $item->radicado?->num_radicado ?? 'N/A',
                         'Tipo' => $item->tipoPqrs?->nombre ?? $item->tipo_pqrs_id,
-                        'Solicitante' => $item->nom_afectado ?? $item->tercero?->nom_completo ?? 'N/A',
+                        'Solicitante' => $item->ocultaIdentidadPara(auth()->user())
+                            ? $item->etiquetaIdentidadReservada()
+                            : ($item->nom_afectado ?? $item->tercero?->nom_completo ?? 'N/A'),
                         'Fecha' => $item->created_at?->format('Y-m-d'),
                         'Estado' => $item->estado_tramite ?? 'Pendiente',
                     ];

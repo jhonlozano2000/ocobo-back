@@ -10,6 +10,8 @@ class PqrsResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $ocultarIdentidad = $this->ocultaIdentidadPara($request->user());
+
         return [
             'id' => $this->id,
             'ventanilla_radica_reci_id' => $this->ventanilla_radica_reci_id,
@@ -30,7 +32,16 @@ class PqrsResource extends JsonResource
                 'id' => $this->tipoPqrs->id,
                 'nombre' => $this->tipoPqrs->nombre,
             ] : null,
-            'afectado' => [
+            'es_anonimo' => (bool) $this->es_anonimo,
+            'identidad_reservada' => $this->tieneIdentidadReservada(),
+            'afectado' => $ocultarIdentidad ? [
+                'id' => null,
+                'nombre' => $this->etiquetaIdentidadReservada(),
+                'documento' => null,
+                'direccion' => null,
+                'telefono' => null,
+                'movil' => null,
+            ] : [
                 'id' => $this->gestion_tercero_id,
                 'nombre' => $this->nom_afectado,
                 'documento' => $this->num_docu_afectado,

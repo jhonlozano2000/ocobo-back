@@ -29,6 +29,7 @@ class UpdatePqrsRequest extends FormRequest
             'motivo_felicitacion' => 'nullable|string|max:2000',
             'autoridad_destino' => 'nullable|string|max:255',
             'tipo_persona' => 'nullable|in:Natural,Jurídica',
+            'es_anonimo' => 'sometimes|boolean',
         ];
     }
 

@@ -65,6 +65,7 @@ use Illuminate\Support\Facades\Auth;
  * @property string|null $motivo_felicitacion
  * @property string|null $autoridad_destino
  * @property string $tipo_persona - Natural|Jurídica
+ * @property bool $es_anonimo - El peticionario pidió reserva de identidad
  * @property string $estado_firma - Sin firma|Pendiente OTP|Firmado
  * @property string|null $firma_digital - Firma en base64
  * @property Carbon|null $fecha_firma
@@ -152,6 +153,7 @@ class VentanillaPqrs extends Model
         'motivo_felicitacion',
         'autoridad_destino',
         'tipo_persona',
+        'es_anonimo',
         'estado_firma',
         'firma_digital',
         'fecha_firma',
@@ -168,6 +170,7 @@ class VentanillaPqrs extends Model
         'fecha_firma' => 'datetime',
         'tiene_prorroga' => 'boolean',
         'firmado_en_representacion' => 'boolean',
+        'es_anonimo' => 'boolean',
     ];
 
     public const TERMINOS = [
@@ -216,6 +219,64 @@ class VentanillaPqrs extends Model
     public function tipoPqrs(): BelongsTo
     {
         return $this->belongsTo(ConfigListaDetalle::class, 'tipo_pqrs_id');
+    }
+
+    /**
+     * Permiso para ver la identidad de PQRS anónimas y denuncias (M04-03).
+     */
+    public const PERMISO_IDENTIDAD_RESERVADA = 'Radicar -> PQRSF -> Ver identidad reservada';
+
+    /**
+     * Las denuncias y las PQRS marcadas como anónimas tienen la identidad del afectado reservada.
+     */
+    public static function esIdentidadReservada(bool $esAnonimo, ?string $tipoNombre): bool
+    {
+        return $esAnonimo || str_starts_with(mb_strtolower(trim((string) $tipoNombre)), 'denuncia');
+    }
+
+    public static function puedeVerIdentidadReservada($user): bool
+    {
+        return (bool) $user?->can(self::PERMISO_IDENTIDAD_RESERVADA);
+    }
+
+    public function tieneIdentidadReservada(): bool
+    {
+        return self::esIdentidadReservada((bool) $this->es_anonimo, $this->tipoPqrs?->nombre);
+    }
+
+    /**
+     * Indica si la identidad del afectado debe ocultarse al usuario dado.
+     */
+    public function ocultaIdentidadPara($user): bool
+    {
+        return $this->tieneIdentidadReservada() && ! self::puedeVerIdentidadReservada($user);
+    }
+
+    /**
+     * Texto que se muestra en lugar del nombre cuando la identidad está reservada.
+     */
+    public function etiquetaIdentidadReservada(): string
+    {
+        return $this->es_anonimo ? 'Anónimo' : 'Identidad reservada';
+    }
+
+    /**
+     * Restringe la búsqueda por nombre/documento a PQRS sin identidad reservada,
+     * para que no sirva de oráculo para identificar al denunciante.
+     */
+    public static function restringirBusquedaIdentidad($query, $user): void
+    {
+        if (self::puedeVerIdentidadReservada($user)) {
+            return;
+        }
+
+        $query->whereNotIn('id', function ($q) {
+            $q->select('vp.id')
+                ->from('ventanilla_pqrs as vp')
+                ->leftJoin('config_listas_detalles as cld', 'cld.id', '=', 'vp.tipo_pqrs_id')
+                ->where('vp.es_anonimo', true)
+                ->orWhere('cld.nombre', 'like', 'denuncia%');
+        });
     }
 
     public function clasificacionDocumental(): BelongsTo
@@ -363,7 +424,14 @@ class VentanillaPqrs extends Model
             'prioridad' => $this->prioridad,
             'fecha_vencimiento' => $this->fecha_vencimiento?->format('Y-m-d'),
             'dias_habiles_restantes' => $this->getDiasHabilesRestantes(),
-            'afectado' => [
+            'afectado' => $this->ocultaIdentidadPara(Auth::user()) ? [
+                'nombre' => $this->etiquetaIdentidadReservada(),
+                'documento' => null,
+                'direccion' => null,
+                'telefono' => null,
+                'movil' => null,
+                'tercero_id' => null,
+            ] : [
                 'nombre' => $this->nom_afectado,
                 'documento' => $this->num_docu_afectado,
                 'direccion' => $this->dir_afectado,

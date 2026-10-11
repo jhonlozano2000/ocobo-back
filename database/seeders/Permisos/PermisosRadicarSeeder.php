@@ -80,6 +80,8 @@ class PermisosRadicarSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'Radicar -> PQRSF -> Listar'])->syncRoles([$Rol1, $Rol5]);
         // PQRS de toda la entidad, sin filtrado jerárquico (M04-02)
         Permission::firstOrCreate(['name' => 'Radicar -> PQRSF -> Ver Todos'])->syncRoles('Administrador');
+        // Identidad de PQRS anónimas y denuncias (M04-03)
+        Permission::firstOrCreate(['name' => 'Radicar -> PQRSF -> Ver identidad reservada'])->syncRoles('Administrador');
         Permission::firstOrCreate(['name' => 'Radicar -> PQRSF -> Crear'])->syncRoles([$Rol1, $Rol5]);
         Permission::firstOrCreate(['name' => 'Radicar -> PQRSF -> Editar'])->syncRoles([$Rol1, $Rol5]);
         Permission::firstOrCreate(['name' => 'Radicar -> PQRSF -> Mostrar'])->syncRoles([$Rol1, $Rol5]);

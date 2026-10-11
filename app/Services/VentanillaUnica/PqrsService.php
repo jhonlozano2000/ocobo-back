@@ -68,6 +68,7 @@ class PqrsService
                 'area_mejora' => $datosPqrs['area_mejora'] ?? null,
                 'motivo_felicitacion' => $datosPqrs['motivo_felicitacion'] ?? null,
                 'tipo_persona' => $datosPqrs['tipo_persona'] ?? 'Natural',
+                'es_anonimo' => (bool) ($datosPqrs['es_anonimo'] ?? false),
             ]);
 
             $pqrs->load(['radicado', 'tercero', 'tipoPqrs', 'clasificacionDocumental']);
@@ -130,6 +131,7 @@ class PqrsService
                 'area_mejora' => $datosPqrs['area_mejora'] ?? null,
                 'motivo_felicitacion' => $datosPqrs['motivo_felicitacion'] ?? null,
                 'tipo_persona' => $datosPqrs['tipo_persona'] ?? 'Natural',
+                'es_anonimo' => (bool) ($datosPqrs['es_anonimo'] ?? false),
             ]);
 
             $pqrs->load(['radicado', 'tercero', 'tipoPqrs', 'clasificacionDocumental']);

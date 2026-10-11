@@ -57,6 +57,7 @@ class StoreRadicadoReciboRequest extends FormRequest
             'prioridad' => 'nullable|required_if:crear_pqrs,true|in:Normal,Urgente,Tutela',
             'fallo_judicial' => 'nullable|in:Si,No',
             'observaciones_pqrs' => 'nullable|string',
+            'es_anonimo' => 'nullable|boolean',
         ];
     }
 

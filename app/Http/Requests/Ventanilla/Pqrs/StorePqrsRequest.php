@@ -46,11 +46,12 @@ class StorePqrsRequest extends FormRequest
             'motivo_felicitacion' => 'nullable|string|max:2000',
             'autoridad_destino' => 'nullable|string|max:255',
             'tipo_persona' => 'nullable|in:Natural,Jurídica',
+            'es_anonimo' => 'nullable|boolean',
         ];
 
         if ($this->filled('ventanilla_radica_reci_id')) {
             $rules['ventanilla_radica_reci_id'] = 'nullable|exists:ventanilla_radica_reci,id|unique:ventanilla_pqrs,ventanilla_radica_reci_id';
-        } else {
+        } elseif (! $this->boolean('es_anonimo')) {
             $rules['nom_afectado'] = 'required|string|max:100';
             $rules['num_docu_afectado'] = 'required|string|max:25';
         }
@@ -108,6 +109,7 @@ class StorePqrsRequest extends FormRequest
             'autoridad_destino.string' => 'La autoridad de destino debe ser un texto válido.',
             'autoridad_destino.max' => 'La autoridad de destino no puede exceder los 255 caracteres.',
             'tipo_persona.in' => 'El tipo de persona debe ser Natural o Jurídica.',
+            'es_anonimo.boolean' => 'El indicador de anonimato debe ser verdadero o falso.',
         ];
     }
 }
