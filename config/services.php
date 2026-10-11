@@ -73,6 +73,9 @@ return [
         'url' => env('OCR_SERVICE_URL', 'http://localhost:5000'),
         'enabled' => env('OCR_ENABLED', false),
         'timeout' => env('OCR_TIMEOUT', 60),
+        // M12-02: secreto compartido con el microservicio (cabecera X-OCR-Token) e interfaz de escucha
+        'token' => env('OCR_SERVICE_TOKEN'),
+        'host' => env('OCR_SERVICE_HOST', '127.0.0.1'),
     ],
 
 ];

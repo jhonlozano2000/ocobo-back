@@ -2,6 +2,7 @@
 
 namespace App\Services\VentanillaUnica;
 
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -16,11 +17,22 @@ class OcrHttpService
 
     private int $timeout;
 
+    private ?string $token;
+
     public function __construct()
     {
         $this->baseUrl = config('services.ocr.url', 'http://localhost:5000');
         $this->enabled = config('services.ocr.enabled', false);
         $this->timeout = config('services.ocr.timeout', 60);
+        $this->token = config('services.ocr.token');
+    }
+
+    /**
+     * Cliente HTTP con el secreto compartido que exige el microservicio (M12-02)
+     */
+    private function cliente(int $timeout): PendingRequest
+    {
+        return Http::timeout($timeout)->withHeaders(['X-OCR-Token' => (string) $this->token]);
     }
 
     /**
@@ -41,7 +53,7 @@ class OcrHttpService
         }
 
         try {
-            $response = Http::timeout(5)->get("{$this->baseUrl}/health");
+            $response = $this->cliente(5)->get("{$this->baseUrl}/health");
 
             return $response->successful();
         } catch (\Exception $e) {
@@ -71,7 +83,7 @@ class OcrHttpService
                 return null;
             }
 
-            $response = Http::timeout($this->timeout)
+            $response = $this->cliente($this->timeout)
                 ->attach('file', file_get_contents($fullPath), basename($fullPath))
                 ->post("{$this->baseUrl}/ocr/extract-text");
 
@@ -110,7 +122,7 @@ class OcrHttpService
                 return null;
             }
 
-            $response = Http::timeout($this->timeout)
+            $response = $this->cliente($this->timeout)
                 ->attach('file', file_get_contents($fullPath), basename($fullPath))
                 ->post("{$this->baseUrl}/ocr/extract-structured");
 

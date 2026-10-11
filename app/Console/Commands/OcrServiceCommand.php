@@ -43,13 +43,24 @@ class OcrServiceCommand extends Command
             return 1;
         }
 
+        // M12-02: sin secreto el microservicio rechaza las extracciones; solo escucha en loopback
+        // salvo que OCR_SERVICE_HOST indique otra interfaz
+        $token = (string) config('services.ocr.token');
+        if ($token === '') {
+            $this->error('Defina OCR_SERVICE_TOKEN en el .env antes de iniciar el servicio OCR');
+
+            return 1;
+        }
+        putenv('OCR_SERVICE_TOKEN='.$token);
+        $host = escapeshellarg((string) config('services.ocr.host', '127.0.0.1'));
+
         $this->info('Iniciando servicio OCR...');
 
         if (PHP_OS_FAMILY === 'Windows') {
-            $command = "cd /d \"{$servicePath}\" && start /B python -m uvicorn main:app --host 0.0.0.0 --port ".self::PORT;
+            $command = "cd /d \"{$servicePath}\" && start /B python -m uvicorn main:app --host {$host} --port ".self::PORT;
             pclose(popen($command, 'r'));
         } else {
-            $command = "cd \"{$servicePath}\" && python -m uvicorn main:app --host 0.0.0.0 --port ".self::PORT.' > /dev/null 2>&1 & echo $!';
+            $command = "cd \"{$servicePath}\" && python -m uvicorn main:app --host {$host} --port ".self::PORT.' > /dev/null 2>&1 & echo $!';
             $pid = shell_exec($command);
             if ($pid) {
                 file_put_contents($pidFile, trim($pid));

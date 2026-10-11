@@ -5,12 +5,12 @@ Sirve para extraer texto de imágenes, PDFs y documentos Office
 
 import os
 import io
+import hmac
 import logging
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import JSONResponse
 from PIL import Image
 import numpy as np
@@ -25,14 +25,20 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS para permitir peticiones desde Laravel
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# M12-02: solo Laravel (servidor a servidor) consume el servicio, así que no se habilita CORS.
+# Las extracciones exigen el secreto compartido OCR_SERVICE_TOKEN en la cabecera X-OCR-Token;
+# sin secreto configurado se rechazan todas.
+OCR_TOKEN = os.environ.get("OCR_SERVICE_TOKEN", "")
+RUTAS_PUBLICAS = {"/", "/health"}
+
+
+@app.middleware("http")
+async def verificar_token(request: Request, call_next):
+    if request.url.path not in RUTAS_PUBLICAS:
+        recibido = request.headers.get("X-OCR-Token", "")
+        if not OCR_TOKEN or not hmac.compare_digest(recibido.encode(), OCR_TOKEN.encode()):
+            return JSONResponse(status_code=401, content={"detail": "No autorizado"})
+    return await call_next(request)
 
 # Inicializar PaddleOCR (lazy loading)
 ocr_engine = None
@@ -505,4 +511,4 @@ def extract_codigos(text: str) -> dict:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+    uvicorn.run(app, host=os.environ.get("OCR_SERVICE_HOST", "127.0.0.1"), port=5000)
