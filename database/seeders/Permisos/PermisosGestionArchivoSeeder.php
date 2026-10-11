@@ -41,6 +41,8 @@ class PermisosGestionArchivoSeeder extends Seeder
             'Gestion de Archivo -> Transferencias -> Aprobar',
             'Gestion de Archivo -> Eliminaciones -> Ver',
             'Gestion de Archivo -> Eliminaciones -> Crear',
+            // Quien puede figurar como aprobador de una eliminación (M08-10)
+            'Gestion de Archivo -> Eliminaciones -> Aprobar',
 
             // Reportes (M14)
             'Gestion de Archivo -> Reportes -> Ver',

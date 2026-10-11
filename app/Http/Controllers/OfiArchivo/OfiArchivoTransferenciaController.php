@@ -4,9 +4,13 @@ namespace App\Http\Controllers\OfiArchivo;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\OfiArchivo\OfiArchivoEliminacion;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
+use App\Models\OfiArchivo\OfiArchivoPrestamo;
 use App\Models\OfiArchivo\OfiArchivoTransferencia;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +27,8 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 class OfiArchivoTransferenciaController extends Controller
 {
     use ApiResponseTrait;
+
+    public const PERMISO_APROBAR_ELIMINACION = 'Gestion de Archivo -> Eliminaciones -> Aprobar';
 
     public function __construct()
     {
@@ -72,7 +78,11 @@ class OfiArchivoTransferenciaController extends Controller
     }
 
     /**
-     * Registra una nueva transferencia documental.
+     * Registra una nueva transferencia documental (Acuerdo AGN 004/2019, M08-11).
+     *
+     * Primaria (gestión → central): expediente cerrado y tiempo de retención en gestión cumplido.
+     * Secundaria (central → histórico): expediente ya transferido al central, retención total
+     * cumplida y disposición final de conservación total o selección. Una sola pendiente por expediente.
      */
     public function storeTransferencia(Request $request)
     {
@@ -89,6 +99,14 @@ class OfiArchivoTransferenciaController extends Controller
 
         try {
             DB::beginTransaction();
+
+            $expediente = OfiArchivoExpediente::lockForUpdate()->findOrFail($request->expediente_id);
+
+            if ($error = $this->validarTransferencia($expediente, $request->tipo)) {
+                DB::rollBack();
+
+                return $this->warningResponse($error);
+            }
 
             $transferencia = OfiArchivoTransferencia::create([
                 ...$request->only([
@@ -148,11 +166,20 @@ class OfiArchivoTransferenciaController extends Controller
         try {
             DB::beginTransaction();
 
-            $transferencia = OfiArchivoTransferencia::findOrFail($id);
+            $transferencia = OfiArchivoTransferencia::lockForUpdate()->findOrFail($id);
 
             // Máquina de estados: una transferencia ya decidida es inmutable
-            if (in_array($transferencia->estado, ['aprobada', 'rechazada'], true)) {
+            if ($transferencia->estado !== 'pendiente') {
+                DB::rollBack();
+
                 return $this->warningResponse("La transferencia ya fue {$transferencia->estado} y no puede modificarse");
+            }
+
+            // Segregación de funciones (M08-11): quien registra no decide
+            if ((int) $transferencia->usuario_registro_id === (int) Auth::id()) {
+                DB::rollBack();
+
+                return $this->warningResponse('Quien registró la transferencia no puede aprobarla ni rechazarla');
             }
 
             $transferencia->update([
@@ -217,8 +244,12 @@ class OfiArchivoTransferenciaController extends Controller
     }
 
     /**
-     * Registra una eliminación documental con acta digital.
-     * Valida que el expediente esté cerrado y la TRD permita eliminación.
+     * Registra una eliminación documental (Acuerdo AGN 004/2019, M08-10).
+     *
+     * Exige: expediente cerrado o transferido, disposición final de eliminación o selección en la
+     * TRD, tiempo de retención (gestión + central) cumplido desde el cierre, sin préstamos activos
+     * ni eliminación previa, y un aprobador distinto de quien registra con permiso de aprobar.
+     * El expediente queda en estado 'eliminado'.
      */
     public function storeEliminacion(Request $request)
     {
@@ -226,17 +257,29 @@ class OfiArchivoTransferenciaController extends Controller
             'expediente_id' => 'required|exists:ofi_archivo_expedientes,id',
             'metodo' => 'required|in:destruccion_fisica,borrado_seguro',
             'responsable_ids' => 'required|array|min:2',
+            'responsable_ids.*' => 'integer|distinct|exists:users,id',
             'testigos' => 'nullable|string|max:500',
             'aprobado_por_id' => 'required|exists:users,id',
         ]);
 
+        if ((int) $request->aprobado_por_id === (int) Auth::id()) {
+            return $this->warningResponse('El aprobador de la eliminación debe ser distinto de quien la registra');
+        }
+
+        $aprobador = User::find($request->aprobado_por_id);
+        if ((int) $aprobador->estado !== 1 || ! $aprobador->can(self::PERMISO_APROBAR_ELIMINACION)) {
+            return $this->warningResponse('El aprobador no está activo o no tiene permiso para aprobar eliminaciones');
+        }
+
         try {
             DB::beginTransaction();
 
-            $expediente = OfiArchivoExpediente::findOrFail($request->expediente_id);
+            $expediente = OfiArchivoExpediente::lockForUpdate()->findOrFail($request->expediente_id);
 
-            if ($expediente->estado !== 'cerrado') {
-                return $this->warningResponse('Solo se pueden eliminar expedientes cerrados');
+            if ($error = $this->validarEliminacion($expediente)) {
+                DB::rollBack();
+
+                return $this->warningResponse($error);
             }
 
             $eliminacion = OfiArchivoEliminacion::create([
@@ -248,6 +291,8 @@ class OfiArchivoTransferenciaController extends Controller
                 'aprobado_por_id' => $request->aprobado_por_id,
                 'usuario_registro_id' => Auth::id(),
             ]);
+
+            $expediente->update(['estado' => 'eliminado']);
 
             DB::commit();
 
@@ -276,8 +321,9 @@ class OfiArchivoTransferenciaController extends Controller
         try {
             $stats = [
                 'transferencias_pendientes' => OfiArchivoTransferencia::where('estado', 'pendiente')->count(),
-                'transferencias_completadas_hoy' => OfiArchivoTransferencia::where('estado', 'completada')
-                    ->whereDate('fecha_transferencia', today())->count(),
+                // El flujo termina en 'aprobada' ('completada' no se asigna): aprobadas hoy
+                'transferencias_completadas_hoy' => OfiArchivoTransferencia::whereIn('estado', ['aprobada', 'completada'])
+                    ->whereDate('updated_at', today())->count(),
                 'eliminaciones_totales' => OfiArchivoEliminacion::count(),
                 'eliminaciones_hoy' => OfiArchivoEliminacion::whereDate('fecha', today())->count(),
             ];
@@ -293,5 +339,87 @@ class OfiArchivoTransferenciaController extends Controller
 
             return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
         }
+    }
+
+    // ==================== REGLAS TRD (AGN 004/2019) ====================
+
+    /**
+     * Precondiciones de una transferencia; null si procede o el motivo del rechazo.
+     */
+    private function validarTransferencia(OfiArchivoExpediente $expediente, string $tipo): ?string
+    {
+        if (OfiArchivoTransferencia::where('expediente_id', $expediente->id)->where('estado', 'pendiente')->exists()) {
+            return 'El expediente ya tiene una transferencia pendiente';
+        }
+
+        $trd = $this->trdDelExpediente($expediente);
+        if (! $trd) {
+            return 'El expediente no tiene serie/subserie TRD asociada';
+        }
+
+        if ($tipo === 'primaria') {
+            if ($expediente->estado !== 'cerrado') {
+                return 'Solo se transfieren al archivo central expedientes cerrados';
+            }
+
+            return $this->validarRetencion($expediente, (int) $trd->a_g, 'en el archivo de gestión');
+        }
+
+        if ($expediente->estado !== 'transferido') {
+            return 'La transferencia secundaria exige que el expediente esté en el archivo central';
+        }
+        if (! $trd->ct && ! $trd->s) {
+            return 'La disposición final de la TRD no es conservación total ni selección';
+        }
+
+        return $this->validarRetencion($expediente, (int) $trd->a_g + (int) $trd->a_c, 'total (gestión + central)');
+    }
+
+    /**
+     * Precondiciones de una eliminación; null si procede o el motivo del rechazo.
+     */
+    private function validarEliminacion(OfiArchivoExpediente $expediente): ?string
+    {
+        if (! in_array($expediente->estado, ['cerrado', 'transferido'], true)) {
+            return 'Solo se pueden eliminar expedientes cerrados o transferidos';
+        }
+        if (OfiArchivoEliminacion::where('expediente_id', $expediente->id)->exists()) {
+            return 'El expediente ya tiene una eliminación registrada';
+        }
+        if (OfiArchivoPrestamo::where('expediente_id', $expediente->id)->whereIn('estado', ['prestado', 'vencido'])->exists()) {
+            return 'El expediente tiene préstamos sin devolver';
+        }
+
+        $trd = $this->trdDelExpediente($expediente);
+        if (! $trd) {
+            return 'El expediente no tiene serie/subserie TRD asociada';
+        }
+        if (! $trd->e && ! $trd->s) {
+            return 'La disposición final de la TRD no permite eliminación (requiere E o S)';
+        }
+
+        return $this->validarRetencion($expediente, (int) $trd->a_g + (int) $trd->a_c, 'total (gestión + central)');
+    }
+
+    /**
+     * La subserie define la retención si existe; si no, la serie.
+     */
+    private function trdDelExpediente(OfiArchivoExpediente $expediente): ?ClasificacionDocumentalTRD
+    {
+        return ClasificacionDocumentalTRD::find($expediente->subserie_trd_id ?: $expediente->serie_trd_id);
+    }
+
+    private function validarRetencion(OfiArchivoExpediente $expediente, int $anios, string $etapa): ?string
+    {
+        if (! $expediente->fecha_cierre) {
+            return 'El expediente no tiene fecha de cierre';
+        }
+
+        $cumple = Carbon::parse($expediente->fecha_cierre)->addYears($anios);
+        if ($cumple->isFuture()) {
+            return "No se ha cumplido el tiempo de retención {$etapa} ({$anios} años desde el cierre; se cumple el {$cumple->format('Y-m-d')})";
+        }
+
+        return null;
     }
 }
