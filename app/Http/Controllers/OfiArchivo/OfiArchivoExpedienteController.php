@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\OfiArchivo;
 
 use App\Helpers\ArchivoHelper;
+use App\Helpers\CalendarioHelper;
 use App\Helpers\ExpedienteHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
@@ -60,11 +61,11 @@ class OfiArchivoExpedienteController extends Controller
             $expediente = OfiArchivoExpediente::create([
                 'numero_expediente' => $numeroExpediente,
                 'nombre_expediente' => $request->nombre_expediente,
-                'anio' => (int) now()->year,
+                'anio' => (int) CalendarioHelper::hoy()->year,
                 'dependencia_id' => $request->dependencia_id,
                 'serie_trd_id' => $request->serie_trd_id,
                 'estado' => 'abierto',
-                'fecha_apertura' => now()->toDateString(),
+                'fecha_apertura' => CalendarioHelper::hoy()->toDateString(),
                 'ubicacion_fisica' => $request->ubicacion_fisica,
                 'caja' => $request->caja,
                 'carpeta' => $request->carpeta,

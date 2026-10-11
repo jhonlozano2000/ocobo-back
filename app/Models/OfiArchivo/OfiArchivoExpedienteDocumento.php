@@ -47,9 +47,12 @@ class OfiArchivoExpedienteDocumento extends Model
         parent::boot();
 
         static::creating(function ($doc) {
+            // M08-07: un folio nunca se reutiliza. Se cuentan también los documentos inactivos
+            // (el índice único uk_expediente_folio los incluye) y se bloquea el expediente
+            // para que dos incorporaciones simultáneas no calculen el mismo número.
+            OfiArchivoExpediente::whereKey($doc->expediente_id)->lockForUpdate()->first();
+
             $ultimoFolio = self::where('expediente_id', $doc->expediente_id)
-                ->where('activo', true)
-                ->lockForUpdate()
                 ->max('numero_folio') ?? 0;
             $doc->numero_folio = $ultimoFolio + 1;
 
