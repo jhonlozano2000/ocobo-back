@@ -9,7 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Enviados\ListRadicadosEnviadosRequest;
 use App\Http\Requests\Ventanilla\Enviados\StoreRadicadoEnviadoRequest;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\Configuracion\ConfigVarias;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\User;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
@@ -18,6 +17,7 @@ use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosRespuestas;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
 use App\Services\ReportesExportService;
+use App\Services\VentanillaUnica\RadicadoConsecutivoService;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use App\Traits\AuditViewTrait;
 use App\Traits\VentanillaAuditTrait;
@@ -28,6 +28,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -321,15 +322,18 @@ class VentanillaRadicaEnviadosController extends Controller
                 201
             );
         } catch (\Exception $e) {
+            DB::rollBack();
             if ($e instanceof ValidationException) {
                 throw $e;
             }
             if ($e instanceof HttpExceptionInterface) {
                 throw $e;
             }
-            DB::rollBack();
 
-            return $this->errorResponse('Error al crear el radicado enviado', $e->getMessage(), 500);
+            // M02-08: el detalle (SQL incluido) va al log, no al cliente
+            Log::error('Error al crear el radicado enviado', ['exception' => $e]);
+
+            return $this->errorResponse('Error al crear el radicado enviado', null, 500);
         }
     }
 
@@ -1159,42 +1163,12 @@ class VentanillaRadicaEnviadosController extends Controller
         }
     }
 
+    /**
+     * M02-08: consecutivo reservado con bloqueo; compartido con la radicación por correo.
+     */
     private function generarNumeroRadicado(?string $cod_dependencia = null): string
     {
-        $formato = ConfigVarias::getValor('formato_num_radicado_envi', 'YYYYMMDD-#####');
-
-        preg_match('/#+/', $formato, $matches);
-        $longitudConsecutivo = isset($matches[0]) ? strlen($matches[0]) : 5;
-
-        $fecha = Carbon::now();
-        $yyyy = $fecha->format('Y');
-        $mm = $fecha->format('m');
-        $dd = $fecha->format('d');
-
-        $ultimoRadicado = VentanillaRadicaEnviados::whereYear('created_at', $yyyy)
-            ->orderBy('id', 'desc')
-            ->value('num_radicado');
-
-        preg_match('/\d+$/', $ultimoRadicado ?? '', $consecutivoAnterior);
-        $nuevoConsecutivo = isset($consecutivoAnterior[0]) ? (int) $consecutivoAnterior[0] + 1 : 1;
-
-        $consecutivo = str_pad((string) $nuevoConsecutivo, $longitudConsecutivo, '0', STR_PAD_LEFT);
-
-        $variables = [
-            'YYYY' => $yyyy,
-            'MM' => $mm,
-            'DD' => $dd,
-            'COD_DEPEN' => $cod_dependencia,
-            str_repeat('#', $longitudConsecutivo) => $consecutivo,
-        ];
-
-        foreach ($variables as $key => $value) {
-            if ($value !== null && str_contains($formato, $key)) {
-                $formato = str_replace($key, $value, $formato);
-            }
-        }
-
-        return $formato;
+        return app(RadicadoConsecutivoService::class)->reservarEnviado($cod_dependencia);
     }
 
     public function searchByOcr(Request $request): JsonResponse

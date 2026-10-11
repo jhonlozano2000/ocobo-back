@@ -369,50 +369,12 @@ class EmailRadicacionService
     }
 
     /**
-     * Genera el siguiente número de radicado enviado.
-     * Lee el formato desde config_varias (formato_num_radicado_env), ej: YYYYMMDD-#####.
+     * Genera el siguiente número de radicado enviado con el mismo contador bloqueado que el
+     * formulario de Enviadas (M02-08); antes cada flujo numeraba por su cuenta.
      */
     public function obtenerSiguienteNumeroRadicadoEnviado(): string
     {
-        return DB::transaction(function () {
-            $formato = ConfigVarias::getValor('formato_num_radicado_env', 'YYYYMMDD-#####');
-
-            $ahora = now();
-            $anio = $ahora->format('Y');
-            $mes = $ahora->format('m');
-            $dia = $ahora->format('d');
-
-            $posHash = strpos($formato, '#');
-            if ($posHash === false) {
-                $prefijoConGuion = str_replace(['YYYY', 'MM', 'DD'], [$anio, $mes, $dia], $formato).'-';
-            } else {
-                $prefijoConGuion = str_replace(
-                    ['YYYY', 'MM', 'DD'],
-                    [$anio, $mes, $dia],
-                    substr($formato, 0, $posHash)
-                );
-            }
-
-            $digitCount = 0;
-            $i = $posHash;
-            $len = strlen($formato);
-            while ($i < $len && $formato[$i] === '#') {
-                $digitCount++;
-                $i++;
-            }
-            if ($digitCount === 0) {
-                $digitCount = 5;
-            }
-
-            $ultimoNumero = DB::table('ventanilla_radica_enviados')
-                ->where('num_radicado', 'like', $prefijoConGuion.'%')
-                ->lockForUpdate()
-                ->max(DB::raw('CAST(SUBSTRING(num_radicado, '.(strlen($prefijoConGuion) + 1).') AS UNSIGNED)'));
-
-            $siguienteNumero = ($ultimoNumero ?? 0) + 1;
-
-            return $prefijoConGuion.str_pad($siguienteNumero, $digitCount, '0', STR_PAD_LEFT);
-        });
+        return DB::transaction(fn () => app(RadicadoConsecutivoService::class)->reservarEnviado());
     }
 
     /**

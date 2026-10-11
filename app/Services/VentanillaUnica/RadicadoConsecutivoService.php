@@ -4,6 +4,7 @@ namespace App\Services\VentanillaUnica;
 
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\VentanillaUnica\Comunes\RadicadoConsecutivo;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -12,6 +13,8 @@ class RadicadoConsecutivoService
     private const TIPO_RECIBIDO = 'recibido';
 
     private const TIPO_INTERNO = 'interno';
+
+    private const TIPO_ENVIADO = 'enviado';
 
     /**
      * Reserva el próximo consecutivo para radicados recibidos dentro de la transacción llamadora.
@@ -34,17 +37,44 @@ class RadicadoConsecutivoService
     }
 
     /**
-     * Lógica atómica de reserva de consecutivo.
+     * Reserva el próximo consecutivo para radicados enviados (formulario y correo) dentro de la
+     * transacción llamadora. M02-08: antes se leía el último número sin bloqueo y dos envíos
+     * simultáneos chocaban con el índice único.
      */
-    private function reservarPorTipo(string $tipo, string $claveFormato, ?string $codDependencia = null): string
+    public function reservarEnviado(?string $codDependencia = null): string
+    {
+        // El formulario leía 'formato_num_radicado_envi' y el correo 'formato_num_radicado_env'
+        $claveFormato = ConfigVarias::getValor('formato_num_radicado_envi') !== null
+            ? 'formato_num_radicado_envi'
+            : 'formato_num_radicado_env';
+
+        return $this->reservarPorTipo(self::TIPO_ENVIADO, $claveFormato, $codDependencia, function (int $periodo) {
+            return $this->maximoExistente(
+                VentanillaRadicaEnviados::query()->whereYear('created_at', $periodo)->pluck('num_radicado')->all()
+            );
+        });
+    }
+
+    /**
+     * Lógica atómica de reserva de consecutivo.
+     *
+     * @param  (callable(int): int)|null  $valorInicial  Consecutivo de partida cuando el contador del
+     *                                                   periodo aún no existe (radicados ya emitidos).
+     */
+    private function reservarPorTipo(string $tipo, string $claveFormato, ?string $codDependencia = null, ?callable $valorInicial = null): string
     {
         try {
             $periodo = (int) now()->format('Y');
 
+            $existe = $valorInicial !== null && DB::table('ventanilla_radicado_consecutivos')
+                ->where('tipo', $tipo)
+                ->where('periodo', $periodo)
+                ->exists();
+
             DB::table('ventanilla_radicado_consecutivos')->insertOrIgnore([
                 'tipo' => $tipo,
                 'periodo' => $periodo,
-                'consecutivo' => 0,
+                'consecutivo' => $valorInicial !== null && ! $existe ? $valorInicial($periodo) : 0,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -66,6 +96,23 @@ class RadicadoConsecutivoService
         } catch (QueryException $exception) {
             throw new \RuntimeException('No fue posible reservar el consecutivo oficial del radicado.', 0, $exception);
         }
+    }
+
+    /**
+     * Mayor consecutivo (dígitos finales) entre los números dados.
+     *
+     * @param  array<int, string|null>  $numeros
+     */
+    private function maximoExistente(array $numeros): int
+    {
+        $maximo = 0;
+        foreach ($numeros as $numero) {
+            if (preg_match('/(\d+)$/', (string) $numero, $matches)) {
+                $maximo = max($maximo, (int) $matches[1]);
+            }
+        }
+
+        return $maximo;
     }
 
     private function formatear(string $formato, int $consecutivo, ?string $codDependencia): string
