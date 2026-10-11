@@ -16,6 +16,7 @@ class PermisosOtrosSeeder extends Seeder
         ];
 
         $rolAdmin = Role::where('name', 'Administrador')->first();
+        $rolJefe = Role::where('name', 'Jefe de Archivo')->first();
 
         $this->command->info('*  Iniciando la creación de permisos de Otros');
 
@@ -23,6 +24,9 @@ class PermisosOtrosSeeder extends Seeder
             $permission = Permission::firstOrCreate(['name' => $permiso]);
             if ($rolAdmin) {
                 $rolAdmin->givePermissionTo($permission);
+            }
+            if ($rolJefe && $permiso === 'Jefe de Archivo') {
+                $rolJefe->givePermissionTo($permission);
             }
         }
 

@@ -35,6 +35,9 @@ class PermisosClasificacionDocumentalSeeder extends Seeder
         $permisos = array_merge($permisosTRD, $permisosTVD);
 
         $rolAdmin = Role::where('name', 'Administrador')->first();
+        // El Jefe de Archivo revisa y aprueba versiones TRD (M10-02)
+        $rolJefe = Role::where('name', 'Jefe de Archivo')->first();
+        $permisosJefe = ['TRD -> Listar', 'TRD -> Mostrar', 'TRD -> Versiones'];
 
         $this->command->info('*  Iniciando la creación de permisos de Clasificación Documental');
 
@@ -42,6 +45,9 @@ class PermisosClasificacionDocumentalSeeder extends Seeder
             $permission = Permission::firstOrCreate(['name' => $permiso]);
             if ($rolAdmin) {
                 $rolAdmin->givePermissionTo($permission);
+            }
+            if ($rolJefe && in_array($permiso, $permisosJefe, true)) {
+                $rolJefe->givePermissionTo($permission);
             }
         }
 

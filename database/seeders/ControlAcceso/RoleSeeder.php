@@ -21,6 +21,8 @@ class RoleSeeder extends Seeder
         Role::firstOrCreate(['name' => 'Radicador PQRSF']);
         Role::firstOrCreate(['name' => 'Digitalizador']);
         Role::firstOrCreate(['name' => 'Mi espacion']);
+        // Aprueba TRD, anulaciones y eliminaciones; separado de quien elabora (M10-02)
+        Role::firstOrCreate(['name' => 'Jefe de Archivo']);
 
         $this->command->info('✅ Roles creados exitosamente');
     }

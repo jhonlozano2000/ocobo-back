@@ -255,14 +255,25 @@ class ClasificacionDocumentalTRDVersionController extends Controller
             DB::beginTransaction();
 
             // Buscar la versión por ID directamente
-            $versionPendiente = ClasificacionDocumentalTRDVersion::find($request->versionId);
+            $versionPendiente = ClasificacionDocumentalTRDVersion::lockForUpdate()->find($request->versionId);
 
             if (! $versionPendiente) {
+                DB::rollBack();
+
                 return $this->errorResponse('La versión no existe', null, 404);
             }
 
             if ($versionPendiente->estado_version !== 'TEMP') {
+                DB::rollBack();
+
                 return $this->errorResponse('Solo se pueden aprobar versiones en estado TEMP', null, 400);
+            }
+
+            // Segregación de funciones (M10-02): quien elabora la versión no la aprueba
+            if ((int) $versionPendiente->user_register === (int) $user->id) {
+                DB::rollBack();
+
+                return $this->errorResponse('Quien registró la versión TRD no puede aprobarla', null, 403);
             }
 
             $dependenciaId = $versionPendiente->dependencia_id;

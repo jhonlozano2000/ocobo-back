@@ -7,6 +7,7 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRDVersion;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class TRDService
@@ -108,6 +109,13 @@ class TRDService
         $this->deriveDisposicionSoporte($data);
         $data['user_register'] = auth()->id();
 
+        // El elemento hijo pertenece a la versión de su padre; no se agregan hijos a una versión aprobada
+        if (! empty($data['parent'])) {
+            $padre = ClasificacionDocumentalTRD::find($data['parent']);
+            $this->asegurarEditable($padre);
+            $data['version_id'] = $padre?->version_id;
+        }
+
         return ClasificacionDocumentalTRD::create($data);
     }
 
@@ -122,6 +130,11 @@ class TRDService
 
         if (! $trd) {
             return null;
+        }
+
+        $this->asegurarEditable($trd);
+        if (! empty($data['parent']) && (int) $data['parent'] !== (int) $trd->parent) {
+            $this->asegurarEditable(ClasificacionDocumentalTRD::find($data['parent']));
         }
 
         $trd->update($data);
@@ -140,7 +153,29 @@ class TRDService
             return false;
         }
 
+        $this->asegurarEditable($trd);
+
         return $trd->delete();
+    }
+
+    /**
+     * Una TRD aprobada (versión ACTIVO) o histórica es inmutable (M10-01): los cambios se hacen
+     * en una nueva versión TEMP que el Jefe de Archivo aprueba.
+     */
+    public function estaAprobado(?ClasificacionDocumentalTRD $trd): bool
+    {
+        return $trd && $trd->version_id && ClasificacionDocumentalTRDVersion::whereKey($trd->version_id)
+            ->whereIn('estado_version', ['ACTIVO', 'HISTORICO'])
+            ->exists();
+    }
+
+    private function asegurarEditable(?ClasificacionDocumentalTRD $trd): void
+    {
+        if ($this->estaAprobado($trd)) {
+            throw ValidationException::withMessages([
+                'version_id' => 'La TRD de esta versión ya fue aprobada y no puede modificarse; registre los cambios en una nueva versión.',
+            ]);
+        }
     }
 
     /**
