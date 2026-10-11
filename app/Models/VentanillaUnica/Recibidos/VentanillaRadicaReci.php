@@ -14,6 +14,7 @@ use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\User;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsOptimizedView;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use App\Traits\AbacHierarquico;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,6 +24,19 @@ use Illuminate\Support\Facades\Storage;
 class VentanillaRadicaReci extends Model
 {
     use AbacHierarquico, HasFactory;
+
+    /**
+     * Visible por ABAC (creador, responsable, jerarquía o "Ver Todos"), o radicado de una
+     * PQRS visible para el usuario: los archivos de la PQRS se gestionan sobre su radicado.
+     */
+    public static function accesiblePara(User $user, int $id): bool
+    {
+        if (static::conPermisoJerarquico($user)->whereKey($id)->exists()) {
+            return true;
+        }
+
+        return VentanillaPqrsOptimizedView::conPermisoJerarquico($user)->where('ventanilla_radica_reci_id', $id)->exists();
+    }
 
     // Constantes para ABAC
     protected const ABAC_USER_COLUMN = 'usuario_crea';

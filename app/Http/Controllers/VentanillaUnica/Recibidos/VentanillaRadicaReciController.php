@@ -1938,16 +1938,21 @@ class VentanillaRadicaReciController extends Controller
             return $this->warningResponse('Mínimo 3 caracteres', ['data' => []]);
         }
 
+        // M12-01: la búsqueda (también por contenido OCR) se limita a los radicados visibles por ABAC
+        $base = VentanillaRadicaReci::conPermisoJerarquico($request->user());
+
         // Si es búsqueda específica de OCR
         if ($searchOcr) {
-            $radicados = VentanillaRadicaReci::where('ocr', 'LIKE', "%{$query}%")
+            $radicados = $base->where('ocr', 'LIKE', "%{$query}%")
                 ->limit(20)
                 ->get();
         } else {
             // Búsqueda general
-            $radicados = VentanillaRadicaReci::where('num_radicado', 'LIKE', "%{$query}%")
-                ->orWhere('asunto', 'LIKE', "%{$query}%")
-                ->orWhere('ocr', 'LIKE', "%{$query}%")
+            $radicados = $base->where(function ($q) use ($query) {
+                $q->where('num_radicado', 'LIKE', "%{$query}%")
+                    ->orWhere('asunto', 'LIKE', "%{$query}%")
+                    ->orWhere('ocr', 'LIKE', "%{$query}%");
+            })
                 ->limit(20)
                 ->get();
         }

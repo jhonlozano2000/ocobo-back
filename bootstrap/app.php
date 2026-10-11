@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AccesoRadicado;
 use App\Http\Middleware\AuditLogMiddleware;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\CombinedSecurityMiddleware;
@@ -100,6 +101,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'password.strength' => ValidatePasswordStrength::class,
             'propio_o_can' => PropioOPermiso::class,
             'can_any' => PuedeAlguno::class,
+            'acceso_radicado' => AccesoRadicado::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

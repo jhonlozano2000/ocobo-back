@@ -154,14 +154,13 @@ trait AbacHierarquico
             }
         }
 
-        // Obtener todos los códigos de la jerarquía (propia + subordinados)
+        // Obtener todos los códigos de la jerarquía (propia + subordinados); sin cargo activo
+        // el usuario conserva los registros que creó o le asignaron
         $codigosJerarquia = $this->obtenerCodigosJerarquiaCompleta($user);
 
-        if (empty($codigosJerarquia)) {
-            return $query->whereRaw('1 = 0');
-        }
-
         return $query->where(function ($q) use ($user, $codigosJerarquia) {
+            $q->whereRaw('1 = 0');
+
             // 1. Registros creados por el usuario
             if (defined('static::ABAC_USER_COLUMN')) {
                 $q->orWhere(static::ABAC_USER_COLUMN, $user->id);
@@ -177,9 +176,11 @@ trait AbacHierarquico
             }
 
             // 3. Registros de la jerarquía completa
-            $q->orWhereHas('usuarioCreaRadicado.cargoActivo.cargo', function ($subQ) use ($codigosJerarquia) {
-                $subQ->whereIn('cod_organico', $codigosJerarquia);
-            });
+            if (! empty($codigosJerarquia)) {
+                $q->orWhereHas('usuarioCreaRadicado.cargoActivo.cargo', function ($subQ) use ($codigosJerarquia) {
+                    $subQ->whereIn('cod_organico', $codigosJerarquia);
+                });
+            }
         });
     }
 
