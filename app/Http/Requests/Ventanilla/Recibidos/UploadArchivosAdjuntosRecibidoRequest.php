@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Ventanilla\Recibidos;
 
 use App\Models\Configuracion\ConfigVarias;
+use App\Rules\ArchivoSeguro;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -26,13 +27,14 @@ class UploadArchivosAdjuntosRecibidoRequest extends FormRequest
     public function rules(): array
     {
         $maxSize = ConfigVarias::getValor('max_tamano_archivo', 10240); // 10MB por defecto para archivos adjuntos
-        $allowedExtensions = explode(',', ConfigVarias::getValor('tipos_archivos_permitidos', 'pdf,doc,docx,jpg,jpeg,png,gif'));
 
         return [
             'archivos' => 'required|array|min:1|max:10',
             'archivos.*' => [
                 'file',
                 'max:'.$maxSize,
+                // M01-04: extensión permitida (tipos_archivos_permitidos) y contenido real
+                new ArchivoSeguro,
             ],
             'descripcion' => ['nullable', 'string', 'max:500'],
             'palabras_clave' => ['nullable', 'string', 'max:500'],

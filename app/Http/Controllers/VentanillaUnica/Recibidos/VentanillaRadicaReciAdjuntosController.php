@@ -11,6 +11,7 @@ use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivo;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivoEliminado;
+use App\Services\Seguridad\InspectorArchivos;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -64,7 +65,7 @@ class VentanillaRadicaReciAdjuntosController extends Controller
                 }
 
                 // Guardar archivo directamente en el disco
-                $nombreArchivo = Str::random(50).'.'.$archivo->getClientOriginalExtension();
+                $nombreArchivo = Str::random(50).'.'.InspectorArchivos::extensionSegura($archivo->getRealPath(), $archivo->getClientOriginalName());
                 $contenido = $archivo->getContent();
                 if (empty($contenido)) {
                     continue;
