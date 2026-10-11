@@ -393,9 +393,18 @@ class VentanillaPqrs extends Model
         return CalendarioHelper::calcularVencimiento($fechaInicio, $dias);
     }
 
+    /**
+     * El término de una tutela o de un fallo judicial lo fija el juez: no admite la prórroga
+     * del parágrafo del art. 14 de la Ley 1755 de 2015.
+     */
+    public function terminoEsJudicial(): bool
+    {
+        return $this->prioridad === 'Tutela' || $this->fallo_judicial === 'Si';
+    }
+
     public function aplicarProrroga(): bool
     {
-        if ($this->tiene_prorroga) {
+        if ($this->tiene_prorroga || $this->terminoEsJudicial()) {
             return false;
         }
 

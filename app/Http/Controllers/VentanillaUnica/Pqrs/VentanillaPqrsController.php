@@ -456,7 +456,9 @@ class VentanillaPqrsController extends Controller
                 'Prórroga aplicada. Nuevo vencimiento: '.$pqrs->fecha_vencimiento->format('Y-m-d')
             );
         } catch (ModelNotFoundException $e) {
-            return $this->errorResponse('PQRS no encontrada', null, 404);
+            return $this->notFoundResponse('PQRS no encontrada');
+        } catch (\DomainException $e) {
+            return $this->warningResponse($e->getMessage());
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -465,7 +467,7 @@ class VentanillaPqrsController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al aplicar la prórroga', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al aplicar la prórroga', $e->getMessage());
         }
     }
 

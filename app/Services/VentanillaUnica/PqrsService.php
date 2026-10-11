@@ -142,15 +142,26 @@ class PqrsService
         });
     }
 
+    /**
+     * @throws \DomainException si ya tiene prórroga o su término es judicial
+     */
     public function aplicarProrroga(int $pqrsId): VentanillaPqrs
     {
-        $pqrs = VentanillaPqrs::with('tipoPqrs')->findOrFail($pqrsId);
+        $pqrs = DB::transaction(function () use ($pqrsId) {
+            // El bloqueo evita que dos solicitudes simultáneas sumen la prórroga dos veces
+            $pqrs = VentanillaPqrs::with('tipoPqrs')->lockForUpdate()->findOrFail($pqrsId);
 
-        if ($pqrs->tiene_prorroga) {
-            throw new \Exception('Esta PQRS ya tiene una prórroga aplicada.');
-        }
+            if ($pqrs->tiene_prorroga) {
+                throw new \DomainException('Esta PQRS ya tiene una prórroga aplicada.');
+            }
+            if ($pqrs->terminoEsJudicial()) {
+                throw new \DomainException('No procede prórroga: el término de una tutela o de un fallo judicial lo fija el juez.');
+            }
 
-        $pqrs->aplicarProrroga();
+            $pqrs->aplicarProrroga();
+
+            return $pqrs;
+        });
 
         $pqrs->load(['radicado', 'tercero', 'tipoPqrs', 'clasificacionDocumental']);
 
