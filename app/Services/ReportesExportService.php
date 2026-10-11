@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\ExportSeguroHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -36,7 +37,7 @@ class ReportesExportService
             foreach ($headers as $i => $header) {
                 $col = Coordinate::stringFromColumnIndex($i + 1);
                 $value = is_array($item) ? ($item[$header] ?? $item[strtolower($header)] ?? '') : '';
-                $sheet->setCellValue($col.$row, $value);
+                ExportSeguroHelper::setCelda($sheet, $col.$row, $value);
             }
             $row++;
         }
@@ -101,7 +102,7 @@ class ReportesExportService
                 foreach ($headers as $header) {
                     $row[] = is_array($item) ? ($item[$header] ?? $item[strtolower($header)] ?? '') : '';
                 }
-                fputcsv($handle, $row);
+                fputcsv($handle, ExportSeguroHelper::filaCsv($row));
             }
 
             fclose($handle);

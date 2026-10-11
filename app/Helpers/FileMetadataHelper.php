@@ -698,7 +698,7 @@ class FileMetadataHelper
             ]);
 
             foreach ($datos as $item) {
-                fputcsv($handle, [
+                fputcsv($handle, ExportSeguroHelper::filaCsv([
                     $item->id,
                     $item->num_radicado,
                     $item->asunto,
@@ -714,7 +714,7 @@ class FileMetadataHelper
                     $item->clasificacion_subserie,
                     $item->clasificacion_tipo_doc,
                     $item->estado_registro,
-                ]);
+                ]));
             }
 
             fclose($handle);

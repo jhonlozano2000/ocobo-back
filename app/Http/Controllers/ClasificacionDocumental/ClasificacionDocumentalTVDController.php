@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ClasificacionDocumental;
 
+use App\Helpers\ExportSeguroHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ClasificacionDocumental\StoreTVDRequest;
 use App\Http\Requests\ClasificacionDocumental\UpdateTVDRequest;
@@ -289,7 +290,7 @@ class ClasificacionDocumentalTVDController extends Controller
             ];
             foreach ($values as $index => $value) {
                 $col = Coordinate::stringFromColumnIndex($index + 1);
-                $sheet->setCellValue($col.$rowIdx, $value);
+                ExportSeguroHelper::setCelda($sheet, $col.$rowIdx, $value);
             }
             $rowIdx++;
         }
@@ -313,7 +314,7 @@ class ClasificacionDocumentalTVDController extends Controller
             $out = fopen('php://output', 'w');
             fputcsv($out, $headers);
             foreach ($rows as $tvd) {
-                fputcsv($out, [
+                fputcsv($out, ExportSeguroHelper::filaCsv([
                     $tvd->tipo,
                     $tvd->cod,
                     $tvd->nom,
@@ -323,7 +324,7 @@ class ClasificacionDocumentalTVDController extends Controller
                     $tvd->central,
                     $tvd->total_anios,
                     $tvd->disposicion_final,
-                ]);
+                ]));
             }
             fclose($out);
         }, $fileName, ['Content-Type' => 'text/csv; charset=UTF-8']);
