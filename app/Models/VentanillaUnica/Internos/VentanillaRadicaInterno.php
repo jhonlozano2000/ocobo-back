@@ -11,15 +11,39 @@ use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
 use App\Services\MiBandeja\MiBandejaFiltroService;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
+use App\Traits\AbacHierarquico;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
 class VentanillaRadicaInterno extends Model
 {
-    use HasFactory;
+    use AbacHierarquico, HasFactory;
 
     protected $table = 'ventanilla_radica_internos';
+
+    // M03-03: visibles para creador, responsables, destinatarios, proyectores, firmantes y la jerarquía del creador
+    protected const ABAC_USER_COLUMN = 'usuario_crea';
+
+    protected const ABAC_RESPONSABLES_RELATION = 'responsables';
+
+    protected const ABAC_VER_TODOS_PERMISO = 'Radicar -> Cores. Interna -> Ver Todos';
+
+    public static function accesiblePara(User $user, int $id): bool
+    {
+        return static::conPermisoJerarquico($user)->whereKey($id)->exists();
+    }
+
+    /**
+     * Cláusulas ABAC adicionales (AbacHierarquico): destinatarios, proyectores y firmantes.
+     */
+    protected function abacAccesosAdicionales($q, User $user): void
+    {
+        foreach (['destinatarios', 'proyectores'] as $relacion) {
+            $q->orWhereHas($relacion, fn ($subQ) => $subQ->whereHas('userCargo', fn ($uc) => $uc->where('user_id', $user->id)));
+        }
+        $q->orWhereHas('firmantes', fn ($subQ) => $subQ->where('users_id', $user->id));
+    }
 
     protected $fillable = [
         'num_radicado',
@@ -68,6 +92,14 @@ class VentanillaRadicaInterno extends Model
      * Usuario que creó la radicación interna.
      */
     public function usuarioCrea()
+    {
+        return $this->belongsTo(User::class, 'usuario_crea');
+    }
+
+    /**
+     * Alias de usuarioCrea usado por el filtrado jerárquico de AbacHierarquico.
+     */
+    public function usuarioCreaRadicado()
     {
         return $this->belongsTo(User::class, 'usuario_crea');
     }
@@ -150,6 +182,14 @@ class VentanillaRadicaInterno extends Model
     public function proyectores()
     {
         return $this->hasMany(VentanillaRadicaInternoProyectores::class, 'radica_interno_id');
+    }
+
+    /**
+     * Firmantes de la radicación interna.
+     */
+    public function firmantes()
+    {
+        return $this->hasMany(VentanillaRadicaInternoFirmantes::class, 'radica_interno_id');
     }
 
     /**

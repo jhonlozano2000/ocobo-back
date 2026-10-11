@@ -5,6 +5,7 @@ namespace Tests\Feature\VentanillaUnica;
 use App\Models\User;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -25,7 +26,14 @@ class InternosEstadoYHistorialTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['Radicar -> Cores. Interna -> Editar', 'Radicar -> Cores. Interna -> Mostrar', 'Mi Bandeja - Internos -> Ver'] as $permiso) {
+        // BD de pruebas sin el renombre a plural de las tablas de internos (ABAC de M03-03)
+        foreach (['responsa', 'proyectores'] as $sufijo) {
+            if (! Schema::hasTable("ventanilla_radica_internos_{$sufijo}")) {
+                DB::statement("CREATE TEMPORARY TABLE ventanilla_radica_internos_{$sufijo} LIKE ventanilla_radica_interno_{$sufijo}");
+            }
+        }
+
+        foreach (['Radicar -> Cores. Interna -> Editar', 'Radicar -> Cores. Interna -> Mostrar', 'Radicar -> Cores. Interna -> Ver Todos', 'Mi Bandeja - Internos -> Ver'] as $permiso) {
             Permission::findOrCreate($permiso, 'web');
         }
 
@@ -38,6 +46,7 @@ class InternosEstadoYHistorialTest extends TestCase
             'clasifica_documen_id' => 999999,
             'asunto' => 'Prueba M03',
             'estado_trabajo' => 'RECIBIDO',
+            'usuario_crea' => $this->funcionario->id,
         ]);
         Schema::enableForeignKeyConstraints();
     }
@@ -81,11 +90,13 @@ class InternosEstadoYHistorialTest extends TestCase
 
         // Permiso de bandeja + creador del radicado
         $this->funcionario->givePermissionTo('Mi Bandeja - Internos -> Ver');
-        $this->radicado->update(['usuario_crea' => $this->funcionario->id]);
         $this->assertAutorizado($this->actingAs($this->funcionario)->getJson($this->urlHistorial())->status());
 
         $ventanilla = User::factory()->create(['estado' => 1]);
         $ventanilla->givePermissionTo('Radicar -> Cores. Interna -> Mostrar');
+        // Sin participar en el radicado, el ABAC lo oculta (M03-03) salvo con Ver Todos
+        $this->actingAs($ventanilla)->getJson($this->urlHistorial())->assertNotFound();
+        $ventanilla->givePermissionTo('Radicar -> Cores. Interna -> Ver Todos');
         $this->assertAutorizado($this->actingAs($ventanilla)->getJson($this->urlHistorial())->status());
     }
 

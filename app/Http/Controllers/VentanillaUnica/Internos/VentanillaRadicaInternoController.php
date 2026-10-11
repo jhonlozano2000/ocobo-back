@@ -21,7 +21,6 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -49,7 +48,7 @@ class VentanillaRadicaInternoController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = VentanillaRadicaInterno::query();
+            $query = VentanillaRadicaInterno::conPermisoJerarquico($request->user());
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -205,7 +204,7 @@ class VentanillaRadicaInternoController extends Controller
             return $this->errorResponse('La búsqueda debe tener al menos 3 caracteres', null, 400);
         }
 
-        $radicados = VentanillaRadicaInterno::where(function ($q) use ($query) {
+        $radicados = VentanillaRadicaInterno::conPermisoJerarquico($request->user())->where(function ($q) use ($query) {
             $q->where('num_radicado', 'like', "%{$query}%")
                 ->orWhere('asunto', 'like', "%{$query}%")
                 ->orWhere('ocr', 'like', "%{$query}%");
@@ -364,8 +363,6 @@ class VentanillaRadicaInternoController extends Controller
             }
 
             DB::commit();
-            Cache::forget('ventanilla_internos_estadisticas');
-
             $this->auditVentanilla($radicado, 'created', $radicado->num_radicado);
 
             return $this->successResponse($radicado, 'Radicación interna completada exitosamente', 201);
@@ -403,7 +400,6 @@ class VentanillaRadicaInternoController extends Controller
             ]);
 
             DB::commit();
-            Cache::forget('ventanilla_internos_estadisticas');
 
             return $this->successResponse(
                 $radicado->fresh(['clasificacionDocumental', 'usuarioCrea', 'destinatarios.userCargo.user', 'responsables.userCargo.user', 'proyectores.userCargo.user']),
@@ -446,7 +442,6 @@ class VentanillaRadicaInternoController extends Controller
             $this->auditVentanilla($radicado, 'deleted', $numRadicado);
 
             DB::commit();
-            Cache::forget('ventanilla_internos_estadisticas');
 
             return $this->successResponse(null, 'Radicado interno eliminado exitosamente');
         } catch (\Exception $e) {
@@ -839,42 +834,38 @@ class VentanillaRadicaInternoController extends Controller
     public function estadisticas()
     {
         try {
-            $cacheKey = 'ventanilla_internos_estadisticas';
-            $cached = Cache::get($cacheKey);
-
-            if ($cached) {
-                return $this->successResponse($cached, 'Estadísticas obtenidas exitosamente');
-            }
+            // Conteos sobre los radicados visibles para el usuario (sin caché compartida entre usuarios)
+            $base = fn () => VentanillaRadicaInterno::conPermisoJerarquico(Auth::user());
 
             $estadoService = new RadicadoEstadoTrabajoService;
             $fechaActual = Carbon::now()->format('Y-m-d');
 
-            $totalRadicados = VentanillaRadicaInterno::count();
+            $totalRadicados = $base()->count();
 
-            $faltanArchivoDigital = VentanillaRadicaInterno::where(function ($query) {
+            $faltanArchivoDigital = $base()->where(function ($query) {
                 $query->whereNull('archivo_digital')
                     ->orWhere('archivo_digital', '');
             })->count();
 
-            $radicadosVencidos = VentanillaRadicaInterno::where('fec_venci', '<', $fechaActual)->count();
+            $radicadosVencidos = $base()->where('fec_venci', '<', $fechaActual)->count();
 
-            $radicadosHoy = VentanillaRadicaInterno::whereDate('created_at', $fechaActual)->count();
+            $radicadosHoy = $base()->whereDate('created_at', $fechaActual)->count();
 
-            $radicadosEstaSemana = VentanillaRadicaInterno::whereBetween('created_at', [
+            $radicadosEstaSemana = $base()->whereBetween('created_at', [
                 Carbon::now()->startOfWeek()->format('Y-m-d'),
                 Carbon::now()->endOfWeek()->format('Y-m-d'),
             ])->count();
 
-            $radicadosEsteMes = VentanillaRadicaInterno::whereMonth('created_at', Carbon::now()->month)
+            $radicadosEsteMes = $base()->whereMonth('created_at', Carbon::now()->month)
                 ->whereYear('created_at', Carbon::now()->year)
                 ->count();
 
             $totalConArchivos = $totalRadicados - $faltanArchivoDigital;
 
-            $totalEnProceso = VentanillaRadicaInterno::where('estado_trabajo', $estadoService::ESTADO_EN_PROCESO)->count();
-            $totalPorVencer = VentanillaRadicaInterno::where('estado_trabajo', $estadoService::ESTADO_POR_VENCER)->count();
-            $totalVencido = VentanillaRadicaInterno::where('estado_trabajo', $estadoService::ESTADO_VENCIDO)->count();
-            $totalFinalizado = VentanillaRadicaInterno::where('estado_trabajo', $estadoService::ESTADO_FINALIZADO)->count();
+            $totalEnProceso = $base()->where('estado_trabajo', $estadoService::ESTADO_EN_PROCESO)->count();
+            $totalPorVencer = $base()->where('estado_trabajo', $estadoService::ESTADO_POR_VENCER)->count();
+            $totalVencido = $base()->where('estado_trabajo', $estadoService::ESTADO_VENCIDO)->count();
+            $totalFinalizado = $base()->where('estado_trabajo', $estadoService::ESTADO_FINALIZADO)->count();
 
             $estadisticas = [
                 'total_radicados' => $totalRadicados,
@@ -891,8 +882,6 @@ class VentanillaRadicaInternoController extends Controller
                 'porcentaje_con_archivo' => $totalRadicados > 0 ? round((($totalRadicados - $faltanArchivoDigital) / $totalRadicados) * 100, 2) : 0,
                 'colores_estados' => $estadoService::getColoresPorEstado(),
             ];
-
-            Cache::put($cacheKey, $estadisticas, now()->addMinutes(10));
 
             return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');
         } catch (\Exception $e) {

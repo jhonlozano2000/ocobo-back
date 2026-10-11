@@ -86,7 +86,7 @@ class VentanillaRadicaInternoRespuestasController extends Controller
                 ->pluck('radica_interno_respuesta_id')
                 ->toArray();
 
-            $disponibles = VentanillaRadicaInterno::where('id', '!=', $radicaInternoId)
+            $disponibles = VentanillaRadicaInterno::conPermisoJerarquico(auth()->user())->where('id', '!=', $radicaInternoId)
                 ->whereNotNull('fec_venci')
                 ->whereNotIn('id', $yaAsociados)
                 ->orderBy('created_at', 'desc')
