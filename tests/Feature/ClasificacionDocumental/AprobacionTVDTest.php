@@ -63,7 +63,7 @@ class AprobacionTVDTest extends TestCase
     {
         $serie = $this->serie();
 
-        $this->aprobar($this->archivista)->assertForbidden();
+        $this->aprobar($this->archivista)->assertStatus(422);
         $this->assertNull(DB::table('clasificacion_documental_tvd')->where('id', $serie)->value('fecha_aprobacion'));
 
         $this->aprobar($this->jefe)->assertOk();

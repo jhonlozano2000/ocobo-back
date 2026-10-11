@@ -273,7 +273,7 @@ class ClasificacionDocumentalTRDVersionController extends Controller
             if ((int) $versionPendiente->user_register === (int) $user->id) {
                 DB::rollBack();
 
-                return $this->errorResponse('Quien registró la versión TRD no puede aprobarla', null, 403);
+                return $this->warningResponse('Quien registró la versión TRD no puede aprobarla');
             }
 
             $dependenciaId = $versionPendiente->dependencia_id;

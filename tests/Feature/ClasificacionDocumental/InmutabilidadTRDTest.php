@@ -81,7 +81,7 @@ class InmutabilidadTRDTest extends TestCase
     {
         $propia = $this->version('TEMP', $this->user->id);
         $this->actingAs($this->user)->postJson('/api/clasifica-documental/trd-versiones/aprobar/'.$this->dep, ['versionId' => $propia, 'observaciones' => 'ok'])
-            ->assertForbidden();
+            ->assertStatus(422);
         $this->assertSame('TEMP', DB::table('clasificacion_documental_trd_versiones')->where('id', $propia)->value('estado_version'));
 
         $ajena = $this->version('TEMP', User::factory()->create()->id);

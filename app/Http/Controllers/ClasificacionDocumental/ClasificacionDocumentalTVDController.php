@@ -194,20 +194,20 @@ class ClasificacionDocumentalTVDController extends Controller
     {
         $user = auth()->user();
         if (! $user->hasPermissionTo('Jefe de Archivo')) {
-            return $this->errorResponse('Solo el Jefe de Archivo puede aprobar la TVD', null, 403);
+            return $this->forbiddenResponse('Solo el Jefe de Archivo puede aprobar la TVD');
         }
 
         return DB::transaction(function () use ($dependenciaId, $user) {
             $elementos = ClasificacionDocumentalTVD::where('dependencia_id', $dependenciaId)->lockForUpdate()->get();
 
             if ($elementos->isEmpty()) {
-                return $this->errorResponse('La dependencia no tiene TVD registrada', null, 404);
+                return $this->notFoundResponse('La dependencia no tiene TVD registrada');
             }
             if ($elementos->every(fn ($e) => $e->fecha_aprobacion !== null)) {
                 return $this->warningResponse('La TVD de esta dependencia ya fue aprobada');
             }
             if ($elementos->contains(fn ($e) => (int) $e->user_register === (int) $user->id)) {
-                return $this->errorResponse('Quien registró elementos de la TVD no puede aprobarla', null, 403);
+                return $this->warningResponse('Quien registró elementos de la TVD no puede aprobarla');
             }
 
             ClasificacionDocumentalTVD::where('dependencia_id', $dependenciaId)
