@@ -1,3 +1,6 @@
 *
 !public/
 !.gitignore
+!ocr-service/
+!ocr-service/**
+ocr-service/__pycache__/
