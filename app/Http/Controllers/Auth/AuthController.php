@@ -239,6 +239,8 @@ class AuthController extends Controller
             );
         }
 
+        UsersSession::cerrarActual($request->session()->get(UsersSession::CLAVE_SESION));
+
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

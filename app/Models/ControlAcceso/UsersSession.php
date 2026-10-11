@@ -10,6 +10,12 @@ class UsersSession extends Model
 {
     use HasFactory;
 
+    /**
+     * Clave de la sesión HTTP que guarda el id de esta fila; con ella el middleware
+     * Authenticate invalida la cookie cuando la fila se cierra (SES-001).
+     */
+    public const CLAVE_SESION = 'users_session_id';
+
     protected $fillable = [
         'user_id',
         'ip_address',
@@ -42,6 +48,16 @@ class UsersSession extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Marca como cerrada la fila de users_sessions indicada, si sigue activa.
+     */
+    public static function cerrarActual(int|string|null $sesionId): void
+    {
+        if ($sesionId) {
+            self::whereKey($sesionId)->where('is_active', true)->update(['is_active' => false, 'logout_at' => now()]);
+        }
     }
 
     public function scopeRecent($query, int $days = 30)

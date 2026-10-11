@@ -5,9 +5,11 @@ namespace App\Http\Controllers\ControlAcceso;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ControlAcceso\ListUserSessionRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\ControlAcceso\UsersSession;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Jenssegers\Agent\Agent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -68,8 +70,9 @@ class UserSessionController extends Controller
             $user = Auth::user();
             $limit = $request->validated('limit') ?? 6;
 
-            // Obtener las sesiones del usuario
+            // Sesiones abiertas del usuario; las cerradas (logout o revocadas) quedan solo como auditoría
             $sessions = $user->sessions()
+                ->where('is_active', true)
                 ->orderBy('last_login_at', 'desc')
                 ->take($limit)
                 ->get();
@@ -229,7 +232,12 @@ class UserSessionController extends Controller
                 return $this->notFoundResponse('Sesión no encontrada');
             }
 
-            $session->delete();
+            // SES-001: antes solo se borraba la fila de auditoría y la cookie seguía válida.
+            // La fila se marca cerrada (el middleware Authenticate rechaza esa sesión) y se
+            // renueva el remember token para que la cookie "recordarme" no la reabra.
+            UsersSession::cerrarActual($session->id);
+            $user->setRememberToken(Str::random(60));
+            $user->save();
 
             return $this->successResponse(null, 'Sesión eliminada exitosamente');
         } catch (\Exception $e) {

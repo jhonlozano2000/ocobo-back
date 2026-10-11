@@ -40,6 +40,11 @@ class StoreUserSession
             ]),
         ]);
 
+        // La sesión conserva sus datos al regenerarse tras el login
+        if ($this->request->hasSession()) {
+            $this->request->session()->put(UsersSession::CLAVE_SESION, $session->id);
+        }
+
         UsersAuthenticationLog::logEvent([
             'user_id' => $event->user->id,
             'event' => 'login_success',
