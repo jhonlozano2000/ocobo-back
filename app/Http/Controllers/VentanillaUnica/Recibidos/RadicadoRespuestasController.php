@@ -71,11 +71,11 @@ class RadicadoRespuestasController extends Controller
         return $this->successResponse($respuesta, 'Respuesta actualizada');
     }
 
-    public function destruir(Request $id)
+    public function destruir(int $id)
     {
         $respuesta = RadicadoRespuesta::findOrFail($id);
 
-        if ($respuesta->user_crea_id !== Auth::id()) {
+        if ((int) $respuesta->user_crea_id !== (int) Auth::id()) {
             return $this->errorResponse('No puedes eliminar esta respuesta', null, 403);
         }
 
