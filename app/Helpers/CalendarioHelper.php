@@ -51,6 +51,27 @@ class CalendarioHelper
     }
 
     /**
+     * Días calendario desde hoy (Colombia) hasta una fecha de vencimiento; negativo si ya pasó.
+     *
+     * @param  Carbon|string  $fecha
+     */
+    public static function diasHasta($fecha): int
+    {
+        return (int) self::hoy()->diffInDays(Carbon::parse($fecha)->startOfDay(), false);
+    }
+
+    /**
+     * Una fecha de vencimiento está vencida desde el día siguiente (Colombia); el día
+     * del vencimiento todavía está en término.
+     *
+     * @param  Carbon|string  $fecha
+     */
+    public static function vencida($fecha): bool
+    {
+        return Carbon::parse($fecha)->startOfDay()->lessThan(self::hoy());
+    }
+
+    /**
      * Calcula una fecha de vencimiento sumando días hábiles.
      * Descuenta sábados, domingos y festivos de la base de datos.
      * Respeta la configuración de "considerar_dias_habiles".

@@ -58,4 +58,23 @@ class ZonaHorariaNegocioTest extends TestCase
         $radicado->fec_venci = '2026-10-08';
         $this->assertTrue(app(RadicadoEstadoTrabajoService::class)->estaVencido($radicado));
     }
+
+    public function test_el_dia_del_vencimiento_sigue_en_termino(): void
+    {
+        $this->assertFalse(CalendarioHelper::vencida('2026-10-09'));
+        $this->assertTrue(CalendarioHelper::vencida('2026-10-08'));
+        $this->assertSame(0, CalendarioHelper::diasHasta('2026-10-09'));
+        $this->assertSame(3, CalendarioHelper::diasHasta(Carbon::parse('2026-10-12')));
+
+        $radicado = new VentanillaRadicaReci(['fec_venci' => '2026-10-09']);
+        $this->assertFalse($radicado->isVencida());
+        $this->assertSame(0, $radicado->dias_para_vencer);
+    }
+
+    public function test_scope_vencidos_compara_con_la_fecha_de_colombia(): void
+    {
+        $sql = VentanillaRadicaReci::query()->vencidos()->toRawSql();
+
+        $this->assertStringContainsString("'2026-10-09'", $sql);
+    }
 }

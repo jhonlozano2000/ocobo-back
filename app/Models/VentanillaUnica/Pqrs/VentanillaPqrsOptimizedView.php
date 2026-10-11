@@ -2,6 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Pqrs;
 
+use App\Helpers\CalendarioHelper;
 use App\Models\ControlAcceso\UserCargo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -174,16 +175,16 @@ class VentanillaPqrsOptimizedView extends Model
 
     public function scopeVencidas(Builder $query): Builder
     {
-        return $query->where('fecha_vencimiento', '<', now()->toDateString())
+        return $query->where('fecha_vencimiento', '<', CalendarioHelper::hoy()->toDateString())
             ->whereIn('estado_tramite', ['Pendiente', 'En Tramite']);
     }
 
     public function scopeProximasAVencer(Builder $query, int $dias = 5): Builder
     {
-        $fechaLimite = now()->addDays($dias)->toDateString();
+        $fechaLimite = CalendarioHelper::hoy()->addDays($dias)->toDateString();
 
         return $query->where('fecha_vencimiento', '<=', $fechaLimite)
-            ->where('fecha_vencimiento', '>=', now()->toDateString())
+            ->where('fecha_vencimiento', '>=', CalendarioHelper::hoy()->toDateString())
             ->whereIn('estado_tramite', ['Pendiente', 'En Tramite']);
     }
 }

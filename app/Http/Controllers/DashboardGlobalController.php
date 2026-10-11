@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\CalendarioHelper;
 use App\Models\OfiArchivo\OfiArchivoPrestamo;
 use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
@@ -90,11 +91,11 @@ class DashboardGlobalController extends Controller
 
     protected function getVencimientosProximos(): array
     {
-        $limite = now()->addDays(7);
+        $limite = CalendarioHelper::hoy()->addDays(7)->toDateString();
         $items = [];
 
         $recibidos = VentanillaRadicaReci::where('fec_venci', '<=', $limite)
-            ->where('fec_venci', '>=', now())
+            ->where('fec_venci', '>=', CalendarioHelper::hoy()->toDateString())
             ->where('estado_trabajo', '!=', 'FINALIZADO')
             ->get(['id', 'num_radicado', 'asunto', 'fec_venci']);
 
@@ -104,13 +105,13 @@ class DashboardGlobalController extends Controller
                 'referencia' => $r->num_radicado,
                 'descripcion' => Str::limit($r->asunto, 80),
                 'fecha_vencimiento' => $r->fec_venci?->format('Y-m-d'),
-                'dias_restantes' => now()->diffInDays($r->fec_venci, false),
+                'dias_restantes' => CalendarioHelper::diasHasta($r->fec_venci),
             ];
         }
 
         $pqrs = VentanillaPqrs::with('radicado')
             ->where('fecha_vencimiento', '<=', $limite)
-            ->where('fecha_vencimiento', '>=', now())
+            ->where('fecha_vencimiento', '>=', CalendarioHelper::hoy()->toDateString())
             ->whereNotIn('estado_tramite', ['Respondida', 'Cerrado'])
             ->get(['id', 'ventanilla_radica_reci_id', 'detalle_solicitud', 'fecha_vencimiento']);
 
@@ -120,11 +121,11 @@ class DashboardGlobalController extends Controller
                 'referencia' => $p->radicado?->num_radicado ?? "PQRS-{$p->id}",
                 'descripcion' => Str::limit($p->detalle_solicitud, 80),
                 'fecha_vencimiento' => $p->fecha_vencimiento?->format('Y-m-d'),
-                'dias_restantes' => now()->diffInDays($p->fecha_vencimiento, false),
+                'dias_restantes' => CalendarioHelper::diasHasta($p->fecha_vencimiento),
             ];
         }
 
-        $prestamos = OfiArchivoPrestamo::where('fecha_devolucion_esperada', '<', $limite)
+        $prestamos = OfiArchivoPrestamo::where('fecha_devolucion_esperada', '<', now()->addDays(7))
             ->where('estado', 'Activo')
             ->get(['id', 'solicitante_id', 'fecha_prestamo', 'fecha_devolucion_esperada']);
 

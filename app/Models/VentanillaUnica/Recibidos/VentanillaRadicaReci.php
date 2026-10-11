@@ -3,6 +3,7 @@
 namespace App\Models\VentanillaUnica\Recibidos;
 
 use App\Helpers\ArchivoHelper;
+use App\Helpers\CalendarioHelper;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\Configuracion\ConfigServerArchivo;
@@ -418,7 +419,7 @@ class VentanillaRadicaReci extends Model
      */
     public function scopeVencidos($query)
     {
-        return $query->where('fec_venci', '<', now()->toDateString());
+        return $query->where('fec_venci', '<', CalendarioHelper::hoy()->toDateString());
     }
 
     /**
@@ -426,7 +427,7 @@ class VentanillaRadicaReci extends Model
      */
     public function scopeProximosAVencer($query, int $dias = 5)
     {
-        return $query->whereBetween('fec_venci', [now()->toDateString(), now()->addDays($dias)->toDateString()]);
+        return $query->whereBetween('fec_venci', [CalendarioHelper::hoy()->toDateString(), CalendarioHelper::hoy()->addDays($dias)->toDateString()]);
     }
 
     /**
@@ -505,7 +506,7 @@ class VentanillaRadicaReci extends Model
             return null;
         }
 
-        return now()->diffInDays($this->fec_venci, false);
+        return CalendarioHelper::diasHasta($this->fec_venci);
     }
 
     /**
@@ -517,7 +518,7 @@ class VentanillaRadicaReci extends Model
             return false;
         }
 
-        return now()->isAfter($this->fec_venci);
+        return CalendarioHelper::vencida($this->fec_venci);
     }
 
     /**

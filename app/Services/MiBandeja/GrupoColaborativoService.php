@@ -5,6 +5,7 @@ namespace App\Services\MiBandeja;
 use App\Events\MiBandeja\Grupos\DocumentoBloqueado;
 use App\Events\MiBandeja\Grupos\DocumentoLiberado;
 use App\Events\MiBandeja\Grupos\MiembroCumplido;
+use App\Helpers\CalendarioHelper;
 use App\Models\Configuracion\ConfigDiviPoli;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\MiBandeja\MiBandejaTemp;
@@ -852,7 +853,7 @@ class GrupoColaborativoService
             'ASUNTO' => $grupo->asunto ?? $radicado?->asunto ?? '',
             'MEDIO_RECEPCION' => $radicado?->medioRecepcion?->nombre ?? '',
             'MEDIO_RESPUESTA' => $medioNotifica,
-            'DIAS_RESPUESTA' => $diasPqrs ?: ($radicado?->fec_venci ? (string) (int) ceil(max(0, Carbon::now()->diffInDays(Carbon::parse($radicado->fec_venci), false))) : ''),
+            'DIAS_RESPUESTA' => $diasPqrs ?: ($radicado?->fec_venci ? (string) max(0, CalendarioHelper::diasHasta($radicado->fec_venci)) : ''),
             'FECHA_VENCIMIENTO' => $fechaVencimiento,
 
             // Folios y Anexos

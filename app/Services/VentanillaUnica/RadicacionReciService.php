@@ -2,6 +2,7 @@
 
 namespace App\Services\VentanillaUnica;
 
+use App\Helpers\CalendarioHelper;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciOptimizedView;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -131,7 +132,7 @@ class RadicacionReciService
 
         $total = VentanillaRadicaReci::count();
         $pendientes = VentanillaRadicaReci::whereNotIn('estado_trabajo', $estadosCerrados)->count();
-        $vencidos = VentanillaRadicaReci::where('fec_venci', '<', now()->format('Y-m-d'))
+        $vencidos = VentanillaRadicaReci::where('fec_venci', '<', CalendarioHelper::hoy()->toDateString())
             ->whereNotIn('estado_trabajo', $estadosCerrados)
             ->count();
 

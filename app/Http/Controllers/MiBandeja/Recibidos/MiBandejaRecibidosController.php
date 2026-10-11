@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MiBandeja\Recibidos;
 
+use App\Helpers\CalendarioHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
@@ -133,9 +134,9 @@ class MiBandejaRecibidosController extends Controller
             $recibido = (clone $baseQuery)->where('estado_trabajo', 'RECIBIDO')->count();
             $enProceso = (clone $baseQuery)->where('estado_trabajo', 'EN_PROCESO')->count();
             $finalizado = (clone $baseQuery)->where('estado_trabajo', 'FINALIZADO')->count();
-            $vencido = (clone $baseQuery)->where('fec_venci', '<', now())
+            $vencido = (clone $baseQuery)->where('fec_venci', '<', CalendarioHelper::hoy()->toDateString())
                 ->whereNotIn('estado_trabajo', ['FINALIZADO', 'ANULADO'])->count();
-            $porVencer = (clone $baseQuery)->whereBetween('fec_venci', [now(), now()->addDays(5)])
+            $porVencer = (clone $baseQuery)->whereBetween('fec_venci', [CalendarioHelper::hoy()->toDateString(), CalendarioHelper::hoy()->addDays(5)->toDateString()])
                 ->whereNotIn('estado_trabajo', ['FINALIZADO', 'ANULADO'])->count();
             $sinArchivoDigital = (clone $baseQuery)->whereNull('archivo_digital')
                 ->where('estado_trabajo', '!=', 'ANULADO')->count();

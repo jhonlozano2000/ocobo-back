@@ -2,6 +2,7 @@
 
 namespace App\Models\VentanillaUnica\Recibidos;
 
+use App\Helpers\CalendarioHelper;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -263,7 +264,7 @@ class VentanillaRadicaReciOptimizedView extends Model
     public function scopeVencidos(Builder $query): Builder
     {
         return $query->whereNotNull('fec_venci')
-            ->where('fec_venci', '<', now());
+            ->where('fec_venci', '<', CalendarioHelper::hoy()->toDateString());
     }
 
     /**
@@ -272,7 +273,7 @@ class VentanillaRadicaReciOptimizedView extends Model
     public function scopeProximosAVencer(Builder $query, int $dias = 7): Builder
     {
         return $query->whereNotNull('fec_venci')
-            ->whereBetween('fec_venci', [now(), now()->addDays($dias)]);
+            ->whereBetween('fec_venci', [CalendarioHelper::hoy()->toDateString(), CalendarioHelper::hoy()->addDays($dias)->toDateString()]);
     }
 
     /**
@@ -310,7 +311,7 @@ class VentanillaRadicaReciOptimizedView extends Model
      */
     public function getEstaVencidoAttribute(): bool
     {
-        return $this->fec_venci && $this->fec_venci < now();
+        return $this->fec_venci && CalendarioHelper::vencida($this->fec_venci);
     }
 
     /**
@@ -322,7 +323,7 @@ class VentanillaRadicaReciOptimizedView extends Model
             return null;
         }
 
-        return now()->diffInDays($this->fec_venci, false);
+        return CalendarioHelper::diasHasta($this->fec_venci);
     }
 
     /**

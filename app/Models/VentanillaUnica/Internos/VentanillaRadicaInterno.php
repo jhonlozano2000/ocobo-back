@@ -3,6 +3,7 @@
 namespace App\Models\VentanillaUnica\Internos;
 
 use App\Helpers\ArchivoHelper;
+use App\Helpers\CalendarioHelper;
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\MiBandeja\MiBandejaTemp;
@@ -309,12 +310,12 @@ class VentanillaRadicaInterno extends Model
 
     public function scopeVencidos($query)
     {
-        return $query->where('fec_venci', '<', now()->toDateString());
+        return $query->where('fec_venci', '<', CalendarioHelper::hoy()->toDateString());
     }
 
     public function scopeProximosAVencer($query, int $dias = 5)
     {
-        return $query->whereBetween('fec_venci', [now()->toDateString(), now()->addDays($dias)->toDateString()]);
+        return $query->whereBetween('fec_venci', [CalendarioHelper::hoy()->toDateString(), CalendarioHelper::hoy()->addDays($dias)->toDateString()]);
     }
 
     // ================ ESTADO DE TRABAJO ================
@@ -378,7 +379,7 @@ class VentanillaRadicaInterno extends Model
             return null;
         }
 
-        return now()->diffInDays($this->fec_venci, false);
+        return CalendarioHelper::diasHasta($this->fec_venci);
     }
 
     public function isVencida()
@@ -387,7 +388,7 @@ class VentanillaRadicaInterno extends Model
             return false;
         }
 
-        return now()->isAfter($this->fec_venci);
+        return CalendarioHelper::vencida($this->fec_venci);
     }
 
     public function getUrlArchivoDigital()
