@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Seguridad;
 
+use App\Http\Requests\Ventanilla\Enviados\UploadArchivosAdjuntosEnviadoRequest;
 use App\Http\Requests\Ventanilla\Recibidos\UploadArchivosAdjuntosRecibidoRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
@@ -49,6 +50,7 @@ class CargaAdjuntosSegurosTest extends TestCase
     {
         return [
             'recibidos' => [UploadArchivosAdjuntosRecibidoRequest::class],
+            'enviados' => [UploadArchivosAdjuntosEnviadoRequest::class],
         ];
     }
 

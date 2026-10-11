@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Ventanilla\Enviados;
 
 use App\Models\Configuracion\ConfigVarias;
+use App\Rules\ArchivoSeguro;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UploadArchivosAdjuntosEnviadoRequest extends FormRequest
@@ -21,6 +22,8 @@ class UploadArchivosAdjuntosEnviadoRequest extends FormRequest
             'archivos.*' => [
                 'file',
                 'max:'.$maxSize,
+                // M02-04: extensión permitida (tipos_archivos_permitidos) y contenido real
+                new ArchivoSeguro,
             ],
             'descripcion' => ['nullable', 'string', 'max:500'],
             'palabras_clave' => ['nullable', 'string', 'max:500'],
