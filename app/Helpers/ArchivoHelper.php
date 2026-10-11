@@ -2,6 +2,7 @@
 
 namespace App\Helpers;
 
+use App\Services\Seguridad\InspectorArchivos;
 use finfo;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\Request;
@@ -225,6 +226,14 @@ class ArchivoHelper
     }
 
     /**
+     * Extensión de guardado respaldada por el contenido real, no por el nombre del cliente (M02-04).
+     */
+    private static function extensionSegura(UploadedFile $file): string
+    {
+        return InspectorArchivos::extensionSegura($file->getRealPath() ?: $file->getPathname(), $file->getClientOriginalName());
+    }
+
+    /**
      * Verifica si el nombre de archivo es seguro (sin path traversal).
      */
     private static function esNombreSeguro(string $nombre): bool
@@ -278,7 +287,7 @@ class ArchivoHelper
             $storage->delete($archivoActual);
         }
 
-        $nombreArchivo = Str::random(50).'.'.$file->getClientOriginalExtension();
+        $nombreArchivo = Str::random(50).'.'.self::extensionSegura($file);
 
         // Usar el contenido del archivo directamente
         $contenido = $file->getContent();
@@ -316,7 +325,7 @@ class ArchivoHelper
 
         $storage = self::getStorage($disk);
 
-        $nombreArchivo = Str::random(50).'.'.$file->getClientOriginalExtension();
+        $nombreArchivo = Str::random(50).'.'.self::extensionSegura($file);
 
         // Obtener contenido del archivo
         $contenido = $file->getContent();
@@ -364,7 +373,7 @@ class ArchivoHelper
         }
 
         $hash = hash('sha256', $contenido);
-        $nombreArchivo = Str::random(50).'.'.$file->getClientOriginalExtension();
+        $nombreArchivo = Str::random(50).'.'.self::extensionSegura($file);
 
         self::getStorage($disk)->put($nombreArchivo, $contenido);
 
@@ -416,7 +425,7 @@ class ArchivoHelper
             $storage->delete($archivoActual);
         }
 
-        $nombreArchivo = Str::random(50).'.'.$file->getClientOriginalExtension();
+        $nombreArchivo = Str::random(50).'.'.self::extensionSegura($file);
 
         // Si se provee un subdirectorio, guardarlo ahí
         if ($directorio) {
@@ -531,7 +540,7 @@ class ArchivoHelper
                 // Generar Hash SHA-256 ANTES de mover el archivo
                 $hash = hash_file('sha256', $file->getRealPath());
 
-                $nombreArchivo = Str::random(50).'.'.$file->getClientOriginalExtension();
+                $nombreArchivo = Str::random(50).'.'.self::extensionSegura($file);
 
                 $contenido = $file->getContent();
                 if (empty($contenido)) {
