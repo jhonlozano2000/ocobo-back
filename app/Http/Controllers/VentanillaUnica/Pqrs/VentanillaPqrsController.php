@@ -1277,12 +1277,17 @@ class VentanillaPqrsController extends Controller
             }
 
             if ($pqrs->estado_firma === 'firmada') {
-                return $this->errorResponse('Esta PQRS ya ha sido firmada', null, 422);
+                return $this->warningResponse('Esta PQRS ya ha sido firmada');
             }
 
             $user = Auth::user();
 
-            $pqrs = $this->pqrsService->guardarFirma($pqrs, $request->all(), $user);
+            try {
+                $pqrs = $this->pqrsService->guardarFirma($pqrs, $request->all(), $user);
+            } catch (\DomainException $e) {
+                // Otra solicitud la firmó entre la validación y el bloqueo
+                return $this->warningResponse($e->getMessage());
+            }
 
             $this->auditVentanilla($pqrs, 'signed', $pqrs->radicado?->num_radicado ?? $pqrs->id);
 

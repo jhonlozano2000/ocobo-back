@@ -270,29 +270,50 @@ class PqrsService
 
     /**
      * Registra la firma electrónica de un PQRS.
+     *
+     * La firma y su evento de auditoría se guardan juntos o no se guarda ninguno; el bloqueo
+     * de la fila evita que dos solicitudes simultáneas firmen la misma PQRS.
+     *
+     * @throws \DomainException si la PQRS ya está firmada
      */
     public function guardarFirma(VentanillaPqrs $pqrs, array $data, $user): VentanillaPqrs
     {
-        $pqrs->update([
-            'estado_firma' => 'firmada',
-            'firma_digital' => $data['firma_digital'],
-            'fecha_firma' => now(),
-            'ip_firma' => request()->ip(),
-            'firmado_en_representacion' => $data['firmado_en_representacion'] ?? false,
-            'nombre_representado' => $data['nombre_representado'] ?? null,
-        ]);
+        $pqrs = DB::transaction(function () use ($pqrs, $data, $user) {
+            $pqrs = VentanillaPqrs::lockForUpdate()->findOrFail($pqrs->id);
 
-        FirmaEvento::create([
-            'documentable_id' => $pqrs->id,
-            'documentable_type' => get_class($pqrs),
-            'user_id' => $user->id,
-            'hash_original' => null,
-            'hash_firmado' => hash('sha256', $data['firma_digital']),
-            'otp_utilizado' => '***',
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-            'fecha_firma' => now(),
-        ]);
+            if ($pqrs->estado_firma === 'firmada') {
+                throw new \DomainException('Esta PQRS ya ha sido firmada');
+            }
+
+            // La PQRS no tiene PDF propio: se sella el contenido que se está firmando
+            $hashOriginal = hash('sha256', json_encode($pqrs->only([
+                'id', 'ventanilla_radica_reci_id', 'tipo_pqrs_id', 'detalle_solicitud', 'num_docu_afectado',
+                'nom_afectado', 'fecha_vencimiento', 'es_anonimo',
+            ]), JSON_UNESCAPED_UNICODE));
+
+            $pqrs->update([
+                'estado_firma' => 'firmada',
+                'firma_digital' => $data['firma_digital'],
+                'fecha_firma' => now(),
+                'ip_firma' => request()->ip(),
+                'firmado_en_representacion' => $data['firmado_en_representacion'] ?? false,
+                'nombre_representado' => $data['nombre_representado'] ?? null,
+            ]);
+
+            FirmaEvento::create([
+                'documentable_id' => $pqrs->id,
+                'documentable_type' => get_class($pqrs),
+                'user_id' => $user->id,
+                'hash_original' => $hashOriginal,
+                'hash_firmado' => hash('sha256', $data['firma_digital']),
+                'otp_utilizado' => '***',
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+                'fecha_firma' => now(),
+            ]);
+
+            return $pqrs;
+        });
 
         $pqrs->load(['radicado', 'tercero', 'tipoPqrs', 'clasificacionDocumental']);
 
