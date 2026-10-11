@@ -15,14 +15,29 @@ use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
+use App\Traits\AbacHierarquico;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class VentanillaRadicaEnviados extends Model
 {
-    use HasFactory;
+    use AbacHierarquico, HasFactory;
 
     protected $table = 'ventanilla_radica_enviados';
+
+    // M02-03: visibles para creador, responsables, firmantes, proyectores y la jerarquía del creador
+    protected const ABAC_USER_COLUMN = 'usuario_crea';
+
+    protected const ABAC_RESPONSABLES_RELATION = 'responsables';
+
+    protected const ABAC_PARTICIPANTES_RELATIONS = ['usuariosFirmas', 'usuariosProyectores'];
+
+    protected const ABAC_VER_TODOS_PERMISO = 'Radicar -> Cores. Enviada -> Ver Todos';
+
+    public static function accesiblePara(User $user, int $id): bool
+    {
+        return static::conPermisoJerarquico($user)->whereKey($id)->exists();
+    }
 
     protected $fillable = [
         'num_radicado',

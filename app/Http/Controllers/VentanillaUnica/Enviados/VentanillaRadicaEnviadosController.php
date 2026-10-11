@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -59,7 +58,7 @@ class VentanillaRadicaEnviadosController extends Controller
     public function index(ListRadicadosEnviadosRequest $request)
     {
         try {
-            $query = VentanillaRadicaEnviados::query();
+            $query = VentanillaRadicaEnviados::conPermisoJerarquico($request->user());
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -148,7 +147,7 @@ class VentanillaRadicaEnviadosController extends Controller
             'format' => 'required|in:excel,pdf,csv',
         ]);
 
-        $query = VentanillaRadicaEnviados::with([
+        $query = VentanillaRadicaEnviados::conPermisoJerarquico($request->user())->with([
             'clasificacionDocumental',
             'tercero',
             'medioEnvio',
@@ -311,8 +310,6 @@ class VentanillaRadicaEnviadosController extends Controller
             }
 
             DB::commit();
-
-            Cache::forget('ventanilla_enviados_estadisticas');
 
             $this->auditVentanilla($radicado, 'created', $radicado->num_radicado);
 
@@ -511,8 +508,6 @@ class VentanillaRadicaEnviadosController extends Controller
 
             DB::commit();
 
-            Cache::forget('ventanilla_enviados_estadisticas');
-
             return $this->successResponse(null, 'Radicado enviado eliminado exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -548,7 +543,7 @@ class VentanillaRadicaEnviadosController extends Controller
 
             foreach ($ids as $id) {
                 try {
-                    $radicado = VentanillaRadicaEnviados::find($id);
+                    $radicado = VentanillaRadicaEnviados::conPermisoJerarquico($request->user())->find($id);
 
                     if (! $radicado) {
                         $fallidos++;
@@ -587,8 +582,6 @@ class VentanillaRadicaEnviadosController extends Controller
             }
 
             DB::commit();
-
-            Cache::forget('ventanilla_enviados_estadisticas');
 
             $mensaje = "{$eliminados} radicacion(es) eliminada(s) exitosamente";
             if ($fallidos > 0) {
@@ -653,33 +646,29 @@ class VentanillaRadicaEnviadosController extends Controller
     public function estadisticas()
     {
         try {
-            $cacheKey = 'ventanilla_enviados_estadisticas';
-            $cached = Cache::get($cacheKey);
+            // Conteos sobre los radicados visibles para el usuario (sin caché compartida entre usuarios)
+            $base = fn () => VentanillaRadicaEnviados::conPermisoJerarquico(Auth::user());
 
-            if ($cached) {
-                return $this->successResponse($cached, 'Estadísticas obtenidas exitosamente');
-            }
-
-            $totalRadicados = VentanillaRadicaEnviados::count();
-            $faltanArchivoDigital = VentanillaRadicaEnviados::where(function ($q) {
+            $totalRadicados = $base()->count();
+            $faltanArchivoDigital = $base()->where(function ($q) {
                 $q->whereNull('archivo_digital')->orWhere('archivo_digital', '');
             })->count();
-            $faltanImprimirRotulo = VentanillaRadicaEnviados::where('impri_rotulo', '!=', 1)->count();
+            $faltanImprimirRotulo = $base()->where('impri_rotulo', '!=', 1)->count();
 
-            $radicadosHoy = VentanillaRadicaEnviados::whereDate('created_at', Carbon::now()->format('Y-m-d'))->count();
-            $radicadosEstaSemana = VentanillaRadicaEnviados::whereBetween('created_at', [
+            $radicadosHoy = $base()->whereDate('created_at', Carbon::now()->format('Y-m-d'))->count();
+            $radicadosEstaSemana = $base()->whereBetween('created_at', [
                 Carbon::now()->startOfWeek()->format('Y-m-d'),
                 Carbon::now()->endOfWeek()->format('Y-m-d'),
             ])->count();
-            $radicadosEsteMes = VentanillaRadicaEnviados::whereMonth('created_at', Carbon::now()->month)
+            $radicadosEsteMes = $base()->whereMonth('created_at', Carbon::now()->month)
                 ->whereYear('created_at', Carbon::now()->year)
                 ->count();
 
             $totalConArchivos = $totalRadicados - $faltanArchivoDigital;
-            $totalPendientes = VentanillaRadicaEnviados::where(function ($q) {
+            $totalPendientes = $base()->where(function ($q) {
                 $q->whereNull('archivo_digital')->orWhere('archivo_digital', '');
             })->whereDoesntHave('responsables')->count();
-            $totalEnProceso = VentanillaRadicaEnviados::whereNotNull('archivo_digital')
+            $totalEnProceso = $base()->whereNotNull('archivo_digital')
                 ->where('archivo_digital', '!=', '')
                 ->whereHas('responsables')
                 ->count();
@@ -698,8 +687,6 @@ class VentanillaRadicaEnviadosController extends Controller
                 'porcentaje_rotulos_impresos' => $totalRadicados > 0 ? round((($totalRadicados - $faltanImprimirRotulo) / $totalRadicados) * 100, 2) : 0,
             ];
 
-            Cache::put($cacheKey, $estadisticas, now()->addMinutes(10));
-
             return $this->successResponse($estadisticas, 'Estadísticas obtenidas exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -716,7 +703,7 @@ class VentanillaRadicaEnviadosController extends Controller
     public function listarRadicados(ListRadicadosEnviadosRequest $request)
     {
         try {
-            $query = VentanillaRadicaEnviados::with([
+            $query = VentanillaRadicaEnviados::conPermisoJerarquico($request->user())->with([
                 'clasificacionDocumental',
                 'tercero',
                 'medioEnvio',
@@ -1188,7 +1175,7 @@ class VentanillaRadicaEnviadosController extends Controller
 
             $perPage = min(max($perPage, 1), 100);
 
-            $radicados = VentanillaRadicaEnviados::with([
+            $radicados = VentanillaRadicaEnviados::conPermisoJerarquico($request->user())->with([
                 'terceroEnviado',
                 'clasificacionDocumental',
                 'responsables.userCargo.user',
@@ -1451,11 +1438,10 @@ class VentanillaRadicaEnviadosController extends Controller
     public function misRadicados(Request $request)
     {
         try {
-            $userId = Auth::id();
             $search = $request->get('search', '');
             $estado = $request->get('estado', '');
 
-            $query = VentanillaRadicaEnviados::orderBy('created_at', 'desc');
+            $query = VentanillaRadicaEnviados::conPermisoJerarquico(Auth::user())->orderBy('created_at', 'desc');
 
             if ($search) {
                 $query->where(function ($q) use ($search) {

@@ -149,7 +149,8 @@ class AccesoExpedientesTest extends TestCase
     public function test_no_incorpora_radicados_enviados_ajenos(): void
     {
         if (! Schema::hasTable('ventanilla_radica_enviados_responsable')) {
-            $this->markTestSkipped('BD de pruebas sin la migración que renombra ventanilla_radica_enviados_responsable');
+            // Tabla de sesión (sin commit implícito) mientras la BD de pruebas no tenga la migración
+            DB::statement('CREATE TEMPORARY TABLE ventanilla_radica_enviados_responsable LIKE ventanilla_radica_enviados_responsa');
         }
         Schema::disableForeignKeyConstraints();
         $id = DB::table('ventanilla_radica_enviados')->insertGetId([

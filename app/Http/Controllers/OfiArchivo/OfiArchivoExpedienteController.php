@@ -490,14 +490,7 @@ class OfiArchivoExpedienteController extends Controller
             return VentanillaRadicaReci::conPermisoJerarquico($user)->find($id);
         }
 
-        // Enviados aún no tiene ABAC propio: creador, responsable o firmante
-        return VentanillaRadicaEnviados::whereKey($id)
-            ->where(function ($q) use ($user) {
-                $q->where('usuario_crea', $user->id)
-                    ->orWhereHas('usuariosResponsables', fn ($r) => $r->where('users_cargos.user_id', $user->id))
-                    ->orWhereHas('usuariosFirmas', fn ($r) => $r->where('users_cargos.user_id', $user->id));
-            })
-            ->first();
+        return VentanillaRadicaEnviados::conPermisoJerarquico($user)->find($id);
     }
 
     /**

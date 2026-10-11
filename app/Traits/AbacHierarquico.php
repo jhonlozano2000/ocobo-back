@@ -18,6 +18,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
  * - Agregar `use AbacHierarquico;` al modelo
  * - Definir constante ABAC_USER_COLUMN = 'usuario_crea' (columna del usuario creador)
  * - Definir constante ABAC_RESPONSABLES_RELATION = 'responsables' (relación de responsables)
+ * - Opcional: ABAC_PARTICIPANTES_RELATIONS = ['usuariosFirmas', ...] (belongsToMany a UserCargo)
  * - Usar scopes: paraUsuario(), paraMiDependencia(), paraMisSubordinados()
  */
 trait AbacHierarquico
@@ -173,6 +174,13 @@ trait AbacHierarquico
                         $q->where('user_id', $user->id);
                     });
                 });
+            }
+
+            // 2b. Otros participantes (firmantes, proyectores...)
+            if (defined('static::ABAC_PARTICIPANTES_RELATIONS')) {
+                foreach (static::ABAC_PARTICIPANTES_RELATIONS as $relacion) {
+                    $q->orWhereHas($relacion, fn ($subQ) => $subQ->where('users_cargos.user_id', $user->id));
+                }
             }
 
             // 3. Registros de la jerarquía completa
