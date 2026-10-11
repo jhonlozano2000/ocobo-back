@@ -170,7 +170,7 @@ class VentanillaPqrsController extends Controller
             'format.in' => 'El formato debe ser excel, pdf o csv.',
         ]);
 
-        $query = VentanillaPqrs::with([
+        $query = VentanillaPqrs::conPermisoJerarquico($request->user())->with([
             'radicado',
             'tercero',
             'tipoPqrs',
@@ -1421,10 +1421,12 @@ class VentanillaPqrsController extends Controller
             // PQRS asignadas al usuario: los responsables viven en el RADICADO RECIBIDO asociado
             $query = VentanillaPqrsOptimizedView::query()
                 ->conPermisoJerarquico(auth()->user())
-                ->whereHas('radicado.responsables', function ($q) {
-                    $q->whereHas('userCargo', function ($q) {
-                        $q->where('user_id', auth()->id());
-                    });
+                // La vista no tiene la relación radicado: subconsulta sobre los responsables del radicado
+                ->whereIn('ventanilla_radica_reci_id', function ($q) {
+                    $q->select('r.radica_reci_id')
+                        ->from('ventanilla_radica_reci_responsa as r')
+                        ->join('users_cargos as uc', 'uc.id', '=', 'r.users_cargos_id')
+                        ->where('uc.user_id', auth()->id());
                 })
                 ->search($request->search)
                 ->tipoPqrs($request->tipo_pqrs_id)
@@ -1604,7 +1606,7 @@ class VentanillaPqrsController extends Controller
             try {
                 $eliminados = [];
                 foreach ($ids as $id) {
-                    $pqrs = VentanillaPqrs::withTrashed()->find($id);
+                    $pqrs = VentanillaPqrs::withTrashed()->conPermisoJerarquico($request->user())->find($id);
                     if ($pqrs) {
                         $numRadicado = $pqrs->radicado?->num_radicado ?? $pqrs->id;
                         $pqrs->delete();

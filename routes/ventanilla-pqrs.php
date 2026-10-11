@@ -89,7 +89,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.linea-tiempo
          */
-        Route::get('/pqrs/{id}/linea-tiempo', [VentanillaPqrsController::class, 'lineaTiempo'])->name('pqrs.linea-tiempo');
+        Route::get('/pqrs/{id}/linea-tiempo', [VentanillaPqrsController::class, 'lineaTiempo'])->name('pqrs.linea-tiempo')->whereNumber('id')->middleware('acceso_radicado:pqrs');
 
         /**
          * GET /api/pqrs/{id}
@@ -97,7 +97,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.show
          */
-        Route::get('/pqrs/{id}', [VentanillaPqrsController::class, 'show'])->name('pqrs.show');
+        Route::get('/pqrs/{id}', [VentanillaPqrsController::class, 'show'])->name('pqrs.show')->whereNumber('id')->middleware('acceso_radicado:pqrs');
 
         /**
          * GET /api/pqrs/mis-radicados
@@ -129,7 +129,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.historial-notificaciones
          */
-        Route::get('/pqrs/{id}/historial-notificaciones', [VentanillaPqrsController::class, 'historialNotificaciones'])->name('pqrs.historial-notificaciones');
+        Route::get('/pqrs/{id}/historial-notificaciones', [VentanillaPqrsController::class, 'historialNotificaciones'])->name('pqrs.historial-notificaciones')->whereNumber('id')->middleware('acceso_radicado:pqrs');
 
         /**
          * GET /api/pqrs/{id}/historial-clasificacion
@@ -137,7 +137,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.historial-clasificacion
          */
-        Route::get('/pqrs/{id}/historial-clasificacion', [VentanillaPqrsController::class, 'historialClasificacion'])->name('pqrs.historial-clasificacion');
+        Route::get('/pqrs/{id}/historial-clasificacion', [VentanillaPqrsController::class, 'historialClasificacion'])->name('pqrs.historial-clasificacion')->whereNumber('id')->middleware('acceso_radicado:pqrs');
     });
 
     // ═══════════════════════════════════════════════════════════════
@@ -151,7 +151,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.update
          */
-        Route::put('/pqrs/{id}', [VentanillaPqrsController::class, 'update'])->name('pqrs.update');
+        Route::put('/pqrs/{id}', [VentanillaPqrsController::class, 'update'])->name('pqrs.update')->whereNumber('id')->middleware('acceso_radicado:pqrs');
 
         /**
          * DELETE /api/pqrs/{id}
@@ -159,7 +159,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.destroy
          */
-        Route::delete('/pqrs/{id}', [VentanillaPqrsController::class, 'destroy'])->name('pqrs.destroy');
+        Route::delete('/pqrs/{id}', [VentanillaPqrsController::class, 'destroy'])->name('pqrs.destroy')->whereNumber('id')->middleware('acceso_radicado:pqrs');
 
         /**
          * PUT /api/pqrs/{id}/estado
@@ -167,7 +167,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.cambiar-estado
          */
-        Route::put('/pqrs/{id}/estado', [VentanillaPqrsController::class, 'cambiarEstado'])->name('pqrs.cambiar-estado');
+        Route::put('/pqrs/{id}/estado', [VentanillaPqrsController::class, 'cambiarEstado'])->name('pqrs.cambiar-estado')->whereNumber('id')->middleware('acceso_radicado:pqrs');
 
         /**
          * POST /api/pqrs/{id}/prorroga
@@ -175,7 +175,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.prorroga
          */
-        Route::post('/pqrs/{id}/prorroga', [VentanillaPqrsController::class, 'aplicarProrroga'])->name('pqrs.prorroga');
+        Route::post('/pqrs/{id}/prorroga', [VentanillaPqrsController::class, 'aplicarProrroga'])->name('pqrs.prorroga')->whereNumber('id')->middleware('acceso_radicado:pqrs');
 
         /**
          * PUT /api/pqrs/{id}/asunto
@@ -183,7 +183,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.update-asunto
          */
-        Route::put('/pqrs/{id}/asunto', [VentanillaPqrsController::class, 'updateAsunto'])->name('pqrs.update-asunto');
+        Route::put('/pqrs/{id}/asunto', [VentanillaPqrsController::class, 'updateAsunto'])->name('pqrs.update-asunto')->whereNumber('id')->middleware('acceso_radicado:pqrs');
 
         /**
          * PUT /api/pqrs/{id}/fechas
@@ -191,7 +191,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.update-fechas
          */
-        Route::put('/pqrs/{id}/fechas', [VentanillaPqrsController::class, 'updateFechas'])->name('pqrs.update-fechas');
+        Route::put('/pqrs/{id}/fechas', [VentanillaPqrsController::class, 'updateFechas'])->name('pqrs.update-fechas')->whereNumber('id')->middleware('acceso_radicado:pqrs');
 
         /**
          * PUT /api/pqrs/{id}/clasificacion
@@ -199,7 +199,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.update-clasificacion
          */
-        Route::put('/pqrs/{id}/clasificacion', [VentanillaPqrsController::class, 'updateClasificacion'])->name('pqrs.update-clasificacion');
+        Route::put('/pqrs/{id}/clasificacion', [VentanillaPqrsController::class, 'updateClasificacion'])->name('pqrs.update-clasificacion')->whereNumber('id')->middleware('acceso_radicado:pqrs');
 
         /**
          * GET /api/pqrs/{id}/rotulo
@@ -207,7 +207,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.imprimir-rotulo
          */
-        Route::get('/pqrs/{id}/rotulo', [VentanillaPqrsController::class, 'imprimirRotulo'])->name('pqrs.imprimir-rotulo');
+        Route::get('/pqrs/{id}/rotulo', [VentanillaPqrsController::class, 'imprimirRotulo'])->name('pqrs.imprimir-rotulo')->whereNumber('id')->middleware('acceso_radicado:pqrs');
 
         /**
          * POST /api/pqrs/{id}/notificar-email
@@ -215,7 +215,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.notificar-email
          */
-        Route::post('/pqrs/{id}/notificar-email', [VentanillaPqrsController::class, 'notificarEmail'])->name('pqrs.notificar-email');
+        Route::post('/pqrs/{id}/notificar-email', [VentanillaPqrsController::class, 'notificarEmail'])->name('pqrs.notificar-email')->whereNumber('id')->middleware('acceso_radicado:pqrs');
 
         /**
          * POST /api/pqrs/{id}/solicitar-otp-firma
@@ -223,7 +223,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.solicitar-otp-firma
          */
-        Route::post('/pqrs/{id}/solicitar-otp-firma', [VentanillaPqrsController::class, 'solicitarOtpFirma'])->name('pqrs.solicitar-otp-firma')->middleware('throttle:firma-otp');
+        Route::post('/pqrs/{id}/solicitar-otp-firma', [VentanillaPqrsController::class, 'solicitarOtpFirma'])->name('pqrs.solicitar-otp-firma')->middleware('throttle:firma-otp')->whereNumber('id')->middleware('acceso_radicado:pqrs');
 
         /**
          * POST /api/pqrs/{id}/validar-otp-firma
@@ -231,7 +231,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.validar-otp-firma
          */
-        Route::post('/pqrs/{id}/validar-otp-firma', [VentanillaPqrsController::class, 'validarOtpFirma'])->name('pqrs.validar-otp-firma')->middleware('throttle:firma');
+        Route::post('/pqrs/{id}/validar-otp-firma', [VentanillaPqrsController::class, 'validarOtpFirma'])->name('pqrs.validar-otp-firma')->middleware('throttle:firma')->whereNumber('id')->middleware('acceso_radicado:pqrs');
 
         /**
          * POST /api/pqrs/{id}/guardar-firma
@@ -239,7 +239,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.guardar-firma
          */
-        Route::post('/pqrs/{id}/guardar-firma', [VentanillaPqrsController::class, 'guardarFirma'])->name('pqrs.guardar-firma')->middleware('throttle:firma');
+        Route::post('/pqrs/{id}/guardar-firma', [VentanillaPqrsController::class, 'guardarFirma'])->name('pqrs.guardar-firma')->middleware('throttle:firma')->whereNumber('id')->middleware('acceso_radicado:pqrs');
 
         /**
          * POST /api/pqrs/{id}/solicitar-anulacion
@@ -247,7 +247,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.solicitar-anulacion
          */
-        Route::post('/pqrs/{id}/solicitar-anulacion', [VentanillaPqrsController::class, 'solicitarAnulacion'])->name('pqrs.solicitar-anulacion');
+        Route::post('/pqrs/{id}/solicitar-anulacion', [VentanillaPqrsController::class, 'solicitarAnulacion'])->name('pqrs.solicitar-anulacion')->whereNumber('id')->middleware('acceso_radicado:recibido');
 
         /**
          * GET /api/pqrs/pendientes-anulacion
@@ -263,7 +263,7 @@ Route::middleware('auth:sanctum')->group(function () {
          *
          * @name pqrs.procesar-anulacion
          */
-        Route::post('/pqrs/{id}/procesar-anulacion', [VentanillaPqrsController::class, 'procesarAnulacion'])->name('pqrs.procesar-anulacion')->middleware('can:Jefe de Archivo');
+        Route::post('/pqrs/{id}/procesar-anulacion', [VentanillaPqrsController::class, 'procesarAnulacion'])->name('pqrs.procesar-anulacion')->middleware('can:Jefe de Archivo')->whereNumber('id');
 
         /**
          * GET /api/pqrs/pendientes-firma

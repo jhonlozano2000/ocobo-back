@@ -185,7 +185,7 @@ class PqrsService
             return $cached;
         }
 
-        $baseQuery = VentanillaPqrs::whereNotNull('ventanilla_radica_reci_id');
+        $baseQuery = VentanillaPqrs::conPermisoJerarquico()->whereNotNull('ventanilla_radica_reci_id');
 
         $total = (clone $baseQuery)->count();
         $pendientes = (clone $baseQuery)->where('estado_tramite', 'Pendiente')->count();
@@ -393,7 +393,7 @@ class PqrsService
      */
     public function pendientesFirma()
     {
-        return VentanillaPqrs::with(['radicado', 'tercero', 'tipoPqrs'])
+        return VentanillaPqrs::conPermisoJerarquico()->with(['radicado', 'tercero', 'tipoPqrs'])
             ->where('estado_firma', 'pendiente')
             ->whereNotNull('ventanilla_radica_reci_id')
             ->latest()

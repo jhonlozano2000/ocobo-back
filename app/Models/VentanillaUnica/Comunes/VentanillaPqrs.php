@@ -9,6 +9,7 @@ use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\Configuracion\UsersCargos;
 use App\Models\Gestion\GestionTercero;
 use App\Models\User;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsOptimizedView;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Traits\AbacHierarquico;
 use Carbon\Carbon;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Modelo VentanillaPqrs — PQRS del módulo Ventanilla Única
@@ -97,11 +99,27 @@ class VentanillaPqrs extends Model
     protected $table = 'ventanilla_pqrs';
 
     protected const ABAC_USER_COLUMN = 'usuario_crea';
-    // Sin ABAC_RESPONSABLES_RELATION: los responsables viven en el radicado
-    // recibido asociado, no en la PQRS (el trait omite esa cláusula).
 
-    /** Bypass del filtrado jerárquico ABAC: quien lista PQRS ve todos. */
-    protected const ABAC_VER_TODOS_PERMISO = 'Radicar -> PQRSF -> Listar';
+    /** Bypass del filtrado jerárquico ABAC (M04-02). */
+    public const PERMISO_VER_TODOS = 'Radicar -> PQRSF -> Ver Todos';
+
+    protected const ABAC_VER_TODOS_PERMISO = self::PERMISO_VER_TODOS;
+
+    /**
+     * M04-01: la tabla no tiene usuario_crea (vive en el radicado) y los responsables están en el
+     * radicado, así que el filtrado ABAC se delega en el scope de la vista optimizada.
+     */
+    public function scopeConPermisoJerarquico($query, $user = null)
+    {
+        $user = $user ?? Auth::user();
+
+        return $query->whereIn($this->qualifyColumn('id'), VentanillaPqrsOptimizedView::conPermisoJerarquico($user)->select('id'));
+    }
+
+    public static function accesiblePara(User $user, int $id): bool
+    {
+        return static::withTrashed()->conPermisoJerarquico($user)->whereKey($id)->exists();
+    }
 
     protected $fillable = [
         'ventanilla_radica_reci_id',

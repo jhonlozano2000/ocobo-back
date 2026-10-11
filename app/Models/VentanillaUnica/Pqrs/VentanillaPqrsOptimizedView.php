@@ -4,10 +4,12 @@ namespace App\Models\VentanillaUnica\Pqrs;
 
 use App\Helpers\CalendarioHelper;
 use App\Models\ControlAcceso\UserCargo;
+use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class VentanillaPqrsOptimizedView extends Model
 {
@@ -120,16 +122,26 @@ class VentanillaPqrsOptimizedView extends Model
             return $query->whereRaw('1=0');
         }
 
-        // Bypass total de filtrado jerárquico: quien puede listar PQRS ve todos
-        // (el módulo PQRS no usa permiso separado "Ver Todos" como otros módulos)
-        if ($user->hasPermissionTo('Radicar -> PQRSF -> Listar')) {
+        // M04-02: el bypass es un permiso propio; antes era 'Listar', el mismo que exige la ruta
+        if (self::puedeVerTodos($user)) {
             return $query;
         }
+
+        // Responsables del radicado asociado (aplica aunque el usuario no tenga cargo activo)
+        $responsable = function ($subQ) use ($user) {
+            $subQ->select('r.radica_reci_id')
+                ->from('ventanilla_radica_reci_responsa as r')
+                ->join('users_cargos as uc', 'uc.id', '=', 'r.users_cargos_id')
+                ->where('uc.user_id', $user->id);
+        };
 
         // Obtener códigos de la jerarquía del usuario
         $cargoActivo = UserCargo::cargoActivoDelUsuario($user->id);
         if (! $cargoActivo || ! $cargoActivo->cargo) {
-            return $query->where('usuario_crea', $user->id);
+            return $query->where(function ($q) use ($user, $responsable) {
+                $q->where('usuario_crea', $user->id)
+                    ->orWhereIn('ventanilla_radica_reci_id', $responsable);
+            });
         }
 
         // Subir por la jerarquía (padres)
@@ -148,9 +160,10 @@ class VentanillaPqrsOptimizedView extends Model
         );
         $codigosJerarquia = array_unique($codigosJerarquia);
 
-        // Aplicar filtro: creador O usuario en jerarquía
-        return $query->where(function ($q) use ($user, $codigosJerarquia) {
-            $q->where('usuario_crea', $user->id);
+        // Aplicar filtro: creador O responsable O usuario en jerarquía
+        return $query->where(function ($q) use ($user, $codigosJerarquia, $responsable) {
+            $q->where('usuario_crea', $user->id)
+                ->orWhereIn('ventanilla_radica_reci_id', $responsable);
 
             $q->orWhereIn('usuario_crea', function ($subQ) use ($codigosJerarquia) {
                 $subQ->select('users_cargos.user_id')
@@ -161,6 +174,15 @@ class VentanillaPqrsOptimizedView extends Model
                     ->whereNull('users_cargos.fecha_fin');
             });
         });
+    }
+
+    public static function puedeVerTodos($user): bool
+    {
+        try {
+            return $user->hasPermissionTo(VentanillaPqrs::PERMISO_VER_TODOS);
+        } catch (PermissionDoesNotExist) {
+            return false;
+        }
     }
 
     public function scopeConArchivos(Builder $query): Builder
