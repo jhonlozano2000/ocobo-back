@@ -21,6 +21,36 @@ class CalendarioHelper
     }
 
     /**
+     * Fecha de hoy en la zona horaria de negocio (Colombia), como Carbon a medianoche
+     * en la zona de la app para poder compararla con columnas `date` (M13-01).
+     */
+    public static function hoy(): Carbon
+    {
+        return Carbon::parse(Carbon::now(config('app.timezone_local'))->toDateString());
+    }
+
+    /**
+     * Fecha calendario en Colombia de un instante guardado en UTC (p. ej. now() o un
+     * `datetime`). Un string 'Y-m-d' ya es fecha calendario y se respeta tal cual.
+     *
+     * @param  Carbon|string|null  $instante
+     */
+    public static function fechaLocal($instante = null): Carbon
+    {
+        if ($instante === null) {
+            return self::hoy();
+        }
+
+        if (is_string($instante) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $instante)) {
+            return Carbon::parse($instante);
+        }
+
+        return Carbon::parse(
+            Carbon::parse($instante)->setTimezone(config('app.timezone_local'))->toDateString()
+        );
+    }
+
+    /**
      * Calcula una fecha de vencimiento sumando días hábiles.
      * Descuenta sábados, domingos y festivos de la base de datos.
      * Respeta la configuración de "considerar_dias_habiles".
@@ -49,7 +79,7 @@ class CalendarioHelper
         $vence = Carbon::parse($fechaVencimiento);
 
         if (! ConfigVarias::getConsiderarDiasHabiles(true)) {
-            return (int) Carbon::today()->diffInDays($vence, false);
+            return (int) self::hoy()->diffInDays($vence->copy()->startOfDay(), false);
         }
 
         return self::getService()->diasHabilesRestantes($vence);

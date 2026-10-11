@@ -263,8 +263,8 @@ class VentanillaPqrs extends Model
     public function scopeProximoVencer($query, int $dias = 5)
     {
         return $query->whereIn('estado_tramite', ['Pendiente', 'En Tramite'])
-            ->whereDate('fecha_vencimiento', '<=', now()->addDays($dias))
-            ->whereDate('fecha_vencimiento', '>=', now());
+            ->whereDate('fecha_vencimiento', '<=', CalendarioHelper::hoy()->addDays($dias)->toDateString())
+            ->whereDate('fecha_vencimiento', '>=', CalendarioHelper::hoy()->toDateString());
     }
 
     public function getDiasHabilesRestantes(): int
@@ -308,7 +308,8 @@ class VentanillaPqrs extends Model
             $dias = 2;
         }
 
-        $fechaInicio = $this->fechor_tramite ?? now();
+        // El término arranca el día (en Colombia) del trámite, no el día UTC
+        $fechaInicio = CalendarioHelper::fechaLocal($this->fechor_tramite);
 
         return CalendarioHelper::calcularVencimiento($fechaInicio, $dias);
     }

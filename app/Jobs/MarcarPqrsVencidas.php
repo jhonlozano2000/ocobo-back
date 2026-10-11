@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Helpers\CalendarioHelper;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -18,7 +19,7 @@ class MarcarPqrsVencidas implements ShouldQueue
     {
         try {
             $actualizadas = VentanillaPqrs::whereIn('estado_tramite', ['Pendiente', 'En Tramite'])
-                ->whereDate('fecha_vencimiento', '<', now()->toDateString())
+                ->whereDate('fecha_vencimiento', '<', CalendarioHelper::hoy()->toDateString())
                 ->update(['estado_tramite' => 'Vencida']);
 
             Log::info("Job MarcarPqrsVencidas: {$actualizadas} PQRS marcadas como Vencidas");

@@ -36,7 +36,7 @@ class PqrsService
             $prioridad = $datosPqrs['prioridad'] ?? 'Normal';
             $falloJudicial = $datosPqrs['fallo_judicial'] ?? 'No';
             $fechorTramite = $datosPqrs['fechor_tramite'] ?? now();
-            $fechaVencimiento = CalendarioHelper::calcularVencimiento(Carbon::parse($fechorTramite), $diasTermino);
+            $fechaVencimiento = CalendarioHelper::calcularVencimiento(CalendarioHelper::fechaLocal($fechorTramite), $diasTermino);
 
             $pqrs = VentanillaPqrs::create([
                 'ventanilla_radica_reci_id' => $radicadoId,
@@ -93,7 +93,7 @@ class PqrsService
             $prioridad = $datosPqrs['prioridad'] ?? 'Normal';
             $falloJudicial = $datosPqrs['fallo_judicial'] ?? 'No';
             $fechorTramite = $datosPqrs['fechor_tramite'] ?? now();
-            $fechaVencimiento = CalendarioHelper::calcularVencimiento(Carbon::parse($fechorTramite), $diasTermino);
+            $fechaVencimiento = CalendarioHelper::calcularVencimiento(CalendarioHelper::fechaLocal($fechorTramite), $diasTermino);
 
             $tercero = null;
             if (! empty($datosPqrs['gestion_tercero_id'])) {
@@ -201,8 +201,8 @@ class PqrsService
 
         $proximoVencer = (clone $baseQuery)->with(['radicado.tercero', 'tipoPqrs'])
             ->whereIn('estado_tramite', ['Pendiente', 'En Tramite'])
-            ->whereDate('fecha_vencimiento', '<=', now()->addDays(5))
-            ->whereDate('fecha_vencimiento', '>=', now())
+            ->whereDate('fecha_vencimiento', '<=', CalendarioHelper::hoy()->addDays(5)->toDateString())
+            ->whereDate('fecha_vencimiento', '>=', CalendarioHelper::hoy()->toDateString())
             ->orderBy('fecha_vencimiento')
             ->limit(10)
             ->get();

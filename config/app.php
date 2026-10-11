@@ -86,6 +86,14 @@ return [
     'schedule_timezone' => env('SCHEDULE_TIMEZONE', 'America/Bogota'),
 
     /*
+    | Zona horaria de negocio: "hoy" y las fechas de inicio de los términos
+    | (días hábiles, vencimientos) se toman en hora de Colombia. La app y los
+    | datos guardados siguen en UTC (M13-01, opción b).
+    */
+
+    'timezone_local' => env('APP_TIMEZONE_LOCAL', 'America/Bogota'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------

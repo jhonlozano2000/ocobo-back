@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Helpers\CalendarioHelper;
 use App\Helpers\MailConfigHelper;
 use App\Mail\RadicadoEnviadoNotification;
 use App\Mail\RadicadoNotification;
@@ -54,7 +55,7 @@ class AlertasVencimientoCommand extends Command
         $totalEnviados = 0;
 
         foreach ($diasAlerta as $dias) {
-            $fecha = now()->addDays($dias)->toDateString();
+            $fecha = CalendarioHelper::hoy()->addDays($dias)->toDateString();
 
             $totalEnviados += $this->procesarRecibidos($fecha, $dias, $dryRun);
             $totalEnviados += $this->procesarEnviados($fecha, $dias, $dryRun);

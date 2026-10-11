@@ -2,6 +2,7 @@
 
 namespace App\Services\Configuracion;
 
+use App\Helpers\CalendarioHelper;
 use App\Models\Configuracion\ConfigCalendarioFestivo;
 use App\Models\Configuracion\ConfigVarias;
 use Carbon\Carbon;
@@ -83,7 +84,7 @@ class BusinessDaysService
 
     public function diasHabilesRestantes(Carbon $fechaVencimiento): int
     {
-        $hoy = Carbon::today();
+        $hoy = CalendarioHelper::hoy();
 
         if ($hoy->greaterThan($fechaVencimiento)) {
             return 0;

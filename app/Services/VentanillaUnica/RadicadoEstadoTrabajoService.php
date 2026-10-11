@@ -2,6 +2,7 @@
 
 namespace App\Services\VentanillaUnica;
 
+use App\Helpers\CalendarioHelper;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Carbon\Carbon;
 
@@ -67,7 +68,7 @@ class RadicadoEstadoTrabajoService
             return false;
         }
 
-        return Carbon::parse($radicado->fec_venci)->isBefore(Carbon::today());
+        return Carbon::parse($radicado->fec_venci)->startOfDay()->isBefore(CalendarioHelper::hoy());
     }
 
     public function estaProximoVencer(VentanillaRadicaReci $radicado): bool
@@ -76,9 +77,9 @@ class RadicadoEstadoTrabajoService
             return false;
         }
 
-        $fechaLimite = Carbon::today()->addDays(self::DIAS_PROXIMO_VENCER);
+        $fechaLimite = CalendarioHelper::hoy()->addDays(self::DIAS_PROXIMO_VENCER);
 
-        return Carbon::parse($radicado->fec_venci)->between(Carbon::today(), $fechaLimite);
+        return Carbon::parse($radicado->fec_venci)->startOfDay()->between(CalendarioHelper::hoy(), $fechaLimite);
     }
 
     public function tieneResponsables(VentanillaRadicaReci $radicado): bool
