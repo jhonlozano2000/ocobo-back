@@ -61,7 +61,7 @@ trait AbacHierarquico
             // 3. Registros de la misma dependencia
             $codigosDependencia = $this->obtenerCodigosDependencia($user);
             if (! empty($codigosDependencia)) {
-                $q->orWhereHas('usuarioCreaRadicado.cargoActivo', function ($subQ) use ($codigosDependencia) {
+                $q->orWhereHas('usuarioCreaRadicado.cargoActivo.cargo', function ($subQ) use ($codigosDependencia) {
                     $subQ->whereIn('cod_organico', $codigosDependencia);
                 });
             }
@@ -89,7 +89,7 @@ trait AbacHierarquico
             return $query->whereRaw('1 = 0');
         }
 
-        return $query->whereHas('usuarioCreaRadicado.cargoActivo', function ($q) use ($codigosDependencia) {
+        return $query->whereHas('usuarioCreaRadicado.cargoActivo.cargo', function ($q) use ($codigosDependencia) {
             $q->whereIn('cod_organico', $codigosDependencia);
         });
     }
@@ -115,7 +115,7 @@ trait AbacHierarquico
             return $query->whereRaw('1 = 0');
         }
 
-        return $query->whereHas('usuarioCreaRadicado.cargoActivo', function ($q) use ($codigosSubordinados) {
+        return $query->whereHas('usuarioCreaRadicado.cargoActivo.cargo', function ($q) use ($codigosSubordinados) {
             $q->whereIn('cod_organico', $codigosSubordinados);
         });
     }
@@ -177,7 +177,7 @@ trait AbacHierarquico
             }
 
             // 3. Registros de la jerarquía completa
-            $q->orWhereHas('usuarioCreaRadicado.cargoActivo', function ($subQ) use ($codigosJerarquia) {
+            $q->orWhereHas('usuarioCreaRadicado.cargoActivo.cargo', function ($subQ) use ($codigosJerarquia) {
                 $subQ->whereIn('cod_organico', $codigosJerarquia);
             });
         });

@@ -23,6 +23,8 @@ class PermisosGestionArchivoSeeder extends Seeder
         $permisos = [
             // Expedientes (M10)
             'Gestion de Archivo -> Expedientes -> Ver',
+            // Archivo central: expedientes de todas las dependencias (M08-03)
+            'Gestion de Archivo -> Expedientes -> Ver Todos',
             'Gestion de Archivo -> Expedientes -> Crear',
             'Gestion de Archivo -> Expedientes -> Editar',
             'Gestion de Archivo -> Expedientes -> Incorporar',

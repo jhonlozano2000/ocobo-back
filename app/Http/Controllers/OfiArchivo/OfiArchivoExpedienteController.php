@@ -11,6 +11,8 @@ use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoExpedienteDocumento;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -50,6 +52,10 @@ class OfiArchivoExpedienteController extends Controller
             'observaciones_generales' => 'nullable|string',
         ]);
 
+        if (! OfiArchivoExpediente::puedeUsarDependencia(Auth::user(), $request->dependencia_id)) {
+            return $this->forbiddenResponse('No puede abrir expedientes de otra dependencia');
+        }
+
         try {
             DB::beginTransaction();
 
@@ -85,7 +91,7 @@ class OfiArchivoExpedienteController extends Controller
             if ($e instanceof ValidationException) {
                 throw $e;
             }
-            if ($e instanceof HttpExceptionInterface) {
+            if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
                 throw $e;
             }
             DB::rollBack();
@@ -97,7 +103,7 @@ class OfiArchivoExpedienteController extends Controller
     public function show($id)
     {
         try {
-            $expediente = OfiArchivoExpediente::with([
+            $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->with([
                 'dependencia',
                 'serieTrd',
                 'usuarioApertura',
@@ -112,7 +118,7 @@ class OfiArchivoExpedienteController extends Controller
             if ($e instanceof ValidationException) {
                 throw $e;
             }
-            if ($e instanceof HttpExceptionInterface) {
+            if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
                 throw $e;
             }
 
@@ -134,7 +140,16 @@ class OfiArchivoExpedienteController extends Controller
         ]);
 
         try {
-            $expediente = OfiArchivoExpediente::findOrFail($id);
+            $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->findOrFail($id);
+
+            // M08-05: un expediente cerrado o transferido conserva su clasificación y su hash_indice
+            if ($expediente->estado !== 'abierto') {
+                return $this->warningResponse('Solo se pueden editar expedientes en estado abierto');
+            }
+            if ($request->filled('dependencia_id')
+                && ! OfiArchivoExpediente::puedeUsarDependencia(Auth::user(), $request->dependencia_id)) {
+                return $this->forbiddenResponse('No puede asignar el expediente a otra dependencia');
+            }
 
             $fields = array_filter($request->only([
                 'nombre_expediente',
@@ -158,7 +173,7 @@ class OfiArchivoExpedienteController extends Controller
             if ($e instanceof ValidationException) {
                 throw $e;
             }
-            if ($e instanceof HttpExceptionInterface) {
+            if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
                 throw $e;
             }
 
@@ -175,7 +190,7 @@ class OfiArchivoExpedienteController extends Controller
         try {
             DB::beginTransaction();
 
-            $expediente = OfiArchivoExpediente::findOrFail($id);
+            $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->findOrFail($id);
 
             if ($expediente->estado !== 'abierto') {
                 return $this->warningResponse('Solo se pueden cerrar expedientes en estado abierto');
@@ -217,7 +232,7 @@ class OfiArchivoExpedienteController extends Controller
             if ($e instanceof ValidationException) {
                 throw $e;
             }
-            if ($e instanceof HttpExceptionInterface) {
+            if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
                 throw $e;
             }
             DB::rollBack();
@@ -232,7 +247,7 @@ class OfiArchivoExpedienteController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = OfiArchivoExpediente::with(['dependencia', 'serieTrd', 'usuarioApertura']);
+            $query = OfiArchivoExpediente::visiblesPara(Auth::user())->with(['dependencia', 'serieTrd', 'usuarioApertura']);
 
             // Filtros opcionales
             if ($request->filled('dependencia_id')) {
@@ -259,7 +274,7 @@ class OfiArchivoExpedienteController extends Controller
             if ($e instanceof ValidationException) {
                 throw $e;
             }
-            if ($e instanceof HttpExceptionInterface) {
+            if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
                 throw $e;
             }
 
@@ -282,7 +297,7 @@ class OfiArchivoExpedienteController extends Controller
         try {
             DB::beginTransaction();
 
-            $expediente = OfiArchivoExpediente::findOrFail($expedienteId);
+            $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->findOrFail($expedienteId);
 
             if ($expediente->estado !== 'abierto') {
                 return $this->warningResponse('No se pueden incorporar documentos a un expediente cerrado o transferido');
@@ -295,7 +310,12 @@ class OfiArchivoExpedienteController extends Controller
             ];
 
             $modelClass = $modelMap[$request->documentable_type];
-            $documento = $modelClass::findOrFail($request->documentable_id);
+            $documento = $this->radicadoAccesible($modelClass, (int) $request->documentable_id);
+            if (! $documento) {
+                DB::rollBack();
+
+                return $this->notFoundResponse('Radicado no encontrado');
+            }
 
             // Validar si el documento ya está en el expediente (Evitar duplicidad de folios)
             $existe = OfiArchivoExpedienteDocumento::where('expediente_id', $expedienteId)
@@ -332,7 +352,7 @@ class OfiArchivoExpedienteController extends Controller
             if ($e instanceof ValidationException) {
                 throw $e;
             }
-            if ($e instanceof HttpExceptionInterface) {
+            if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
                 throw $e;
             }
             DB::rollBack();
@@ -363,7 +383,7 @@ class OfiArchivoExpedienteController extends Controller
         try {
             DB::beginTransaction();
 
-            $expediente = OfiArchivoExpediente::findOrFail($expedienteId);
+            $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->findOrFail($expedienteId);
 
             if ($expediente->estado !== 'abierto') {
                 return $this->warningResponse('No se pueden subir archivos a un expediente cerrado o transferido');
@@ -446,13 +466,38 @@ class OfiArchivoExpedienteController extends Controller
             if ($e instanceof ValidationException) {
                 throw $e;
             }
-            if ($e instanceof HttpExceptionInterface) {
+            if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
                 throw $e;
             }
             DB::rollBack();
 
             return $this->serverErrorResponse('Error al subir los archivos', $e->getMessage());
         }
+    }
+
+    /**
+     * M08-04: solo se incorporan radicados que el usuario puede consultar; el archivo central
+     * (PERMISO_VER_TODOS) incorpora cualquiera.
+     */
+    private function radicadoAccesible(string $modelClass, int $id): ?Model
+    {
+        $user = Auth::user();
+        if (OfiArchivoExpediente::puedeVerTodos($user)) {
+            return $modelClass::find($id);
+        }
+
+        if ($modelClass === VentanillaRadicaReci::class) {
+            return VentanillaRadicaReci::conPermisoJerarquico($user)->find($id);
+        }
+
+        // Enviados aún no tiene ABAC propio: creador, responsable o firmante
+        return VentanillaRadicaEnviados::whereKey($id)
+            ->where(function ($q) use ($user) {
+                $q->where('usuario_crea', $user->id)
+                    ->orWhereHas('usuariosResponsables', fn ($r) => $r->where('users_cargos.user_id', $user->id))
+                    ->orWhereHas('usuariosFirmas', fn ($r) => $r->where('users_cargos.user_id', $user->id));
+            })
+            ->first();
     }
 
     /**
@@ -472,7 +517,7 @@ class OfiArchivoExpedienteController extends Controller
     public function generarIndicePdf($id)
     {
         try {
-            $expediente = OfiArchivoExpediente::with([
+            $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->with([
                 'dependencia',
                 'serieTrd',
                 'documentos.documentable',
@@ -542,7 +587,7 @@ class OfiArchivoExpedienteController extends Controller
             if ($e instanceof ValidationException) {
                 throw $e;
             }
-            if ($e instanceof HttpExceptionInterface) {
+            if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
                 throw $e;
             }
 
@@ -558,8 +603,16 @@ class OfiArchivoExpedienteController extends Controller
         try {
             DB::beginTransaction();
 
-            $doc = OfiArchivoExpedienteDocumento::with('expediente')
-                ->where('expediente_id', $expedienteId)
+            $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->findOrFail($expedienteId);
+
+            // M08-05: los folios de un expediente cerrado o transferido no se retiran
+            if ($expediente->estado !== 'abierto') {
+                DB::rollBack();
+
+                return $this->warningResponse('No se pueden retirar documentos de un expediente cerrado o transferido');
+            }
+
+            $doc = OfiArchivoExpedienteDocumento::where('expediente_id', $expediente->id)
                 ->findOrFail($documentoId);
 
             // Primero actualizar DB, luego eliminar archivo
@@ -576,7 +629,7 @@ class OfiArchivoExpedienteController extends Controller
             if ($e instanceof ValidationException) {
                 throw $e;
             }
-            if ($e instanceof HttpExceptionInterface) {
+            if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
                 throw $e;
             }
             DB::rollBack();
