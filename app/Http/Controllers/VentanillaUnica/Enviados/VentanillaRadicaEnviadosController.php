@@ -235,6 +235,7 @@ class VentanillaRadicaEnviadosController extends Controller
 
             $radicado = new VentanillaRadicaEnviados($validatedData);
             $radicado->num_radicado = $numRadicado;
+            $radicado->usuario_crea = auth()->id();
             $radicado->save();
 
             // Si proviene de un grupo colaborativo, vincular el documento final

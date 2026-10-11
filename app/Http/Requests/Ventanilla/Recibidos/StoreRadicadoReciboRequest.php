@@ -5,8 +5,11 @@ namespace App\Http\Requests\Ventanilla\Recibidos;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 
+/**
+ * M01-02: num_radicado, usuario_crea y uploaded_by no se aceptan del cliente
+ * (ni al crear ni al actualizar); los asigna el servidor.
+ */
 class StoreRadicadoReciboRequest extends FormRequest
 {
     /**
@@ -39,8 +42,6 @@ class StoreRadicadoReciboRequest extends FormRequest
             'tercero_id' => 'required|exists:gestion_terceros,id',
             'medio_recep_id' => 'required|exists:config_listas_detalles,id',
             'config_server_id' => 'nullable|exists:config_server_archivos,id',
-            'usuario_crea' => 'nullable|exists:users,id',
-            'uploaded_by' => 'nullable|exists:users,id',
             'fec_docu' => 'nullable|date',
             'fec_venci' => 'nullable|date',
             'fec_radicado' => 'nullable|date',
@@ -51,7 +52,6 @@ class StoreRadicadoReciboRequest extends FormRequest
             'asunto' => 'nullable|string|max:300',
             'tipo_solicitud_id' => 'nullable|exists:config_listas_detalles,id',
             'observaciones' => 'nullable|string|max:1000',
-            'num_radicado' => ['nullable', 'string', 'max:50', Rule::unique('ventanilla_radica_reci', 'num_radicado')],
             'crear_pqrs' => 'nullable|boolean',
             'tipo_pqrs_id' => 'nullable|required_if:crear_pqrs,true|exists:config_listas_detalles,id',
             'prioridad' => 'nullable|required_if:crear_pqrs,true|in:Normal,Urgente,Tutela',
@@ -70,8 +70,6 @@ class StoreRadicadoReciboRequest extends FormRequest
             'medio_recep_id.required' => 'El medio de recepción es obligatorio.',
             'medio_recep_id.exists' => 'El medio de recepción no es válido.',
             'config_server_id.exists' => 'El servidor de archivos no es válido.',
-            'usuario_crea.exists' => 'El usuario que creó el radicado no es válido.',
-            'uploaded_by.exists' => 'El usuario que subió el archivo no es válido.',
             'fec_venci.date' => 'La fecha de vencimiento debe ser una fecha válida.',
             'fec_radicado.date' => 'La fecha de radicado debe ser una fecha válida.',
             'num_folios.required' => 'El número de folios es obligatorio.',
@@ -80,7 +78,6 @@ class StoreRadicadoReciboRequest extends FormRequest
             'num_anexos.integer' => 'El número de anexos debe ser un número entero.',
             'descrip_anexos.max' => 'La descripción de anexos no puede superar los 300 caracteres.',
             'asunto.max' => 'El asunto no puede superar los 300 caracteres.',
-            'num_radicado.unique' => 'El número de radicado ya existe, por favor intente nuevamente.',
             'tipo_solicitud_id.exists' => 'El tipo de solicitud seleccionado no es válido.',
             'observaciones.max' => 'Las observaciones no pueden superar los 1000 caracteres.',
             'tipo_pqrs_id.required_if' => 'El tipo de PQRS es obligatorio cuando se solicita crear una PQRS.',

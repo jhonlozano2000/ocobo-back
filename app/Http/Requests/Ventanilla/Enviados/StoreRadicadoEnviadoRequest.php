@@ -3,8 +3,11 @@
 namespace App\Http\Requests\Ventanilla\Enviados;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
+/**
+ * M02-07: num_radicado, usuario_crea y subido_por no se aceptan del cliente;
+ * los asigna el servidor (consecutivo, usuario autenticado, carga del digital).
+ */
 class StoreRadicadoEnviadoRequest extends FormRequest
 {
     public function authorize(): bool
@@ -14,12 +17,6 @@ class StoreRadicadoEnviadoRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('radica_enviada') ?? $this->route('id');
-        $uniqueRule = Rule::unique('ventanilla_radica_enviados', 'num_radicado');
-        if ($id) {
-            $uniqueRule->ignore($id);
-        }
-
         return [
             'clasifica_documen_id' => 'required|exists:clasificacion_documental_trd,id',
             'tercero_id' => 'nullable|exists:gestion_terceros,id',
@@ -27,15 +24,12 @@ class StoreRadicadoEnviadoRequest extends FormRequest
             'medio_enviado_id' => 'required|exists:config_listas_detalles,id',
             'tipo_respuesta_id' => 'required|exists:config_listas_detalles,id',
             'config_server_id' => 'nullable|exists:config_server_archivos,id',
-            'usuario_crea' => 'required|exists:users,id',
-            'subido_por' => 'nullable|exists:users,id',
             'fec_docu' => 'nullable|date',
             'num_folios' => 'required|integer|min:0',
             'num_anexos' => 'required|integer|min:0',
             'descrip_anexos' => 'required|string|max:300',
             'asunto' => 'required|string|max:300',
             'radicado_respuesta' => 'nullable|string|max:300',
-            'num_radicado' => ['nullable', 'string', 'max:50', $uniqueRule],
             'grupo_id' => 'nullable|exists:mi_bandeja_temp,id',
         ];
     }
@@ -71,9 +65,6 @@ class StoreRadicadoEnviadoRequest extends FormRequest
             'tipo_respuesta_id.required' => 'El tipo de respuesta es obligatorio.',
             'tipo_respuesta_id.exists' => 'El tipo de respuesta no es válido.',
             'config_server_id.exists' => 'El servidor de archivos no es válido.',
-            'usuario_crea.required' => 'El usuario creador es obligatorio.',
-            'usuario_crea.exists' => 'El usuario creador no es válido.',
-            'subido_por.exists' => 'El usuario que subió el archivo no es válido.',
             'fec_docu.date' => 'La fecha del documento debe ser una fecha válida.',
             'num_folios.required' => 'El número de folios es obligatorio.',
             'num_folios.integer' => 'El número de folios debe ser un número entero.',
@@ -84,7 +75,6 @@ class StoreRadicadoEnviadoRequest extends FormRequest
             'asunto.required' => 'El asunto es obligatorio.',
             'asunto.max' => 'El asunto no puede superar los 300 caracteres.',
             'radicado_respuesta.max' => 'El radicado de respuesta no puede superar los 300 caracteres.',
-            'num_radicado.unique' => 'El número de radicado ya existe.',
         ];
     }
 }
