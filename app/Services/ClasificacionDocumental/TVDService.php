@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class TVDService
@@ -78,6 +79,11 @@ class TVDService
      */
     public function create(array $data): ClasificacionDocumentalTVD
     {
+        $this->asegurarEditable($data['dependencia_id'] ?? null);
+        if (! empty($data['parent'])) {
+            $this->asegurarEditable(ClasificacionDocumentalTVD::whereKey($data['parent'])->value('dependencia_id'));
+        }
+
         $data['user_register'] = auth()->id();
 
         return ClasificacionDocumentalTVD::create($data);
@@ -92,6 +98,14 @@ class TVDService
 
         if (! $tvd) {
             return null;
+        }
+
+        $this->asegurarEditable($tvd->dependencia_id);
+        if (! empty($data['dependencia_id'])) {
+            $this->asegurarEditable($data['dependencia_id']);
+        }
+        if (! empty($data['parent'])) {
+            $this->asegurarEditable(ClasificacionDocumentalTVD::whereKey($data['parent'])->value('dependencia_id'));
         }
 
         $tvd->update($data);
@@ -114,7 +128,26 @@ class TVDService
             return false;
         }
 
+        $this->asegurarEditable($tvd->dependencia_id);
+
         return $tvd->delete();
+    }
+
+    /**
+     * La TVD se aprueba por dependencia (M11-03); aprobada, no admite cambios.
+     */
+    public function dependenciaAprobada(?int $dependenciaId): bool
+    {
+        return $dependenciaId && ClasificacionDocumentalTVD::where('dependencia_id', $dependenciaId)
+            ->whereNotNull('fecha_aprobacion')
+            ->exists();
+    }
+
+    private function asegurarEditable(?int $dependenciaId): void
+    {
+        if ($this->dependenciaAprobada($dependenciaId)) {
+            throw ValidationException::withMessages(['dependencia_id' => 'La TVD de esta dependencia ya fue aprobada y no puede modificarse.']);
+        }
     }
 
     /**
@@ -136,6 +169,10 @@ class TVDService
 
         if (! $dependencia) {
             return ['inserted' => 0, 'errors' => ['No se encontró la dependencia con código: '.$codigoDependencia]];
+        }
+
+        if ($this->dependenciaAprobada($dependencia->id)) {
+            return ['inserted' => 0, 'errors' => ['La TVD de la dependencia '.$codigoDependencia.' ya fue aprobada y no puede modificarse.']];
         }
 
         // Todo-o-nada: sin transacción, una excepción a mitad de archivo dejaba

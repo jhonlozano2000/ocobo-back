@@ -12,6 +12,7 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTVD;
 use App\Services\ClasificacionDocumental\TVDService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -186,6 +187,37 @@ class ClasificacionDocumentalTVDController extends Controller
     }
 
     /**
+     * Aprueba la TVD de una dependencia (M11-03). Solo el Jefe de Archivo, y nunca quien
+     * registró elementos de esa TVD (segregación de funciones). Aprobada, queda inmutable.
+     */
+    public function aprobar($dependenciaId)
+    {
+        $user = auth()->user();
+        if (! $user->hasPermissionTo('Jefe de Archivo')) {
+            return $this->errorResponse('Solo el Jefe de Archivo puede aprobar la TVD', null, 403);
+        }
+
+        return DB::transaction(function () use ($dependenciaId, $user) {
+            $elementos = ClasificacionDocumentalTVD::where('dependencia_id', $dependenciaId)->lockForUpdate()->get();
+
+            if ($elementos->isEmpty()) {
+                return $this->errorResponse('La dependencia no tiene TVD registrada', null, 404);
+            }
+            if ($elementos->every(fn ($e) => $e->fecha_aprobacion !== null)) {
+                return $this->warningResponse('La TVD de esta dependencia ya fue aprobada');
+            }
+            if ($elementos->contains(fn ($e) => (int) $e->user_register === (int) $user->id)) {
+                return $this->errorResponse('Quien registró elementos de la TVD no puede aprobarla', null, 403);
+            }
+
+            ClasificacionDocumentalTVD::where('dependencia_id', $dependenciaId)
+                ->update(['aprobado_por' => $user->id, 'fecha_aprobacion' => now()]);
+
+            return $this->successResponse(['elementos' => $elementos->count()], 'TVD aprobada exitosamente');
+        });
+    }
+
+    /**
      * Lista la TVD jerárquica de una dependencia.
      */
     public function listarPorDependencia($dependenciaId)
@@ -207,6 +239,7 @@ class ClasificacionDocumentalTVDController extends Controller
                 'dependencia' => $dependencia,
                 'elementos' => $elementos,
                 'total_elementos' => ClasificacionDocumentalTVD::where('dependencia_id', $dependenciaId)->count(),
+                'aprobada' => $this->service->dependenciaAprobada((int) $dependenciaId),
             ], 'Elementos TVD obtenidos exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {

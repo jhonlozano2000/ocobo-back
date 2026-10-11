@@ -37,6 +37,7 @@ class ClasificacionDocumentalTVD extends Model
         'central' => 'integer',
         'total_anios' => 'integer',
         'estado' => 'boolean',
+        'fecha_aprobacion' => 'datetime',
     ];
 
     /**
@@ -69,6 +70,14 @@ class ClasificacionDocumentalTVD extends Model
     public function userRegister(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_register');
+    }
+
+    /**
+     * Relación con el Jefe de Archivo que aprobó la TVD de la dependencia.
+     */
+    public function aprobadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'aprobado_por');
     }
 
     // ==================== SCOPES ====================
