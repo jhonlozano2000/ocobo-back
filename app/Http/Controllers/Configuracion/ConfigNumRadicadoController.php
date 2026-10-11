@@ -16,6 +16,12 @@ class ConfigNumRadicadoController extends Controller
     use ApiResponseTrait;
 
     /**
+     * Clave que lee la numeración real (RadicadoConsecutivoService y radicación por correo).
+     * Antes se usaba 'formato_num_radicado', que ningún generador consulta.
+     */
+    private const CLAVE_FORMATO = 'formato_num_radicado_reci';
+
+    /**
      * Obtiene la configuración actual de numeración de radicados.
      *
      * Este método retorna el formato actual configurado para la numeración
@@ -41,7 +47,7 @@ class ConfigNumRadicadoController extends Controller
     public function getConfiguracion()
     {
         try {
-            $formato = ConfigVarias::getValor('formato_num_radicado', 'YYYYMMDD-#####');
+            $formato = ConfigVarias::getValor(self::CLAVE_FORMATO, 'YYYYMMDD-#####');
 
             $configuracion = [
                 'formato' => $formato,
@@ -102,7 +108,7 @@ class ConfigNumRadicadoController extends Controller
             $formato = $request->validated('formato');
 
             // Actualizar la configuración
-            ConfigVarias::setValor('formato_num_radicado', $formato);
+            ConfigVarias::setValor(self::CLAVE_FORMATO, $formato);
 
             DB::commit();
 
