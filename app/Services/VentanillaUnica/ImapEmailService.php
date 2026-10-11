@@ -254,19 +254,23 @@ class ImapEmailService
      */
     public function saveAttachment(Attachment $attachment, string $directory): string
     {
-        $filename = $attachment->filename();
+        $filename = self::nombreSeguroAdjunto($attachment->filename(), $attachment->extension());
 
-        if (empty($filename)) {
-            $extension = $attachment->extension() ?? 'bin';
-            $filename = uniqid('adjunto_', true).'.'.$extension;
+        $baseDir = storage_path('app/'.$directory);
+        if (! is_dir($baseDir)) {
+            mkdir($baseDir, 0755, true);
         }
 
-        $path = $directory.'/'.$filename;
-        $fullPath = storage_path('app/'.$path);
+        // Sin sobrescribir: dos adjuntos con el mismo nombre (o uno llamado como el PDF del correo)
+        $nombre = pathinfo($filename, PATHINFO_FILENAME);
+        $ext = pathinfo($filename, PATHINFO_EXTENSION);
+        for ($i = 1; file_exists($baseDir.'/'.$filename); $i++) {
+            $filename = $nombre.'_'.$i.($ext !== '' ? '.'.$ext : '');
+        }
 
-        $directoryPath = dirname($fullPath);
-        if (! is_dir($directoryPath)) {
-            mkdir($directoryPath, 0755, true);
+        $fullPath = $baseDir.'/'.$filename;
+        if (dirname($fullPath) !== $baseDir) {
+            throw new \Exception('Nombre de adjunto inválido.');
         }
 
         $saved = $attachment->save($fullPath);
@@ -275,7 +279,32 @@ class ImapEmailService
             throw new \Exception("No se pudo guardar el adjunto: {$filename}");
         }
 
-        return $path;
+        return $directory.'/'.$filename;
+    }
+
+    /**
+     * M05-05: nombre de archivo seguro a partir del nombre del header MIME (lo controla
+     * el remitente). Se queda solo con el último segmento, sin separadores, caracteres
+     * de control ni puntos iniciales, y con longitud limitada.
+     */
+    public static function nombreSeguroAdjunto(?string $filename, ?string $extension = null): string
+    {
+        $nombre = basename(str_replace('\\', '/', (string) $filename));
+        $nombre = preg_replace('/[\x00-\x1F\x7F<>:"\/\\\\|?*]/u', '', $nombre) ?? '';
+        $nombre = trim(ltrim($nombre, '. '));
+
+        if ($nombre === '') {
+            $ext = preg_replace('/[^A-Za-z0-9]/', '', (string) $extension) ?: 'bin';
+
+            return uniqid('adjunto_', true).'.'.$ext;
+        }
+
+        if (mb_strlen($nombre) > 150) {
+            $ext = mb_substr(pathinfo($nombre, PATHINFO_EXTENSION), 0, 10);
+            $nombre = mb_substr(pathinfo($nombre, PATHINFO_FILENAME), 0, 139).($ext !== '' ? '.'.$ext : '');
+        }
+
+        return $nombre;
     }
 
     /**

@@ -524,7 +524,7 @@ class EmailRadicacionService
 
             foreach ($message->attachments() as $attachment) {
                 $ruta = $this->imapService->saveAttachment($attachment, $directorio);
-                $this->registrarAdjunto($radicado, $disco, $ruta, $attachment->filename() ?: basename($ruta));
+                $this->registrarAdjunto($radicado, $disco, $ruta, ImapEmailService::nombreSeguroAdjunto($attachment->filename(), $attachment->extension()));
             }
 
             $mailbox->disconnect();
