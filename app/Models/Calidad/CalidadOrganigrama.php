@@ -20,6 +20,12 @@ class CalidadOrganigrama extends Model
 
     protected $table = 'calidad_organigrama';
 
+    /**
+     * M17-02: tope de niveles en los recorridos de la jerarquía. Junto con el control
+     * de nodos visitados evita ciclos infinitos si la tabla tiene datos inconsistentes.
+     */
+    public const MAX_PROFUNDIDAD = 50;
+
     protected $fillable = [
         'tipo',
         'nom_organico',
@@ -157,8 +163,10 @@ class CalidadOrganigrama extends Model
         $jerarquia = [];
         $nodoActual = $this;
         $parentId = $this->attributes['parent'] ?? null;
+        $visitados = [];
 
-        while ($nodoActual) {
+        while ($nodoActual && ! isset($visitados[$nodoActual->id]) && count($visitados) < self::MAX_PROFUNDIDAD) {
+            $visitados[$nodoActual->id] = true;
             array_unshift($jerarquia, [
                 'id' => $nodoActual->id,
                 'tipo' => $nodoActual->tipo,
@@ -220,8 +228,10 @@ class CalidadOrganigrama extends Model
     {
         $nivel = 1;
         $parentId = $this->attributes['parent'] ?? null;
+        $visitados = [$this->id => true];
 
-        while ($parentId) {
+        while ($parentId && ! isset($visitados[$parentId]) && $nivel < self::MAX_PROFUNDIDAD) {
+            $visitados[$parentId] = true;
             $nivel++;
             $parent = self::find($parentId);
             if (! $parent) {
@@ -409,13 +419,55 @@ class CalidadOrganigrama extends Model
      */
     public function getDescendientesCodigos(): array
     {
-        $codigos = [];
+        return array_values(array_unique(self::descendientes($this->id)->pluck('cod_organico')->all()));
+    }
 
-        foreach ($this->children as $child) {
-            $codigos[] = $child->cod_organico;
-            $codigos = array_merge($codigos, $child->getDescendientesCodigos());
+    /**
+     * Descendientes de un nodo, recorridos por niveles (una consulta por nivel),
+     * sin repetir nodos y con profundidad máxima (M17-02).
+     *
+     * @return Collection<int, CalidadOrganigrama>
+     */
+    public static function descendientes(int $id): Collection
+    {
+        $visitados = [$id => true];
+        $frontera = [$id];
+        $resultado = new Collection;
+
+        for ($nivel = 0; $frontera !== [] && $nivel < self::MAX_PROFUNDIDAD; $nivel++) {
+            $hijos = self::whereIn('parent', $frontera)->get(['id', 'parent', 'tipo', 'cod_organico', 'nom_organico']);
+            $frontera = [];
+
+            foreach ($hijos as $hijo) {
+                if (! isset($visitados[$hijo->id])) {
+                    $visitados[$hijo->id] = true;
+                    $frontera[] = $hijo->id;
+                    $resultado->push($hijo);
+                }
+            }
         }
 
-        return array_unique($codigos);
+        return $resultado;
+    }
+
+    /**
+     * Indica si asignar $parentId como padre de $nodoId crearía un ciclo
+     * (el nuevo padre es el propio nodo o uno de sus descendientes).
+     */
+    public static function formaCiclo(int $nodoId, int $parentId): bool
+    {
+        $visitados = [];
+        $actual = $parentId;
+
+        while ($actual) {
+            if ($actual === $nodoId || isset($visitados[$actual]) || count($visitados) >= self::MAX_PROFUNDIDAD) {
+                return true;
+            }
+
+            $visitados[$actual] = true;
+            $actual = (int) self::whereKey($actual)->value('parent');
+        }
+
+        return false;
     }
 }

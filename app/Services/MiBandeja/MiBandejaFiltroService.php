@@ -156,17 +156,10 @@ class MiBandejaFiltroService
     }
 
     /**
-     * Obtener todos los IDs de nodos hijos recursivamente.
+     * Obtener todos los IDs de nodos hijos recursivamente (a prueba de ciclos, M17-02).
      */
     protected static function getDescendantIds(int $parentId): array
     {
-        $hijos = CalidadOrganigrama::where('parent', $parentId)->pluck('id')->toArray();
-        $todos = $hijos;
-
-        foreach ($hijos as $hijoId) {
-            $todos = array_merge($todos, self::getDescendantIds($hijoId));
-        }
-
-        return $todos;
+        return CalidadOrganigrama::descendientes($parentId)->pluck('id')->all();
     }
 }

@@ -67,8 +67,15 @@ class CalidadOrganigramaRequest extends FormRequest
                 'nullable',
                 'integer',
                 'exists:calidad_organigrama,id',
-                function ($attribute, $value, $fail) {
+                function ($attribute, $value, $fail) use ($organigramaId) {
                     if ($value) {
+                        // M17-02: el nuevo padre no puede ser el propio nodo ni uno de sus descendientes
+                        if ($organigramaId !== null && CalidadOrganigrama::formaCiclo((int) $organigramaId, (int) $value)) {
+                            $fail('El nodo padre no puede ser el mismo elemento ni uno de sus subelementos.');
+
+                            return;
+                        }
+
                         $parentNode = CalidadOrganigrama::find($value);
 
                         if ($parentNode) {
