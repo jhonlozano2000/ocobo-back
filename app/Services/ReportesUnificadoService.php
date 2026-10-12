@@ -5,14 +5,34 @@ namespace App\Services;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoPrestamo;
 use App\Models\OfiArchivo\OfiArchivoTransferencia;
+use App\Models\User;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use Illuminate\Auth\Access\AuthorizationException;
 
 class ReportesUnificadoService
 {
+    /** Límite de filas de una exportación (la vista paginada sigue en 100 por página). */
+    public const MAX_EXPORT = 5000;
+
+    /**
+     * REP-002: permiso de listado que exige cada módulo; el reporte no puede ver más que el listado.
+     */
+    public const PERMISOS = [
+        'recibidas' => 'Radicar -> Cores. Recibida -> Listar',
+        'enviadas' => 'Radicar -> Cores. Enviada -> Listar',
+        'internas' => 'Radicar -> Cores. Interna -> Listar',
+        'pqrs' => 'Radicar -> PQRSF -> Listar',
+        'expedientes' => 'Gestion de Archivo -> Expedientes -> Ver',
+        'prestamos' => 'Gestion de Archivo -> Prestamos -> Ver',
+        'transferencias' => 'Gestion de Archivo -> Transferencias -> Ver',
+    ];
+
     protected array $modulos = [];
+
+    protected ?User $usuario = null;
 
     public function __construct()
     {
@@ -71,7 +91,7 @@ class ReportesUnificadoService
                         'ID' => $item->id,
                         'Radicado' => $item->radicado?->num_radicado ?? 'N/A',
                         'Tipo' => $item->tipoPqrs?->nombre ?? $item->tipo_pqrs_id,
-                        'Solicitante' => $item->ocultaIdentidadPara(auth()->user())
+                        'Solicitante' => $item->ocultaIdentidadPara($this->usuario)
                             ? $item->etiquetaIdentidadReservada()
                             : ($item->nom_afectado ?? $item->tercero?->nom_completo ?? 'N/A'),
                         'Fecha' => $item->created_at?->format('Y-m-d'),
@@ -126,18 +146,38 @@ class ReportesUnificadoService
         ];
     }
 
-    public function generarUnificado(string $modulo, array $filtros = []): array
+    public static function puedeReportar(?User $user, string $modulo): bool
+    {
+        return $user !== null && isset(self::PERMISOS[$modulo]) && $user->can(self::PERMISOS[$modulo]);
+    }
+
+    /**
+     * REP-001/REP-002: el reporte se genera con el permiso y el alcance de filas del usuario
+     * (mismo filtro que el listado del módulo). Con $exportar trae hasta MAX_EXPORT filas.
+     *
+     * @throws AuthorizationException si el usuario no tiene el permiso de listado del módulo
+     */
+    public function generarUnificado(string $modulo, array $filtros, User $user, bool $exportar = false): array
     {
         if (! isset($this->modulos[$modulo])) {
             throw new \InvalidArgumentException("Módulo no válido: $modulo");
         }
+        if (! self::puedeReportar($user, $modulo)) {
+            throw new AuthorizationException('No tiene permiso para reportar este módulo.');
+        }
 
+        $this->usuario = $user;
         $config = $this->modulos[$modulo];
-        $query = $config['model']::query();
+        $query = $this->consultaVisible($modulo, $config['model'], $user);
 
         $this->aplicarFiltros($query, $modulo, $filtros);
 
-        $perPage = min((int) ($filtros['per_page'] ?? 50), 100);
+        $perPage = $exportar
+            ? self::MAX_EXPORT
+            : min((int) ($filtros['per_page'] ?? 50), 100);
+        if ($exportar) {
+            $filtros['page'] = 1;
+        }
         $page = (int) ($filtros['page'] ?? 1);
         $total = $query->count();
         $items = $query->with($this->getRelations($modulo))
@@ -155,6 +195,9 @@ class ReportesUnificadoService
             'Por página' => $perPage,
         ];
 
+        if ($exportar && $total > $perPage) {
+            $resumen['Nota'] = "Se exportan las {$perPage} filas más recientes de {$total}; acote el rango de fechas.";
+        }
         if (! empty($filtros['desde'])) {
             $resumen['Desde'] = $filtros['desde'];
         }
@@ -177,6 +220,18 @@ class ReportesUnificadoService
     public function getModulos(): array
     {
         return array_map(fn ($c) => $c['label'], $this->modulos);
+    }
+
+    /** Mismo alcance de filas que el listado de cada módulo. */
+    protected function consultaVisible(string $modulo, string $model, User $user)
+    {
+        return match ($modulo) {
+            'recibidas', 'enviadas', 'internas' => $model::conPermisoJerarquico($user),
+            'pqrs' => $model::conPermisoJerarquico($user)->whereNotNull('ventanilla_radica_reci_id'),
+            'expedientes' => $model::visiblesPara($user),
+            // Préstamos y transferencias: su listado no filtra filas, solo exige el permiso del módulo
+            default => $model::query(),
+        };
     }
 
     protected function aplicarFiltros($query, string $modulo, array $filtros): void

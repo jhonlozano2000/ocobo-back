@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ReporteProgramado extends Model
 {
@@ -12,6 +13,7 @@ class ReporteProgramado extends Model
     protected $table = 'reportes_programados';
 
     protected $fillable = [
+        'user_id',
         'modulo',
         'filtros',
         'formato',
@@ -32,6 +34,12 @@ class ReporteProgramado extends Model
             'proxima_ejecucion' => 'datetime',
             'activo' => 'boolean',
         ];
+    }
+
+    /** Dueño: el reporte se genera con su permiso y alcance (REP-002). */
+    public function usuario(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function calcularProximaEjecucion(): \DateTime

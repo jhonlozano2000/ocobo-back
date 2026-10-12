@@ -2,13 +2,10 @@
 
 namespace App\Console\Commands;
 
-use App\Mail\ReporteProgramadoMailable;
 use App\Models\ReporteProgramado;
-use App\Services\ReportesExportService;
-use App\Services\ReportesUnificadoService;
+use App\Services\ReportesProgramadosService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 class GenerarReportesProgramadosCommand extends Command
 {
@@ -16,10 +13,13 @@ class GenerarReportesProgramadosCommand extends Command
 
     protected $description = 'Genera y envía reportes programados vencidos';
 
-    public function handle(ReportesUnificadoService $unificado, ReportesExportService $export): int
+    public function handle(ReportesProgramadosService $servicio): int
     {
+        // REP-002: sin dueño no hay alcance con qué generarlo; esos quedan fuera
         $programados = ReporteProgramado::where('proxima_ejecucion', '<=', now())
             ->where('activo', true)
+            ->whereNotNull('user_id')
+            ->with('usuario')
             ->get();
 
         if ($programados->isEmpty()) {
@@ -33,23 +33,7 @@ class GenerarReportesProgramadosCommand extends Command
 
         foreach ($programados as $item) {
             try {
-                $data = $unificado->generarUnificado($item->modulo, $item->filtros ?? []);
-                $columnas = $data['columnas'];
-                $nombre = 'reporte_'.$item->modulo;
-
-                $path = match ($item->formato) {
-                    'excel' => $export->exportarExcel($data, $nombre, $columnas),
-                    'pdf' => $export->exportarPDF($data, $nombre),
-                    default => null,
-                };
-
-                if ($path) {
-                    Mail::to($item->destinatarios)->send(new ReporteProgramadoMailable($path, $item->asunto));
-                }
-
-                $item->ultima_ejecucion = now();
-                $item->proxima_ejecucion = $item->calcularProximaEjecucion();
-                $item->save();
+                $servicio->ejecutar($item);
 
                 $procesados++;
                 $this->info("Reporte programado {$item->id} procesado.");

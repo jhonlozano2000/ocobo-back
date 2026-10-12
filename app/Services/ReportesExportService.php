@@ -94,17 +94,7 @@ class ReportesExportService
 
         $callback = function () use ($data, $headers) {
             $handle = fopen('php://output', 'w');
-            fwrite($handle, "\xEF\xBB\xBF");
-            fputcsv($handle, $headers);
-
-            foreach (($data['datos'] ?? []) as $item) {
-                $row = [];
-                foreach ($headers as $header) {
-                    $row[] = is_array($item) ? ($item[$header] ?? $item[strtolower($header)] ?? '') : '';
-                }
-                fputcsv($handle, ExportSeguroHelper::filaCsv($row));
-            }
-
+            $this->escribirCSV($handle, $data, $headers);
             fclose($handle);
         };
 
@@ -112,6 +102,36 @@ class ReportesExportService
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="'.$sanitizado.'_'.date('Ymd_His').'.csv"',
         ]);
+    }
+
+    /**
+     * Guarda el CSV en disco y devuelve la ruta (reportes programados: se adjunta al correo).
+     */
+    public function guardarCSV(array $data, string $nombre, array $columnas = []): string
+    {
+        $headers = $columnas ?: array_keys(($data['datos'][0] ?? []));
+        $path = $this->generarRuta($nombre, 'csv');
+
+        $handle = fopen($path, 'w');
+        $this->escribirCSV($handle, $data, $headers);
+        fclose($handle);
+
+        return $path;
+    }
+
+    /** @param resource $handle */
+    protected function escribirCSV($handle, array $data, array $headers): void
+    {
+        fwrite($handle, "\xEF\xBB\xBF");
+        fputcsv($handle, $headers);
+
+        foreach (($data['datos'] ?? []) as $item) {
+            $row = [];
+            foreach ($headers as $header) {
+                $row[] = is_array($item) ? ($item[$header] ?? $item[strtolower($header)] ?? '') : '';
+            }
+            fputcsv($handle, ExportSeguroHelper::filaCsv($row));
+        }
     }
 
     protected function generarRuta(string $nombre, string $extension): string

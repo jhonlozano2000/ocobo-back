@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\ReporteProgramadoMailable;
 use App\Models\ReporteProgramado;
 use App\Services\ReportesExportService;
+use App\Services\ReportesProgramadosService;
 use App\Services\ReportesUnificadoService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -15,7 +15,8 @@ class ReportesController extends Controller
 {
     public function __construct(
         protected ReportesUnificadoService $unificado,
-        protected ReportesExportService $export
+        protected ReportesExportService $export,
+        protected ReportesProgramadosService $programadosService
     ) {}
 
     public function index(Request $request)
@@ -29,10 +30,13 @@ class ReportesController extends Controller
             'per_page' => 'nullable|integer|min:1|max:100',
         ]);
 
+        $this->autorizarModulo($request, $request->modulo);
+
         try {
             $data = $this->unificado->generarUnificado(
                 $request->modulo,
-                $request->only(['desde', 'hasta', 'estado', 'page', 'per_page'])
+                $request->only(['desde', 'hasta', 'estado', 'page', 'per_page']),
+                $request->user()
             );
 
             return response()->json(['success' => true, 'data' => $data]);
@@ -58,12 +62,15 @@ class ReportesController extends Controller
             'estado' => 'nullable|string|max:50',
         ]);
 
+        $this->autorizarModulo($request, $request->modulo);
+
         try {
-            $filtros = array_merge(
+            $data = $this->unificado->generarUnificado(
+                $request->modulo,
                 $request->only(['desde', 'hasta', 'estado']),
-                ['per_page' => 999999, 'page' => 1]
+                $request->user(),
+                true
             );
-            $data = $this->unificado->generarUnificado($request->modulo, $filtros);
             $columnas = $data['columnas'];
             $nombre = 'reporte_'.$request->modulo;
 
@@ -102,9 +109,25 @@ class ReportesController extends Controller
         ])->deleteFileAfterSend(true);
     }
 
-    public function programados()
+    /** REP-002: el usuario debe tener el permiso de listado del módulo que reporta. */
+    protected function autorizarModulo(Request $request, string $modulo): void
     {
-        $items = ReporteProgramado::orderBy('proxima_ejecucion')->get();
+        abort_unless(
+            ReportesUnificadoService::puedeReportar($request->user(), $modulo),
+            403,
+            'No tiene permiso para reportar este módulo.'
+        );
+    }
+
+    /** REP-002: cada usuario solo ve, edita, ejecuta o elimina sus propias programaciones. */
+    protected function programadoPropio(Request $request, $id): ReporteProgramado
+    {
+        return ReporteProgramado::where('user_id', $request->user()->id)->findOrFail($id);
+    }
+
+    public function programados(Request $request)
+    {
+        $items = ReporteProgramado::where('user_id', $request->user()->id)->orderBy('proxima_ejecucion')->get();
 
         return response()->json(['success' => true, 'data' => $items]);
     }
@@ -122,8 +145,11 @@ class ReportesController extends Controller
             'proxima_ejecucion' => 'required|date|after:now',
         ]);
 
+        $this->autorizarModulo($request, $validated['modulo']);
+
         $validated['filtros'] = $validated['filtros'] ?? [];
         $validated['activo'] = true;
+        $validated['user_id'] = $request->user()->id;
 
         $item = ReporteProgramado::create($validated);
 
@@ -132,7 +158,7 @@ class ReportesController extends Controller
 
     public function updateProgramado(Request $request, $id)
     {
-        $item = ReporteProgramado::findOrFail($id);
+        $item = $this->programadoPropio($request, $id);
 
         $validated = $request->validate([
             'modulo' => 'sometimes|string|in:recibidas,enviadas,internas,pqrs,expedientes,prestamos,transferencias',
@@ -146,41 +172,29 @@ class ReportesController extends Controller
             'activo' => 'sometimes|boolean',
         ]);
 
+        if (isset($validated['modulo'])) {
+            $this->autorizarModulo($request, $validated['modulo']);
+        }
+
         $item->update($validated);
 
         return response()->json(['success' => true, 'data' => $item]);
     }
 
-    public function destroyProgramado($id)
+    public function destroyProgramado(Request $request, $id)
     {
-        $item = ReporteProgramado::findOrFail($id);
+        $item = $this->programadoPropio($request, $id);
         $item->delete();
 
         return response()->json(['success' => true, 'message' => 'Programación eliminada']);
     }
 
-    public function ejecutarProgramado($id)
+    public function ejecutarProgramado(Request $request, $id)
     {
-        $item = ReporteProgramado::findOrFail($id);
+        $item = $this->programadoPropio($request, $id);
 
         try {
-            $data = $this->unificado->generarUnificado($item->modulo, $item->filtros ?? []);
-            $columnas = $data['columnas'];
-            $nombre = 'reporte_'.$item->modulo;
-
-            $path = match ($item->formato) {
-                'excel' => $this->export->exportarExcel($data, $nombre, $columnas),
-                'pdf' => $this->export->exportarPDF($data, $nombre),
-                default => null,
-            };
-
-            if ($path) {
-                Mail::to($item->destinatarios)->send(new ReporteProgramadoMailable($path, $item->asunto));
-            }
-
-            $item->ultima_ejecucion = now();
-            $item->proxima_ejecucion = $item->calcularProximaEjecucion();
-            $item->save();
+            $item = $this->programadosService->ejecutar($item);
 
             return response()->json([
                 'success' => true,
@@ -193,6 +207,9 @@ class ReportesController extends Controller
             }
             if ($e instanceof HttpExceptionInterface) {
                 throw $e;
+            }
+            if ($e instanceof AuthorizationException) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 403);
             }
 
             return response()->json([
