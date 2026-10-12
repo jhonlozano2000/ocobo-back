@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Gestion;
 
+use App\Rules\TelefonoUnico;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -35,8 +36,8 @@ class GestionTerceroRequest extends FormRequest
             ],
             'nom_razo_soci' => 'required|string|max:150',
             'direccion' => 'nullable|string|max:150',
-            'telefono' => 'nullable|string|max:30',
-            'email' => 'nullable|email|max:70',
+            'telefono' => ['nullable', 'string', 'max:30', new TelefonoUnico('gestion_terceros', ['telefono'], $terceroId)],
+            'email' => ['nullable', 'email', 'max:70', Rule::unique('gestion_terceros', 'email')->ignore($terceroId, 'id')],
             'tipo' => ['required', Rule::in(['Natural', 'Juridico'])],
             'notifica_email' => 'boolean',
             'notifica_msm' => 'boolean',
@@ -49,6 +50,7 @@ class GestionTerceroRequest extends FormRequest
             'divi_poli_id.exists' => 'La división política seleccionada no es válida.',
 
             'num_docu_nit.unique' => 'El número de documento o NIT ya está registrado.',
+            'email.unique' => 'El correo electrónico ya está registrado en otro tercero.',
             'num_docu_nit.string' => 'El número de documento o NIT debe ser una cadena de texto.',
             'num_docu_nit.max' => 'El número de documento o NIT no puede superar los 25 caracteres.',
 

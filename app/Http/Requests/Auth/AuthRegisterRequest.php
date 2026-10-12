@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Rules\TelefonoUnico;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
@@ -39,8 +40,8 @@ class AuthRegisterRequest extends FormRequest
                     ->symbols()
                     ->uncompromised(),
             ],
-            'tel' => 'nullable|string|max:20',
-            'movil' => 'nullable|string|max:20',
+            'tel' => ['nullable', 'string', 'max:20', new TelefonoUnico('users', ['tel', 'movil'])],
+            'movil' => ['nullable', 'string', 'max:20', new TelefonoUnico('users', ['tel', 'movil'])],
             'dir' => 'nullable|string|max:255',
             'role' => 'nullable|string|exists:roles,name',
         ];

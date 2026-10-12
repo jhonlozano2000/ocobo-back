@@ -3,6 +3,7 @@
 namespace App\Http\Requests\ControlAcceso;
 
 use App\Models\Calidad\CalidadOrganigrama;
+use App\Rules\TelefonoUnico;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -56,12 +57,14 @@ class StoreUserRequest extends FormRequest
                 'nullable',
                 'string',
                 'max:20',
+                new TelefonoUnico('users', ['tel', 'movil']),
             ],
 
             'movil' => [
                 'nullable',
                 'string',
                 'max:20',
+                new TelefonoUnico('users', ['tel', 'movil']),
             ],
 
             'dir' => [
