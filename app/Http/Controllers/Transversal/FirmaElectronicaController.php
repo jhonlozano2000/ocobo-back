@@ -93,6 +93,11 @@ class FirmaElectronicaController extends Controller
             return $this->errorResponse('No es firmante designado de este documento.', null, 403);
         }
 
+        // M03-19: un firmante de interno no firma dos veces el mismo documento
+        if ($this->firmaService->yaFirmo($request->documentable_type, (int) $request->documentable_id, $user->id)) {
+            return $this->warningResponse('Ya firmó este documento.');
+        }
+
         // 1. Validar OTP por documento y usuario
         $otpValido = $this->firmaService->validarOtpPorDocumento($request->otp, $request->documentable_type, (int) $request->documentable_id, $user->id);
         if (! $otpValido) {
@@ -156,6 +161,8 @@ class FirmaElectronicaController extends Controller
                 'user_agent' => request()->userAgent(),
                 'fecha_firma' => now(),
             ]);
+
+            $this->firmaService->marcarFirmante($request->documentable_type, $documento->id, $user->id, $request->otp);
 
             // 4. Actualizar el documento principal con el nuevo hash
             $documento->update([

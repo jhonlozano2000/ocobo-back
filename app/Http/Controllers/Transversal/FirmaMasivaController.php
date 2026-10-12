@@ -78,6 +78,16 @@ class FirmaMasivaController extends Controller
                 ];
             }
 
+            // M03-19: un firmante de interno no firma dos veces el mismo documento
+            if ($this->firmaService->yaFirmo($documentableType, (int) $documentableId, $user->id)) {
+                return [
+                    'documentable_id' => $documentableId,
+                    'documentable_type' => $documentableType,
+                    'success' => false,
+                    'error' => 'Ya firmó este documento',
+                ];
+            }
+
             // 1. Validar OTP
             $otpValido = $this->firmaService->validarOtpPorDocumento($otp, $documentableType, (int) $documentableId, $user->id);
             if (! $otpValido) {
@@ -149,6 +159,8 @@ class FirmaMasivaController extends Controller
                 'user_agent' => request()->userAgent(),
                 'fecha_firma' => now(),
             ]);
+
+            $this->firmaService->marcarFirmante($documentableType, $documento->id, $user->id, $otp);
 
             // 5. Actualizar documento
             $documento->update([

@@ -64,6 +64,41 @@ class FirmaService
     }
 
     /**
+     * M03-19: el firmante de un radicado interno ya firmó ese documento.
+     */
+    public function yaFirmo(string $documentableType, int $documentableId, int $userId): bool
+    {
+        return $documentableType === 'radicado_interno'
+            && DB::table('ventanilla_radica_internos_firmantes')
+                ->where('radica_interno_id', $documentableId)
+                ->where('users_id', $userId)
+                ->where('firmado', 1)
+                ->exists();
+    }
+
+    /**
+     * M03-19: registra la firma en la fila del firmante del radicado interno
+     * (antes firmado/fecha_firma/otp_utilizado nunca se escribían).
+     */
+    public function marcarFirmante(string $documentableType, int $documentableId, int $userId, string $otp): void
+    {
+        if ($documentableType !== 'radicado_interno') {
+            return;
+        }
+
+        DB::table('ventanilla_radica_internos_firmantes')
+            ->where('radica_interno_id', $documentableId)
+            ->where('users_id', $userId)
+            ->where('firmado', 0)
+            ->update([
+                'firmado' => 1,
+                'fecha_firma' => now(),
+                'otp_utilizado' => '***'.substr($otp, -3),
+                'updated_at' => now(),
+            ]);
+    }
+
+    /**
      * Valida OTP por documento (recibidos/enviados/internos/grupos colaborativos).
      * El OTP es de un solo uso y se invalida tras OTP_MAX_INTENTOS fallidos.
      */

@@ -17,6 +17,12 @@ class VentanillaRadicaInternoFirmantes extends Model
         'users_id',
     ];
 
+    // M03-19: firmado/fecha_firma/otp_utilizado los escribe FirmaService::marcarFirmante
+    protected $casts = [
+        'firmado' => 'boolean',
+        'fecha_firma' => 'datetime',
+    ];
+
     public function radicado()
     {
         return $this->belongsTo(VentanillaRadicaInterno::class, 'radica_interno_id');
@@ -37,6 +43,8 @@ class VentanillaRadicaInternoFirmantes extends Model
 
         return [
             'id' => $this->id,
+            'firmado' => (bool) $this->firmado,
+            'fecha_firma' => $this->fecha_firma?->format('Y-m-d H:i:s'),
             'usuario' => [
                 'id' => $user->id,
                 'nombres' => $user->nombres,
