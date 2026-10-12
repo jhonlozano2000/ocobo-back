@@ -3,9 +3,18 @@
 namespace App\Http\Controllers\VentanillaUnica;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\AccesoRadicado;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\User;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivos;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoArchivos;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -83,6 +92,11 @@ class DocumentoController extends Controller
             return $this->badRequestResponse('Ruta de documento no válida');
         }
 
+        // RBAC-003: el archivo debe pertenecer a algo que el usuario pueda ver
+        if (! $this->puedeVer($request->user(), $disk, $path)) {
+            return $this->notFoundResponse('El documento no existe o fue eliminado');
+        }
+
         $storage = Storage::disk($disk);
 
         // Verificar que el archivo existe
@@ -149,6 +163,41 @@ class DocumentoController extends Controller
      *
      * @return string|null Path sanitizado o null si es inseguro
      */
+    /**
+     * Autorización por propietario (RBAC-003). Antes cualquier usuario autenticado podía leer
+     * cualquier archivo de los discos permitidos conociendo su path.
+     * - avatars: visibles para cualquier usuario autenticado.
+     * - firmas: solo la propia, o quien administra usuarios.
+     * - radicados_*: el path debe ser el digital o un adjunto de un radicado del módulo que el
+     *   usuario pueda mostrar (permiso Mostrar + ABAC, igual que acceso_radicado).
+     */
+    private function puedeVer(User $user, string $disk, string $path): bool
+    {
+        if ($disk === 'avatars') {
+            return true;
+        }
+
+        if ($disk === 'firmas') {
+            return $user->firma === $path || $user->can('Control de acceso - Usuarios -> Editar');
+        }
+
+        [$tipo, $modulo, $radicados, $adjuntos, $fk] = match ($disk) {
+            'radicados_recibidos' => ['recibido', 'Recibida', VentanillaRadicaReci::class, VentanillaRadicaReciArchivo::class, 'radicado_id'],
+            'radicados_enviados' => ['enviado', 'Enviada', VentanillaRadicaEnviados::class, VentanillaRadicaEnviadosArchivos::class, 'radica_enviado_id'],
+            'radicados_internos' => ['interno', 'Interna', VentanillaRadicaInterno::class, VentanillaRadicaInternoArchivos::class, 'radicado_id'],
+        };
+
+        if (! $user->can("Radicar -> Cores. {$modulo} -> Mostrar")) {
+            return false;
+        }
+
+        $ids = $radicados::where('archivo_digital', $path)->pluck('id')
+            ->merge($adjuntos::where('archivo', $path)->pluck($fk))
+            ->unique();
+
+        return $ids->contains(fn ($id) => AccesoRadicado::permitido($user, $tipo, $id));
+    }
+
     private function sanitizarPath(string $path): ?string
     {
         // 1. Eliminar null bytes
