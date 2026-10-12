@@ -190,7 +190,7 @@ class ClasificacionDocumentalTRDController extends Controller
         }
     }
 
-    public function listarPorDependencia($id)
+    public function listarPorDependencia(Request $request, $id)
     {
         try {
             $dependencia = CalidadOrganigrama::find($id);
@@ -201,6 +201,8 @@ class ClasificacionDocumentalTRDController extends Controller
 
             $elementos = ClasificacionDocumentalTRD::where('dependencia_id', $id)
                 ->whereNull('parent')
+                // M09-07: ?vigente=1 limita el árbol a la versión aprobada (clasificación de expedientes)
+                ->when($request->boolean('vigente'), fn ($q) => $q->whereHas('versionTRD', fn ($v) => $v->where('estado_version', 'ACTIVO')))
                 ->with([
                     'children',
                     'dependencia',

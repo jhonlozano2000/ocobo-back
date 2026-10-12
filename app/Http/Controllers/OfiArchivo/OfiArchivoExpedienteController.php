@@ -7,6 +7,7 @@ use App\Helpers\CalendarioHelper;
 use App\Helpers\ExpedienteHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoExpedienteDocumento;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
@@ -55,6 +56,9 @@ class OfiArchivoExpedienteController extends Controller
 
         if (! OfiArchivoExpediente::puedeUsarDependencia(Auth::user(), $request->dependencia_id)) {
             return $this->forbiddenResponse('No puede abrir expedientes de otra dependencia');
+        }
+        if ($error = $this->serieInvalida((int) $request->serie_trd_id, (int) $request->dependencia_id)) {
+            return $this->warningResponse($error);
         }
 
         try {
@@ -150,6 +154,15 @@ class OfiArchivoExpedienteController extends Controller
             if ($request->filled('dependencia_id')
                 && ! OfiArchivoExpediente::puedeUsarDependencia(Auth::user(), $request->dependencia_id)) {
                 return $this->forbiddenResponse('No puede asignar el expediente a otra dependencia');
+            }
+            if ($request->filled('serie_trd_id') || $request->filled('dependencia_id')) {
+                $error = $this->serieInvalida(
+                    (int) ($request->serie_trd_id ?: $expediente->serie_trd_id),
+                    (int) ($request->dependencia_id ?: $expediente->dependencia_id)
+                );
+                if ($error) {
+                    return $this->warningResponse($error);
+                }
             }
 
             $fields = array_filter($request->only([
@@ -473,6 +486,23 @@ class OfiArchivoExpedienteController extends Controller
 
             return $this->serverErrorResponse('Error al subir los archivos', $e->getMessage());
         }
+    }
+
+    /**
+     * M08-13/M09-07: el expediente se clasifica en una Serie o SubSerie de la TRD vigente (versión
+     * aprobada) de su propia dependencia; no en un tipo documental, otra dependencia o una TRD histórica.
+     */
+    private function serieInvalida(int $serieId, int $dependenciaId): ?string
+    {
+        $serie = ClasificacionDocumentalTRD::with('versionTRD')->find($serieId);
+
+        return match (true) {
+            ! $serie => 'La serie TRD seleccionada no existe.',
+            ! in_array($serie->tipo, ['Serie', 'SubSerie'], true) => 'El expediente debe clasificarse en una Serie o SubSerie, no en un tipo documental.',
+            (int) $serie->dependencia_id !== $dependenciaId => 'La serie TRD seleccionada no pertenece a la dependencia del expediente.',
+            $serie->versionTRD?->estado_version !== 'ACTIVO' => 'La serie TRD seleccionada no pertenece a la versión vigente (aprobada) de la TRD.',
+            default => null,
+        };
     }
 
     /**

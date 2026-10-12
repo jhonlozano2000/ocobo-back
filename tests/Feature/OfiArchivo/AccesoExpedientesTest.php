@@ -159,6 +159,42 @@ class AccesoExpedientesTest extends TestCase
         $this->get("/api/archivo/expedientes/{$exp->id}/indice")->assertOk()->assertHeader('Content-Type', 'application/pdf');
     }
 
+    /** M08-13/M09-07: el expediente se clasifica en una Serie/SubSerie vigente de su dependencia */
+    public function test_solo_abre_expedientes_en_series_vigentes_de_su_dependencia(): void
+    {
+        Schema::disableForeignKeyConstraints();
+        $version = fn (int $dep, string $estado) => DB::table('clasificacion_documental_trd_versiones')->insertGetId([
+            'dependencia_id' => $dep, 'version' => random_int(1000, 9999), 'estado_version' => $estado, 'user_register' => $this->otro->id,
+        ]);
+        $nodo = fn (string $tipo, int $dep, int $versionId, ?int $parent = null) => DB::table('clasificacion_documental_trd')->insertGetId([
+            'tipo' => $tipo, 'cod' => 'V'.random_int(100, 999), 'nom' => $tipo, 'parent' => $parent,
+            'dependencia_id' => $dep, 'version_id' => $versionId, 'user_register' => $this->otro->id,
+        ]);
+        $activa = $version($this->depA, 'ACTIVO');
+        $serie = $nodo('Serie', $this->depA, $activa);
+        $tipoDoc = $nodo('TipoDocumento', $this->depA, $activa, $serie);
+        $borrador = $nodo('Serie', $this->depA, $version($this->depA, 'TEMP'));
+        $ajena = $nodo('Serie', $this->depB, $version($this->depB, 'ACTIVO'));
+        Schema::enableForeignKeyConstraints();
+        $abrir = fn (int $serieId) => $this->actingAs($this->user)->postJson('/api/archivo/expedientes', [
+            'nombre_expediente' => 'Clasificado', 'dependencia_id' => $this->depA, 'serie_trd_id' => $serieId,
+        ]);
+
+        $abrir($tipoDoc)->assertUnprocessable()->assertJsonPath('message', fn ($m) => str_contains($m, 'tipo documental'));
+        $abrir($borrador)->assertUnprocessable()->assertJsonPath('message', fn ($m) => str_contains($m, 'vigente'));
+        $abrir($ajena)->assertUnprocessable()->assertJsonPath('message', fn ($m) => str_contains($m, 'dependencia'));
+        $id = $abrir($serie)->assertCreated()->json('data.id');
+
+        $this->actingAs($this->user)->putJson('/api/archivo/expedientes/'.$id, ['serie_trd_id' => $tipoDoc])->assertUnprocessable();
+        $this->assertSame($serie, (int) OfiArchivoExpediente::find($id)->serie_trd_id);
+
+        // El árbol para clasificar expedientes solo trae la versión vigente
+        $this->user->givePermissionTo(Permission::findOrCreate('TRD -> Listar', 'web'));
+        $ids = collect($this->getJson("/api/clasifica-documental/trd/dependencia/{$this->depA}?vigente=1")->assertOk()->json('data.elementos'))->pluck('id');
+        $this->assertTrue($ids->contains($serie));
+        $this->assertFalse($ids->contains($borrador));
+    }
+
     private function assertNoIncorpora(string $tipo, int $radicadoId): void
     {
         $propio = $this->expediente($this->depA, '2026-M83A-S83-0003');

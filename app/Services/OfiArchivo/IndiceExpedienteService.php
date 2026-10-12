@@ -54,7 +54,7 @@ class IndiceExpedienteService
         $pdf->Cell(0, 10, $txt('ÍNDICE ELECTRÓNICO DE EXPEDIENTE - SGDEA OCOBO'), 0, 1, 'C');
         $pdf->SetFont('Arial', '', 10);
         $pdf->Cell(0, 7, $txt('Dependencia: '.$expediente->dependencia?->nom_organico), 0, 1);
-        $pdf->Cell(0, 7, $txt('Serie/Subserie: '.$expediente->serieTrd?->nombre), 0, 1);
+        $pdf->Cell(0, 7, $txt('Serie/Subserie: '.$expediente->serieTrd?->nom), 0, 1);
         $pdf->Cell(0, 7, $txt("No. Expediente: {$expediente->numero_expediente} | Nombre: {$expediente->nombre_expediente}"), 0, 1);
         $pdf->Cell(0, 7, $txt('Fecha de apertura: '.$expediente->fecha_apertura?->format('Y-m-d')
             .' | Estado: '.$expediente->estado
@@ -111,7 +111,7 @@ class IndiceExpedienteService
         $exp->addChild('Numero', htmlspecialchars((string) $expediente->numero_expediente));
         $exp->addChild('Nombre', htmlspecialchars((string) $expediente->nombre_expediente));
         $exp->addChild('Dependencia', htmlspecialchars((string) $expediente->dependencia?->nom_organico));
-        $exp->addChild('SerieSubserie', htmlspecialchars((string) $expediente->serieTrd?->nombre));
+        $exp->addChild('SerieSubserie', htmlspecialchars((string) $expediente->serieTrd?->nom));
         $exp->addChild('Estado', htmlspecialchars((string) $expediente->estado));
         $exp->addChild('FechaApertura', $expediente->fecha_apertura?->format('Y-m-d'));
         $exp->addChild('FechaCierre', $expediente->fecha_cierre?->format('Y-m-d H:i:s'));
