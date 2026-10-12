@@ -4,6 +4,7 @@ namespace App\Http\Controllers\VentanillaUnica;
 
 use App\Helpers\FileMetadataHelper;
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\AccesoRadicado;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\FileClassificationLevel;
@@ -22,6 +23,7 @@ class MetadataController extends Controller
     public function show(int $archivoId, string $tipo = 'reci'): JsonResponse
     {
         $this->autorizarPorTipo($tipo, 'Mostrar');
+        $this->autorizarArchivo($archivoId, $tipo === 'pqrs' ? VentanillaRadicaReciMetadata::class : $this->resolverModelo($tipo));
 
         $resultado = FileMetadataHelper::obtenerMetadataConInfo($archivoId, $tipo);
 
@@ -35,6 +37,7 @@ class MetadataController extends Controller
     public function historial(int $archivoId, string $tipo = 'reci'): JsonResponse
     {
         $this->autorizarPorTipo($tipo, 'Mostrar');
+        $this->autorizarArchivo($archivoId, $tipo === 'pqrs' ? VentanillaRadicaReciMetadata::class : $this->resolverModelo($tipo));
 
         $historial = FileMetadataHelper::obtenerHistorialPorArchivo($archivoId, $tipo);
 
@@ -93,6 +96,8 @@ class MetadataController extends Controller
         if (! $metadata) {
             return $this->notFoundResponse('Metadatos no encontrados para el archivo indicado');
         }
+
+        $this->autorizarArchivo($archivoId, $modelo);
 
         $campos = array_filter([
             'descripcion' => $request->descripcion,
@@ -185,6 +190,29 @@ class MetadataController extends Controller
             'pqrs' => VentanillaPqrsMetadata::class,
             default => null,
         };
+    }
+
+    /**
+     * El permiso del módulo no basta: el archivo pertenece a un radicado y el usuario
+     * debe tener acceso a ese radicado (ABAC). Se responde 404 para no revelar si existe.
+     * show/historial leen la metadata de recibidos cuando tipo=pqrs, de ahí el modelo explícito.
+     */
+    private function autorizarArchivo(int $archivoId, string $modelo): void
+    {
+        $metadata = $modelo::where('archivo_id', $archivoId)->first();
+
+        if (! $metadata) {
+            return;
+        }
+
+        [$tipoAcceso, $id] = match ($modelo) {
+            VentanillaRadicaEnviadosMetadata::class => ['enviado', $metadata->radicado_id],
+            VentanillaRadicaInternoMetadata::class => ['interno', $metadata->radicado_id],
+            VentanillaPqrsMetadata::class => ['pqrs', $metadata->pqrs_id],
+            default => ['recibido', $metadata->radicado_id],
+        };
+
+        abort_unless($id && AccesoRadicado::permitido(auth()->user(), $tipoAcceso, $id), 404);
     }
 
     /**
