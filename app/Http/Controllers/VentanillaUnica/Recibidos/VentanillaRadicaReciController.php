@@ -1618,29 +1618,40 @@ class VentanillaRadicaReciController extends Controller
                 'motivo.max' => 'El motivo no puede superar los 1000 caracteres.',
             ]);
 
-            // Buscar la radicación
-            $radicacion = VentanillaRadicaReci::find($id);
+            // M02-10: el cambio y su historial se confirman juntos; el bloqueo evita registrar
+            // una clasificación anterior equivocada si dos usuarios la cambian a la vez
+            $respuesta = DB::transaction(function () use ($id, $request) {
+                // Buscar la radicación
+                $radicacion = VentanillaRadicaReci::lockForUpdate()->find($id);
 
-            if (! $radicacion) {
-                return $this->errorResponse('Radicación no encontrada', null, 404);
+                if (! $radicacion) {
+                    return $this->errorResponse('Radicación no encontrada', null, 404);
+                }
+
+                // Clasificación anterior (para trazabilidad)
+                $clasificacionAnteriorId = $radicacion->clasifica_documen_id;
+                $motivo = $request->motivo ?? 'Cambio de clasificación documental';
+
+                // Actualizar la clasificación documental
+                $radicacion->clasifica_documen_id = $request->clasifica_documen_id;
+                $radicacion->save();
+
+                // Registrar historial del cambio (auditoría)
+                VentanillaRadicaReciHistorialClasificacionDocumental::create([
+                    'radica_reci_id' => $radicacion->id,
+                    'clasificacion_anterior_id' => $clasificacionAnteriorId,
+                    'clasificacion_nueva_id' => $request->clasifica_documen_id,
+                    'motivo' => $motivo,
+                    'user_id' => auth()->id(),
+                ]);
+
+                return $radicacion;
+            });
+
+            if ($respuesta instanceof JsonResponse) {
+                return $respuesta;
             }
-
-            // Clasificación anterior (para trazabilidad)
-            $clasificacionAnteriorId = $radicacion->clasifica_documen_id;
-            $motivo = $request->motivo ?? 'Cambio de clasificación documental';
-
-            // Actualizar la clasificación documental
-            $radicacion->clasifica_documen_id = $request->clasifica_documen_id;
-            $radicacion->save();
-
-            // Registrar historial del cambio (auditoría)
-            VentanillaRadicaReciHistorialClasificacionDocumental::create([
-                'radica_reci_id' => $radicacion->id,
-                'clasificacion_anterior_id' => $clasificacionAnteriorId,
-                'clasificacion_nueva_id' => $request->clasifica_documen_id,
-                'motivo' => $motivo,
-                'user_id' => auth()->id(),
-            ]);
+            $radicacion = $respuesta;
 
             return $this->successResponse(
                 $radicacion->fresh(['clasificacionDocumental']),

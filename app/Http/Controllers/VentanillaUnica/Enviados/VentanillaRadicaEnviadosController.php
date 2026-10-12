@@ -832,24 +832,35 @@ class VentanillaRadicaEnviadosController extends Controller
                 'motivo.max' => 'El motivo no puede superar los 1000 caracteres.',
             ]);
 
-            $radicado = VentanillaRadicaEnviados::find($id);
+            // M02-10: el cambio y su historial se confirman juntos; el bloqueo evita registrar
+            // una clasificación anterior equivocada si dos usuarios la cambian a la vez
+            $respuesta = DB::transaction(function () use ($id, $request) {
+                $radicado = VentanillaRadicaEnviados::lockForUpdate()->find($id);
 
-            if (! $radicado) {
-                return $this->errorResponse('Radicado enviado no encontrado', null, 404);
+                if (! $radicado) {
+                    return $this->errorResponse('Radicado enviado no encontrado', null, 404);
+                }
+
+                $clasificacionAnteriorId = $radicado->clasifica_documen_id;
+                $motivo = $request->motivo ?? 'Cambio de clasificación documental';
+
+                $radicado->update(['clasifica_documen_id' => $request->clasifica_documen_id]);
+
+                VentanillaRadicaEnviadosHistorialClasificacionDocumental::create([
+                    'radica_enviados_id' => $radicado->id,
+                    'clasificacion_anterior_id' => $clasificacionAnteriorId,
+                    'clasificacion_nueva_id' => $request->clasifica_documen_id,
+                    'motivo' => $motivo,
+                    'user_id' => auth()->id(),
+                ]);
+
+                return $radicado;
+            });
+
+            if ($respuesta instanceof JsonResponse) {
+                return $respuesta;
             }
-
-            $clasificacionAnteriorId = $radicado->clasifica_documen_id;
-            $motivo = $request->motivo ?? 'Cambio de clasificación documental';
-
-            $radicado->update(['clasifica_documen_id' => $request->clasifica_documen_id]);
-
-            VentanillaRadicaEnviadosHistorialClasificacionDocumental::create([
-                'radica_enviados_id' => $radicado->id,
-                'clasificacion_anterior_id' => $clasificacionAnteriorId,
-                'clasificacion_nueva_id' => $request->clasifica_documen_id,
-                'motivo' => $motivo,
-                'user_id' => auth()->id(),
-            ]);
+            $radicado = $respuesta;
 
             return $this->successResponse(
                 $radicado->fresh(['clasificacionDocumental']),
