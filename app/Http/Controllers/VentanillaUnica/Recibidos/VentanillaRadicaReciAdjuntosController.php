@@ -105,7 +105,6 @@ class VentanillaRadicaReciAdjuntosController extends Controller
                 $archivosSubidos[] = [
                     'id' => $archivoAdicional->id,
                     'nombre' => $archivoAdicional->nom_origi,
-                    'ruta' => $nombreArchivo,
                     'hash_sha256' => $hash,
                     'subido_por' => $usuario ? trim($usuario->nombres.' '.$usuario->apellidos) : 'No se registró usuario',
                     'tamaño' => $archivoAdicional->archivo_peso,
@@ -145,11 +144,11 @@ class VentanillaRadicaReciAdjuntosController extends Controller
             $archivos = $radicado->archivos->map(function ($archivo) {
                 return [
                     'id' => $archivo->id,
-                    'nombre' => basename($archivo->archivo),
-                    'ruta' => $archivo->archivo,
+                    'nombre' => $archivo->nom_origi ?: basename($archivo->archivo),
                     'url' => ArchivoHelper::obtenerUrl($archivo->archivo, self::DISK),
-                    'tamaño' => \Storage::disk(self::DISK)->size($archivo->archivo),
-                    'tipo' => \Storage::disk(self::DISK)->mimeType($archivo->archivo),
+                    // M01-15/16: sin ruta interna; tamaño y tipo guardados al subir, sin consultar el disco por fila
+                    'tamaño' => $archivo->archivo_peso,
+                    'tipo' => $archivo->archivo_tipo,
                     'fecha_subida' => $archivo->created_at,
                 ];
             });

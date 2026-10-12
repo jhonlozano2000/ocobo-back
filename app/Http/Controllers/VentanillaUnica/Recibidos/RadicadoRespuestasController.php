@@ -14,6 +14,9 @@ class RadicadoRespuestasController extends Controller
 {
     use ApiResponseTrait;
 
+    /** M01-17: tope del cuerpo de una respuesta (texto o JSON del editor, con imágenes embebidas). */
+    private const MAX_CONTENIDO_BYTES = 2_000_000;
+
     public function index(Request $request, int $radicadoId)
     {
         $respuestas = RadicadoRespuesta::where('radicado_id', $radicadoId)
@@ -42,11 +45,7 @@ class RadicadoRespuestasController extends Controller
 
     public function store(Request $request, int $radicadoId)
     {
-        $validator = Validator::make($request->all(), [
-            'titulo' => 'nullable|string|max:500',
-            'contenido' => 'nullable|string',
-            'contenido_json' => 'nullable|array',
-        ]);
+        $validator = Validator::make($request->all(), $this->reglas());
 
         if ($validator->fails()) {
             return $this->errorResponse('Validation failed', $validator->errors(), 422);
@@ -76,6 +75,12 @@ class RadicadoRespuestasController extends Controller
             return $this->errorResponse('No puedes editar esta respuesta', null, 403);
         }
 
+        $validator = Validator::make($request->all(), $this->reglas());
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', $validator->errors(), 422);
+        }
+
         $respuesta->update([
             'titulo' => $request->titulo ?? $respuesta->titulo,
             'contenido' => $request->contenido ?? $respuesta->contenido,
@@ -97,5 +102,22 @@ class RadicadoRespuestasController extends Controller
         $respuesta->delete();
 
         return $this->successResponse(null, 'Respuesta eliminada');
+    }
+
+    private function reglas(): array
+    {
+        return [
+            'titulo' => 'nullable|string|max:500',
+            'contenido' => 'nullable|string|max:'.self::MAX_CONTENIDO_BYTES,
+            'contenido_json' => [
+                'nullable',
+                'array',
+                function (string $atributo, mixed $valor, \Closure $fallar) {
+                    if (strlen((string) json_encode($valor)) > self::MAX_CONTENIDO_BYTES) {
+                        $fallar('El contenido de la respuesta es demasiado grande.');
+                    }
+                },
+            ],
+        ];
     }
 }
