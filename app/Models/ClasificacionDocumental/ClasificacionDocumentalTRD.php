@@ -82,6 +82,7 @@ class ClasificacionDocumentalTRD extends Model
                 : 'Los Tipos de Documento solo pueden tener como padre una Serie o SubSerie.'],
             $padre && (int) $padre->dependencia_id !== (int) $this->dependencia_id => ['parent', 'El elemento padre debe pertenecer a la misma dependencia.'],
             $padre && $padre->version_id !== null && (int) $padre->version_id !== (int) $this->version_id => ['parent', 'El elemento padre debe pertenecer a la misma versión de la TRD.'],
+            ($retencion = $this->errorRetencion()) !== null => $retencion,
             $this->codigoRepetido() => ['cod', 'El código ya existe en este nivel de la TRD (misma dependencia, versión y padre).'],
             default => null,
         };
@@ -89,6 +90,44 @@ class ClasificacionDocumentalTRD extends Model
         if ($error) {
             throw ValidationException::withMessages([$error[0] => $error[1]]);
         }
+    }
+
+    /**
+     * M09-05/M10-04: años de retención enteros y una sola disposición final (CT, E o S; M/D se
+     * puede combinar). Solo se exige al crear o al cambiar esos campos, para no bloquear la edición
+     * de otros datos en filas heredadas.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    private function errorRetencion(): ?array
+    {
+        if ($this->exists && ! $this->isDirty(['a_g', 'a_c', 'ct', 'e', 'm_d', 's'])) {
+            return null;
+        }
+
+        foreach (['a_g' => 'gestión', 'a_c' => 'central'] as $campo => $archivo) {
+            $valor = $this->attributes[$campo] ?? null;
+            if ($valor === null || trim((string) $valor) === '') {
+                $this->attributes[$campo] = null;
+
+                continue;
+            }
+            if (! preg_match('/^\d{1,3}$/', trim((string) $valor)) || (int) $valor > 100) {
+                return [$campo, "Los años de retención en el archivo de {$archivo} deben ser un número entero entre 0 y 100."];
+            }
+            $this->attributes[$campo] = (string) (int) $valor;
+        }
+
+        $disposiciones = collect(['ct' => 'CT', 'e' => 'E', 's' => 'S'])->filter(fn ($_, $campo) => (bool) $this->{$campo});
+        if ($disposiciones->count() > 1) {
+            return ['ct', 'La disposición final debe ser una sola entre CT, E y S (M/D se puede combinar); se marcó '.$disposiciones->implode(', ').'.'];
+        }
+        $tieneRetencion = ($this->attributes['a_g'] ?? null) !== null || ($this->attributes['a_c'] ?? null) !== null;
+        if ($disposiciones->isEmpty() && $tieneRetencion) {
+            return ['ct', 'Indique la disposición final (CT, E o S) para el elemento que tiene tiempos de retención.'];
+        }
+
+        return null;
     }
 
     /** El código es único entre hermanos: misma dependencia, versión y padre. */

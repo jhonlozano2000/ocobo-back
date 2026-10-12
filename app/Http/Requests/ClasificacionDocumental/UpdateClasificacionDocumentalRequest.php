@@ -57,13 +57,15 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
             ],
             'a_g' => [
                 'nullable',
-                'string',
-                'max:10',
+                'integer',
+                'min:0',
+                'max:100',
             ],
             'a_c' => [
                 'nullable',
-                'string',
-                'max:10',
+                'integer',
+                'min:0',
+                'max:100',
             ],
             'ct' => [
                 'nullable',
@@ -144,8 +146,10 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
             'parent.required' => 'El elemento padre es obligatorio para SubSerie y TipoDocumento.',
             'parent.exists' => 'El elemento padre seleccionado no existe.',
             'parent.different' => 'Un elemento no puede ser padre de sí mismo.',
-            'a_g.max' => 'Los años de gestión no pueden superar los 10 caracteres.',
-            'a_c.max' => 'Los años de centralización no pueden superar los 10 caracteres.',
+            'a_g.integer' => 'Los años de gestión deben ser un número entero.',
+            'a_g.max' => 'Los años de gestión no pueden superar 100.',
+            'a_c.integer' => 'Los años de centralización deben ser un número entero.',
+            'a_c.max' => 'Los años de centralización no pueden superar 100.',
             'procedimiento.max' => 'El procedimiento no puede superar los 500 caracteres.',
         ];
     }

@@ -267,6 +267,9 @@ class FileMetadataHelper
      * Calcula la fecha de disposición final según la TRD (a_g + a_c).
      * a_g = años en archivo de gestión
      * a_c = años en archivo central
+     *
+     * M10-04: la retención es la del elemento más específico que la define (TipoDocumento >
+     * SubSerie > Serie); no se suman los niveles, porque eso contaba dos veces la misma regla.
      */
     private static function calcularFechaDisposicionFinal($clasificacion, $fechaRadicacion): ?string
     {
@@ -277,11 +280,11 @@ class FileMetadataHelper
         $jerarquia = $clasificacion->getJerarquia();
         $totalAnios = 0;
 
-        foreach ($jerarquia as $elemento) {
+        foreach (array_reverse($jerarquia) as $elemento) {
             $modelo = self::findTrdElement($elemento['id']);
-            if ($modelo) {
-                $totalAnios += (int) ($modelo->a_g ?? 0);
-                $totalAnios += (int) ($modelo->a_c ?? 0);
+            if ($modelo && ($modelo->a_g !== null || $modelo->a_c !== null)) {
+                $totalAnios = (int) ($modelo->a_g ?? 0) + (int) ($modelo->a_c ?? 0);
+                break;
             }
         }
 

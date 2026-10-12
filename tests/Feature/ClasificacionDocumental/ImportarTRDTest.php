@@ -54,7 +54,7 @@ class ImportarTRDTest extends TestCase
     {
         return [
             ['100', 'S1', '', '', 'Actas'],
-            ['100', 'S1', 'S1.1', '', 'Actas de junta', '', '', '2', '8'],
+            ['100', 'S1', 'S1.1', '', 'Actas de junta', '', '', '2', '8', 'X'],
         ];
     }
 
