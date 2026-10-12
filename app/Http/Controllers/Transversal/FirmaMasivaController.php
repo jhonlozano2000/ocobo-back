@@ -10,6 +10,7 @@ use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\Firma\FirmaService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -28,24 +29,61 @@ class FirmaMasivaController extends Controller
     }
 
     /**
-     * Firma masiva de documentos.
+     * M06-13: documentos pendientes de firma del usuario actual.
+     */
+    public function pendientes(): JsonResponse
+    {
+        return $this->successResponse($this->firmaService->pendientesDe(Auth::id()), 'Documentos pendientes de firma');
+    }
+
+    /**
+     * M06-13: envía un único OTP para el lote seleccionado. Se rechaza el lote completo si
+     * incluye documentos de los que el usuario no es firmante o que ya firmó.
+     */
+    public function solicitarOtpMasivo(Request $request): JsonResponse
+    {
+        $documentos = $this->validarLote($request);
+        $user = Auth::user();
+
+        $noFirmables = array_values(array_filter($documentos, fn ($d) => ! $this->firmaService->esFirmanteDesignado($d['documentable_type'], $d['documentable_id'], $user->id)
+            || $this->firmaService->yaFirmo($d['documentable_type'], $d['documentable_id'], $user->id)));
+
+        if ($noFirmables) {
+            return $this->errorResponse('El lote incluye documentos que no puede firmar.', ['no_firmables' => $noFirmables], 403);
+        }
+
+        if (empty($user->email)) {
+            return $this->errorResponse('El usuario no tiene un correo electrónico configurado.', null, 422);
+        }
+
+        try {
+            $this->firmaService->generarYEnviarOtpLote($user->email, trim("{$user->nombres} {$user->apellidos}"), $user->id, $documentos);
+
+            return $this->successResponse(['total' => count($documentos)], 'Código OTP enviado a su correo electrónico.');
+        } catch (\Exception $e) {
+            Log::error('Error al enviar OTP de firma masiva', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+
+            return $this->errorResponse('Error al enviar el código OTP', null, 500);
+        }
+    }
+
+    /**
+     * Firma masiva de documentos con el OTP del lote.
      * Procesa cada documento individualmente; si uno falla, continúa con los demás.
      */
     public function firmarMasivo(Request $request)
     {
-        $request->validate([
-            'documentos' => 'required|array|min:1',
-            'documentos.*.documentable_type' => 'required|string|in:radicado_enviado,radicado_recibido,radicado_interno',
-            'documentos.*.documentable_id' => 'required|integer',
-            'documentos.*.otp' => 'required|string|size:6',
-        ]);
-
+        $documentos = $this->validarLote($request, ['otp' => 'required|string|size:6']);
         $user = Auth::user();
+
+        if (! $this->firmaService->validarOtpLote($request->otp, $user->id, $documentos)) {
+            return $this->errorResponse('Código OTP inválido o expirado', null, 422);
+        }
+
         $resultados = [];
 
-        foreach ($request->documentos as $index => $item) {
-            $resultado = $this->procesarDocumento($user, $item);
-            $resultados[] = $resultado;
+        foreach ($documentos as $item) {
+            $resultados[] = $this->procesarDocumento($user, $item + ['otp' => $request->otp]);
         }
 
         $exitosos = count(array_filter($resultados, fn ($r) => $r['success']));
@@ -61,6 +99,23 @@ class FirmaMasivaController extends Controller
         ], "Firma masiva completada: {$exitosos} éxitos, {$fallidos} fallos");
     }
 
+    /**
+     * @return array<int, array{documentable_type: string, documentable_id: int}>
+     */
+    private function validarLote(Request $request, array $reglasExtra = []): array
+    {
+        $request->validate([
+            'documentos' => 'required|array|min:1|max:'.FirmaService::MAX_LOTE,
+            'documentos.*.documentable_type' => 'required|string|in:radicado_enviado,radicado_recibido,radicado_interno',
+            'documentos.*.documentable_id' => 'required|integer',
+        ] + $reglasExtra);
+
+        return collect($request->documentos)
+            ->map(fn ($d) => ['documentable_type' => $d['documentable_type'], 'documentable_id' => (int) $d['documentable_id']])
+            ->unique(fn ($d) => $d['documentable_type'].':'.$d['documentable_id'])
+            ->values()->all();
+    }
+
     private function procesarDocumento($user, array $item): array
     {
         $documentableType = $item['documentable_type'];
@@ -68,7 +123,7 @@ class FirmaMasivaController extends Controller
         $otp = $item['otp'];
 
         try {
-            // M06-02: solo el firmante designado, con el OTP emitido para él y este documento
+            // M06-02: solo el firmante designado (el OTP del lote ya se validó en firmarMasivo)
             if (! $this->firmaService->esFirmanteDesignado($documentableType, (int) $documentableId, $user->id)) {
                 return [
                     'documentable_id' => $documentableId,
@@ -88,20 +143,9 @@ class FirmaMasivaController extends Controller
                 ];
             }
 
-            // 1. Validar OTP
-            $otpValido = $this->firmaService->validarOtpPorDocumento($otp, $documentableType, (int) $documentableId, $user->id);
-            if (! $otpValido) {
-                return [
-                    'documentable_id' => $documentableId,
-                    'documentable_type' => $documentableType,
-                    'success' => false,
-                    'error' => 'Código OTP inválido o expirado',
-                ];
-            }
-
             DB::beginTransaction();
 
-            // 2. Resolver documento
+            // 1. Resolver documento
             $documento = null;
             $disk = '';
 
@@ -131,7 +175,7 @@ class FirmaMasivaController extends Controller
             $nombreCargo = $cargo ? $cargo->nom_organico : 'Funcionario';
             $hashOriginal = $documento->hash_sha256;
 
-            // 3. Estampar firma
+            // 2. Estampar firma
             $datosFirma = [
                 'nombre' => trim("{$user->nombres} {$user->apellidos}"),
                 'cargo' => $nombreCargo,
@@ -145,7 +189,7 @@ class FirmaMasivaController extends Controller
                 $datosFirma
             );
 
-            // 4. Registrar evento legal
+            // 3. Registrar evento legal
             FirmaEvento::create([
                 'documentable_id' => $documento->id,
                 'documentable_type' => get_class($documento),
@@ -162,7 +206,7 @@ class FirmaMasivaController extends Controller
 
             $this->firmaService->marcarFirmante($documentableType, $documento->id, $user->id, $otp);
 
-            // 5. Actualizar documento
+            // 4. Actualizar documento
             $documento->update([
                 'hash_sha256' => $resultadoFirma['nuevo_hash'],
                 'estado_firma' => 'firmado',

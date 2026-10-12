@@ -27,6 +27,9 @@ class FirmaService
 
     public const OTP_MAX_INTENTOS = 5;
 
+    /** Máximo de documentos por lote de firma masiva. */
+    public const MAX_LOTE = 50;
+
     /**
      * M06-02: el usuario es firmante designado del documento.
      * Recibidos: responsable. Enviados: firmante o responsable. Internos: firmante o responsable.
@@ -105,6 +108,78 @@ class FirmaService
     public function validarOtpPorDocumento(string $otp, string $documentableType, int $documentableId, ?int $userId = null): bool
     {
         return $this->verificarOtp($this->claveOtp($documentableType, $documentableId, $userId), $otp);
+    }
+
+    /**
+     * M06-13: un solo OTP para un lote de firma masiva, ligado al usuario y al conjunto exacto
+     * de documentos (no sirve para otro lote ni para firmas individuales).
+     *
+     * @param  array<int, array{documentable_type: string, documentable_id: int}>  $documentos
+     */
+    public function generarYEnviarOtpLote(string $email, ?string $nombre, int $userId, array $documentos): void
+    {
+        $otp = $this->guardarOtp($this->claveOtpLote($userId, $documentos));
+
+        MailConfigHelper::configureFromConfigVarias();
+        Mail::to($email)->send(new OtpFirmaMail($otp, $nombre ?? 'Usuario'));
+    }
+
+    /**
+     * @param  array<int, array{documentable_type: string, documentable_id: int}>  $documentos
+     */
+    public function validarOtpLote(string $otp, int $userId, array $documentos): bool
+    {
+        return $this->verificarOtp($this->claveOtpLote($userId, $documentos), $otp);
+    }
+
+    protected function claveOtpLote(int $userId, array $documentos): string
+    {
+        $firma = collect($documentos)
+            ->map(fn ($d) => $d['documentable_type'].':'.(int) $d['documentable_id'])
+            ->unique()->sort()->implode(',');
+
+        return "otp_firma_lote_{$userId}_".hash('sha256', $firma);
+    }
+
+    /**
+     * M06-13: documentos que el usuario tiene pendientes de firmar (los que la UI permite firmar):
+     * enviados donde es firmante y aún no están firmados, e internos donde su firma sigue pendiente.
+     * Solo los que tienen PDF, porque sin él no hay qué estampar.
+     */
+    public function pendientesDe(int $userId): array
+    {
+        $enviados = DB::table('ventanilla_radica_enviados as r')
+            ->join('ventanilla_radica_enviados_firmas as f', 'f.radica_enviado_id', '=', 'r.id')
+            ->join('users_cargos as uc', 'uc.id', '=', 'f.users_cargos_id')
+            ->where('uc.user_id', $userId)
+            ->whereNotNull('r.archivo_digital')
+            ->where(fn ($q) => $q->whereNull('r.estado_firma')->orWhere('r.estado_firma', '!=', 'firmado'))
+            ->distinct()
+            ->get(['r.id', 'r.num_radicado', 'r.asunto', 'r.created_at'])
+            ->map(fn ($r) => $this->filaPendiente('radicado_enviado', $r));
+
+        $internos = DB::table('ventanilla_radica_internos as r')
+            ->join('ventanilla_radica_internos_firmantes as f', 'f.radica_interno_id', '=', 'r.id')
+            ->where('f.users_id', $userId)
+            ->where('f.firmado', 0)
+            ->whereNotNull('r.archivo_digital')
+            ->distinct()
+            ->get(['r.id', 'r.num_radicado', 'r.asunto', 'r.created_at'])
+            ->map(fn ($r) => $this->filaPendiente('radicado_interno', $r));
+
+        return $enviados->concat($internos)->sortByDesc('created_at')->values()->all();
+    }
+
+    private function filaPendiente(string $tipo, object $r): array
+    {
+        return [
+            'id' => "{$tipo}-{$r->id}",
+            'documentable_type' => $tipo,
+            'documentable_id' => (int) $r->id,
+            'num_radicado' => $r->num_radicado,
+            'asunto' => $r->asunto,
+            'created_at' => $r->created_at,
+        ];
     }
 
     protected function claveOtp(string $documentableType, int $documentableId, ?int $userId): string

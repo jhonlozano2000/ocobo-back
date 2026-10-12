@@ -31,3 +31,5 @@ Route::middleware('auth:sanctum')->post('firma-validar', [FirmaValidacionControl
 
 // M13 — Firma masiva de documentos
 Route::middleware(['auth:sanctum', 'throttle:firma'])->post('firma-electronica/firmar-masivo', [FirmaMasivaController::class, 'firmarMasivo']);
+Route::middleware('auth:sanctum')->get('firma-electronica/pendientes', [FirmaMasivaController::class, 'pendientes']);
+Route::middleware(['auth:sanctum', 'throttle:firma-otp'])->post('firma-electronica/solicitar-otp-masivo', [FirmaMasivaController::class, 'solicitarOtpMasivo']);
