@@ -440,9 +440,11 @@ class VentanillaRadicaInternoController extends Controller
                 return $this->errorResponse('Radicado interno no encontrado', null, 404);
             }
 
-            if ($radicado->archivo_digital) {
-                ArchivoHelper::eliminarArchivo($radicado->archivo_digital, 'radicados_internos');
-            }
+            // Los adjuntos caen por FK en cascada; sus archivos se borran al confirmar
+            ArchivoHelper::eliminarAlConfirmar(
+                [$radicado->archivo_digital, ...$radicado->archivos()->pluck('archivo')->all()],
+                'radicados_internos'
+            );
 
             $radicado->destinatarios()->delete();
             $radicado->responsables()->delete();

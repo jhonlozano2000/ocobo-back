@@ -7,6 +7,7 @@ use finfo;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -562,6 +563,20 @@ class ArchivoHelper
         }
 
         return $resultados;
+    }
+
+    /**
+     * Borra los archivos cuando se confirme la transacción en curso (M01-06/M02-06/M03-06): si la
+     * transacción o el savepoint se revierten, el registro sigue en BD y su archivo también.
+     * Sin transacción abierta se borran de inmediato.
+     */
+    public static function eliminarAlConfirmar(array $paths, string $disk): void
+    {
+        $paths = array_values(array_filter($paths));
+
+        if ($paths) {
+            DB::afterCommit(fn () => self::eliminarMultiples($paths, $disk));
+        }
     }
 
     /**

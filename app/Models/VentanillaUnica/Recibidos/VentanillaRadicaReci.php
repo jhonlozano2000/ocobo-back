@@ -93,9 +93,7 @@ class VentanillaRadicaReci extends Model
         parent::boot();
 
         static::deleted(function ($radicado) {
-            if ($radicado->archivo_digital) {
-                ArchivoHelper::eliminarArchivo($radicado->archivo_digital, 'radicados_recibidos');
-            }
+            ArchivoHelper::eliminarAlConfirmar([$radicado->archivo_digital], 'radicados_recibidos');
         });
 
         static::created(function ($radicado) {

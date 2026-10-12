@@ -1077,12 +1077,7 @@ class VentanillaRadicaReciController extends Controller
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
 
-            $archivosAdicionales = $radicado->archivos()->get();
-            foreach ($archivosAdicionales as $archivo) {
-                if (! empty($archivo->archivo)) {
-                    ArchivoHelper::eliminarArchivo($archivo->archivo, 'radicados_recibidos');
-                }
-            }
+            ArchivoHelper::eliminarAlConfirmar($radicado->archivos()->pluck('archivo')->all(), 'radicados_recibidos');
 
             $radicado->archivos()->delete();
             $radicado->responsables()->delete();
@@ -1156,7 +1151,10 @@ class VentanillaRadicaReciController extends Controller
 
             foreach ($ids as $id) {
                 try {
-                    $radicado = VentanillaRadicaReci::find($id);
+                    // Mismo alcance que DELETE /radica-recibida/{id} (middleware acceso_radicado)
+                    $radicado = VentanillaRadicaReci::accesiblePara($request->user(), $id)
+                        ? VentanillaRadicaReci::find($id)
+                        : null;
 
                     if (! $radicado) {
                         $fallidos++;
@@ -1164,16 +1162,14 @@ class VentanillaRadicaReciController extends Controller
                         continue;
                     }
 
-                    $archivosAdicionales = $radicado->archivos()->get();
-                    foreach ($archivosAdicionales as $archivo) {
-                        if (! empty($archivo->archivo)) {
-                            ArchivoHelper::eliminarArchivo($archivo->archivo, 'radicados_recibidos');
-                        }
-                    }
+                    // Savepoint por radicado: si uno falla se revierte completo y sus archivos no se tocan
+                    DB::transaction(function () use ($radicado) {
+                        ArchivoHelper::eliminarAlConfirmar($radicado->archivos()->pluck('archivo')->all(), 'radicados_recibidos');
 
-                    $radicado->archivos()->delete();
-                    $radicado->responsables()->delete();
-                    $radicado->delete();
+                        $radicado->archivos()->delete();
+                        $radicado->responsables()->delete();
+                        $radicado->delete();
+                    });
                     $eliminados++;
                 } catch (\Exception $e) {
                     if ($e instanceof ValidationException) {
