@@ -9,7 +9,6 @@ use App\Models\Workflows\Tarea;
 use App\Models\Workflows\Workflow;
 use App\Policies\MiBandeja\TempReci\DocumentoPolicy;
 use App\Policies\UserPolicy;
-use App\Policies\VentanillaRadicaReciPolicy;
 use App\Policies\Workflows\TareaPolicy;
 use App\Policies\Workflows\WorkflowPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
@@ -21,8 +20,8 @@ class AuthServiceProvider extends ServiceProvider
      *
      * @var array<class-string, class-string>
      */
+    // VentanillaRadicaReci no tiene policy: lo autorizan los middleware de ruta can: y acceso_radicado (M01-03)
     protected $policies = [
-        VentanillaRadicaReci::class => VentanillaRadicaReciPolicy::class,
         User::class => UserPolicy::class,
         Documento::class => DocumentoPolicy::class,
         Workflow::class => WorkflowPolicy::class,
