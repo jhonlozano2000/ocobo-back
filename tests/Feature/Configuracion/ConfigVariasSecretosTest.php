@@ -93,4 +93,60 @@ class ConfigVariasSecretosTest extends TestCase
         $this->actingAs($this->funcionario)->getJson(self::PREFIX.'/listas')->assertForbidden();
         $this->actingAs($this->funcionario)->getJson(self::PREFIX.'/listas/'.$lista->id)->assertForbidden();
     }
+
+    public function test_m15_05_auditoria_de_cambios_registra_en_users_activity_log(): void
+    {
+        $this->actingAs($this->funcionario);
+
+        $config = ConfigVarias::create([
+            'clave' => 'test_audit_key',
+            'valor' => 'valor_inicial',
+            'descripcion' => 'Prueba auditoría',
+            'tipo' => 'string',
+        ]);
+
+        $this->assertDatabaseHas('users_activity_logs', [
+            'module' => 'Configuracion',
+            'action' => 'crear',
+            'entity_id' => $config->id,
+            'entity_type' => ConfigVarias::class,
+        ]);
+
+        $config->update(['valor' => 'valor_modificado']);
+
+        $this->assertDatabaseHas('users_activity_logs', [
+            'module' => 'Configuracion',
+            'action' => 'actualizar',
+            'entity_id' => $config->id,
+            'entity_type' => ConfigVarias::class,
+        ]);
+    }
+
+    public function test_m15_06_valor_tipado_resuelve_tipos_correctamente(): void
+    {
+        ConfigVarias::create([
+            'clave' => 'test_int_key',
+            'valor' => '12345',
+            'tipo' => 'integer',
+        ]);
+        ConfigVarias::create([
+            'clave' => 'test_bool_key',
+            'valor' => 'true',
+            'tipo' => 'boolean',
+        ]);
+
+        $this->assertSame(12345, ConfigVarias::getValorTipado('test_int_key'));
+        $this->assertTrue(ConfigVarias::getValorTipado('test_bool_key'));
+    }
+
+    public function test_m15_07_form_requests_rechazan_usuario_sin_permiso_editar(): void
+    {
+        // Usuario sin permiso es rechazado con 403 por authorize()
+        $this->actingAs($this->funcionario)
+            ->postJson(self::PREFIX.'/config-varias', [
+                'clave' => 'clave_no_autorizada',
+                'valor' => '123',
+            ])
+            ->assertForbidden();
+    }
 }

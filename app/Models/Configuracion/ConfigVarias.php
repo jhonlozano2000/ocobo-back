@@ -3,6 +3,7 @@
 namespace App\Models\Configuracion;
 
 use App\Helpers\ArchivoHelper;
+use App\Models\UsersActivityLog;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,10 @@ class ConfigVarias extends Model
     protected $table = 'config_varias';
 
     protected $fillable = ['clave', 'valor', 'descripcion', 'tipo', 'estado'];
+
+    protected $casts = [
+        'estado' => 'boolean',
+    ];
 
     protected $appends = ['logo_url'];
 
@@ -36,6 +41,79 @@ class ConfigVarias extends Model
                 $config->valor = encrypt((string) $config->valor);
             }
         });
+
+        // M15-05: Auditoría de creación de configuración
+        static::created(function (ConfigVarias $config) {
+            $newValues = $config->getAttributes();
+            if ($config->esSecreta() && isset($newValues['valor'])) {
+                $newValues['valor'] = '********';
+            }
+
+            UsersActivityLog::log([
+                'module' => 'Configuracion',
+                'action' => 'crear',
+                'description' => "Creación de configuración {$config->clave}",
+                'entity_id' => $config->id,
+                'entity_type' => self::class,
+                'old_values' => null,
+                'new_values' => $newValues,
+                'is_critical' => $config->esSecreta(),
+            ]);
+        });
+
+        // M15-05: Auditoría de cambios de configuración
+        static::updated(function (ConfigVarias $config) {
+            $oldValues = $config->getOriginal();
+            $newValues = $config->getChanges();
+
+            if ($config->esSecreta()) {
+                if (isset($oldValues['valor'])) {
+                    $oldValues['valor'] = '********';
+                }
+                if (isset($newValues['valor'])) {
+                    $newValues['valor'] = '********';
+                }
+            }
+
+            UsersActivityLog::log([
+                'module' => 'Configuracion',
+                'action' => 'actualizar',
+                'description' => "Modificación de configuración {$config->clave}",
+                'entity_id' => $config->id,
+                'entity_type' => self::class,
+                'old_values' => $oldValues,
+                'new_values' => $newValues,
+                'is_critical' => $config->esSecreta(),
+            ]);
+        });
+    }
+
+    /**
+     * M15-06: Accesor para valor tipado según columna 'tipo'.
+     */
+    public function getValorTipadoAttribute(): mixed
+    {
+        if ($this->esSecreta()) {
+            return null;
+        }
+
+        return match (strtolower((string) $this->tipo)) {
+            'integer', 'int' => is_numeric($this->valor) ? (int) $this->valor : null,
+            'float', 'double', 'decimal' => is_numeric($this->valor) ? (float) $this->valor : null,
+            'boolean', 'bool' => filter_var($this->valor, FILTER_VALIDATE_BOOLEAN),
+            'json', 'array' => json_decode((string) $this->valor, true) ?? [],
+            default => $this->valor,
+        };
+    }
+
+    /**
+     * M15-06: Obtiene el valor con tipado resuelto.
+     */
+    public static function getValorTipado(string $clave, mixed $default = null): mixed
+    {
+        $config = self::where('clave', $clave)->first();
+
+        return $config ? ($config->valor_tipado ?? $default) : $default;
     }
 
     public function esSecreta(): bool

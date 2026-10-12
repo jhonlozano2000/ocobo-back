@@ -13,7 +13,7 @@ class ConfigServerArchivoRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return (bool) $this->user()?->can('Config - Servidor de almacenamiento -> Editar');
     }
 
     /**

@@ -10,12 +10,10 @@ class UpdateConfigSedeRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
-     *
-     * @return bool
      */
-    public function authorize()
+    public function authorize(): bool
     {
-        return true; // La autorización se maneja a través de middleware
+        return (bool) $this->user()?->can('Config - Sedes -> Editar');
     }
 
     /**

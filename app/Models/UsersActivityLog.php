@@ -46,13 +46,17 @@ class UsersActivityLog extends Model
         return $this->belongsTo(UsersSession::class, 'users_session_id');
     }
 
-    public static function log(array $data): self
+    public static function log(array $data): ?self
     {
-        $user = auth()->user();
+        $userId = $data['user_id'] ?? auth()->id();
+        if (! $userId) {
+            return null;
+        }
+
         $request = request();
 
         return self::create([
-            'user_id' => $user?->id,
+            'user_id' => $userId,
             'users_session_id' => self::getActiveSessionId(),
             'module' => $data['module'] ?? 'Unknown',
             'action' => $data['action'] ?? 'unknown',
