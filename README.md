@@ -23,15 +23,15 @@ OCOBO-BACK es una aplicación web desarrollada en Laravel que gestiona procesos 
 - **Control de Acceso**: Usuarios, roles, permisos directos ("otros permisos"), cargos y sedes
 - **Configuración**: División política, sedes, listas maestras, numeración de radicados, semáforo, SMTP/IMAP (credencial cifrada)
 - **Clasificación Documental**: TRD versionada (TEMP → ACTIVO → HISTÓRICO) con aprobación del Jefe de Archivo, segregación (quien elabora no aprueba) e inmutabilidad de versiones aprobadas; importación desde Excel; TVD con aprobación por dependencia
-- **Ventanilla Única**: Radicación recibida, enviada, interna y PQRS con consecutivo atómico (`RadicadoConsecutivoService`), líneas de tiempo, acuses digitales, anulación con aprobación, relación enviados↔recibidos
-- **PQRS**: Términos de la Ley 1755 por tipo en días hábiles, prioridad Tutela, prórroga, notificación por modo, reserva de identidad en denuncias y PQRS anónimas (`es_anonimo` + permiso `Radicar -> PQRSF -> Ver identidad reservada`)
-- **Firma Electrónica**: OTP ligado al firmante designado y al documento (hash, 5 min, 5 intentos, un solo uso); sello de texto en el PDF con FPDI, hash SHA-256 antes/después, estampa TSA RFC 3161 en firmas de PDF; DOCX con estampa en grupos colaborativos; firma de PQRS atómica con hash del contenido
+- **Ventanilla Única**: Radicación recibida, enviada, interna y PQRS con consecutivo atómico (`RadicadoConsecutivoService`), líneas de tiempo, acuses digitales, anulación con aprobación, relación enviados↔recibidos; `created_at` es la fecha oficial de radicación; los internos guardan `dependencia_origen_id` (dependencia del custodio principal, mostrada como «Dependencia / Oficina»)
+- **PQRS**: Términos de la Ley 1755 por tipo en días hábiles, prioridad Tutela, prórroga única (no aplica a tutelas ni fallos judiciales), notificación por modo, reserva de identidad en denuncias y PQRS anónimas (`es_anonimo` + permiso `Radicar -> PQRSF -> Ver identidad reservada`)
+- **Firma Electrónica**: OTP ligado al firmante designado y al documento (hash, 5 min, 5 intentos, un solo uso); sello de texto en el PDF con FPDI, hash SHA-256 antes/después, estampa TSA RFC 3161 en firmas de PDF con verificación criptográfica (PKIStatus, firma CMS, cadena hasta raíz con EKU timeStamping, messageImprint y nonce); DOCX con estampa en grupos colaborativos; firma de PQRS atómica con hash del contenido; firmantes de internos marcados al firmar (sin doble firma)
 - **Bandeja de Correo**: Lectura del buzón IMAP en vivo, radicación manual de un correo como recibido/enviado, PDF del correo, rótulo PNG con código de barras y respuesta al remitente con el rótulo
 - **Gestión de Archivo**: Expedientes con foliado automático, índice electrónico con hash por folio, cierre sellado (`hash_indice`), préstamos, transferencias y eliminaciones con precondiciones TRD y aprobador distinto (AGN 003/2015)
-- **Mi Bandeja**: Grupos colaborativos (proyector, revisor, aprobador, firmante), plantillas DOCX con variables, check-in/check-out, notas en tiempo real, Mi Disco
+- **Mi Bandeja**: Grupos colaborativos (proyector, revisor, aprobador, firmante), plantillas DOCX con variables, check-in/check-out, notas en tiempo real, Mi Disco; listado de internos con dependencia de origen y `puede_firmar` por fila
 - **Workflows**: Diseñador visual, instancias, tareas, checklists, tablero Kanban y reportes
 - **Uploads seguros**: `InspectorArchivos` (contenido real, extensiones y MIME peligrosos, zip-bomb) vía regla `ArchivoSeguro`, también en adjuntos IMAP; nombres de adjunto sin path traversal
-- **OCR**: Microservicio PaddleOCR autenticado por token y solo en loopback, con fallback a Tesseract; búsqueda por contenido
+- **OCR**: Microservicio PaddleOCR 3 en entorno virtual propio (`start.bat` lo instala), autenticado por token y solo en loopback, con fallback a Tesseract; PDF con texto embebido y OCR solo en páginas escaneadas; búsqueda por contenido
 - **Notificaciones**: In-app (centro de notificaciones), correos a responsables y terceros, acuse de recibo automático, alertas de vencimiento (diario) y de retención TRD (30/7/1 días)
 - **Calendario Días No Hábiles**: 18 festivos de Colombia por año (fijos, Ley Emiliani y Semana Santa), todo en hora de Colombia
 - **Auditoría ISO 27001**: Canal `audit` con retención de 365 días, logs de autenticación con IP y user agent, `VentanillaAuditTrait` por documento
@@ -513,8 +513,10 @@ Route::middleware('auth:sanctum')->prefix('comunicaciones-recibidas')->group(fun
 - Extracción automática de texto desde documentos escaneados
 - Motor **PaddleOCR** (más preciso para español) con fallback a Tesseract
 - Microservicio Python (FastAPI) en `storage/app/ocr-service/`, escucha solo en 127.0.0.1 y exige token compartido (`config/services.php`)
-- Gestionado con comando Artisan: `php artisan ocr {start|stop|status}`
-- Soporte para PDF, PNG, JPG, TIFF, BMP
+- Instalación: `storage/app/ocr-service/start.bat install` crea `.venv`, instala `requirements.txt` (solo si cambió) y descarga los modelos (~180 MB en `%USERPROFILE%\.paddlex`). En Linux: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`
+- Gestionado con comando Artisan: `php artisan ocr {start|stop|status}` (usa el Python de `.venv`, log en `storage/logs/ocr-service.log`, espera hasta 180 s el primer arranque)
+- PaddleOCR 3 (`predict()`), con oneDNN desactivado por defecto (`OCR_ENABLE_MKLDNN=1` lo activa)
+- Soporte para PDF, PNG, JPG, TIFF, BMP; en PDF se usa el texto embebido y las páginas sin texto se renderizan a 200 dpi para OCR (PyMuPDF)
 - Extracción de datos estructurados (implementada en el servicio, aún no expuesta por ningún endpoint):
   - Números de identificación (CC, NIT, RC, CE, Pasaporte, TI)
   - Fechas (DD/MM/YYYY, YYYY-MM-DD, Mes DD, YYYY)
@@ -545,7 +547,7 @@ Route::middleware('auth:sanctum')->prefix('comunicaciones-recibidas')->group(fun
 11. **Auditoría**: canal `audit` 365 días, `auth` 30 días; contraseñas y tokens nunca se registran
 12. **Credencial SMTP cifrada** en `config_varias`
 
-Pendientes conocidos (ver auditoría): los datos personales de terceros **no** están cifrados en BD; la verificación TSA solo busca el hash en la respuesta; la CSP del backend conserva un placeholder de nonce.
+Pendientes conocidos (ver auditoría): los datos personales de terceros **no** están cifrados en BD; la CSP del backend conserva un placeholder de nonce.
 
 ---
 
@@ -557,17 +559,19 @@ Rama `fix/auditoria-p1`. Detalle y estado de cada hallazgo en `ocobo-documents/A
 
 - ✅ **Autorización**: `can:` en usuarios, cargos, configuración y terceros (RBAC-001, M14-001, M15-01/02, M16-01/02, M17-01); ABAC en Recibidas, Enviadas, Internas, PQRS, Expedientes y búsqueda OCR (M01-01/05, M02-01/02/03, M03-03, M04-01/02, M08-03/04/05, M12-01)
 - ✅ **Sesiones**: usuarios desactivados y sesiones revocadas pierden la cookie (SES-001/002)
-- ✅ **Firma**: OTP ligado al firmante designado y al documento, límites de peticiones, lista blanca del flujo legado (M06-02/03/04/06/07); firma de PQRS atómica con `hash_original` (M04-04)
+- ✅ **Firma**: OTP ligado al firmante designado y al documento, límites de peticiones (M06-02/03/04/06/07); firma de PQRS atómica con `hash_original` (M04-04); verificación criptográfica del sello TSA y OID SHA-256 corregido en la solicitud (M06-01); eliminado el flujo legado `/api/transversal/firma-electronica` que no estampaba (M06-11); firmante de internos marcado y sin doble firma (M03-19)
 - ✅ **Uploads**: `InspectorArchivos` en Recibidas, Enviadas, Internas, PQRS, grupos y adjuntos IMAP; nombre de adjunto seguro (M01-04, M02-04, M03-10, M05-05/06)
 - ✅ **Correo**: respuesta solo con el rótulo del propio radicado; adjuntos registrados en BD + comando de conciliación (M05-01, M08-01)
 - ✅ **Archivo**: folios y números de expediente nunca se reutilizan; expedientes cerrados bloqueados; precondiciones TRD en eliminación y transferencia (M08-07/08, M08-10/11)
 - ✅ **TRD/TVD**: inmutabilidad de versiones aprobadas, segregación elaborador/aprobador, aprobación de TVD por dependencia (M10-01/02, M11-03)
-- ✅ **PQRS**: reserva de identidad en denuncias y PQRS anónimas, migración `es_anonimo` (M04-03)
+- ✅ **PQRS**: reserva de identidad en denuncias y PQRS anónimas, migración `es_anonimo` (M04-03); prórroga atómica, única y bloqueada en tutelas y fallos judiciales (M04-05)
+- ✅ **Radicados**: `created_at` como fecha oficial (se elimina `ventanilla_radica_reci.fec_radicado`); historial 360 de terceros sin 500
+- ✅ **Internos / Mi Bandeja**: dependencia de origen guardada al radicar (`dependencia_origen_id`) y expuesta en Mi Bandeja; `puede_firmar` por radicado
 - ✅ **Calendario**: 18 festivos con Ley Emiliani, scheduler y vencimientos en hora de Colombia (M13-01/02/03/04)
 - ✅ **Integridad**: `num_radicado` y autoría no editables desde el cliente (M01-02, M02-07); consecutivo de Enviadas con contador bloqueado (M02-08); exportaciones sin inyección de fórmulas (M11-01); organigrama sin ciclos (M17-02)
-- ✅ **OCR**: microservicio versionado, autenticado por token y solo en loopback (M12-02)
+- ✅ **OCR**: microservicio versionado, autenticado por token y solo en loopback (M12-02); compatible con PaddleOCR 3, OCR de PDF escaneados, entorno virtual con autoinstalación y detección del servicio por conexión al puerto
 - ✅ **Bugs**: eliminar respuesta de recibido, `config-num-radicado`, búsqueda de terceros sin ruta (M01-09, M15-03, M16-08)
-- ✅ Pruebas feature con `DatabaseTransactions` sobre BD de pruebas separada (130 pasan, 1 omitida)
+- ✅ Pruebas feature con `DatabaseTransactions` sobre BD de pruebas separada (144 pasan, 10 omitidas por la BD de pruebas desactualizada)
 
 ### v2.6 (Julio 2026) — In-App Notifications en Tiempo Real (Reverb)
 
