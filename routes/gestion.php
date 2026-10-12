@@ -18,15 +18,16 @@ Route::middleware('auth:sanctum')->group(function () use ($p, $conRadicar) {
     Route::get('terceros/estadistica', [GestionTerceroController::class, 'estadisticas'])->name('estadistica')->middleware('can:'.$p.'Listar');
     Route::get('terceros-estadistica', [GestionTerceroController::class, 'estadisticas'])->middleware('can:'.$p.'Listar');
 
-    // M16-02: listado siempre paginado (máx. 100) y con límite de solicitudes
+    // M16-02: listado siempre paginado (máx. 100) y con límite de solicitudes;
+    // M16-11: la escritura usa el limitador 'terceros' (20/min)
     Route::get('terceros', [GestionTerceroController::class, 'index'])->name('terceros.index')
         ->middleware([$conRadicar('Listar', ['Listar', 'Crear', 'Editar']), 'throttle:60,1']);
     Route::post('terceros', [GestionTerceroController::class, 'store'])->name('terceros.store')
-        ->middleware($conRadicar('Crear', ['Crear']));
+        ->middleware([$conRadicar('Crear', ['Crear']), 'throttle:terceros']);
     Route::get('terceros/{tercero}', [GestionTerceroController::class, 'show'])->name('terceros.show')
         ->middleware([$conRadicar('Mostrar', ['Listar', 'Crear', 'Editar']), 'throttle:60,1']);
     Route::match(['put', 'patch'], 'terceros/{tercero}', [GestionTerceroController::class, 'update'])->name('terceros.update')
-        ->middleware($conRadicar('Editar', ['Crear', 'Editar']));
+        ->middleware([$conRadicar('Editar', ['Crear', 'Editar']), 'throttle:terceros']);
     Route::delete('terceros/{tercero}', [GestionTerceroController::class, 'destroy'])->name('terceros.destroy')
-        ->middleware('can:'.$p.'Eliminar');
+        ->middleware(['can:'.$p.'Eliminar', 'throttle:terceros']);
 });

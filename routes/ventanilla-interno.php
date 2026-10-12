@@ -20,14 +20,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/radica-interno/{id}/update-asunto', [VentanillaRadicaInternoController::class, 'updateAsunto'])->name('radica-interno.update-asunto')->middleware('can:'.$permInterno.'Actualizar asunto')->middleware('acceso_radicado:interno');
     Route::put('/radica-interno/{id}/update-fechas', [VentanillaRadicaInternoController::class, 'updateFechas'])->name('radica-interno.update-fechas')->middleware('can:'.$permInterno.'Atualizar fechas de radicados')->middleware('acceso_radicado:interno');
     Route::put('/radica-interno/{id}/update-clasificacion-documental', [VentanillaRadicaInternoController::class, 'updateClasificacionDocumental'])->name('radica-interno.update-clasificacion-documental')->middleware('can:'.$permInterno.'Actualizar clasificacion de radicados')->middleware('acceso_radicado:interno');
-    Route::post('/radica-interno/{id}/notificacion', [VentanillaRadicaInternoController::class, 'enviarNotificacion'])->name('radica-interno.notificacion')->middleware('can:'.$permInterno.'Notificar Email')->middleware('acceso_radicado:interno');
+    Route::post('/radica-interno/{id}/notificacion', [VentanillaRadicaInternoController::class, 'enviarNotificacion'])->name('radica-interno.notificacion')->middleware('can:'.$permInterno.'Notificar Email')->middleware('acceso_radicado:interno')->middleware('throttle:radicacion');
     Route::get('/radica-interno/{id}/linea-tiempo', [VentanillaRadicaInternoController::class, 'lineaTiempo'])->name('radica-interno.linea-tiempo')->middleware('acceso_radicado:interno');
     Route::get('/radica-interno/mis-radicados', [VentanillaRadicaInternoController::class, 'misRadicados'])->name('radica-interno.mis-radicados')->middleware('can:'.$permInterno.'Listar');
     Route::put('/radica-interno/{id}/estado', [VentanillaRadicaInternoController::class, 'updateEstado'])->name('radica-interno.update-estado')->middleware('can:'.$permInterno.'Editar')->middleware('acceso_radicado:interno');
     Route::post('/radica-interno/{id}/solicitar-anulacion', [VentanillaRadicaInternoController::class, 'solicitarAnulacion'])->name('radica-interno.solicitar-anulacion')->middleware('can:'.$permInterno.'Listar')->middleware('acceso_radicado:interno');
     Route::post('/radica-interno/{id}/procesar-anulacion', [VentanillaRadicaInternoController::class, 'procesarAnulacion'])->name('radica-interno.procesar-anulacion')->middleware('can:Jefe de Archivo');
     Route::get('/radica-interno', [VentanillaRadicaInternoController::class, 'index'])->name('radica-interno.index')->middleware('can:'.$permInterno.'Listar');
-    Route::post('/radica-interno', [VentanillaRadicaInternoController::class, 'store'])->name('radica-interno.store')->middleware('can:'.$permInterno.'Crear');
+    Route::post('/radica-interno', [VentanillaRadicaInternoController::class, 'store'])->name('radica-interno.store')->middleware('can:'.$permInterno.'Crear')->middleware('throttle:radicacion');
     Route::get('/radica-interno/{id}', [VentanillaRadicaInternoController::class, 'show'])->name('radica-interno.show')->middleware('acceso_radicado:interno');
     Route::put('/radica-interno/{id}', [VentanillaRadicaInternoController::class, 'update'])->name('radica-interno.update')->middleware('can:'.$permInterno.'Editar')->middleware('acceso_radicado:interno');
     Route::delete('/radica-interno/{id}', [VentanillaRadicaInternoController::class, 'destroy'])->name('radica-interno.destroy')->middleware('can:'.$permInterno.'Eliminar')->middleware('acceso_radicado:interno');
@@ -36,18 +36,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('radica-interno/{id}/archivos')->middleware('acceso_radicado:interno')->name('radica-interno.archivos.')->group(function () use ($permInterno) {
         Route::prefix('digital')->name('digital.')->group(function () use ($permInterno) {
             Route::get('/', [VentanillaRadicaInternoDigitalController::class, 'getFileInfo'])->name('info');
-            Route::post('/upload', [VentanillaRadicaInternoDigitalController::class, 'upload'])->name('upload')->middleware('can:'.$permInterno.'Subir digital');
+            Route::post('/upload', [VentanillaRadicaInternoDigitalController::class, 'upload'])->name('upload')->middleware('can:'.$permInterno.'Subir digital')->middleware('throttle:uploads');
             Route::get('/download', [VentanillaRadicaInternoDigitalController::class, 'download'])->name('download');
             Route::delete('/delete', [VentanillaRadicaInternoDigitalController::class, 'deleteFile'])->name('delete')->middleware('can:'.$permInterno.'Eliminar digital');
             Route::get('/ocr', [VentanillaRadicaInternoDigitalController::class, 'getOcr'])->name('ocr');
-            Route::post('/ocr/recargar', [VentanillaRadicaInternoDigitalController::class, 'recargarOcr'])->name('ocr.recargar')->middleware('can:'.$permInterno.'Subir digital');
+            Route::post('/ocr/recargar', [VentanillaRadicaInternoDigitalController::class, 'recargarOcr'])->name('ocr.recargar')->middleware('can:'.$permInterno.'Subir digital')->middleware('throttle:uploads');
         });
 
         Route::prefix('adjuntos')->name('adjuntos.')->group(function () use ($permInterno) {
             Route::get('/listar', [VentanillaRadicaInternoAdjuntosController::class, 'listarArchivosAdjuntos'])->name('listar');
             Route::get('/{archivoId}/descargar', [VentanillaRadicaInternoAdjuntosController::class, 'descargarArchivoAdjunto'])->name('descargar');
             Route::delete('/{archivoId}/eliminar', [VentanillaRadicaInternoAdjuntosController::class, 'eliminarArchivoAdjunto'])->name('eliminar')->middleware('can:'.$permInterno.'Eliminar adjuntos');
-            Route::post('/upload-adjuntos', [VentanillaRadicaInternoAdjuntosController::class, 'subirArchivosAdjuntos'])->name('upload')->middleware('can:'.$permInterno.'Subir adjuntos');
+            Route::post('/upload-adjuntos', [VentanillaRadicaInternoAdjuntosController::class, 'subirArchivosAdjuntos'])->name('upload')->middleware('can:'.$permInterno.'Subir adjuntos')->middleware('throttle:uploads');
         });
 
         Route::get('/historial/archivos-eliminados', [VentanillaRadicaInternoDigitalController::class, 'historialEliminaciones'])->name('historial.eliminaciones');
