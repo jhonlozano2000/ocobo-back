@@ -608,12 +608,16 @@ class OfiArchivoExpedienteController extends Controller
             $doc = OfiArchivoExpedienteDocumento::where('expediente_id', $expediente->id)
                 ->findOrFail($documentoId);
 
-            // Primero actualizar DB, luego eliminar archivo
-            $doc->delete();
+            // Ya retirado: un segundo retiro descontaría otra vez total_folios_elec
+            if (! $doc->activo) {
+                DB::rollBack();
 
-            if ($doc->archivo_path) {
-                ArchivoHelper::eliminarArchivo($doc->archivo_path, 'archivo_expedientes');
+                return $this->warningResponse('El documento ya fue retirado del expediente');
             }
+
+            // M08-06: borrado lógico real. El binario se conserva para que el folio inactivo
+            // siga siendo verificable contra su hash_sha256 (antes se eliminaba del disco).
+            $doc->delete();
 
             DB::commit();
 

@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -113,6 +114,28 @@ class AccesoExpedientesTest extends TestCase
             ->postJson("/api/archivo/expedientes/{$cerrado->id}/documentos/{$doc->id}/soft-delete")
             ->assertUnprocessable();
         $this->assertNotNull(OfiArchivoExpedienteDocumento::find($doc->id));
+    }
+
+    /** M08-06: el retiro es lógico; el binario se conserva y un segundo retiro no descuenta folios */
+    public function test_retirar_folio_conserva_el_binario_y_es_idempotente(): void
+    {
+        Storage::fake('archivo_expedientes');
+        Storage::disk('archivo_expedientes')->put('m0806/doc.pdf', 'contenido');
+        $abierto = $this->expediente($this->depA, '2026-M83A-S83-0004');
+        $doc = OfiArchivoExpedienteDocumento::create([
+            'expediente_id' => $abierto->id, 'orden' => 0, 'tipo_documental' => 'Documento',
+            'fecha_documento' => '2026-10-11', 'asunto' => 'Doc', 'usuario_id' => $this->otro->id,
+            'archivo_path' => 'm0806/doc.pdf', 'hash_sha256' => hash('sha256', 'contenido'),
+        ]);
+        $url = "/api/archivo/expedientes/{$abierto->id}/documentos/{$doc->id}/soft-delete";
+
+        $this->actingAs($this->user)->postJson($url)->assertOk();
+        $this->assertFalse($doc->fresh()->activo);
+        Storage::disk('archivo_expedientes')->assertExists('m0806/doc.pdf');
+        $this->assertSame(0, (int) $abierto->fresh()->total_folios_elec);
+
+        $this->actingAs($this->user)->postJson($url)->assertUnprocessable();
+        $this->assertSame(0, (int) $abierto->fresh()->total_folios_elec);
     }
 
     private function assertNoIncorpora(string $tipo, int $radicadoId): void
