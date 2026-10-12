@@ -166,6 +166,12 @@ class TVDService
         $data = $sheet->toArray();
         $codigoUnidad = trim((string) ($sheet->getCell('B4')->getValue() ?? ''));
 
+        // M11-05: Ejecutar validación previa del archivo antes de procesar
+        $validacion = $this->validarArchivo($archivo, $periodoId);
+        if (! empty($validacion['errores'])) {
+            return ['inserted' => 0, 'errors' => $validacion['errores']];
+        }
+
         // Todo-o-nada: sin transacción, una excepción a mitad de archivo dejaba
         // la TVD importada a medias en la base de datos.
         return DB::transaction(function () use ($data, $periodoId, $codigoUnidad) {

@@ -26,6 +26,8 @@ class CalidadOrganigrama extends Model
      */
     public const MAX_PROFUNDIDAD = 50;
 
+    public const TIPOS = ['Dependencia', 'Oficina', 'Cargo'];
+
     protected $fillable = [
         'tipo',
         'nom_organico',
@@ -33,6 +35,21 @@ class CalidadOrganigrama extends Model
         'observaciones',
         'parent',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $nodo) {
+            if ($nodo->tipo !== null) {
+                // Normalizar mayúscula inicial por si llega lowercase
+                $tipoNormalizado = ucfirst(strtolower($nodo->tipo));
+                if (in_array($tipoNormalizado, self::TIPOS, true)) {
+                    $nodo->tipo = $tipoNormalizado;
+                } elseif (! in_array($nodo->tipo, self::TIPOS, true)) {
+                    throw new \InvalidArgumentException("El tipo de organigrama '{$nodo->tipo}' es inválido. Valores permitidos: ".implode(', ', self::TIPOS));
+                }
+            }
+        });
+    }
 
     protected $casts = [
         'created_at' => 'datetime',

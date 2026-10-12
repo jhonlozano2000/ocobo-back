@@ -242,17 +242,22 @@ class EmailRadicadosController extends Controller
     }
 
     /**
-     * Estadísticas de correos (placeholder — IMAP no tiene estadísticas persistentes).
+     * Estadísticas de correos radicados desde IMAP.
      */
     public function estadisticas(): JsonResponse
     {
+        $radicadosRecibidos = VentanillaRadicaReci::whereNotNull('imap_uid')->count();
+        $respondidos = VentanillaRadicaReci::whereNotNull('imap_uid')
+            ->whereHas('respuestas')
+            ->count();
+
         return $this->successResponse([
-            'pendientes' => 0,
-            'radicados' => 0,
-            'respondidos' => 0,
+            'pendientes' => 0, // IMAP directo no persiste emails pendientes en BD
+            'radicados' => $radicadosRecibidos,
+            'respondidos' => $respondidos,
             'errores' => 0,
-            'total' => 0,
-        ], 'Estadísticas no disponibles con conexión directa a IMAP');
+            'total' => $radicadosRecibidos,
+        ], 'Estadísticas de correos radicados obtenidas exitosamente');
     }
 
     /**
