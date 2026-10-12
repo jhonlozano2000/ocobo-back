@@ -371,7 +371,7 @@ class ClasificacionDocumentalTRDController extends Controller
             return false;
         }
 
-        if ($user->hasRole(['Administrador', 'Jefe de Archivo']) || $user->can('TRD -> Ver Todos')) {
+        if ($user->hasRole(['Administrador', 'Jefe de Archivo']) || $user->can('Jefe de Archivo') || $user->can('TRD -> Ver Todos')) {
             return true;
         }
 

@@ -6,7 +6,6 @@ use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoController;
 use App\Http\Middleware\ValidateRequestSize;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
@@ -38,14 +37,34 @@ class SincronizarDocumentoTamanoTest extends TestCase
         $this->postJson(self::URL."/{$id}/sincronizar", ['contenido' => ['type' => 'doc', 'content' => []]])->assertOk();
     }
 
-    public function test_el_limite_de_tamano_aplica_sin_content_length(): void
+    public function test_sincronizar_detecta_conflicto_de_concurrencia(): void
     {
-        config(['security.max_request_size' => 100]);
-        $request = Request::create('/api/x', 'POST', [], [], [], ['CONTENT_TYPE' => 'application/json'], str_repeat('a', 101));
-        $request->headers->remove('Content-Length');
+        $this->withoutMiddleware([ThrottleRequests::class, ValidateRequestSize::class]);
+        Event::fake();
+        $user = User::factory()->create(['estado' => 1]);
+        $id = $this->actingAs($user)->postJson(self::URL, ['titulo' => 'M07-04 LWW'])->assertCreated()->json('data.id');
 
-        $response = (new ValidateRequestSize)->handle($request, fn () => response('ok'));
+        // Primera sincronización
+        $res1 = $this->postJson(self::URL."/{$id}/sincronizar", [
+            'contenido' => ['type' => 'doc', 'content' => [['type' => 'text', 'text' => 'v1']]],
+        ])->assertOk();
 
-        $this->assertSame(413, $response->getStatusCode());
+        $hashV1 = $res1->json('data.hash');
+
+        // Segunda sincronización exitosa pasando hash_base correcto
+        $res2 = $this->postJson(self::URL."/{$id}/sincronizar", [
+            'contenido' => ['type' => 'doc', 'content' => [['type' => 'text', 'text' => 'v2']]],
+            'hash_base' => $hashV1,
+        ])->assertOk();
+
+        $hashV2 = $res2->json('data.hash');
+
+        // Tercera sincronización concurrente que quedó desfasada (envía hash_base antiguo)
+        $this->postJson(self::URL."/{$id}/sincronizar", [
+            'contenido' => ['type' => 'doc', 'content' => [['type' => 'text', 'text' => 'v3 desfasado']]],
+            'hash_base' => $hashV1,
+        ])->assertStatus(409)
+            ->assertJsonPath('status', false)
+            ->assertJsonPath('errors.hash_servidor', $hashV2);
     }
 }

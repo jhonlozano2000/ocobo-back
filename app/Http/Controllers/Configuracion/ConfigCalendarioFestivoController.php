@@ -236,16 +236,17 @@ class ConfigCalendarioFestivoController extends Controller
         }
     }
 
-    public function generarFestivosColombia(int $anio): JsonResponse
+    public function generarFestivosColombia(Request $request, int $anio): JsonResponse
     {
         try {
+            $force = $request->boolean('force', false);
             $festivosExistentes = ConfigCalendarioFestivo::where('anio', $anio)->count();
 
-            if ($festivosExistentes > 0) {
+            if ($festivosExistentes > 0 && ! $force) {
                 return $this->successResponse([
                     'ya_existen' => true,
                     'cantidad' => $festivosExistentes,
-                    'mensaje' => "Ya existen {$festivosExistentes} días no hábiles configurados para el año {$anio}",
+                    'mensaje' => "Ya existen {$festivosExistentes} días no hábiles configurados para el año {$anio}. Use force=1 para regenerar y sincronizar.",
                 ], 'Los festivos ya están configurados para este año');
             }
 
@@ -254,6 +255,7 @@ class ConfigCalendarioFestivoController extends Controller
             return $this->successResponse([
                 'ya_existen' => false,
                 'creados' => $resultados['creados'],
+                'corregidos' => $resultados['corregidos'] ?? 0,
                 'omitidos' => $resultados['omitidos'],
                 'errores' => $resultados['errores'],
             ], "Festivos de Colombia para {$anio} generados exitosamente");

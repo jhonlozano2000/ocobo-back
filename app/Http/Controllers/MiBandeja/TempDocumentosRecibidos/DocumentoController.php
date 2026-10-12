@@ -281,9 +281,13 @@ class DocumentoController extends Controller
             return $this->forbiddenResponse('No tienes permisos para editar');
         }
 
-        $request->validate(['contenido' => ['required', 'array']]);
+        $request->validate([
+            'contenido' => ['required', 'array'],
+            'hash_base' => ['nullable', 'string', 'size:64'],
+        ]);
 
         $contenido = $request->input('contenido');
+        $hashBase = $request->input('hash_base');
         $json = json_encode($contenido);
 
         if (strlen($json) > self::MAX_CONTENIDO_BYTES) {
@@ -294,8 +298,8 @@ class DocumentoController extends Controller
 
         $hashCliente = hash('sha256', $json);
 
-        return DB::transaction(function () use ($documento, $contenido, $hashCliente, $request) {
-            $contenidoDoc = $documento->contenido;
+        return DB::transaction(function () use ($documento, $contenido, $hashCliente, $hashBase, $request) {
+            $contenidoDoc = Contenido::where('documento_id', $documento->id)->lockForUpdate()->first();
 
             if (! $contenidoDoc) {
                 $contenidoDoc = Contenido::create([
@@ -310,6 +314,19 @@ class DocumentoController extends Controller
                     'hash' => $hashCliente,
                 ]);
             } else {
+                // M07-04: Mitigación Last-Write-Wins (detección de conflicto de concurrencia)
+                if ($hashBase !== null && $contenidoDoc->hash_contenido && $contenidoDoc->hash_contenido !== $hashBase) {
+                    return $this->conflictResponse(
+                        'El documento fue modificado concurrentemente por otro usuario. Recargue para obtener la versión más reciente.',
+                        [
+                            'hash_servidor' => $contenidoDoc->hash_contenido,
+                            'hash_base' => $hashBase,
+                            'actualizado_por' => $contenidoDoc->actualizado_por,
+                            'actualizado_en' => $contenidoDoc->updated_at?->toIso8601String(),
+                        ]
+                    );
+                }
+
                 $contenidoAnterior = $contenidoDoc->contenido_yjs;
                 $contenidoDoc->actualizarContenido($contenido, $request->user());
 

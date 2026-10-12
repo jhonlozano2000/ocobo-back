@@ -120,6 +120,7 @@ class IntegridadEstructuraTRDTest extends TestCase
     public function test_api_responde_422_con_el_mensaje(): void
     {
         $this->user->givePermissionTo(Permission::findOrCreate('TRD -> Crear', 'web'));
+        $this->user->givePermissionTo(Permission::findOrCreate('Jefe de Archivo', 'web'));
         $serie = $this->nodo('Serie', '300');
         $this->nodo('SubSerie', '05', $serie->id);
 

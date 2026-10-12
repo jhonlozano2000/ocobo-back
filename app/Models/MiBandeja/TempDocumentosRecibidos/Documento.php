@@ -4,6 +4,7 @@ namespace App\Models\MiBandeja\TempDocumentosRecibidos;
 
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\MiBandeja\MiBandejaFiltroService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -197,12 +198,22 @@ class Documento extends Model
      */
     public function tieneAcceso(User $user): bool
     {
-        if ($this->es_publico) {
+        if ($this->user_id === $user->id) {
             return true;
         }
 
-        return $this->usuarios()->where('user_id', $user->id)->exists()
-            || $this->user_id === $user->id;
+        if ($this->usuarios()->where('user_id', $user->id)->exists()) {
+            return true;
+        }
+
+        if ($this->es_publico) {
+            $depCreador = MiBandejaFiltroService::getDependenciaDelUsuario($this->user_id);
+            $depUsuario = MiBandejaFiltroService::getDependenciaDelUsuario($user->id);
+
+            return $depCreador !== null && $depUsuario !== null && $depCreador->id === $depUsuario->id;
+        }
+
+        return false;
     }
 
     /**
