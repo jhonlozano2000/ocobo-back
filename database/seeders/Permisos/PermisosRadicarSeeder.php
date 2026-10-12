@@ -45,7 +45,7 @@ class PermisosRadicarSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Enviada -> Crear'])->syncRoles([$Rol1]);
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Enviada -> Editar'])->syncRoles([$Rol1, $Rol3]);
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Enviada -> Mostrar'])->syncRoles([$Rol1, $Rol3]);
-        Permission::firstOrCreate(['name' => 'Radicar -> Cores. Enviada -> Eliminar'])->syncRoles([$Rol1, $Rol3]);
+        Permission::firstOrCreate(['name' => 'Radicar -> Cores. Enviada -> Eliminar'])->syncRoles($Rol1);
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Enviada -> Exportar'])->syncRoles([$Rol1, $Rol3]);
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Enviada -> Imprimir Rotulo'])->syncRoles('Administrador');
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Enviada -> Subir digital'])->syncRoles('Administrador');
@@ -64,13 +64,13 @@ class PermisosRadicarSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Crear'])->syncRoles([$Rol1]);
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Editar'])->syncRoles([$Rol1, $Rol4]);
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Mostrar'])->syncRoles([$Rol1, $Rol4]);
-        Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Eliminar'])->syncRoles([$Rol1, $Rol4]);
+        Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Eliminar'])->syncRoles($Rol1);
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Exportar'])->syncRoles([$Rol1, $Rol4]);
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Imprimir Rotulo'])->syncRoles('Administrador');
-        Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Subir digital'])->syncRoles([$Rol1, $Rol4]);
-        Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Subir adjuntos'])->syncRoles([$Rol1, $Rol4]);
-        Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Eliminar digital'])->syncRoles([$Rol1, $Rol4]);
-        Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Eliminar adjuntos'])->syncRoles([$Rol1, $Rol4]);
+        Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Subir digital'])->syncRoles($Rol1);
+        Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Subir adjuntos'])->syncRoles($Rol1);
+        Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Eliminar digital'])->syncRoles($Rol1);
+        Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Eliminar adjuntos'])->syncRoles($Rol1);
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Actualizar asunto'])->syncRoles('Administrador');
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Atualizar fechas de radicados'])->syncRoles('Administrador');
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Interna -> Actualizar clasificacion de radicados'])->syncRoles('Administrador');
