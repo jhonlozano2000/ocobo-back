@@ -98,7 +98,7 @@ class RadicadoInternoDependenciaOrigenTest extends TestCase
         $this->responsable($id, $otroCargo, false);
         $this->responsable($id, $custodioCargo, true);
 
-        $this->assertDependenciaOrigen(['id' => $depCustodio->id, 'nombre' => 'Dep Custodio'], $id);
+        $this->assertDependenciaOrigen(['id' => $depCustodio->id, 'nombre' => 'Dep Custodio / Ofi Custodio', 'dependencia' => 'Dep Custodio', 'oficina' => 'Ofi Custodio'], $id);
     }
 
     public function test_listado_de_ventanilla_devuelve_la_dependencia_del_custodio(): void
@@ -114,7 +114,7 @@ class RadicadoInternoDependenciaOrigenTest extends TestCase
         $fila = collect($this->actingAs($creador)->getJson('/api/ventanilla/radica-interno?per_page=100')->assertOk()->json('data'))
             ->firstWhere('id', $id);
 
-        $this->assertSame(['id' => $depCustodio->id, 'nombre' => 'Dep Custodio'], $fila['dependencia_origen']);
+        $this->assertSame(['id' => $depCustodio->id, 'nombre' => 'Dep Custodio / Ofi Custodio', 'dependencia' => 'Dep Custodio', 'oficina' => 'Ofi Custodio'], $fila['dependencia_origen']);
     }
 
     public function test_sin_custodio_se_usa_la_dependencia_del_creador(): void
@@ -123,7 +123,7 @@ class RadicadoInternoDependenciaOrigenTest extends TestCase
 
         $id = $this->interno('DOT-TEST-0003', $creador->id);
 
-        $this->assertDependenciaOrigen(['id' => $depCreador->id, 'nombre' => 'Dep Creador'], $id);
+        $this->assertDependenciaOrigen(['id' => $depCreador->id, 'nombre' => 'Dep Creador / Ofi Creador', 'dependencia' => 'Dep Creador', 'oficina' => 'Ofi Creador'], $id);
     }
 
     public function test_dependencia_origen_guardada_tiene_prioridad(): void
@@ -134,6 +134,6 @@ class RadicadoInternoDependenciaOrigenTest extends TestCase
         $id = $this->interno('DOT-TEST-0002', User::factory()->create()->id, $guardada->id);
         $this->responsable($id, $custodioCargo, true);
 
-        $this->assertDependenciaOrigen(['id' => $guardada->id, 'nombre' => 'Dep Guardada'], $id);
+        $this->assertDependenciaOrigen(['id' => $guardada->id, 'nombre' => 'Dep Guardada', 'dependencia' => 'Dep Guardada', 'oficina' => null], $id);
     }
 }

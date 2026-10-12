@@ -178,7 +178,7 @@ class MiBandejaTempController extends Controller
                         'num_radicado' => $r->num_radicado,
                         'asunto' => $r->asunto,
                         'fecha' => $r->created_at?->format('Y-m-d'),
-                        'dependencia' => $r->dependenciaOrigen?->nom_organico,
+                        'dependencia' => $r->dependenciaOrigen ? $r->dependencia_origen['nombre'] : null,
                         'tercero' => null,
                         'tercero_nit' => null,
                         'num_folios' => $r->num_folios,

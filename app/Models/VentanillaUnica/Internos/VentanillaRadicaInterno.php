@@ -113,8 +113,8 @@ class VentanillaRadicaInterno extends Model
     }
 
     /**
-     * Atributo compuesto: prefiere la dependencia guardada; si no hay, la del cargo del custodio
-     * principal (responsable con custodio) y, sin custodio, la del cargo activo del creador.
+     * Atributo compuesto ("Dependencia / Oficina"): prefiere el nodo guardado; si no hay, el cargo
+     * del custodio principal (responsable con custodio) y, sin custodio, el cargo activo del creador.
      */
     public function getDependenciaOrigenAttribute($value = null)
     {
@@ -133,7 +133,7 @@ class VentanillaRadicaInterno extends Model
         };
 
         if ($dep) {
-            return ['id' => $dep->id, 'nombre' => $dep->nom_organico];
+            return self::origenDelNodo($dep);
         }
 
         // Algunos listados reemplazan `responsables` por arreglos de presentación: entonces se consulta
@@ -147,22 +147,38 @@ class VentanillaRadicaInterno extends Model
             ? $custodio->userCargo?->cargo
             : $this->usuarioCrea?->cargoActivo?->cargo;
 
-        return self::dependenciaDelNodo($node);
+        return self::origenDelNodo($node);
     }
 
     /**
-     * Sube por el organigrama desde un cargo u oficina hasta su dependencia.
+     * Sube por el organigrama desde un cargo, oficina o dependencia y devuelve la dependencia
+     * y la oficina más cercana; `nombre` las combina ("Dependencia / Oficina").
+     *
+     * @return array{id: int, nombre: string, dependencia: ?string, oficina: ?string}|null
      */
-    private static function dependenciaDelNodo(?CalidadOrganigrama $node): ?array
+    private static function origenDelNodo(?CalidadOrganigrama $node): ?array
     {
+        $oficina = null;
         $visited = 0;
         while ($node && $node->tipo !== 'Dependencia' && $visited < 20) {
+            if ($node->tipo === 'Oficina' && ! $oficina) {
+                $oficina = $node;
+            }
             $parentId = $node->getAttribute('parent');
             $node = $parentId ? $node->parent()->first() : null;
             $visited++;
         }
 
-        return $node ? ['id' => $node->id, 'nombre' => $node->nom_organico] : null;
+        if (! $node && ! $oficina) {
+            return null;
+        }
+
+        return [
+            'id' => ($node ?? $oficina)->id,
+            'nombre' => implode(' / ', array_filter([$node?->nom_organico, $oficina?->nom_organico])),
+            'dependencia' => $node?->nom_organico,
+            'oficina' => $oficina?->nom_organico,
+        ];
     }
 
     public function usuarioSubido()
