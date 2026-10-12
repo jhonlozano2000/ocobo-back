@@ -116,6 +116,23 @@ class AccesoExpedientesTest extends TestCase
         $this->assertNotNull(OfiArchivoExpedienteDocumento::find($doc->id));
     }
 
+    /** M08-16: array_filter impedía dejar los folios en 0 o vaciar los datos físicos */
+    public function test_actualizar_permite_folios_en_cero_y_vaciar_datos_fisicos(): void
+    {
+        $abierto = $this->expediente($this->depA, '2026-M83A-S83-0005');
+        $abierto->update(['folios_fisicos' => 12, 'caja' => 'C1', 'ubicacion_fisica' => 'Bodega 1']);
+
+        $this->actingAs($this->user)->putJson('/api/archivo/expedientes/'.$abierto->id, [
+            'folios_fisicos' => 0, 'caja' => '', 'nombre_expediente' => '',
+        ])->assertOk();
+
+        $abierto->refresh();
+        $this->assertSame(0, (int) $abierto->folios_fisicos);
+        $this->assertNull($abierto->caja);
+        $this->assertSame('Bodega 1', $abierto->ubicacion_fisica);
+        $this->assertSame('Expediente 2026-M83A-S83-0005', $abierto->nombre_expediente);
+    }
+
     /** M08-06: el retiro es lógico; el binario se conserva y un segundo retiro no descuenta folios */
     public function test_retirar_folio_conserva_el_binario_y_es_idempotente(): void
     {

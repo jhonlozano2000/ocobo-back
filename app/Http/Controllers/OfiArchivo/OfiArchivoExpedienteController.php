@@ -165,16 +165,16 @@ class OfiArchivoExpedienteController extends Controller
                 }
             }
 
-            $fields = array_filter($request->only([
-                'nombre_expediente',
-                'dependencia_id',
-                'serie_trd_id',
-                'ubicacion_fisica',
-                'caja',
-                'carpeta',
-                'folios_fisicos',
-                'observaciones_generales',
-            ]));
+            // M08-16: array_filter descartaba 0 y vacíos; los datos físicos se pueden poner en 0 o vaciar,
+            // y los obligatorios solo cambian si llegan con valor
+            $fields = array_filter(
+                $request->only(['nombre_expediente', 'dependencia_id', 'serie_trd_id']),
+                fn ($valor) => filled($valor)
+            ) + $request->only(['ubicacion_fisica', 'caja', 'carpeta', 'folios_fisicos', 'observaciones_generales']);
+
+            if (array_key_exists('folios_fisicos', $fields)) {
+                $fields['folios_fisicos'] = (int) ($fields['folios_fisicos'] ?? 0);
+            }
 
             $expediente->update($fields);
 
