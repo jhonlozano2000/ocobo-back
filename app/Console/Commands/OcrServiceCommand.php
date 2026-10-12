@@ -138,13 +138,18 @@ class OcrServiceCommand extends Command
 
     private function isRunning(): bool
     {
-        if (PHP_OS_FAMILY === 'Windows') {
-            $output = shell_exec('netstat -ano | findstr :'.self::PORT);
-        } else {
-            $output = shell_exec('lsof -i :'.self::PORT);
-        }
+        // Se prueba la conexión: filtrar `netstat | findstr :5000` también casaba puertos
+        // como 50001 y daba el servicio por iniciado sin estarlo
+        $host = (string) config('services.ocr.host', '127.0.0.1');
+        $host = in_array($host, ['0.0.0.0', '::', ''], true) ? '127.0.0.1' : $host;
 
-        return str_contains($output ?? '', 'LISTENING') || str_contains($output ?? '', (string) self::PORT);
+        $socket = @fsockopen($host, self::PORT, $errno, $errstr, 1);
+        if ($socket === false) {
+            return false;
+        }
+        fclose($socket);
+
+        return true;
     }
 
     private function isProcessRunning(int $pid): bool
