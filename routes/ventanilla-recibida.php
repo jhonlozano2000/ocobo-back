@@ -47,9 +47,9 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
 
         Route::post('/radica-recibida/{radica_reci_id}/responsables', [VentanillaRadicaReciResponsableController::class, 'assignToRadicado'])->name('radica-recibida.responsables.asignar')->middleware('can:'.$permReci.'Editar')->middleware('acceso_radicado:recibido,radica_reci_id');
 
-        Route::post('/radica-recibida/{radica_reci_id}/pase', [VentanillaRadicaReciPaseHistorialController::class, 'store'])->name('radica-recibida.pase.registrar')->middleware('acceso_radicado:recibido,radica_reci_id');
+        Route::post('/radica-recibida/{radica_reci_id}/pase', [VentanillaRadicaReciPaseHistorialController::class, 'store'])->name('radica-recibida.pase.registrar')->middleware('can_any:Radicar -> Cores. Recibida -> Editar,Mi Bandeja - Recibidos -> Ver,Mi Bandeja - Recibidos -> Editar Estado')->middleware('acceso_radicado:recibido,radica_reci_id');
 
-        Route::post('/radica-recibida/{radica_reci_id}/compartir', [VentanillaRadicaReciCompartirHistorialController::class, 'store'])->name('radica-recibida.compartir.registrar')->middleware('acceso_radicado:recibido,radica_reci_id');
+        Route::post('/radica-recibida/{radica_reci_id}/compartir', [VentanillaRadicaReciCompartirHistorialController::class, 'store'])->name('radica-recibida.compartir.registrar')->middleware('can_any:Radicar -> Cores. Recibida -> Editar,Mi Bandeja - Recibidos -> Ver,Mi Bandeja - Recibidos -> Editar Estado')->middleware('acceso_radicado:recibido,radica_reci_id');
     });
 
     // Rutas con throttle:uploads (10/min) - subida de archivos
@@ -81,9 +81,9 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
 
         Route::get('/radica-recibida/{radica_reci_id}/enviados', [VentanillaRadicaReciController::class, 'getEnviadosAsociados'])->name('radica-recibida.enviados.listar')->middleware('can:'.$permReci.'Mostrar')->middleware('acceso_radicado:recibido,radica_reci_id');
 
-        Route::get('/radica-recibida/{radica_reci_id}/pase-historial', [VentanillaRadicaReciPaseHistorialController::class, 'byRadicado'])->name('radica-recibida.pase.historial')->middleware('acceso_radicado:recibido,radica_reci_id');
+        Route::get('/radica-recibida/{radica_reci_id}/pase-historial', [VentanillaRadicaReciPaseHistorialController::class, 'byRadicado'])->name('radica-recibida.pase.historial')->middleware('can_any:Radicar -> Cores. Recibida -> Mostrar,Mi Bandeja - Recibidos -> Ver')->middleware('acceso_radicado:recibido,radica_reci_id');
 
-        Route::get('/radica-recibida/{radica_reci_id}/compartir-historial', [VentanillaRadicaReciCompartirHistorialController::class, 'byRadicado'])->name('radica-recibida.compartir.historial')->middleware('acceso_radicado:recibido,radica_reci_id');
+        Route::get('/radica-recibida/{radica_reci_id}/compartir-historial', [VentanillaRadicaReciCompartirHistorialController::class, 'byRadicado'])->name('radica-recibida.compartir.historial')->middleware('can_any:Radicar -> Cores. Recibida -> Mostrar,Mi Bandeja - Recibidos -> Ver')->middleware('acceso_radicado:recibido,radica_reci_id');
         // Metadata es compartida por recibidos/enviados/internos: el prefijo de permiso
         // depende del parámetro {tipo}, así que se autoriza dentro del controlador
         // (MetadataController::autorizarPorTipo) y no con un can: fijo aqui.
