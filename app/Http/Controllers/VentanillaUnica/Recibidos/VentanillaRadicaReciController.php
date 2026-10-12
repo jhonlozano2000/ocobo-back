@@ -351,14 +351,6 @@ class VentanillaRadicaReciController extends Controller
             // ============================================================
             $pqrsCreada = null;
 
-            \Log::info('DEBUG PQRS - valores recibidos', [
-                'crear_pqrs' => $validatedData['crear_pqrs'] ?? 'NOT_SET',
-                'crear_pqrs_type' => gettype($validatedData['crear_pqrs'] ?? null),
-                'tipo_pqrs_id' => $validatedData['tipo_pqrs_id'] ?? 'NOT_SET',
-                'prioridad' => $validatedData['prioridad'] ?? 'NOT_SET',
-                'radicado_id' => $radicado->id,
-            ]);
-
             if (! empty($validatedData['crear_pqrs']) && $validatedData['crear_pqrs']) {
                 $datosPqrs = [
                     'tipo_pqrs_id' => $validatedData['tipo_pqrs_id'],
@@ -369,15 +361,6 @@ class VentanillaRadicaReciController extends Controller
                     'es_anonimo' => (bool) ($validatedData['es_anonimo'] ?? false),
                 ];
                 $pqrsCreada = $this->pqrsService->crearDesdeRadicado($radicado->id, $datosPqrs);
-
-                \Log::info('DEBUG PQRS - creación exitosa', [
-                    'pqrs_id' => $pqrsCreada->id ?? 'NULL',
-                    'radicado_id' => $radicado->id,
-                ]);
-            } else {
-                \Log::info('DEBUG PQRS - creación omitida (crear_pqrs es false/null)', [
-                    'crear_pqrs_value' => $validatedData['crear_pqrs'] ?? 'NOT_SET',
-                ]);
             }
             // ============================================================
 

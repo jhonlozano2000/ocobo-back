@@ -270,14 +270,6 @@ class VentanillaPqrsController extends Controller
         try {
             $validated = $request->validated();
 
-            \Log::info('DEBUG PQRS Store - datos validados', [
-                'ventanilla_radica_reci_id' => $validated['ventanilla_radica_reci_id'] ?? 'NOT_SET',
-                'tipo_pqrs_id' => $validated['tipo_pqrs_id'] ?? 'NOT_SET',
-                'prioridad' => $validated['prioridad'] ?? 'NOT_SET',
-                'detalle_solicitud' => $validated['detalle_solicitud'] ?? 'NOT_SET',
-                'gestion_tercero_id' => $validated['gestion_tercero_id'] ?? 'NOT_SET',
-            ]);
-
             if (! empty($validated['ventanilla_radica_reci_id'])) {
                 $pqrs = $this->pqrsService->crearDesdeRadicado(
                     $validated['ventanilla_radica_reci_id'],
