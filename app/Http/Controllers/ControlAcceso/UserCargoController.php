@@ -630,26 +630,63 @@ class UserCargoController extends Controller
     public function cargosDisponibles(Request $request): JsonResponse
     {
         try {
-            $incluirOcupados = $request->get('incluir_ocupados', false);
+            $incluirOcupados = filter_var($request->get('incluir_ocupados', false), FILTER_VALIDATE_BOOLEAN);
 
             $query = CalidadOrganigrama::cargosAsignables()
-                ->with(['usuariosActivos.user:id,nombres,apellidos']);
+                ->with(['usuariosActivos.user:id,nombres,apellidos'])
+                ->withCount([
+                    'asignaciones',
+                    'usuariosActivos',
+                    'asignaciones as asignaciones_finalizadas_count' => fn ($q) => $q->where('estado', false),
+                ]);
 
             if (! $incluirOcupados) {
                 $query->disponibles();
             }
 
-            $cargos = $query->get()->map(function ($cargo) {
+            // Precargar el árbol completo de organigrama para resolver jerarquías sin queries N*D
+            $todosNodos = CalidadOrganigrama::all(['id', 'parent', 'tipo', 'nom_organico', 'cod_organico'])
+                ->keyBy('id');
+
+            $resolverJerarquia = function (CalidadOrganigrama $cargo) use ($todosNodos): array {
+                $jerarquia = [];
+                $actual = $todosNodos->get($cargo->id);
+                $visitados = [];
+
+                while ($actual && ! isset($visitados[$actual->id]) && count($visitados) < CalidadOrganigrama::MAX_PROFUNDIDAD) {
+                    $visitados[$actual->id] = true;
+                    array_unshift($jerarquia, [
+                        'id' => $actual->id,
+                        'tipo' => $actual->tipo,
+                        'nom_organico' => $actual->nom_organico,
+                        'cod_organico' => $actual->cod_organico,
+                    ]);
+
+                    $parentId = $actual->parent;
+                    $actual = $parentId ? $todosNodos->get($parentId) : null;
+                }
+
+                return $jerarquia;
+            };
+
+            $cargos = $query->get()->map(function ($cargo) use ($resolverJerarquia) {
+                $usuarioActivo = $cargo->usuariosActivos->first();
+                $disponible = $usuarioActivo === null;
+
                 return [
                     'id' => $cargo->id,
                     'nombre' => $cargo->nom_organico,
                     'codigo' => $cargo->cod_organico,
-                    'jerarquia' => $cargo->getJerarquiaCompleta(),
-                    'disponible' => ! $cargo->tieneUsuariosAsignados(),
-                    'usuario_activo' => $cargo->tieneUsuariosAsignados()
-                        ? $cargo->getUsuarioActivo()->user
-                        : null,
-                    'estadisticas' => $cargo->getEstadisticasAsignaciones(),
+                    'jerarquia' => $resolverJerarquia($cargo),
+                    'disponible' => $disponible,
+                    'usuario_activo' => $usuarioActivo ? $usuarioActivo->user : null,
+                    'estadisticas' => [
+                        'total_asignaciones' => (int) $cargo->asignaciones_count,
+                        'asignaciones_activas' => (int) $cargo->usuarios_activos_count,
+                        'asignaciones_finalizadas' => (int) $cargo->asignaciones_finalizadas_count,
+                        'tiene_usuario_activo' => ! $disponible,
+                        'cargo_disponible' => $disponible,
+                    ],
                 ];
             });
 
