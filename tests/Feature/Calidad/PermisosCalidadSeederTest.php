@@ -31,4 +31,17 @@ class PermisosCalidadSeederTest extends TestCase
             $permisos->values()->all()
         );
     }
+
+    public function test_permisos_obsoletos_de_calidad_se_eliminan(): void
+    {
+        Permission::findOrCreate('Calidad -> Crear procesos', 'web');
+        Permission::findOrCreate('Calidad -> Crear Macro Procesos', 'web');
+
+        $this->seed(PermisosCalidadSeeder::class);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $this->assertDatabaseMissing('permissions', ['name' => 'Calidad -> Crear procesos']);
+        $this->assertDatabaseMissing('permissions', ['name' => 'Calidad -> Crear Macro Procesos']);
+        $this->assertDatabaseHas('permissions', ['name' => 'Calidad - Organigrama -> Listar']);
+    }
 }

@@ -17,6 +17,10 @@ class PermisosCalidadSeeder extends Seeder
             'Calidad - Organigrama -> Mostrar',
             'Calidad - Organigrama -> Eliminar',
             'Calidad - Organigrama -> Exportar',
+        ];
+
+        // M17-04: eliminar permisos sin funcionalidad ni controlador implementado (ISO 9001 no implementado)
+        $permisosObsoletos = [
             'Calidad -> Crear procesos',
             'Calidad -> Crear Macro Procesos',
             'Calidad -> Crear Procedimientos',
@@ -24,6 +28,10 @@ class PermisosCalidadSeeder extends Seeder
             'Calidad -> Cargar Archivos',
             'Calidad -> Exportar',
         ];
+
+        foreach ($permisosObsoletos as $obsoleto) {
+            Permission::where('name', $obsoleto)->delete();
+        }
 
         // M17-03: el radicador de PQRSF solo consulta el organigrama (selección de dependencia/oficina).
         // Crear, editar o eliminar nodos cambia la jerarquía ABAC de todos los usuarios.
