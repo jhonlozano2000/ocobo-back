@@ -9,3 +9,7 @@
 /.github export-ignore
 CHANGELOG.md export-ignore
 .styleci.yml export-ignore
+
+# cmd.exe necesita CRLF en los scripts por lotes (etiquetas de goto/call)
+*.bat text eol=crlf
+*.cmd text eol=crlf
