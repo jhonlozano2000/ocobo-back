@@ -88,4 +88,30 @@ class HabeasDataYDvNitTest extends TestCase
 
         $this->assertSame(4, $tercero->dv_nit);
     }
+
+    public function test_blind_index_hmac_calculado_automaticamente(): void
+    {
+        $doc = '987654321';
+        $payload = [
+            'tipo' => 'Natural',
+            'num_docu_nit' => $doc,
+            'nom_razo_soci' => 'Prueba Blind Index',
+            'autoriza_tratamiento_datos' => true,
+        ];
+
+        $res = $this->actingAs($this->admin)->postJson('/api/gestion/terceros', $payload);
+        $res->assertStatus(201);
+
+        $id = $res->json('data.id');
+        $tercero = GestionTercero::findOrFail($id);
+
+        $expectedHash = GestionTercero::calcularBlindIndex($doc);
+        $this->assertNotEmpty($tercero->num_docu_nit_hash);
+        $this->assertSame($expectedHash, $tercero->num_docu_nit_hash);
+
+        // Búsqueda por scope
+        $encontrado = GestionTercero::porDocumentoBlindIndex($doc)->first();
+        $this->assertNotNull($encontrado);
+        $this->assertSame($tercero->id, $encontrado->id);
+    }
 }

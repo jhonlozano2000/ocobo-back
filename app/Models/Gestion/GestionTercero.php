@@ -15,6 +15,7 @@ class GestionTercero extends Model
     protected $fillable = [
         'divi_poli_id',
         'num_docu_nit',
+        'num_docu_nit_hash',
         'dv_nit',
         'nom_razo_soci',
         'direccion',
@@ -44,6 +45,13 @@ class GestionTercero extends Model
     protected static function booted(): void
     {
         static::saving(function (GestionTercero $tercero) {
+            // M16-03: Blind Index (HMAC SHA-256) para búsquedas exactas e integridad
+            if ($tercero->num_docu_nit) {
+                $tercero->num_docu_nit_hash = self::calcularBlindIndex((string) $tercero->num_docu_nit);
+            } else {
+                $tercero->num_docu_nit_hash = null;
+            }
+
             // M16-04: Registrar fecha si se autoriza tratamiento de datos
             if ($tercero->autoriza_tratamiento_datos && ! $tercero->fecha_autorizacion_datos) {
                 $tercero->fecha_autorizacion_datos = now();
@@ -56,6 +64,24 @@ class GestionTercero extends Model
                 $tercero->dv_nit = self::calcularDvNit($tercero->num_docu_nit);
             }
         });
+    }
+
+    /**
+     * Genera el hash de blind index HMAC SHA-256 para un documento/NIT.
+     */
+    public static function calcularBlindIndex(string $documento): string
+    {
+        $appKey = (string) config('app.key');
+
+        return $appKey ? hash_hmac('sha256', $documento, $appKey) : hash('sha256', $documento);
+    }
+
+    /**
+     * Scope para buscar por blind index exacto del documento/NIT.
+     */
+    public function scopePorDocumentoBlindIndex($query, string $documento)
+    {
+        return $query->where('num_docu_nit_hash', self::calcularBlindIndex($documento));
     }
 
     /**
