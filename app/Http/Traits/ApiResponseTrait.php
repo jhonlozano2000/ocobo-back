@@ -6,6 +6,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\MessageBag;
 
 /**
@@ -119,7 +120,13 @@ trait ApiResponseTrait
         ];
 
         if (! is_null($error)) {
-            $response['errors'] = $error;
+            // M08-16 (CWE-209): los controladores pasan $e->getMessage() en los 500; fuera de debug el
+            // detalle (SQL, rutas, clases) va al log y el cliente solo recibe el mensaje genérico
+            if ($code >= 500 && ! config('app.debug')) {
+                Log::error($message, ['error' => $error, 'url' => request()->fullUrl()]);
+            } else {
+                $response['errors'] = $error;
+            }
         }
 
         return response()->json($response, $code);
