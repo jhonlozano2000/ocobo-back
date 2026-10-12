@@ -131,13 +131,19 @@ class ClasificacionDocumentalTVDController extends Controller
         }
     }
 
+    /**
+     * M10-10/M11-04: mismo tope que la importación de TRD (2 MB); con 10 MB la hoja se cargaba
+     * completa en memoria (ver M10-05). El front valida el mismo límite.
+     */
+    private const REGLAS_IMPORTACION = [
+        'archivo' => 'required|file|mimes:xlsx,xls,csv|max:2048',
+        'periodo_id' => 'required|integer|exists:fondo_acumulado_periodos,id',
+    ];
+
     public function import(Request $request): JsonResponse
     {
         try {
-            $request->validate([
-                'archivo' => 'required|file|mimes:xlsx,xls,csv|max:10240',
-                'periodo_id' => 'required|integer|exists:fondo_acumulado_periodos,id',
-            ]);
+            $request->validate(self::REGLAS_IMPORTACION);
 
             $result = $this->service->importFromExcel($request->file('archivo'), (int) $request->input('periodo_id'));
 
@@ -163,10 +169,7 @@ class ClasificacionDocumentalTVDController extends Controller
     public function validar(Request $request): JsonResponse
     {
         try {
-            $request->validate([
-                'archivo' => 'required|file|mimes:xlsx,xls,csv|max:10240',
-                'periodo_id' => 'required|integer|exists:fondo_acumulado_periodos,id',
-            ]);
+            $request->validate(self::REGLAS_IMPORTACION);
 
             $result = $this->service->validarArchivo($request->file('archivo'), (int) $request->input('periodo_id'));
 
