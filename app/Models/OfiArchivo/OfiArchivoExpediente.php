@@ -4,6 +4,7 @@ namespace App\Models\OfiArchivo;
 
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Models\Concerns\GuardaSnapshotDependencia;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,7 +15,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class OfiArchivoExpediente extends Model
 {
-    use HasFactory, SoftDeletes;
+    use GuardaSnapshotDependencia, HasFactory, SoftDeletes;
 
     protected $table = 'ofi_archivo_expedientes';
 
@@ -28,6 +29,8 @@ class OfiArchivoExpediente extends Model
         'nombre_expediente',
         'anio',
         'dependencia_id',
+        'dependencia_cod',
+        'dependencia_nom',
         'serie_trd_id',
         'subserie_trd_id',
         'estado',
@@ -52,6 +55,18 @@ class OfiArchivoExpediente extends Model
         'total_folios_elec' => 'integer',
         'folios_fisicos' => 'integer',
     ];
+
+    /**
+     * M09-06: el expediente conserva el código y el nombre de la dependencia productora.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $expediente) {
+            if ($expediente->isDirty('dependencia_id')) {
+                $expediente->capturarSnapshotDependencia();
+            }
+        });
+    }
 
     public function documentos()
     {

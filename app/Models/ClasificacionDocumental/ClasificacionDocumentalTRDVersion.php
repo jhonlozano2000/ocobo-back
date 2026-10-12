@@ -3,6 +3,7 @@
 namespace App\Models\ClasificacionDocumental;
 
 use App\Models\Calidad\CalidadOrganigrama;
+use App\Models\Concerns\GuardaSnapshotDependencia;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,12 +12,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ClasificacionDocumentalTRDVersion extends Model
 {
-    use HasFactory;
+    use GuardaSnapshotDependencia, HasFactory;
 
     protected $table = 'clasificacion_documental_trd_versiones';
 
     protected $fillable = [
         'dependencia_id',
+        'dependencia_cod',
+        'dependencia_nom',
         'version',
         'estado_version',
         'observaciones',
@@ -28,6 +31,18 @@ class ClasificacionDocumentalTRDVersion extends Model
     protected $casts = [
         'fecha_aprobacion' => 'datetime',
     ];
+
+    /**
+     * M09-06: al aprobarse, la versión guarda el código y el nombre que tenía la dependencia.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $version) {
+            if ($version->estado_version === 'ACTIVO' && $version->isDirty('estado_version')) {
+                $version->capturarSnapshotDependencia();
+            }
+        });
+    }
 
     /**
      * Relación con la dependencia.
