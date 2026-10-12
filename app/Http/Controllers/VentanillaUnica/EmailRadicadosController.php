@@ -118,18 +118,15 @@ class EmailRadicadosController extends Controller
             $validatedData = $request->validated();
             $tipoRadicado = $validatedData['tipo_radicado'] ?? 'recibido';
 
-            // Los datos del email vienen en el request desde el frontend
-            $emailData = [
-                'uid' => $uid,
-                'asunto' => $validatedData['email_asunto'] ?? '',
-                'remitente_email' => $validatedData['email_remitente_email'] ?? '',
-                'remitente_nombre' => $validatedData['email_remitente_nombre'] ?? '',
-                'fecha_correo' => $validatedData['email_fecha_correo'] ?? null,
-                'body_text' => $validatedData['email_body_text'] ?? '',
-                'body_html' => $validatedData['email_body_html'] ?? '',
-                'tiene_adjuntos' => $validatedData['email_tiene_adjuntos'] ?? false,
-                'adjuntos_info' => $validatedData['email_adjuntos_info'] ?? [],
-            ];
+            // M05-04: el contenido del correo (asunto, remitente, cuerpo, adjuntos) se lee del servidor
+            // IMAP por su uid; nunca del cliente, para que el PDF y el hash reflejen el mensaje original
+            $emailData = $this->imapService->getMessageDetails($uid);
+
+            if (! $emailData) {
+                return $this->notFoundResponse('Correo no encontrado en el servidor IMAP');
+            }
+
+            $emailData['uid'] = $uid;
 
             if ($tipoRadicado === 'enviado') {
                 $resultado = $this->emailRadicacionService->radicarEnviadoFromEmailData($emailData, $validatedData);
