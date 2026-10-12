@@ -5,6 +5,7 @@ namespace App\Helpers;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\Configuracion\FileClassificationLevel;
+use App\Models\User;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivos;
@@ -15,6 +16,7 @@ use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoArchivos;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoMetadata;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoMetadataHistory;
 use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsMetadata;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsOptimizedView;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivo;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciMetadata;
@@ -661,13 +663,27 @@ class FileMetadataHelper
         ];
     }
 
-    public static function exportarMetadata(array $filtros = [], string $tipo = 'reci'): StreamedResponse
+    public static function exportarMetadata(User $user, array $filtros = [], string $tipo = 'reci'): StreamedResponse
     {
         $query = match ($tipo) {
             'enviados' => VentanillaRadicaEnviadosMetadata::query(),
             'interno' => VentanillaRadicaInternoMetadata::query(),
             default => VentanillaRadicaReciMetadata::query(),
         };
+
+        // M01-13: solo la metadata de radicados visibles para el usuario (mismo ABAC que show/store)
+        $radicado = match ($tipo) {
+            'enviados' => new VentanillaRadicaEnviados,
+            'interno' => new VentanillaRadicaInterno,
+            default => new VentanillaRadicaReci,
+        };
+        $query->where(function ($q) use ($radicado, $user, $tipo) {
+            $q->whereIn('radicado_id', $radicado->newQuery()->conPermisoJerarquico($user)->select($radicado->getQualifiedKeyName()));
+
+            if (! in_array($tipo, ['enviados', 'interno'], true)) {
+                $q->orWhereIn('radicado_id', VentanillaPqrsOptimizedView::conPermisoJerarquico($user)->select('ventanilla_radica_reci_id'));
+            }
+        });
 
         if (! empty($filtros['radicado_id'])) {
             $query->where('radicado_id', $filtros['radicado_id']);

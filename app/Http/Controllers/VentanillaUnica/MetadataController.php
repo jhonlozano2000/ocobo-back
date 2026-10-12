@@ -50,7 +50,7 @@ class MetadataController extends Controller
 
         $filtros = $request->only(['radicado_id', 'nivel_clasificacion', 'fecha_desde', 'fecha_hasta']);
 
-        return FileMetadataHelper::exportarMetadata($filtros, $tipo);
+        return FileMetadataHelper::exportarMetadata(auth()->user(), $filtros, $tipo);
     }
 
     public function nivelClasificacionIndex(): JsonResponse
