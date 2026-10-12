@@ -90,6 +90,15 @@ class CalendarioHelper
     }
 
     /**
+     * Último día que cuenta como "próximo a vencer": hoy más N días hábiles (M04-09; antes
+     * se sumaban días calendario y un fin de semana o festivo recortaba la ventana).
+     */
+    public static function limiteProximoAVencer(int $diasHabiles = 5): Carbon
+    {
+        return self::calcularVencimiento(self::hoy(), $diasHabiles);
+    }
+
+    /**
      * Calcula la diferencia de días hábiles entre hoy y una fecha futura.
      * Útil para el semáforo de PQRS.
      *

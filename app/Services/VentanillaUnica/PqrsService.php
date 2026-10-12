@@ -222,7 +222,7 @@ class PqrsService
 
         $proximoVencer = (clone $baseQuery)->with(['radicado.tercero', 'tipoPqrs'])
             ->whereIn('estado_tramite', ['Pendiente', 'En Tramite'])
-            ->whereDate('fecha_vencimiento', '<=', CalendarioHelper::hoy()->addDays(5)->toDateString())
+            ->whereDate('fecha_vencimiento', '<=', CalendarioHelper::limiteProximoAVencer()->toDateString())
             ->whereDate('fecha_vencimiento', '>=', CalendarioHelper::hoy()->toDateString())
             ->orderBy('fecha_vencimiento')
             ->limit(10)

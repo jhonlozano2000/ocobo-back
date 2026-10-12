@@ -136,7 +136,7 @@ class MiBandejaRecibidosController extends Controller
             $finalizado = (clone $baseQuery)->where('estado_trabajo', 'FINALIZADO')->count();
             $vencido = (clone $baseQuery)->where('fec_venci', '<', CalendarioHelper::hoy()->toDateString())
                 ->whereNotIn('estado_trabajo', ['FINALIZADO', 'ANULADO'])->count();
-            $porVencer = (clone $baseQuery)->whereBetween('fec_venci', [CalendarioHelper::hoy()->toDateString(), CalendarioHelper::hoy()->addDays(5)->toDateString()])
+            $porVencer = (clone $baseQuery)->whereBetween('fec_venci', [CalendarioHelper::hoy()->toDateString(), CalendarioHelper::limiteProximoAVencer()->toDateString()])
                 ->whereNotIn('estado_trabajo', ['FINALIZADO', 'ANULADO'])->count();
             $sinArchivoDigital = (clone $baseQuery)->whereNull('archivo_digital')
                 ->where('estado_trabajo', '!=', 'ANULADO')->count();
