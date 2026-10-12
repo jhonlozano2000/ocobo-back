@@ -20,13 +20,19 @@ class UpdateTVDRequest extends FormRequest
         return (int) $this->route('tvd');
     }
 
+    protected function actual(): ?ClasificacionDocumentalTVD
+    {
+        return ClasificacionDocumentalTVD::find($this->tvdId());
+    }
+
     /**
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
-        $dependenciaId = $this->input('dependencia_id')
-            ?? ClasificacionDocumentalTVD::find($this->tvdId())?->dependencia_id;
+        $actual = $this->actual();
+        $periodoId = $this->input('periodo_id') ?? $actual?->periodo_id;
+        $unidadId = $this->input('unidad_id') ?? $actual?->unidad_id;
 
         return [
             'tipo' => ['sometimes', 'required', 'string', 'in:SerieDocumental,SubSerieDocumental'],
@@ -36,7 +42,7 @@ class UpdateTVDRequest extends FormRequest
                 'string',
                 'max:20',
                 Rule::unique('clasificacion_documental_tvd', 'cod')
-                    ->where('dependencia_id', $dependenciaId)
+                    ->where('unidad_id', $unidadId)
                     ->ignore($this->tvdId()),
             ],
             'nom' => ['sometimes', 'required', 'string', 'max:255'],
@@ -47,7 +53,13 @@ class UpdateTVDRequest extends FormRequest
             'gestion' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'central' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'total_anios' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'dependencia_id' => ['sometimes', 'required', 'integer', 'exists:calidad_organigrama,id'],
+            'periodo_id' => ['sometimes', 'required', 'integer', 'exists:fondo_acumulado_periodos,id'],
+            // La unidad (nueva o la actual, si cambia el período) debe pertenecer al período
+            'unidad_id' => [
+                Rule::requiredIf($this->has('periodo_id')),
+                'integer',
+                Rule::exists('fondo_acumulado_unidades', 'id')->where('periodo_id', $periodoId),
+            ],
             'parent' => ['nullable', 'integer', 'exists:clasificacion_documental_tvd,id'],
             'estado' => ['nullable', 'boolean'],
         ];
@@ -92,9 +104,21 @@ class UpdateTVDRequest extends FormRequest
                 $validator->errors()->add('parent', 'La Serie Documental no puede tener padre.');
             }
 
-            // Una Serie con subseries hijas no puede degradarse a SubSerie.
-            if ($tipo === 'SubSerieDocumental' && ClasificacionDocumentalTVD::find($id)?->hasChildren()) {
-                $validator->errors()->add('tipo', 'No puede cambiar el tipo: el elemento tiene hijos registrados.');
+            $actual = $this->actual();
+            $unidadId = (int) ($this->input('unidad_id') ?? $actual?->unidad_id);
+
+            if (! empty($parentId) && ($padre = ClasificacionDocumentalTVD::find((int) $parentId)) && (int) $padre->unidad_id !== $unidadId) {
+                $validator->errors()->add('parent', 'El padre debe pertenecer a la misma unidad administrativa.');
+            }
+
+            // Una Serie con subseries hijas no puede degradarse a SubSerie ni cambiar de unidad sin ellas
+            if ($actual?->hasChildren()) {
+                if ($tipo === 'SubSerieDocumental') {
+                    $validator->errors()->add('tipo', 'No puede cambiar el tipo: el elemento tiene hijos registrados.');
+                }
+                if ($unidadId !== (int) $actual->unidad_id) {
+                    $validator->errors()->add('unidad_id', 'No puede cambiar la unidad: el elemento tiene subseries registradas.');
+                }
             }
         });
     }
@@ -124,8 +148,9 @@ class UpdateTVDRequest extends FormRequest
     {
         return [
             'tipo.in' => 'El tipo debe ser SerieDocumental o SubSerieDocumental.',
-            'cod.unique' => 'Ya existe un elemento TVD con este código en la dependencia.',
-            'dependencia_id.exists' => 'La dependencia seleccionada no existe.',
+            'cod.unique' => 'Ya existe un elemento TVD con este código en la unidad administrativa.',
+            'periodo_id.exists' => 'El período seleccionado no existe.',
+            'unidad_id.exists' => 'La unidad administrativa no pertenece al período seleccionado.',
             'parent.exists' => 'El elemento padre seleccionado no existe.',
         ];
     }

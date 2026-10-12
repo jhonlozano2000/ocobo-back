@@ -2,7 +2,6 @@
 
 namespace App\Models\ClasificacionDocumental;
 
-use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -27,7 +26,8 @@ class ClasificacionDocumentalTVD extends Model
         'disposicion_final',
         'procedimiento',
         'parent',
-        'dependencia_id',
+        'periodo_id',
+        'unidad_id',
         'user_register',
         'estado',
     ];
@@ -37,7 +37,6 @@ class ClasificacionDocumentalTVD extends Model
         'central' => 'integer',
         'total_anios' => 'integer',
         'estado' => 'boolean',
-        'fecha_aprobacion' => 'datetime',
     ];
 
     /**
@@ -57,11 +56,19 @@ class ClasificacionDocumentalTVD extends Model
     }
 
     /**
-     * Relación con la dependencia.
+     * Período del fondo acumulado al que pertenece (M11-02); la aprobación vive en el período.
      */
-    public function dependencia(): BelongsTo
+    public function periodo(): BelongsTo
     {
-        return $this->belongsTo(CalidadOrganigrama::class, 'dependencia_id');
+        return $this->belongsTo(FondoAcumuladoPeriodo::class, 'periodo_id');
+    }
+
+    /**
+     * Unidad administrativa histórica que produjo la serie.
+     */
+    public function unidad(): BelongsTo
+    {
+        return $this->belongsTo(FondoAcumuladoUnidad::class, 'unidad_id');
     }
 
     /**
@@ -70,14 +77,6 @@ class ClasificacionDocumentalTVD extends Model
     public function userRegister(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_register');
-    }
-
-    /**
-     * Relación con el Jefe de Archivo que aprobó la TVD de la dependencia.
-     */
-    public function aprobadoPor(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'aprobado_por');
     }
 
     // ==================== SCOPES ====================
@@ -115,11 +114,11 @@ class ClasificacionDocumentalTVD extends Model
     }
 
     /**
-     * Scope para filtrar por dependencia.
+     * Scope para filtrar por unidad administrativa histórica.
      */
-    public function scopePorDependencia($query, int $dependenciaId)
+    public function scopePorUnidad($query, int $unidadId)
     {
-        return $query->where('dependencia_id', $dependenciaId);
+        return $query->where('unidad_id', $unidadId);
     }
 
     /**

@@ -27,7 +27,7 @@ class StoreTVDRequest extends FormRequest
                 'string',
                 'max:20',
                 Rule::unique('clasificacion_documental_tvd', 'cod')
-                    ->where('dependencia_id', $this->input('dependencia_id')),
+                    ->where('unidad_id', $this->input('unidad_id')),
             ],
             'nom' => ['required', 'string', 'max:255'],
             'descripcion' => ['nullable', 'string'],
@@ -37,7 +37,13 @@ class StoreTVDRequest extends FormRequest
             'gestion' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'central' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'total_anios' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'dependencia_id' => ['required', 'integer', 'exists:calidad_organigrama,id'],
+            'periodo_id' => ['required', 'integer', 'exists:fondo_acumulado_periodos,id'],
+            // La unidad histórica debe pertenecer al período elegido
+            'unidad_id' => [
+                'required',
+                'integer',
+                Rule::exists('fondo_acumulado_unidades', 'id')->where('periodo_id', $this->input('periodo_id')),
+            ],
             'parent' => ['nullable', 'integer', 'exists:clasificacion_documental_tvd,id'],
             'estado' => ['nullable', 'boolean'],
         ];
@@ -45,7 +51,7 @@ class StoreTVDRequest extends FormRequest
 
     /**
      * La jerarquía TVD solo tiene dos niveles: SerieDocumental (raíz) y
-     * SubSerieDocumental (hija de una Serie de la misma dependencia).
+     * SubSerieDocumental (hija de una Serie de la misma unidad histórica).
      */
     public function withValidator(Validator $validator): void
     {
@@ -81,8 +87,8 @@ class StoreTVDRequest extends FormRequest
             $validator->errors()->add('parent', 'El padre debe ser una Serie Documental.');
         }
 
-        if ((int) $padre->dependencia_id !== (int) $this->input('dependencia_id')) {
-            $validator->errors()->add('parent', 'El padre debe pertenecer a la misma dependencia.');
+        if ((int) $padre->unidad_id !== (int) $this->input('unidad_id')) {
+            $validator->errors()->add('parent', 'El padre debe pertenecer a la misma unidad administrativa.');
         }
     }
 
@@ -93,8 +99,9 @@ class StoreTVDRequest extends FormRequest
     {
         return [
             'tipo.in' => 'El tipo debe ser SerieDocumental o SubSerieDocumental.',
-            'cod.unique' => 'Ya existe un elemento TVD con este código en la dependencia.',
-            'dependencia_id.exists' => 'La dependencia seleccionada no existe.',
+            'cod.unique' => 'Ya existe un elemento TVD con este código en la unidad administrativa.',
+            'periodo_id.exists' => 'El período seleccionado no existe.',
+            'unidad_id.exists' => 'La unidad administrativa no pertenece al período seleccionado.',
             'parent.exists' => 'El elemento padre seleccionado no existe.',
         ];
     }

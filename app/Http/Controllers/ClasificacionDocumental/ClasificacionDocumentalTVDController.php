@@ -7,8 +7,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ClasificacionDocumental\StoreTVDRequest;
 use App\Http\Requests\ClasificacionDocumental\UpdateTVDRequest;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTVD;
+use App\Models\ClasificacionDocumental\FondoAcumuladoPeriodo;
+use App\Models\ClasificacionDocumental\FondoAcumuladoUnidad;
 use App\Services\ClasificacionDocumental\TVDService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,7 +33,7 @@ class ClasificacionDocumentalTVDController extends Controller
     public function index(Request $request)
     {
         try {
-            $filters = $request->all();
+            $filters = $request->only(['fondo_id', 'periodo_id', 'unidad_id', 'tipo', 'buscar']);
             $tvd = $this->service->getAll($filters);
 
             return $this->successResponse($tvd, 'TVD obtenidas exitosamente');
@@ -69,7 +70,7 @@ class ClasificacionDocumentalTVDController extends Controller
     public function show($id)
     {
         try {
-            $tvd = ClasificacionDocumentalTVD::with(['children', 'dependencia', 'parent'])->find($id);
+            $tvd = ClasificacionDocumentalTVD::with(['children', 'unidad', 'periodo.fondo', 'parent'])->find($id);
 
             if (! $tvd) {
                 return $this->errorResponse('Elemento TVD no encontrado', null, 404);
@@ -135,9 +136,10 @@ class ClasificacionDocumentalTVDController extends Controller
         try {
             $request->validate([
                 'archivo' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+                'periodo_id' => 'required|integer|exists:fondo_acumulado_periodos,id',
             ]);
 
-            $result = $this->service->importFromExcel($request->file('archivo'));
+            $result = $this->service->importFromExcel($request->file('archivo'), (int) $request->input('periodo_id'));
 
             return $this->successResponse($result, 'TVD importada exitosamente');
         } catch (ValidationException $e) {
@@ -163,9 +165,10 @@ class ClasificacionDocumentalTVDController extends Controller
         try {
             $request->validate([
                 'archivo' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+                'periodo_id' => 'required|integer|exists:fondo_acumulado_periodos,id',
             ]);
 
-            $result = $this->service->validarArchivo($request->file('archivo'));
+            $result = $this->service->validarArchivo($request->file('archivo'), (int) $request->input('periodo_id'));
 
             return $this->successResponse($result, 'Validación completada');
         } catch (ValidationException $e) {
@@ -187,59 +190,65 @@ class ClasificacionDocumentalTVDController extends Controller
     }
 
     /**
-     * Aprueba la TVD de una dependencia (M11-03). Solo el Jefe de Archivo, y nunca quien
-     * registró elementos de esa TVD (segregación de funciones). Aprobada, queda inmutable.
+     * Aprueba la TVD de un período del fondo acumulado (M11-02): el Comité la aprueba completa, de
+     * una vez. Solo el Jefe de Archivo, y nunca quien registró elementos del período (segregación de
+     * funciones). Aprobado, el período y sus unidades quedan inmutables.
      */
-    public function aprobar($dependenciaId)
+    public function aprobar($periodoId)
     {
         $user = auth()->user();
         if (! $user->hasPermissionTo('Jefe de Archivo')) {
             return $this->forbiddenResponse('Solo el Jefe de Archivo puede aprobar la TVD');
         }
 
-        return DB::transaction(function () use ($dependenciaId, $user) {
-            $elementos = ClasificacionDocumentalTVD::where('dependencia_id', $dependenciaId)->lockForUpdate()->get();
+        return DB::transaction(function () use ($periodoId, $user) {
+            $periodo = FondoAcumuladoPeriodo::whereKey($periodoId)->lockForUpdate()->first();
+
+            if (! $periodo) {
+                return $this->notFoundResponse('Período no encontrado');
+            }
+            if ($periodo->fecha_aprobacion !== null) {
+                return $this->warningResponse('La TVD de este período ya fue aprobada');
+            }
+
+            $elementos = ClasificacionDocumentalTVD::where('periodo_id', $periodo->id)->get(['id', 'user_register']);
 
             if ($elementos->isEmpty()) {
-                return $this->notFoundResponse('La dependencia no tiene TVD registrada');
-            }
-            if ($elementos->every(fn ($e) => $e->fecha_aprobacion !== null)) {
-                return $this->warningResponse('La TVD de esta dependencia ya fue aprobada');
+                return $this->warningResponse('El período no tiene TVD registrada');
             }
             if ($elementos->contains(fn ($e) => (int) $e->user_register === (int) $user->id)) {
                 return $this->warningResponse('Quien registró elementos de la TVD no puede aprobarla');
             }
 
-            ClasificacionDocumentalTVD::where('dependencia_id', $dependenciaId)
-                ->update(['aprobado_por' => $user->id, 'fecha_aprobacion' => now()]);
+            $periodo->forceFill(['aprobado_por' => $user->id, 'fecha_aprobacion' => now()])->save();
 
-            return $this->successResponse(['elementos' => $elementos->count()], 'TVD aprobada exitosamente');
+            return $this->successResponse(['elementos' => $elementos->count()], 'TVD del período aprobada exitosamente');
         });
     }
 
     /**
-     * Lista la TVD jerárquica de una dependencia.
+     * Lista la TVD jerárquica de una unidad administrativa histórica.
      */
-    public function listarPorDependencia($dependenciaId)
+    public function listarPorUnidad($unidadId)
     {
         try {
-            $dependencia = CalidadOrganigrama::find($dependenciaId);
+            $unidad = FondoAcumuladoUnidad::with('periodo.fondo')->find($unidadId);
 
-            if (! $dependencia) {
-                return $this->errorResponse('Dependencia no encontrada', null, 404);
+            if (! $unidad) {
+                return $this->errorResponse('Unidad administrativa no encontrada', null, 404);
             }
 
-            $elementos = ClasificacionDocumentalTVD::where('dependencia_id', $dependenciaId)
+            $elementos = ClasificacionDocumentalTVD::where('unidad_id', $unidadId)
                 ->whereNull('parent')
-                ->with(['children', 'dependencia'])
+                ->with('children')
                 ->orderBy('cod', 'asc')
                 ->get();
 
             return $this->successResponse([
-                'dependencia' => $dependencia,
+                'unidad' => $unidad,
                 'elementos' => $elementos,
-                'total_elementos' => ClasificacionDocumentalTVD::where('dependencia_id', $dependenciaId)->count(),
-                'aprobada' => $this->service->dependenciaAprobada((int) $dependenciaId),
+                'total_elementos' => ClasificacionDocumentalTVD::where('unidad_id', $unidadId)->count(),
+                'aprobada' => $unidad->periodo->aprobado,
             ], 'Elementos TVD obtenidos exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -259,27 +268,16 @@ class ClasificacionDocumentalTVDController extends Controller
     public function export(Request $request)
     {
         try {
-            $filters = $request->only(['dependencia_id', 'tipo', 'buscar']);
+            $filters = $request->only(['fondo_id', 'periodo_id', 'unidad_id', 'tipo', 'buscar']);
             $format = $request->get('format', 'excel');
 
-            $query = ClasificacionDocumentalTVD::with('dependencia')
+            $query = ClasificacionDocumentalTVD::with(['unidad', 'periodo.fondo'])
+                ->orderBy('periodo_id')
+                ->orderBy('unidad_id')
                 ->orderBy('cod', 'asc');
 
-            if (! empty($filters['dependencia_id'])) {
-                $query->where('dependencia_id', $filters['dependencia_id']);
-            }
-            if (! empty($filters['tipo'])) {
-                $query->where('tipo', $filters['tipo']);
-            }
-            if (! empty($filters['buscar'])) {
-                $query->where(function ($q) use ($filters) {
-                    $q->where('cod', 'like', "%{$filters['buscar']}%")
-                        ->orWhere('nom', 'like', "%{$filters['buscar']}%");
-                });
-            }
-
-            $rows = $query->get();
-            $headers = ['Tipo', 'Código', 'Nombre', 'Dependencia', 'Soporte', 'Gestión', 'Central', 'Total Años', 'Disposición Final'];
+            $rows = $this->service->aplicarFiltros($query, $filters)->get();
+            $headers = ['Fondo', 'Período', 'Unidad Administrativa', 'Tipo', 'Código', 'Nombre', 'Soporte', 'Gestión', 'Central', 'Total Años', 'Disposición Final'];
 
             if ($format === 'csv') {
                 return $this->exportCsv($rows, $headers);
@@ -298,6 +296,20 @@ class ClasificacionDocumentalTVDController extends Controller
         }
     }
 
+    /**
+     * Columnas Fondo, Período y Unidad de la exportación.
+     *
+     * @return array{0: ?string, 1: ?string, 2: ?string}
+     */
+    private function ubicacion(ClasificacionDocumentalTVD $tvd): array
+    {
+        return [
+            $tvd->periodo?->fondo?->nombre,
+            $tvd->periodo?->nombre,
+            $tvd->unidad ? $tvd->unidad->codigo.' - '.$tvd->unidad->nombre : null,
+        ];
+    }
+
     private function exportExcel($rows, array $headers): BinaryFileResponse
     {
         $spreadsheet = new Spreadsheet;
@@ -311,10 +323,10 @@ class ClasificacionDocumentalTVDController extends Controller
         $rowIdx = 2;
         foreach ($rows as $tvd) {
             $values = [
+                ...$this->ubicacion($tvd),
                 $tvd->tipo,
                 $tvd->cod,
                 $tvd->nom,
-                $tvd->dependencia?->nom_organico,
                 $tvd->soporte,
                 $tvd->gestion,
                 $tvd->central,
@@ -348,10 +360,10 @@ class ClasificacionDocumentalTVDController extends Controller
             fputcsv($out, $headers);
             foreach ($rows as $tvd) {
                 fputcsv($out, ExportSeguroHelper::filaCsv([
+                    ...$this->ubicacion($tvd),
                     $tvd->tipo,
                     $tvd->cod,
                     $tvd->nom,
-                    $tvd->dependencia?->nom_organico,
                     $tvd->soporte,
                     $tvd->gestion,
                     $tvd->central,

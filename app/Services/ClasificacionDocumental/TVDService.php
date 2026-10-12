@@ -2,27 +2,51 @@
 
 namespace App\Services\ClasificacionDocumental;
 
-use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTVD;
+use App\Models\ClasificacionDocumental\FondoAcumulado;
+use App\Models\ClasificacionDocumental\FondoAcumuladoPeriodo;
+use App\Models\ClasificacionDocumental\FondoAcumuladoUnidad;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
+/**
+ * TVD por fondo acumulado (M11-02): cada elemento pertenece a un período del fondo y a una unidad
+ * administrativa histórica de ese período. La aprobación es por período.
+ */
 class TVDService
 {
     /**
-     * Obtiene TVD con filtros.
+     * Obtiene los elementos raíz de la TVD con sus hijos.
      */
-    public function getAll(array $filters = []): LengthAwarePaginator|Collection
+    public function getAll(array $filters = []): Collection
     {
-        $query = ClasificacionDocumentalTVD::with(['children', 'dependencia'])
+        $query = ClasificacionDocumentalTVD::with(['children', 'unidad', 'periodo.fondo'])
             ->whereNull('parent');
 
-        if (! empty($filters['dependencia_id'])) {
-            $query->where('dependencia_id', $filters['dependencia_id']);
+        $this->aplicarFiltros($query, $filters);
+
+        return $query->orderBy('cod', 'asc')->get();
+    }
+
+    /**
+     * Filtros comunes del listado y la exportación.
+     */
+    public function aplicarFiltros(Builder $query, array $filters): Builder
+    {
+        if (! empty($filters['fondo_id'])) {
+            $query->whereHas('periodo', fn ($q) => $q->where('fondo_id', $filters['fondo_id']));
+        }
+
+        if (! empty($filters['periodo_id'])) {
+            $query->where('periodo_id', $filters['periodo_id']);
+        }
+
+        if (! empty($filters['unidad_id'])) {
+            $query->where('unidad_id', $filters['unidad_id']);
         }
 
         if (! empty($filters['tipo'])) {
@@ -36,9 +60,7 @@ class TVDService
             });
         }
 
-        $query->orderBy('cod', 'asc');
-
-        return $query->get();
+        return $query;
     }
 
     /**
@@ -50,27 +72,10 @@ class TVDService
             'total_elementos' => ClasificacionDocumentalTVD::count(),
             'total_series' => ClasificacionDocumentalTVD::where('tipo', 'SerieDocumental')->count(),
             'total_subseries' => ClasificacionDocumentalTVD::where('tipo', 'SubSerieDocumental')->count(),
-            'total_dependencias' => ClasificacionDocumentalTVD::distinct('dependencia_id')->count(),
-        ];
-    }
-
-    /**
-     * Obtiene estadísticas por dependencia.
-     */
-    public function getStatsByDependencia(int $id): array
-    {
-        $stats = ClasificacionDocumentalTVD::where('dependencia_id', $id)
-            ->selectRaw('
-                COUNT(*) as total_elementos,
-                SUM(CASE WHEN tipo = "SerieDocumental" THEN 1 ELSE 0 END) as series,
-                SUM(CASE WHEN tipo = "SubSerieDocumental" THEN 1 ELSE 0 END) as subseries
-            ')
-            ->first();
-
-        return [
-            'total_elementos' => $stats->total_elementos,
-            'series' => $stats->series,
-            'subseries' => $stats->subseries,
+            'total_fondos' => FondoAcumulado::count(),
+            'total_periodos' => FondoAcumuladoPeriodo::count(),
+            'periodos_aprobados' => FondoAcumuladoPeriodo::whereNotNull('fecha_aprobacion')->count(),
+            'total_unidades' => ClasificacionDocumentalTVD::distinct('unidad_id')->count('unidad_id'),
         ];
     }
 
@@ -79,14 +84,13 @@ class TVDService
      */
     public function create(array $data): ClasificacionDocumentalTVD
     {
-        $this->asegurarEditable($data['dependencia_id'] ?? null);
-        if (! empty($data['parent'])) {
-            $this->asegurarEditable(ClasificacionDocumentalTVD::whereKey($data['parent'])->value('dependencia_id'));
-        }
+        return DB::transaction(function () use ($data) {
+            $this->asegurarEditable($data['periodo_id'] ?? null);
 
-        $data['user_register'] = auth()->id();
+            $data['user_register'] = auth()->id();
 
-        return ClasificacionDocumentalTVD::create($data);
+            return ClasificacionDocumentalTVD::create($data);
+        });
     }
 
     /**
@@ -100,17 +104,16 @@ class TVDService
             return null;
         }
 
-        $this->asegurarEditable($tvd->dependencia_id);
-        if (! empty($data['dependencia_id'])) {
-            $this->asegurarEditable($data['dependencia_id']);
-        }
-        if (! empty($data['parent'])) {
-            $this->asegurarEditable(ClasificacionDocumentalTVD::whereKey($data['parent'])->value('dependencia_id'));
-        }
+        return DB::transaction(function () use ($tvd, $data) {
+            $this->asegurarEditable($tvd->periodo_id);
+            if (! empty($data['periodo_id']) && (int) $data['periodo_id'] !== (int) $tvd->periodo_id) {
+                $this->asegurarEditable($data['periodo_id']);
+            }
 
-        $tvd->update($data);
+            $tvd->update($data);
 
-        return $tvd;
+            return $tvd;
+        });
     }
 
     /**
@@ -120,64 +123,75 @@ class TVDService
     {
         $tvd = ClasificacionDocumentalTVD::find($id);
 
-        if (! $tvd) {
+        if (! $tvd || $tvd->hasChildren()) {
             return false;
         }
 
-        if ($tvd->hasChildren()) {
-            return false;
-        }
+        return DB::transaction(function () use ($tvd) {
+            $this->asegurarEditable($tvd->periodo_id);
 
-        $this->asegurarEditable($tvd->dependencia_id);
-
-        return $tvd->delete();
+            return $tvd->delete();
+        });
     }
 
     /**
-     * La TVD se aprueba por dependencia (M11-03); aprobada, no admite cambios.
+     * La TVD se aprueba por período (M11-02); aprobado, el período no admite cambios.
      */
-    public function dependenciaAprobada(?int $dependenciaId): bool
+    public function periodoAprobado(?int $periodoId): bool
     {
-        return $dependenciaId && ClasificacionDocumentalTVD::where('dependencia_id', $dependenciaId)
-            ->whereNotNull('fecha_aprobacion')
-            ->exists();
+        return $periodoId && FondoAcumuladoPeriodo::whereKey($periodoId)->whereNotNull('fecha_aprobacion')->exists();
     }
 
-    private function asegurarEditable(?int $dependenciaId): void
+    /**
+     * Debe llamarse dentro de una transacción: bloquea el período para que no se apruebe a la par.
+     */
+    public function asegurarEditable(?int $periodoId): void
     {
-        if ($this->dependenciaAprobada($dependenciaId)) {
-            throw ValidationException::withMessages(['dependencia_id' => 'La TVD de esta dependencia ya fue aprobada y no puede modificarse.']);
+        $periodo = $periodoId ? FondoAcumuladoPeriodo::whereKey($periodoId)->lockForUpdate()->first() : null;
+
+        if ($periodo?->fecha_aprobacion !== null) {
+            throw ValidationException::withMessages(['periodo_id' => 'La TVD de este período ya fue aprobada y no puede modificarse.']);
         }
     }
 
     /**
-     * Importa TVD desde un archivo Excel/CSV.
+     * Importa la TVD de una unidad histórica desde la plantilla Excel/CSV.
      * Estructura esperada (similar a la plantilla TRD):
-     * Fila 4: A=Dependencia, B=codigo dependencia
-     * Datos desde fila 7: A=dependencia, B=serie, C=subserie, E=nombre; H=gestion, I=central
+     * Fila 4: A=Unidad, B=código de la unidad histórica dentro del período elegido
+     * Datos desde fila 7: A=unidad, B=serie, C=subserie, E=nombre; H=gestion, I=central, J=soporte, K=disposición
      */
-    public function importFromExcel(UploadedFile $archivo): array
+    public function importFromExcel(UploadedFile $archivo, int $periodoId): array
     {
-        $spreadsheet = IOFactory::load($archivo->getRealPath());
-        $sheet = $spreadsheet->getActiveSheet();
+        $sheet = IOFactory::load($archivo->getRealPath())->getActiveSheet();
         $data = $sheet->toArray();
-
-        $codigoDependencia = trim($sheet->getCell('B4')->getValue() ?? '');
-        $dependencia = CalidadOrganigrama::where('cod_organico', $codigoDependencia)
-            ->where('tipo', 'Dependencia')
-            ->first();
-
-        if (! $dependencia) {
-            return ['inserted' => 0, 'errors' => ['No se encontró la dependencia con código: '.$codigoDependencia]];
-        }
-
-        if ($this->dependenciaAprobada($dependencia->id)) {
-            return ['inserted' => 0, 'errors' => ['La TVD de la dependencia '.$codigoDependencia.' ya fue aprobada y no puede modificarse.']];
-        }
+        $codigoUnidad = trim((string) ($sheet->getCell('B4')->getValue() ?? ''));
 
         // Todo-o-nada: sin transacción, una excepción a mitad de archivo dejaba
         // la TVD importada a medias en la base de datos.
-        return DB::transaction(fn () => $this->importarFilas($data, $dependencia->id));
+        return DB::transaction(function () use ($data, $periodoId, $codigoUnidad) {
+            $periodo = FondoAcumuladoPeriodo::whereKey($periodoId)->lockForUpdate()->first();
+
+            if (! $periodo) {
+                return ['inserted' => 0, 'errors' => ['El período seleccionado no existe.']];
+            }
+
+            if ($periodo->fecha_aprobacion !== null) {
+                return ['inserted' => 0, 'errors' => ['La TVD del período '.$periodo->nombre.' ya fue aprobada y no puede modificarse.']];
+            }
+
+            $unidad = $this->unidadDelPeriodo($periodoId, $codigoUnidad);
+
+            if (! $unidad) {
+                return ['inserted' => 0, 'errors' => ['No se encontró la unidad con código "'.$codigoUnidad.'" en el período '.$periodo->nombre.'.']];
+            }
+
+            return $this->importarFilas($data, $periodo->id, $unidad->id);
+        });
+    }
+
+    private function unidadDelPeriodo(int $periodoId, string $codigo): ?FondoAcumuladoUnidad
+    {
+        return $codigo === '' ? null : FondoAcumuladoUnidad::where('periodo_id', $periodoId)->where('codigo', $codigo)->first();
     }
 
     /**
@@ -188,7 +202,7 @@ class TVDService
      * @param  array<int, array<int, mixed>>  $data
      * @return array{inserted: int, errors: array<int, string>}
      */
-    private function importarFilas(array $data, int $dependenciaId): array
+    private function importarFilas(array $data, int $periodoId, int $unidadId): array
     {
         $idSerie = null;
         $inserted = 0;
@@ -212,28 +226,27 @@ class TVDService
             $hasB = ! empty($colB);
             $hasC = ! empty($colC);
 
-            $tipo = null;
-            $codigo = null;
-            $parent = null;
-
             if ($hasA && $hasB && ! $hasC) {
                 $tipo = 'SerieDocumental';
                 $codigo = $colB;
                 $parent = null;
-            } elseif ($hasA && $hasB && $hasC) {
-                $tipo = 'SubSerieDocumental';
-                $codigo = $colC;
-                if ($idSerie === null) {
-                    $errors[] = 'Fila '.($index + 1).': SubSerie sin Serie padre';
+
+                // Reimportar la misma plantilla no debe duplicar series en la unidad
+                if (ClasificacionDocumentalTVD::where('unidad_id', $unidadId)->where('cod', $codigo)->exists()) {
+                    $errors[] = 'Fila '.($index + 1).': la serie '.$codigo.' ya existe en la unidad; se omiten la serie y sus subseries';
+                    $idSerie = false;
 
                     continue;
                 }
-                $parent = $idSerie;
-            } elseif (! $hasA && ! $hasB && ! $hasC) {
+            } elseif (($hasA && $hasB && $hasC) || (! $hasA && ! $hasB && ! $hasC)) {
                 $tipo = 'SubSerieDocumental';
-                $codigo = null;
+                $codigo = $hasC ? $colC : null;
+
+                if ($idSerie === false) {
+                    continue;
+                }
                 if ($idSerie === null) {
-                    $errors[] = 'Fila '.($index + 1).': elemento sin Serie padre';
+                    $errors[] = 'Fila '.($index + 1).': SubSerie sin Serie padre';
 
                     continue;
                 }
@@ -250,7 +263,8 @@ class TVDService
                 'cod' => $codigo,
                 'nom' => $nombre,
                 'parent' => $parent,
-                'dependencia_id' => $dependenciaId,
+                'periodo_id' => $periodoId,
+                'unidad_id' => $unidadId,
                 'gestion' => $gestion,
                 'central' => $central,
                 'total_anios' => ($gestion !== null && $central !== null) ? $gestion + $central : $gestion,
@@ -276,28 +290,32 @@ class TVDService
     /**
      * Valida un archivo TVD sin importar, retornando filas válidas/errores.
      */
-    public function validarArchivo(UploadedFile $archivo): array
+    public function validarArchivo(UploadedFile $archivo, int $periodoId): array
     {
-        $spreadsheet = IOFactory::load($archivo->getRealPath());
-        $sheet = $spreadsheet->getActiveSheet();
+        $sheet = IOFactory::load($archivo->getRealPath())->getActiveSheet();
         $data = $sheet->toArray();
 
-        $codigoDependencia = trim((string) ($sheet->getCell('B4')->getValue() ?? ''));
+        $codigoUnidad = trim((string) ($sheet->getCell('B4')->getValue() ?? ''));
+        $periodo = FondoAcumuladoPeriodo::find($periodoId);
 
         $errores = [];
-        $dependencia = null;
+        $unidad = null;
 
-        // B4 es el modo de fallo real del import: si la dependencia no existe,
+        if (! $periodo) {
+            $errores[] = 'El período seleccionado no existe.';
+        } elseif ($periodo->fecha_aprobacion !== null) {
+            $errores[] = 'La TVD del período '.$periodo->nombre.' ya fue aprobada: no admite importaciones.';
+        }
+
+        // B4 es el modo de fallo real del import: si la unidad no existe en el período,
         // la importación completa se aborta. Validarlo aqui evita sorpresas.
-        if ($codigoDependencia === '') {
-            $errores[] = 'Celda B4: falta el codigo de la dependencia.';
-        } else {
-            $dependencia = CalidadOrganigrama::where('cod_organico', $codigoDependencia)
-                ->where('tipo', 'Dependencia')
-                ->first();
+        if ($codigoUnidad === '') {
+            $errores[] = 'Celda B4: falta el codigo de la unidad administrativa.';
+        } elseif ($periodo) {
+            $unidad = $this->unidadDelPeriodo($periodo->id, $codigoUnidad);
 
-            if (! $dependencia) {
-                $errores[] = 'No se encontro la dependencia con codigo: '.$codigoDependencia;
+            if (! $unidad) {
+                $errores[] = 'No se encontro la unidad con codigo "'.$codigoUnidad.'" en el periodo '.$periodo->nombre.'.';
             }
         }
 
@@ -327,6 +345,10 @@ class TVDService
             // Mismas ramas que importarFilas(): asi el diagnostico coincide
             // con lo que despues se va a escribir.
             if ($hasA && $hasB && ! $hasC) {
+                if ($unidad && ClasificacionDocumentalTVD::where('unidad_id', $unidad->id)->where('cod', $colB)->exists()) {
+                    $errores[] = 'Fila '.($index + 1).': la serie '.$colB.' ya existe en la unidad.';
+                }
+
                 $series++;
                 $filasValidas++;
                 $tieneSeriePadre = true;
@@ -337,12 +359,6 @@ class TVDService
             if (($hasA && $hasB && $hasC) || (! $hasA && ! $hasB && ! $hasC)) {
                 if (! $tieneSeriePadre) {
                     $errores[] = 'Fila '.($index + 1).': SubSerie sin Serie padre.';
-
-                    continue;
-                }
-
-                if ($hasA && $hasB && $hasC && trim($colC) === '') {
-                    $errores[] = 'Fila '.($index + 1).': la SubSerie no tiene codigo.';
 
                     continue;
                 }
@@ -364,7 +380,8 @@ class TVDService
             'filas_validas' => $filasValidas,
             'series' => $series,
             'subseries' => $subseries,
-            'dependencia' => $dependencia ? $dependencia->nom_organico : null,
+            'periodo' => $periodo?->nombre,
+            'unidad' => $unidad ? $unidad->codigo.' - '.$unidad->nombre : null,
             'errores' => $errores,
         ];
     }

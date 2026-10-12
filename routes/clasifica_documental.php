@@ -3,6 +3,7 @@
 use App\Http\Controllers\ClasificacionDocumental\ClasificacionDocumentalTRDController;
 use App\Http\Controllers\ClasificacionDocumental\ClasificacionDocumentalTRDVersionController;
 use App\Http\Controllers\ClasificacionDocumental\ClasificacionDocumentalTVDController;
+use App\Http\Controllers\ClasificacionDocumental\FondoAcumuladoController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -42,18 +43,35 @@ Route::middleware('throttle:config-operations')->group(function () {
         $pt = 'TVD -> ';
         Route::prefix('tvd')->name('clasifica-documental.tvd.')->group(function () use ($pt) {
             Route::get('/estadisticas', [ClasificacionDocumentalTVDController::class, 'estadisticas'])->name('estadisticas')->middleware('can:'.$pt.'Listar');
-            Route::get('/dependencia/{dependenciaId}', [ClasificacionDocumentalTVDController::class, 'listarPorDependencia'])->name('por-dependencia')->middleware('can:'.$pt.'Listar');
+            Route::get('/unidad/{unidadId}', [ClasificacionDocumentalTVDController::class, 'listarPorUnidad'])->name('por-unidad')->middleware('can:'.$pt.'Listar');
 
             Route::post('/import', [ClasificacionDocumentalTVDController::class, 'import'])->name('import')->middleware('can:'.$pt.'Importar');
             Route::post('/validate', [ClasificacionDocumentalTVDController::class, 'validar'])->name('validate')->middleware('can:'.$pt.'Listar');
             Route::get('/export', [ClasificacionDocumentalTVDController::class, 'export'])->name('export')->middleware('can:'.$pt.'Exportar');
-            Route::post('/aprobar/{dependenciaId}', [ClasificacionDocumentalTVDController::class, 'aprobar'])->name('aprobar')->middleware('can:'.$pt.'Versiones');
+            Route::post('/aprobar/{periodoId}', [ClasificacionDocumentalTVDController::class, 'aprobar'])->name('aprobar')->middleware('can:'.$pt.'Versiones');
 
             Route::get('/', [ClasificacionDocumentalTVDController::class, 'index'])->name('index')->middleware('can:'.$pt.'Listar');
             Route::post('/', [ClasificacionDocumentalTVDController::class, 'store'])->name('store')->middleware('can:'.$pt.'Crear');
             Route::get('/{tvd}', [ClasificacionDocumentalTVDController::class, 'show'])->name('show')->middleware('can:'.$pt.'Mostrar');
             Route::put('/{tvd}', [ClasificacionDocumentalTVDController::class, 'update'])->name('update')->middleware('can:'.$pt.'Editar');
             Route::delete('/{tvd}', [ClasificacionDocumentalTVDController::class, 'destroy'])->name('destroy')->middleware('can:'.$pt.'Eliminar');
+        });
+
+        // ===================== FONDOS ACUMULADOS (marco de la TVD, M11-02) =====================
+        Route::prefix('fondos-acumulados')->name('clasifica-documental.fondos-acumulados.')->group(function () use ($pt) {
+            Route::get('/', [FondoAcumuladoController::class, 'index'])->name('index')->middleware('can:'.$pt.'Listar');
+            Route::post('/', [FondoAcumuladoController::class, 'store'])->name('store')->middleware('can:'.$pt.'Crear');
+            Route::put('/{fondo}', [FondoAcumuladoController::class, 'update'])->name('update')->middleware('can:'.$pt.'Editar');
+            Route::delete('/{fondo}', [FondoAcumuladoController::class, 'destroy'])->name('destroy')->middleware('can:'.$pt.'Eliminar');
+
+            Route::post('/{fondo}/periodos', [FondoAcumuladoController::class, 'storePeriodo'])->name('periodos.store')->middleware('can:'.$pt.'Crear');
+            Route::put('/periodos/{periodo}', [FondoAcumuladoController::class, 'updatePeriodo'])->name('periodos.update')->middleware('can:'.$pt.'Editar');
+            Route::delete('/periodos/{periodo}', [FondoAcumuladoController::class, 'destroyPeriodo'])->name('periodos.destroy')->middleware('can:'.$pt.'Eliminar');
+
+            Route::get('/periodos/{periodo}/unidades', [FondoAcumuladoController::class, 'unidades'])->name('unidades.index')->middleware('can:'.$pt.'Listar');
+            Route::post('/periodos/{periodo}/unidades', [FondoAcumuladoController::class, 'storeUnidad'])->name('unidades.store')->middleware('can:'.$pt.'Crear');
+            Route::put('/unidades/{unidad}', [FondoAcumuladoController::class, 'updateUnidad'])->name('unidades.update')->middleware('can:'.$pt.'Editar');
+            Route::delete('/unidades/{unidad}', [FondoAcumuladoController::class, 'destroyUnidad'])->name('unidades.destroy')->middleware('can:'.$pt.'Eliminar');
         });
 
         // ===================== TRD VERSIONES =====================
