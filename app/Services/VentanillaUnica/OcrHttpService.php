@@ -3,6 +3,7 @@
 namespace App\Services\VentanillaUnica;
 
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\Log;
  */
 class OcrHttpService
 {
+    private const HEALTH_TTL = 30;
+
     private string $baseUrl;
 
     private bool $enabled;
@@ -44,7 +47,8 @@ class OcrHttpService
     }
 
     /**
-     * Verifica si el servicio está disponible
+     * Verifica si el servicio está disponible. M12-03: el resultado se cachea unos segundos
+     * para no hacer un health-check HTTP antes de cada extracción.
      */
     public function isAvailable(): bool
     {
@@ -52,15 +56,15 @@ class OcrHttpService
             return false;
         }
 
-        try {
-            $response = $this->cliente(5)->get("{$this->baseUrl}/health");
+        return Cache::remember('ocr:health:'.md5($this->baseUrl), self::HEALTH_TTL, function () {
+            try {
+                return $this->cliente(5)->get("{$this->baseUrl}/health")->successful();
+            } catch (\Exception $e) {
+                Log::warning('OCR Service no disponible', ['error' => $e->getMessage()]);
 
-            return $response->successful();
-        } catch (\Exception $e) {
-            Log::warning('OCR Service no disponible', ['error' => $e->getMessage()]);
-
-            return false;
-        }
+                return false;
+            }
+        });
     }
 
     /**

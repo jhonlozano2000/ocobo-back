@@ -7,6 +7,7 @@ use App\Helpers\FileMetadataHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Recibidos\UploadArchivoRecibidoRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Jobs\AplicarOcrArchivoDigital;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivoEliminado;
@@ -14,7 +15,6 @@ use App\Services\VentanillaUnica\OcrHttpService;
 use App\Services\VentanillaUnica\OcrService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -92,37 +92,9 @@ class VentanillaRadicaReciDigitalController extends Controller
                 'uploaded_by' => $usuario?->id,
             ]);
 
-            $ocrText = null;
-            $ocrService = app(OcrService::class);
-            $ocrHttpService = app(OcrHttpService::class);
-
-            try {
-                if ($ocrHttpService->isAvailable()) {
-                    $ocrText = $ocrHttpService->extractText($nuevoArchivo, self::DISK);
-                }
-
-                if (! $ocrText && $ocrService->isAvailable()) {
-                    $ocrText = $ocrService->extractText($nuevoArchivo, self::DISK);
-                }
-
-                if ($ocrText) {
-                    $radicado->update([
-                        'ocr' => $ocrText,
-                        'ocr_aplicado' => true,
-                    ]);
-                }
-            } catch (\Exception $e) {
-                if ($e instanceof ValidationException) {
-                    throw $e;
-                }
-                if ($e instanceof HttpExceptionInterface) {
-                    throw $e;
-                }
-                Log::warning('OCR falló pero no afecta upload', [
-                    'radicado_id' => $radicado->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            // M12-03: el OCR ya no bloquea la subida; el texto anterior deja de valer
+            $radicado->update(['ocr' => null, 'ocr_aplicado' => false]);
+            AplicarOcrArchivoDigital::programar($radicado, self::DISK, $nuevoArchivo, respaldoLocal: true);
 
             if ($request->input('tipo') === 'pqrs' && $request->input('pqrs_id')) {
                 $pqrs = VentanillaPqrs::find($request->input('pqrs_id'));
@@ -155,7 +127,8 @@ class VentanillaRadicaReciDigitalController extends Controller
                 'archivo_peso' => $fileSize,
                 'uploaded_by' => $nombreUsuario,
                 'file_url' => $fileUrl,
-                'ocr_aplicado' => ! empty($ocrText),
+                'ocr_aplicado' => false,
+                'ocr_en_proceso' => true,
             ], 'Archivo subido exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {

@@ -7,6 +7,7 @@ use App\Helpers\FileMetadataHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Enviados\UploadArchivoEnviadoRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Jobs\AplicarOcrArchivoDigital;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivoEliminado;
 use App\Services\VentanillaUnica\OcrHttpService;
@@ -85,38 +86,9 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
                 $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
             );
 
-            try {
-                $ocrText = null;
-                $ocrHttpService = app(OcrHttpService::class);
-
-                if ($ocrHttpService->isEnabled() && $ocrHttpService->isAvailable()) {
-                    $ocrText = $ocrHttpService->extractText($nuevoArchivo, self::DISK);
-
-                    if ($ocrText) {
-                        $radicado->update([
-                            'ocr' => $ocrText,
-                            'ocr_aplicado' => true,
-                        ]);
-
-                        \Log::info('OCR HTTP aplicado exitosamente en radicado enviado', [
-                            'radicado_id' => $radicado->id,
-                            'source' => 'http_service',
-                            'texto_length' => strlen($ocrText),
-                        ]);
-                    }
-                }
-            } catch (\Exception $e) {
-                if ($e instanceof ValidationException) {
-                    throw $e;
-                }
-                if ($e instanceof HttpExceptionInterface) {
-                    throw $e;
-                }
-                \Log::warning('OCR falló en radicado enviado pero no afecta upload', [
-                    'radicado_id' => $radicado->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            // M12-03: el OCR ya no bloquea la subida; el texto anterior deja de valer
+            $radicado->update(['ocr' => null, 'ocr_aplicado' => false]);
+            AplicarOcrArchivoDigital::programar($radicado, self::DISK, $nuevoArchivo);
 
             DB::commit();
 

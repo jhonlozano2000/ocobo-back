@@ -12,9 +12,15 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from PIL import Image
 import numpy as np
+
+# M12-03: límites para que un documento Office grande no acapare el servicio
+MAX_HOJAS_EXCEL = 20
+MAX_FILAS_POR_HOJA = 5000
+MAX_CARACTERES = 1_000_000
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -116,32 +122,9 @@ async def extract_text(file: UploadFile = File(...)):
         # Determinar tipo de archivo
         filename = file.filename.lower() if file.filename else ""
 
-        # Imágenes
-        if filename.endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif')):
-            text = process_image(content)
-        # PDFs
-        elif filename.endswith('.pdf'):
-            text = process_pdf(content)
-        # Word documents
-        elif filename.endswith(('.doc', '.docx')):
-            text = process_word(content, filename)
-        # Excel spreadsheets
-        elif filename.endswith(('.xls', '.xlsx')):
-            text = process_excel(content, filename)
-        # PowerPoint presentations
-        elif filename.endswith(('.ppt', '.pptx')):
-            text = process_powerpoint(content, filename)
-        # Text files
-        elif filename.endswith(('.txt', '.csv')):
-            text = content.decode('utf-8', errors='ignore')
-        # OpenDocument formats
-        elif filename.endswith(('.odt', '.ods', '.odp')):
-            text = process_opendocument(content, filename)
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Tipo de archivo no soportado: {file.filename}"
-            )
+        # M12-03: la extracción es CPU intensiva; fuera del event loop para no bloquear /health
+        text = await run_in_threadpool(extraer_texto, content, filename, file.filename)
+        text = text[:MAX_CARACTERES]
 
         logger.info(f"Texto extraído: {len(text)} caracteres")
 
@@ -157,6 +140,38 @@ async def extract_text(file: UploadFile = File(...)):
     except Exception as e:
         logger.error(f"Error al procesar archivo: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def extraer_texto(content: bytes, filename: str, nombre_original: Optional[str]) -> str:
+    """Elige el extractor según la extensión del archivo"""
+    # Imágenes
+    if filename.endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif')):
+        text = process_image(content)
+    # PDFs
+    elif filename.endswith('.pdf'):
+        text = process_pdf(content)
+    # Word documents
+    elif filename.endswith(('.doc', '.docx')):
+        text = process_word(content, filename)
+    # Excel spreadsheets
+    elif filename.endswith(('.xls', '.xlsx')):
+        text = process_excel(content, filename)
+    # PowerPoint presentations
+    elif filename.endswith(('.ppt', '.pptx')):
+        text = process_powerpoint(content, filename)
+    # Text files
+    elif filename.endswith(('.txt', '.csv')):
+        text = content.decode('utf-8', errors='ignore')
+    # OpenDocument formats
+    elif filename.endswith(('.odt', '.ods', '.odp')):
+        text = process_opendocument(content, filename)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Tipo de archivo no soportado: {nombre_original}"
+        )
+
+    return text
 
 
 def process_image(content: bytes) -> str:
@@ -249,14 +264,14 @@ def process_excel(content: bytes, filename: str) -> str:
     try:
         import openpyxl
 
-        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True, read_only=True)
         all_text = []
 
-        for sheet_name in wb.sheetnames:
+        for sheet_name in wb.sheetnames[:MAX_HOJAS_EXCEL]:
             ws = wb[sheet_name]
             all_text.append(f"--- Hoja: {sheet_name} ---")
 
-            for row in ws.iter_rows(values_only=True):
+            for row in ws.iter_rows(values_only=True, max_row=MAX_FILAS_POR_HOJA):
                 row_text = " | ".join([str(cell) if cell is not None else "" for cell in row])
                 if row_text.strip():
                     all_text.append(row_text)
