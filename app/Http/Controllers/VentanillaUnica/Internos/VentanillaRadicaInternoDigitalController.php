@@ -190,9 +190,20 @@ class VentanillaRadicaInternoDigitalController extends Controller
             }
 
             $archivoEliminado = $radicado->archivo_digital;
-            ArchivoHelper::eliminarArchivo($archivoEliminado, self::DISK);
 
-            $radicado->update(['archivo_digital' => null, 'subido_por' => null]);
+            // M03-12: queda en el historial de eliminaciones y el binario se borra solo si la BD confirma
+            DB::transaction(function () use ($radicado, $archivoEliminado) {
+                VentanillaRadicaInternoArchivosEliminados::create([
+                    'radica_interno_id' => $radicado->id,
+                    'archivo' => $archivoEliminado,
+                    'eliminado_por' => Auth::id(),
+                    'deleted_at' => now(),
+                ]);
+
+                $radicado->update(['archivo_digital' => null, 'subido_por' => null]);
+
+                ArchivoHelper::eliminarAlConfirmar([$archivoEliminado], self::DISK);
+            });
 
             return $this->successResponse(null, 'Archivo eliminado exitosamente');
         } catch (\Exception $e) {

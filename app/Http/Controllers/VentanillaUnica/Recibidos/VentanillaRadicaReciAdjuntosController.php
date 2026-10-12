@@ -228,7 +228,7 @@ class VentanillaRadicaReciAdjuntosController extends Controller
                 'deleted_at' => now(),
             ]);
 
-            ArchivoHelper::eliminarArchivo($archivoPath, self::DISK);
+            ArchivoHelper::eliminarAlConfirmar([$archivoPath], self::DISK);
 
             $archivo->delete();
             DB::commit();

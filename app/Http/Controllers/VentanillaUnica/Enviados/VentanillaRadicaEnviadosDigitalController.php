@@ -190,7 +190,7 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
             }
 
             $archivoEliminado = $radicado->archivo_digital;
-            ArchivoHelper::eliminarArchivo($archivoEliminado, self::DISK);
+            ArchivoHelper::eliminarAlConfirmar([$archivoEliminado], self::DISK);
 
             $usuario = Auth::user();
             VentanillaRadicaEnviadosArchivoEliminado::create([

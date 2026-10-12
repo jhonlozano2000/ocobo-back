@@ -12,6 +12,7 @@ use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivoEliminado
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -174,18 +175,19 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
             }
 
             $rutaArchivo = $archivo->archivo;
-            $nombreArchivo = $archivo->nom_origi ?? basename($rutaArchivo);
 
-            ArchivoHelper::eliminarArchivo($rutaArchivo, self::DISK);
+            DB::transaction(function () use ($archivo, $id, $rutaArchivo) {
+                VentanillaRadicaEnviadosArchivoEliminado::create([
+                    'radica_enviado_id' => $id,
+                    'archivo' => $rutaArchivo,
+                    'deleted_by' => Auth::id(),
+                    'deleted_at' => now(),
+                ]);
 
-            VentanillaRadicaEnviadosArchivoEliminado::create([
-                'radica_enviado_id' => $id,
-                'archivo' => $rutaArchivo,
-                'deleted_by' => Auth::id(),
-                'deleted_at' => now(),
-            ]);
+                $archivo->delete();
 
-            $archivo->delete();
+                ArchivoHelper::eliminarAlConfirmar([$rutaArchivo], self::DISK);
+            });
 
             return $this->successResponse(null, 'Archivo adicional eliminado exitosamente');
         } catch (\Exception $e) {

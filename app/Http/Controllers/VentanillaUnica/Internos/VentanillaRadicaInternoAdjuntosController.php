@@ -9,8 +9,10 @@ use App\Http\Requests\Ventanilla\Internos\UploadArchivosAdjuntosInternoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoArchivos;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoArchivosEliminados;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -209,9 +211,20 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
             }
 
             $rutaArchivo = $archivo->archivo;
-            ArchivoHelper::eliminarArchivo($rutaArchivo, self::DISK);
 
-            $archivo->delete();
+            // M03-11: queda en el historial de eliminaciones y el binario se borra solo si la BD confirma
+            DB::transaction(function () use ($archivo, $id, $rutaArchivo) {
+                VentanillaRadicaInternoArchivosEliminados::create([
+                    'radica_interno_id' => $id,
+                    'archivo' => $rutaArchivo,
+                    'eliminado_por' => Auth::id(),
+                    'deleted_at' => now(),
+                ]);
+
+                $archivo->delete();
+
+                ArchivoHelper::eliminarAlConfirmar([$rutaArchivo], self::DISK);
+            });
 
             return $this->successResponse(null, 'Archivo adicional eliminado exitosamente');
         } catch (\Exception $e) {
