@@ -116,24 +116,4 @@ class FirmaService
 
         return false;
     }
-
-    /**
-     * Registra el evento de firma en la base de datos (Polimorfico).
-     */
-    public function registrarEventoFirma($user, $documentable, $data)
-    {
-        return DB::table('firmas_eventos')->insert([
-            'documentable_id' => $documentable->id,
-            'documentable_type' => get_class($documentable),
-            'user_id' => $user->id,
-            'hash_original' => $data['hash_original'] ?? null,
-            'hash_firmado' => $data['hash_firmado'] ?? null,
-            'otp_utilizado' => '***'.substr((string) $data['otp'], -3),
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-            'fecha_firma' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-    }
 }

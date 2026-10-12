@@ -1,17 +1,11 @@
 <?php
 
-use App\Http\Controllers\Firma\FirmaController;
 use App\Http\Controllers\Transversal\FirmaEventosController;
 use App\Http\Controllers\Transversal\FirmaMasivaController;
 use App\Http\Controllers\Transversal\FirmaValidacionController;
 use App\Http\Controllers\Transversal\InAppNotificationController;
 use App\Http\Controllers\Transversal\NotificacionesController;
 use Illuminate\Support\Facades\Route;
-
-Route::middleware('auth:sanctum')->prefix('firma-electronica')->group(function () {
-    Route::post('/solicitar-otp', [FirmaController::class, 'solicitarOtp'])->middleware('throttle:firma-otp');
-    Route::post('/firmar', [FirmaController::class, 'validarYFirmar'])->middleware('throttle:firma');
-});
 
 // M16 — Notificaciones y Alertas (Ley 1437/2011)
 Route::middleware('auth:sanctum')->prefix('notificaciones')->group(function () {

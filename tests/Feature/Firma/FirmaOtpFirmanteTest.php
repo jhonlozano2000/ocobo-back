@@ -3,14 +3,18 @@
 namespace Tests\Feature\Firma;
 
 use App\Mail\OtpFirmaMail;
+use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\Firma\FirmaService;
+use App\Services\Firma\FirmaValidacionService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -142,23 +146,55 @@ class FirmaOtpFirmanteTest extends TestCase
         $this->actingAs($this->firmante)->postJson(self::URL.'/firmar', $this->payload(['otp' => '000000']))->assertStatus(429);
     }
 
-    public function test_flujo_legado_solo_acepta_tipos_de_la_lista_blanca(): void
+    public function test_flujo_legado_sin_estampado_ya_no_existe(): void
     {
+        // M06-11: /api/transversal/firma-electronica registraba la firma sin estampar el PDF
+        // (hash_firmado null, hash_original enviado por el cliente); el front no lo usaba
         $legado = '/api/transversal/firma-electronica';
 
-        // M06-04: antes se instanciaba 'App\Models\'.documento_type (cualquier modelo)
-        $this->actingAs($this->firmante)
-            ->postJson($legado.'/firmar', ['otp' => '123456', 'documento_type' => 'User', 'documento_id' => $this->ajeno->id])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('documento_type');
+        $this->actingAs($this->firmante)->postJson($legado.'/solicitar-otp', ['documento_type' => 'radicado_recibido', 'documento_id' => $this->radicado->id])->assertNotFound();
+        $this->actingAs($this->firmante)->postJson($legado.'/firmar', ['otp' => '123456', 'documento_type' => 'radicado_recibido', 'documento_id' => $this->radicado->id])->assertNotFound();
+        Mail::assertNothingSent();
+    }
 
-        $this->actingAs($this->ajeno)
-            ->postJson($legado.'/solicitar-otp', ['documento_type' => 'radicado_recibido', 'documento_id' => $this->radicado->id])
-            ->assertForbidden();
+    public function test_firma_estampa_el_pdf_y_registra_el_hash_firmado_verificable(): void
+    {
+        // M06-11: la firma estampa el sello (FPDI) y hash_firmado es el SHA-256 del PDF guardado
+        if (! Schema::hasColumn('firmas_eventos', 'timestamp_token')) {
+            $this->markTestSkipped('BD de pruebas sin la migración add_timestamp_token_to_firmas_eventos_table.');
+        }
 
-        $this->actingAs($this->firmante)
-            ->postJson($legado.'/solicitar-otp', ['documento_type' => 'radicado_recibido', 'documento_id' => $this->radicado->id])
-            ->assertOk();
-        Mail::assertSent(OtpFirmaMail::class, fn ($mail) => $mail->hasTo($this->firmante->email));
+        Storage::fake('radicados_recibidos');
+        Http::fake(['*' => Http::response('', 503)]);
+
+        $pdf = new \FPDF;
+        $pdf->AddPage();
+        $pdf->SetFont('Arial', '', 12);
+        $pdf->Cell(40, 10, 'Documento de prueba M06-11');
+        $original = $pdf->Output('S');
+        Storage::disk('radicados_recibidos')->put('m06/prueba.pdf', $original);
+        $this->radicado->update(['archivo_digital' => 'm06/prueba.pdf', 'hash_sha256' => hash('sha256', $original)]);
+
+        $otp = $this->solicitarOtpComoFirmante();
+        $this->actingAs($this->firmante)->postJson(self::URL.'/firmar', $this->payload(['otp' => $otp]))->assertOk();
+
+        $firmado = Storage::disk('radicados_recibidos')->get('m06/prueba.pdf');
+        $this->assertNotSame($original, $firmado);
+
+        $evento = FirmaEvento::where('documentable_type', VentanillaRadicaReci::class)
+            ->where('documentable_id', $this->radicado->id)->sole();
+        $this->assertSame(hash('sha256', $original), $evento->hash_original);
+        $this->assertSame(hash('sha256', $firmado), $evento->hash_firmado);
+        // La TSA no respondió: la firma se completa sin sello y sin fecha inventada
+        $this->assertNull($evento->timestamp_token);
+        $this->assertNull($evento->timestamp_fecha);
+        $this->assertSame(hash('sha256', $firmado), $this->radicado->fresh()->hash_sha256);
+
+        $validacion = app(FirmaValidacionService::class)->validar('radicado_recibido', $this->radicado->id);
+        $this->assertTrue($validacion['valido']);
+
+        // Cualquier cambio posterior al PDF firmado se detecta
+        Storage::disk('radicados_recibidos')->put('m06/prueba.pdf', $firmado.'%alterado');
+        $this->assertFalse(app(FirmaValidacionService::class)->validar('radicado_recibido', $this->radicado->id)['valido']);
     }
 }
