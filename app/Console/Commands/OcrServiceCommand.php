@@ -14,6 +14,8 @@ class OcrServiceCommand extends Command
 
     private const PORT = 5000;
 
+    private const STARTUP_TIMEOUT = 180;
+
     public function handle(): int
     {
         $action = $this->argument('action');
@@ -54,28 +56,45 @@ class OcrServiceCommand extends Command
         putenv('OCR_SERVICE_TOKEN='.$token);
         $host = escapeshellarg((string) config('services.ocr.host', '127.0.0.1'));
 
-        $this->info('Iniciando servicio OCR...');
+        // Las dependencias viven en el entorno virtual que crea start.bat (o `python -m venv .venv`)
+        $python = PHP_OS_FAMILY === 'Windows' ? $servicePath.'\.venv\Scripts\python.exe' : $servicePath.'/.venv/bin/python';
+        if (! file_exists($python)) {
+            $this->error('Falta el entorno virtual del servicio OCR. Instálelo con:');
+            $this->line(PHP_OS_FAMILY === 'Windows'
+                ? "  {$servicePath}\\start.bat install"
+                : "  cd {$servicePath} && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt");
+
+            return 1;
+        }
+
+        $log = storage_path('logs/ocr-service.log');
+        $this->info('Iniciando servicio OCR (log: '.$log.')...');
 
         if (PHP_OS_FAMILY === 'Windows') {
-            $command = "cd /d \"{$servicePath}\" && start /B python -m uvicorn main:app --host {$host} --port ".self::PORT;
+            $command = "cd /d \"{$servicePath}\" && start /B \"\" \"{$python}\" -m uvicorn main:app --host {$host} --port ".self::PORT." > \"{$log}\" 2>&1";
             pclose(popen($command, 'r'));
         } else {
-            $command = "cd \"{$servicePath}\" && python -m uvicorn main:app --host {$host} --port ".self::PORT.' > /dev/null 2>&1 & echo $!';
+            $command = "cd \"{$servicePath}\" && \"{$python}\" -m uvicorn main:app --host {$host} --port ".self::PORT." > \"{$log}\" 2>&1 & echo $!";
             $pid = shell_exec($command);
             if ($pid) {
                 file_put_contents($pidFile, trim($pid));
             }
         }
 
-        sleep(3);
+        // El puerto abre después de cargar PaddleOCR; el primer arranque además descarga los modelos
+        for ($espera = 0; $espera < self::STARTUP_TIMEOUT; $espera += 2) {
+            if ($this->isRunning()) {
+                if (PHP_OS_FAMILY === 'Windows' && $pid = $this->pidEscuchando()) {
+                    file_put_contents($pidFile, $pid);
+                }
+                $this->info('✓ Servicio OCR iniciado en puerto '.self::PORT);
 
-        if ($this->isRunning()) {
-            $this->info('✓ Servicio OCR iniciado en puerto '.self::PORT);
-
-            return 0;
+                return 0;
+            }
+            sleep(2);
         }
 
-        $this->error('Error al iniciar el servicio OCR');
+        $this->error('El servicio OCR no respondió en '.self::STARTUP_TIMEOUT.' s. Revise '.$log);
 
         return 1;
     }
@@ -84,17 +103,12 @@ class OcrServiceCommand extends Command
     {
         $pidFile = storage_path('app/'.self::PID_FILE);
 
-        if (! file_exists($pidFile)) {
-            $this->warn('No hay servicio OCR corriendo (sin PID file)');
+        // Sin PID file (p. ej. iniciado con start.bat) se busca el proceso que escucha en el puerto
+        $pid = file_exists($pidFile) ? (int) file_get_contents($pidFile) : (int) $this->pidEscuchando();
 
-            return 0;
-        }
-
-        $pid = (int) file_get_contents($pidFile);
-
-        if (! $this->isProcessRunning($pid)) {
-            $this->warn('Proceso OCR no está corriendo');
-            unlink($pidFile);
+        if (! $pid || ! $this->isProcessRunning($pid)) {
+            $this->warn('No hay servicio OCR corriendo');
+            @unlink($pidFile);
 
             return 0;
         }
@@ -107,7 +121,7 @@ class OcrServiceCommand extends Command
             exec("kill {$pid}");
         }
 
-        unlink($pidFile);
+        @unlink($pidFile);
 
         $this->info('✓ Servicio OCR detenido');
 
@@ -150,6 +164,21 @@ class OcrServiceCommand extends Command
         fclose($socket);
 
         return true;
+    }
+
+    /**
+     * PID del proceso que escucha en el puerto del servicio (solo Windows; en Linux se usa el PID file).
+     */
+    private function pidEscuchando(): ?int
+    {
+        if (PHP_OS_FAMILY !== 'Windows') {
+            return null;
+        }
+
+        // Columnas: Proto, Local, Remota (x:0 cuando escucha), Estado, PID; el estado va traducido
+        $pattern = '/^\s*TCP\s+\S+:'.self::PORT.'\s+\S+:0\s+\S+\s+(\d+)\s*$/m';
+
+        return preg_match($pattern, (string) shell_exec('netstat -ano -p TCP'), $m) ? (int) $m[1] : null;
     }
 
     private function isProcessRunning(int $pid): bool

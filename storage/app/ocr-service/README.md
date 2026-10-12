@@ -11,42 +11,42 @@ Microservicio OCR basado en PaddleOCR para extracción de texto de documentos.
 
 ## Requisitos
 
-- Python 3.9+
+- Python 3.12 (lanzador `py -3.12` o `python` en el PATH)
 - Windows 10/11 o Linux
 
-## Instalación
+## Instalación y ejecución
 
-### 1. Crear entorno virtual
+### Windows (automático)
 
-```bash
-cd C:\ocr-service
-python -m venv venv
-venv\Scripts\activate
+```bat
+start.bat install   :: crea .venv e instala dependencias (solo si cambió requirements.txt)
+start.bat           :: además arranca el servicio en primer plano (Ctrl+C para detener)
 ```
 
-### 2. Instalar dependencias
+Desde Laravel, una vez instalado:
 
 ```bash
-pip install -r requirements.txt
+php artisan ocr start    # en segundo plano, con el Python de .venv
+php artisan ocr status
+php artisan ocr stop
 ```
 
-### 3. (Opcional) Instalar PyMuPDF para PDFs
+Si Python no está en el PATH: `set OCR_PYTHON=C:\ruta\python.exe` antes de `start.bat`.
+
+### Linux (manual)
 
 ```bash
-pip install pymupdf
+cd storage/app/ocr-service
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+php artisan ocr start
 ```
 
-## Ejecución
+### Token compartido
 
-```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 5000
-```
-
-O directamente:
-
-```bash
-python main.py
-```
+Las extracciones exigen la cabecera `X-OCR-Token` con el secreto `OCR_SERVICE_TOKEN`; sin él el
+servicio responde 401. `start.bat` y `php artisan ocr start` lo toman del `.env` de Laravel. Por
+defecto el servicio solo escucha en `127.0.0.1` (`OCR_SERVICE_HOST` para otra interfaz).
 
 ## API Endpoints
 
@@ -125,6 +125,8 @@ En el `.env` del backend:
 ```env
 OCR_SERVICE_URL=http://localhost:5000
 OCR_ENABLED=true
+OCR_SERVICE_TOKEN=   # secreto aleatorio largo, p. ej. php -r "echo bin2hex(random_bytes(32));"
+OCR_SERVICE_HOST=127.0.0.1
 ```
 
 En `config/services.php`:

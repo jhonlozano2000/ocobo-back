@@ -4,3 +4,4 @@
 !ocr-service/
 !ocr-service/**
 ocr-service/__pycache__/
+ocr-service/.venv/
