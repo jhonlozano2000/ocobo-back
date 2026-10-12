@@ -11,6 +11,7 @@ use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -104,7 +105,9 @@ class GestionTerceroController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener terceros', $e->getMessage(), 500);
+            Log::error('GestionTercero: Error al obtener terceros', ['error' => $e->getMessage()]);
+
+            return $this->errorResponse('Error al obtener terceros', null, 500);
         }
     }
 
@@ -165,7 +168,9 @@ class GestionTerceroController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener historial del tercero', $e->getMessage(), 500);
+            Log::error('GestionTercero: Error al obtener historial del tercero', ['error' => $e->getMessage()]);
+
+            return $this->errorResponse('Error al obtener historial del tercero', null, 500);
         }
     }
 
@@ -214,7 +219,9 @@ class GestionTerceroController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al crear el tercero', $e->getMessage(), 500);
+            Log::error('GestionTercero: Error al crear el tercero', ['error' => $e->getMessage()]);
+
+            return $this->errorResponse('Error al crear el tercero', null, 500);
         }
     }
 
@@ -254,7 +261,9 @@ class GestionTerceroController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el tercero', $e->getMessage(), 500);
+            Log::error('GestionTercero: Error al obtener el tercero', ['error' => $e->getMessage()]);
+
+            return $this->errorResponse('Error al obtener el tercero', null, 500);
         }
     }
 
@@ -302,7 +311,9 @@ class GestionTerceroController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al actualizar el tercero', $e->getMessage(), 500);
+            Log::error('GestionTercero: Error al actualizar el tercero', ['error' => $e->getMessage()]);
+
+            return $this->errorResponse('Error al actualizar el tercero', null, 500);
         }
     }
 
@@ -319,6 +330,21 @@ class GestionTerceroController extends Controller
      */
     public function destroy(GestionTercero $tercero): JsonResponse
     {
+        // M16-05: un tercero con radicados o PQRS no se elimina (la FK de radicados fallaba con 500 y SQL
+        // en la respuesta; la de PQRS es "set null" y dejaba la petición sin peticionario). El borrado de un
+        // tercero sin uso sigue siendo físico: es la supresión que exige la Ley 1581.
+        $usos = array_filter([
+            'radicados recibidos' => DB::table('ventanilla_radica_reci')->where('tercero_id', $tercero->id)->count(),
+            'radicados enviados' => DB::table('ventanilla_radica_enviados')->where('tercero_id', $tercero->id)->count(),
+            'PQRS' => DB::table('ventanilla_pqrs')->where('gestion_tercero_id', $tercero->id)->count(),
+        ]);
+
+        if ($usos) {
+            $detalle = implode(', ', array_map(fn ($n, $tipo) => "$n $tipo", $usos, array_keys($usos)));
+
+            return $this->conflictResponse("No se puede eliminar el tercero: tiene $detalle asociados.");
+        }
+
         try {
             DB::beginTransaction();
 
@@ -336,7 +362,9 @@ class GestionTerceroController extends Controller
             }
             DB::rollBack();
 
-            return $this->errorResponse('Error al eliminar el tercero', $e->getMessage(), 500);
+            Log::error('GestionTercero: Error al eliminar el tercero', ['error' => $e->getMessage()]);
+
+            return $this->errorResponse('Error al eliminar el tercero', null, 500);
         }
     }
 
@@ -381,7 +409,9 @@ class GestionTerceroController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las estadísticas', $e->getMessage(), 500);
+            Log::error('GestionTercero: Error al obtener las estadísticas', ['error' => $e->getMessage()]);
+
+            return $this->errorResponse('Error al obtener las estadísticas', null, 500);
         }
     }
 }

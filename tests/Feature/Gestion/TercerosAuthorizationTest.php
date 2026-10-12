@@ -5,6 +5,8 @@ namespace Tests\Feature\Gestion;
 use App\Models\Gestion\GestionTercero;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -71,5 +73,29 @@ class TercerosAuthorizationTest extends TestCase
 
         $enorme = $this->actingAs($this->funcionario)->getJson(self::PREFIX.'?per_page=9999')->assertOk();
         $this->assertSame(100, $enorme->json('pagination.per_page'));
+    }
+
+    /**
+     * M16-05: un tercero con radicados no se elimina (409 sin detalle SQL); uno sin uso sí.
+     */
+    public function test_tercero_con_radicados_no_se_elimina(): void
+    {
+        $this->funcionario->givePermissionTo('Gestión - Terceros -> Eliminar');
+        Schema::disableForeignKeyConstraints();
+        DB::table('ventanilla_radica_reci')->insert([
+            'num_radicado' => 'M1605-'.uniqid(), 'medio_recep_id' => 1,
+            'usuario_crea' => $this->funcionario->id, 'tercero_id' => $this->tercero->id,
+        ]);
+        Schema::enableForeignKeyConstraints();
+
+        $respuesta = $this->actingAs($this->funcionario)->deleteJson(self::PREFIX.'/'.$this->tercero->id)
+            ->assertStatus(409)
+            ->assertJsonMissingPath('errors');
+        $this->assertStringContainsString('1 radicados recibidos', $respuesta->json('message'));
+        $this->assertNotNull(GestionTercero::find($this->tercero->id));
+
+        $libre = GestionTercero::create(['num_docu_nit' => 'TST-M16-002', 'nom_razo_soci' => 'Libre', 'tipo' => 'Natural']);
+        $this->actingAs($this->funcionario)->deleteJson(self::PREFIX.'/'.$libre->id)->assertOk();
+        $this->assertNull(GestionTercero::find($libre->id));
     }
 }
