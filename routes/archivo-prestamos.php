@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 $perm = 'Gestion de Archivo -> Prestamos -> ';
 
-Route::middleware('auth:sanctum')->group(function () use ($perm) {
+Route::middleware(['auth:sanctum', 'throttle:archivo'])->group(function () use ($perm) {
     Route::get('prestamos', [OfiArchivoPrestamoController::class, 'index'])
         ->middleware('can:'.$perm.'Ver');
     Route::post('prestamos', [OfiArchivoPrestamoController::class, 'store'])

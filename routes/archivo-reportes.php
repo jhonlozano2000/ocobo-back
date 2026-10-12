@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
  */
 $perm = 'Gestion de Archivo -> Reportes -> ';
 
-Route::middleware('auth:sanctum')->group(function () use ($perm) {
+Route::middleware(['auth:sanctum', 'throttle:archivo'])->group(function () use ($perm) {
     Route::get('reportes/{tipo}', [OfiArchivoReportesController::class, 'generar'])
         ->middleware('can:'.$perm.'Ver');
     Route::get('reportes/{tipo}/export', [OfiArchivoReportesController::class, 'export'])

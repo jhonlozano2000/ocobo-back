@@ -64,7 +64,7 @@ Route::post('/2fa/verify', [TwoFactorController::class, 'verify'])->middleware('
 // RUTAS DE GESTIÓN DE ARCHIVO (ISO 27001)
 $permExp = 'Gestion de Archivo -> Expedientes -> ';
 
-Route::middleware('auth:sanctum')->prefix('archivo')->group(function () use ($permExp) {
+Route::middleware(['auth:sanctum', 'throttle:archivo'])->prefix('archivo')->group(function () use ($permExp) {
     Route::get('/expedientes', [OfiArchivoExpedienteController::class, 'index'])->middleware('can:'.$permExp.'Ver');
     Route::post('/expedientes', [OfiArchivoExpedienteController::class, 'store'])->middleware('can:'.$permExp.'Crear');
     Route::post('/expedientes/{id}/incorporar', [OfiArchivoExpedienteController::class, 'incorporarDocumento'])->middleware('can:'.$permExp.'Incorporar');

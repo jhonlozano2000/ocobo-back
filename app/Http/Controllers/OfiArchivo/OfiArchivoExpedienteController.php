@@ -370,7 +370,8 @@ class OfiArchivoExpedienteController extends Controller
     public function subirArchivos(Request $request, $expedienteId)
     {
         $request->validate([
-            'archivos' => 'required|array|min:1',
+            // M08-17: tope de cantidad; 50 MB por archivo sin límite de archivos permitía cargas enormes
+            'archivos' => 'required|array|min:1|max:20',
             'archivos.*' => 'file|max:51200',
             'tipo' => 'required|in:tipo_documental,expediente_completo',
             'tipo_documental' => 'nullable|string|max:200',

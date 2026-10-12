@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
  * Prefijo base: api/archivo/transferencias
  * Acuerdo AGN 004/2019.
  */
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:archivo'])->group(function () {
     // Transferencias
     Route::get('transferencias', [OfiArchivoTransferenciaController::class, 'indexTransferencias'])
         ->middleware('can:Gestion de Archivo -> Transferencias -> Ver');

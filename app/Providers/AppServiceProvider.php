@@ -142,6 +142,13 @@ class AppServiceProvider extends ServiceProvider
                 });
         });
 
+        // Rate limit Gestión de Archivo (M08-17): 120 req/min por usuario, con contador propio
+        // para no competir con el limitador 'api' de otros módulos
+        RateLimiter::for('archivo', function (Request $request) {
+            return Limit::perMinute(120)
+                ->by('archivo:'.($request->user()?->id ?: $request->ip()));
+        });
+
         // Rate limit búsqueda: 30 req/min por usuario
         RateLimiter::for('search', function (Request $request) {
             return Limit::perMinute(30)

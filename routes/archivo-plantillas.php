@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
  */
 $perm = 'Gestion de Archivo -> Plantillas -> ';
 
-Route::middleware('auth:sanctum')->group(function () use ($perm) {
+Route::middleware(['auth:sanctum', 'throttle:archivo'])->group(function () use ($perm) {
     Route::get('plantillas', [OfiArchivoPlantillaDocumentoController::class, 'index']);
     Route::post('plantillas', [OfiArchivoPlantillaDocumentoController::class, 'store'])
         ->middleware('can:'.$perm.'Crear');
