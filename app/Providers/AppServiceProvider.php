@@ -25,6 +25,7 @@ use App\Services\ControlAcceso\UserService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -45,6 +46,26 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->registrarObservers();
         $this->configurarRateLimiting();
+        $this->configurarPermisosEspeciales();
+    }
+
+    /**
+     * M04-12 / M10-02: Garantiza que la habilidad 'Jefe de Archivo' sea reconocida
+     * tanto si el usuario posee el rol como si posee el permiso Spatie homónimo.
+     */
+    private function configurarPermisosEspeciales(): void
+    {
+        Gate::define('Jefe de Archivo', function ($user) {
+            if (method_exists($user, 'hasRole') && ($user->hasRole('Jefe de Archivo') || $user->hasRole('Administrador'))) {
+                return true;
+            }
+
+            try {
+                return method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('Jefe de Archivo');
+            } catch (\Throwable $e) {
+                return false;
+            }
+        });
     }
 
     private function registrarObservers(): void

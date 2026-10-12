@@ -25,75 +25,34 @@ class CombinedSecurityMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Verificar que la petición no venga de un proxy no confiable
-        $this->verifyTrustedProxies($request);
-
-        // Verificar que la petición tenga headers mínimos
-        $this->verifyRequiredHeaders($request);
-
-        // Verificar URL maliciosa
         $this->verifyMaliciousUrl($request);
 
-        $response = $next($request);
-
-        return $response;
+        return $next($request);
     }
 
     /**
-     * Verifica proxies confiables
-     */
-    private function verifyTrustedProxies(Request $request): void
-    {
-        // Si hay proxy header, verificar que venga de un proxy conocido
-        $forwardedFor = $request->header('X-Forwarded-For');
-        $forwardedProto = $request->header('X-Forwarded-Proto');
-        $forwardedIp = $request->header('X-Forwarded-IP');
-
-        // Si hay headers de proxy pero el trust proxy no está configurado
-        if (($forwardedFor || $forwardedProto || $forwardedIp) && ! config('trustedproxy.proxies')) {
-            // Solo warn, no bloquear - el TrustProxies middleware maneja esto
-        }
-    }
-
-    /**
-     * Verifica headers requeridos
-     */
-    private function verifyRequiredHeaders(Request $request): void
-    {
-        // Solo para endpoints de API que requieren Content-Type
-        if (! $request->is('api/*')) {
-            return;
-        }
-
-        // POST, PUT, PATCH deben tener Content-Type
-        if (in_array($request->method(), ['POST', 'PUT', 'PATCH'])) {
-            // Content-Type será validado por ValidateContentType middleware
-        }
-    }
-
-    /**
-     * Verifica URLs maliciosas
+     * Verifica que la URL y queryString no contengan caracteres de evasión o secuencias maliciosas.
      */
     private function verifyMaliciousUrl(Request $request): void
     {
-        $url = $request->getQueryString() ?? '';
+        $rawQuery = $request->getQueryString() ?? '';
+        $rawPath = $request->path();
+        $decodedQuery = rawurldecode($rawQuery);
+        $decodedPath = rawurldecode($rawPath);
 
-        // Verificar null bytes
-        if (str_contains($url, "\0")) {
-            abort(response()->json([
-                'success' => false,
-                'message' => 'URL inválida.',
-                'error' => 'INVALID_URL',
-            ], 400));
+        // Verificar null bytes (ataques de truncamiento en crudo o codificados)
+        if (str_contains($rawQuery, "\0") || str_contains($decodedQuery, "\0") ||
+            str_contains($rawPath, "\0") || str_contains($decodedPath, "\0") ||
+            str_contains(strtolower($rawQuery), '%00') || str_contains(strtolower($rawPath), '%00')) {
+            abort(400, 'URL contiene caracteres no permitidos.');
         }
 
-        // Verificar sequences path traversal en query string
-        if (preg_match('/(\.\.|%2e%2e)/i', $url)) {
-            abort(response()->json([
-                'success' => false,
-                'message' => 'URL inválida.',
-                'error' => 'INVALID_URL',
-            ], 400));
+        // Verificar secuencias de path traversal explícitas (../, ..\, etc.) en crudo o decodificado
+        if (preg_match('/(?:\.\.[\/\\\\])/i', $decodedQuery) ||
+            preg_match('/(?:\.\.[\/\\\\])/i', $decodedPath) ||
+            preg_match('/(?:\.\.[\/\\\\]|%2e%2e[\/\\\\]|%2e%2e%2f|%2e%2e%5c|\.\.%2f|\.\.%5c)/i', $rawQuery) ||
+            preg_match('/(?:\.\.[\/\\\\]|%2e%2e[\/\\\\]|%2e%2e%2f|%2e%2e%5c|\.\.%2f|\.\.%5c)/i', $rawPath)) {
+            abort(400, 'Secuencia de path traversal no permitida.');
         }
     }
 }

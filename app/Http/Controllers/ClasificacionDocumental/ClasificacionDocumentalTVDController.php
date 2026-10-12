@@ -200,7 +200,7 @@ class ClasificacionDocumentalTVDController extends Controller
     public function aprobar($periodoId)
     {
         $user = auth()->user();
-        if (! $user->hasPermissionTo('Jefe de Archivo')) {
+        if (! $user->can('Jefe de Archivo')) {
             return $this->forbiddenResponse('Solo el Jefe de Archivo puede aprobar la TVD');
         }
 

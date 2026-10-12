@@ -247,9 +247,9 @@ class ClasificacionDocumentalTRDVersionController extends Controller
     public function aprobarVersion(AprobarTRDVersionRequest $request, $dependenciaId)
     {
         try {
-            // Verificar que el usuario tiene el permiso Jefe de Archivo (se concede al rol Administrador)
+            // Verificar que el usuario tiene la habilidad Jefe de Archivo (rol o permiso)
             $user = auth()->user();
-            if (! $user->hasPermissionTo('Jefe de Archivo')) {
+            if (! $user->can('Jefe de Archivo')) {
                 return $this->errorResponse('No tiene permisos para aprobar versiones TRD. Solo el Jefe de Archivo puede realizar esta acción.', null, 403);
             }
 
@@ -373,9 +373,9 @@ class ClasificacionDocumentalTRDVersionController extends Controller
     public function listarPendientesPorAprobar()
     {
         try {
-            // Verificar que el usuario tiene el permiso Jefe de Archivo (se concede al rol Administrador)
+            // Verificar que el usuario tiene la habilidad Jefe de Archivo (rol o permiso)
             $user = auth()->user();
-            if (! $user->hasPermissionTo('Jefe de Archivo')) {
+            if (! $user->can('Jefe de Archivo')) {
                 return $this->successResponse([], 'No tiene permisos para ver versiones pendientes');
             }
 
