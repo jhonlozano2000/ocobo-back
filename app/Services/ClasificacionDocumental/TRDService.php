@@ -2,6 +2,7 @@
 
 namespace App\Services\ClasificacionDocumental;
 
+use App\Helpers\ExcelReadFilter;
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRDVersion;
@@ -257,7 +258,10 @@ class TRDService
         $conDias = 0;
         $errors = [];
 
-        $spreadsheet = IOFactory::load($filePath);
+        $reader = IOFactory::createReaderForFile($filePath);
+        $reader->setReadDataOnly(true);
+        $reader->setReadFilter(new ExcelReadFilter(5000));
+        $spreadsheet = $reader->load($filePath);
         $sheet = $spreadsheet->getActiveSheet();
         $data = $sheet->toArray();
 

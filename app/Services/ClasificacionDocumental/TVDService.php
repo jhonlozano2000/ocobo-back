@@ -2,6 +2,7 @@
 
 namespace App\Services\ClasificacionDocumental;
 
+use App\Helpers\ExcelReadFilter;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTVD;
 use App\Models\ClasificacionDocumental\FondoAcumulado;
 use App\Models\ClasificacionDocumental\FondoAcumuladoPeriodo;
@@ -162,7 +163,10 @@ class TVDService
      */
     public function importFromExcel(UploadedFile $archivo, int $periodoId): array
     {
-        $sheet = IOFactory::load($archivo->getRealPath())->getActiveSheet();
+        $reader = IOFactory::createReaderForFile($archivo->getRealPath());
+        $reader->setReadDataOnly(true);
+        $reader->setReadFilter(new ExcelReadFilter(5000));
+        $sheet = $reader->load($archivo->getRealPath())->getActiveSheet();
         $data = $sheet->toArray();
         $codigoUnidad = trim((string) ($sheet->getCell('B4')->getValue() ?? ''));
 
@@ -298,7 +302,10 @@ class TVDService
      */
     public function validarArchivo(UploadedFile $archivo, int $periodoId): array
     {
-        $sheet = IOFactory::load($archivo->getRealPath())->getActiveSheet();
+        $reader = IOFactory::createReaderForFile($archivo->getRealPath());
+        $reader->setReadDataOnly(true);
+        $reader->setReadFilter(new ExcelReadFilter(5000));
+        $sheet = $reader->load($archivo->getRealPath())->getActiveSheet();
         $data = $sheet->toArray();
 
         $codigoUnidad = trim((string) ($sheet->getCell('B4')->getValue() ?? ''));

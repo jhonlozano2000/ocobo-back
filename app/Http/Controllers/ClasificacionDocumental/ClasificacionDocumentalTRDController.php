@@ -10,6 +10,7 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Services\ClasificacionDocumental\TRDService;
+use App\Services\MiBandeja\MiBandejaFiltroService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -41,16 +42,21 @@ class ClasificacionDocumentalTRDController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener las TRD', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener las TRD', $e->getMessage());
         }
     }
 
     public function store(StoreClasificacionDocumentalRequest $request)
     {
         try {
+            $dependenciaId = $request->input('dependencia_id');
+            if (! $this->usuarioPuedeGestionarDependencia($dependenciaId)) {
+                return $this->forbiddenResponse('No tiene permisos para crear elementos TRD en otra dependencia');
+            }
+
             $trd = $this->service->create($request->validated());
 
-            return $this->successResponse($trd, 'Elemento TRD creado exitosamente', 201);
+            return $this->createdResponse($trd, 'Elemento TRD creado exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -59,7 +65,7 @@ class ClasificacionDocumentalTRDController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al crear el elemento TRD', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al crear el elemento TRD', $e->getMessage());
         }
     }
 
@@ -74,7 +80,7 @@ class ClasificacionDocumentalTRDController extends Controller
             ])->find($id);
 
             if (! $trd) {
-                return $this->errorResponse('Elemento TRD no encontrado', null, 404);
+                return $this->notFoundResponse('Elemento TRD no encontrado');
             }
 
             return $this->successResponse($trd, 'Elemento TRD obtenido exitosamente');
@@ -86,18 +92,23 @@ class ClasificacionDocumentalTRDController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener el elemento TRD', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener el elemento TRD', $e->getMessage());
         }
     }
 
     public function update(UpdateClasificacionDocumentalRequest $request, $id)
     {
         try {
-            $trd = $this->service->update($id, $request->validated());
-
+            $trd = ClasificacionDocumentalTRD::find($id);
             if (! $trd) {
-                return $this->errorResponse('Elemento TRD no encontrado', null, 404);
+                return $this->notFoundResponse('Elemento TRD no encontrado');
             }
+
+            if (! $this->usuarioPuedeGestionarDependencia($trd->dependencia_id)) {
+                return $this->forbiddenResponse('No tiene permisos para modificar elementos TRD de otra dependencia');
+            }
+
+            $trd = $this->service->update($id, $request->validated());
 
             return $this->successResponse($trd, 'Elemento TRD actualizado exitosamente');
         } catch (\Exception $e) {
@@ -108,15 +119,24 @@ class ClasificacionDocumentalTRDController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar el elemento TRD', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al actualizar el elemento TRD', $e->getMessage());
         }
     }
 
     public function destroy($id)
     {
         try {
+            $trd = ClasificacionDocumentalTRD::find($id);
+            if (! $trd) {
+                return $this->notFoundResponse('Elemento TRD no encontrado');
+            }
+
+            if (! $this->usuarioPuedeGestionarDependencia($trd->dependencia_id)) {
+                return $this->forbiddenResponse('No tiene permisos para eliminar elementos TRD de otra dependencia');
+            }
+
             if (! $this->service->delete($id)) {
-                return $this->errorResponse('No se puede eliminar el elemento TRD', 'El elemento tiene elementos hijos asociados', 422);
+                return $this->warningResponse('No se puede eliminar el elemento TRD porque tiene elementos hijos asociados');
             }
 
             return $this->successResponse(null, 'Elemento TRD eliminado exitosamente');
@@ -128,7 +148,7 @@ class ClasificacionDocumentalTRDController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al eliminar el elemento TRD', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al eliminar el elemento TRD', $e->getMessage());
         }
     }
 
@@ -147,7 +167,7 @@ class ClasificacionDocumentalTRDController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener estadísticas totales', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener estadísticas totales', $e->getMessage());
         }
     }
 
@@ -157,7 +177,7 @@ class ClasificacionDocumentalTRDController extends Controller
             $dependencia = CalidadOrganigrama::find($id);
 
             if (! $dependencia) {
-                return $this->errorResponse('Dependencia no encontrada', null, 404);
+                return $this->notFoundResponse('Dependencia no encontrada');
             }
 
             return $this->successResponse(
@@ -175,7 +195,7 @@ class ClasificacionDocumentalTRDController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener estadísticas', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
         }
     }
 
@@ -185,7 +205,7 @@ class ClasificacionDocumentalTRDController extends Controller
             $dependencia = CalidadOrganigrama::find($id);
 
             if (! $dependencia) {
-                return $this->errorResponse('Dependencia no encontrada', null, 404);
+                return $this->notFoundResponse('Dependencia no encontrada');
             }
 
             $elementos = ClasificacionDocumentalTRD::where('dependencia_id', $id)
@@ -214,7 +234,7 @@ class ClasificacionDocumentalTRDController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener elementos TRD', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener elementos TRD', $e->getMessage());
         }
     }
 
@@ -224,7 +244,7 @@ class ClasificacionDocumentalTRDController extends Controller
             $rutaArchivo = 'plantillas/Ocobo - Plantilla TRD.xlsx';
 
             if (! Storage::exists($rutaArchivo)) {
-                return $this->errorResponse('Plantilla no encontrada', null, 404);
+                return $this->notFoundResponse('Plantilla no encontrada');
             }
 
             return Storage::download($rutaArchivo, 'Ocobo - Plantilla TRD.xlsx');
@@ -236,7 +256,7 @@ class ClasificacionDocumentalTRDController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al descargar la plantilla', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al descargar la plantilla', $e->getMessage());
         }
     }
 
@@ -254,7 +274,7 @@ class ClasificacionDocumentalTRDController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al importar TRD', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al importar TRD', $e->getMessage());
         }
     }
 
@@ -299,7 +319,7 @@ class ClasificacionDocumentalTRDController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener estadísticas por dependencias', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener estadísticas por dependencias', $e->getMessage());
         }
     }
 
@@ -314,7 +334,7 @@ class ClasificacionDocumentalTRDController extends Controller
             $clasificacion = ClasificacionDocumentalTRD::find($id);
 
             if (! $clasificacion) {
-                return $this->errorResponse('Elemento TRD no encontrado', null, 404);
+                return $this->notFoundResponse('Elemento TRD no encontrado');
             }
 
             $info = $clasificacion->getInfoDiasVencimientoConfigurado();
@@ -335,7 +355,35 @@ class ClasificacionDocumentalTRDController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener días de vencimiento', $e->getMessage(), 500);
+            return $this->serverErrorResponse('Error al obtener días de vencimiento', $e->getMessage());
         }
+    }
+
+    /**
+     * M10-06: Valida si el usuario tiene alcance para gestionar la TRD de la dependencia.
+     * Roles de administración y Jefe de Archivo tienen alcance global; otros usuarios
+     * están restringidos a la dependencia activa asignada a su cargo.
+     */
+    private function usuarioPuedeGestionarDependencia(?int $dependenciaId): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->hasRole(['Administrador', 'Jefe de Archivo']) || $user->can('TRD -> Ver Todos')) {
+            return true;
+        }
+
+        if (! $dependenciaId) {
+            return true;
+        }
+
+        $miDependencia = MiBandejaFiltroService::getDependenciaDelUsuario($user->id);
+        if (! $miDependencia) {
+            return false;
+        }
+
+        return (int) $miDependencia->id === (int) $dependenciaId;
     }
 }

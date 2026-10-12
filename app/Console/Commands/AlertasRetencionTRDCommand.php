@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Notificacion;
+use App\Models\OfiArchivo\OfiArchivoExpediente;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -67,6 +68,9 @@ class AlertasRetencionTRDCommand extends Command
         foreach (self::TABLES as $tabla) {
             $total += $this->procesarTabla($tabla, $ventanas, $dryRun);
         }
+
+        // M08-14: Evaluación de retención a nivel de expediente desde fecha_cierre
+        $total += $this->procesarExpedientes($ventanas, $dryRun);
 
         $this->info("Alertas de retención TRD completadas. Total notificaciones: {$total}");
         Log::info("AlertasRetencionTRD: {$total} alertas creadas para ventanas: {$diasStr}");
@@ -210,5 +214,71 @@ class AlertasRetencionTRDCommand extends Command
                 'ventanilla' => $label,
             ],
         ]);
+    }
+
+    private function notificacionExpedienteYaExiste(int $userId, int $expedienteId): bool
+    {
+        return Notificacion::where('user_id', $userId)
+            ->where('type', self::TYPE)
+            ->whereNull('read_at')
+            ->whereJsonContains('data->expediente_id', $expedienteId)
+            ->exists();
+    }
+
+    /**
+     * M08-14: Evalúa expedientes cerrados/transferidos calculando retención
+     * a partir de fecha_cierre + años a_g de la serie TRD asignada.
+     */
+    private function procesarExpedientes(array $ventanas, bool $dryRun): int
+    {
+        $expedientes = OfiArchivoExpediente::with('serieTrd')
+            ->whereNotNull('fecha_cierre')
+            ->whereIn('estado', ['cerrado', 'transferido'])
+            ->get();
+
+        $notificaciones = 0;
+
+        foreach ($expedientes as $expediente) {
+            $fechaFin = $expediente->fecha_retencion_gestion_fin;
+            if (! $fechaFin) {
+                continue;
+            }
+
+            $diasRestantes = (int) now()->startOfDay()->diffInDays($fechaFin->startOfDay(), false);
+            if (! in_array($diasRestantes, $ventanas, true)) {
+                continue;
+            }
+
+            $userId = $expediente->usuario_cierre_id ?? $expediente->usuario_apertura_id;
+            if (! $userId) {
+                continue;
+            }
+
+            if ($this->notificacionExpedienteYaExiste($userId, $expediente->id)) {
+                continue;
+            }
+
+            $this->line("  [Expediente] {$expediente->numero_expediente} → {$diasRestantes} días restantes → user#{$userId}");
+
+            if (! $dryRun) {
+                Notificacion::create([
+                    'user_id' => $userId,
+                    'type' => self::TYPE,
+                    'title' => "Retención TRD de expediente — Vence en {$diasRestantes} días",
+                    'message' => "El expediente {$expediente->numero_expediente} ({$expediente->nombre_expediente}) cumplirá su tiempo de retención en gestión el {$fechaFin->format('Y-m-d')}.",
+                    'data' => [
+                        'expediente_id' => $expediente->id,
+                        'numero_expediente' => $expediente->numero_expediente,
+                        'tipo_entidad' => 'expediente',
+                        'fecha_retencion_fin' => $fechaFin->format('Y-m-d'),
+                        'dias_restantes' => $diasRestantes,
+                    ],
+                ]);
+            }
+
+            $notificaciones++;
+        }
+
+        return $notificaciones;
     }
 }

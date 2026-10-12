@@ -7,6 +7,7 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Concerns\GuardaSnapshotDependencia;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -91,6 +92,36 @@ class OfiArchivoExpediente extends Model
     public function usuarioCierre()
     {
         return $this->belongsTo(User::class, 'usuario_cierre_id');
+    }
+
+    /**
+     * M08-14: Calcula la fecha de finalización de retención en archivo de gestión
+     * a partir de la fecha de cierre del expediente y los años a_g de la serie TRD.
+     */
+    public function getFechaRetencionGestionFinAttribute(): ?Carbon
+    {
+        if (! $this->fecha_cierre || ! $this->serieTrd) {
+            return null;
+        }
+
+        $anios = (int) $this->serieTrd->a_g;
+
+        return $this->fecha_cierre->copy()->addYears($anios);
+    }
+
+    /**
+     * M08-14: Calcula la fecha de disposición final total (gestión + central)
+     * a partir de la fecha de cierre del expediente.
+     */
+    public function getFechaRetencionTotalFinAttribute(): ?Carbon
+    {
+        if (! $this->fecha_cierre || ! $this->serieTrd) {
+            return null;
+        }
+
+        $anios = (int) $this->serieTrd->a_g + (int) $this->serieTrd->a_c;
+
+        return $this->fecha_cierre->copy()->addYears($anios);
     }
 
     public function scopeDocumentosActivos($query)
