@@ -41,6 +41,8 @@ class GestionTerceroRequest extends FormRequest
             'tipo' => ['required', Rule::in(['Natural', 'Juridico'])],
             'notifica_email' => 'boolean',
             'notifica_msm' => 'boolean',
+            'autoriza_tratamiento_datos' => 'nullable|boolean',
+            'dv_nit' => 'nullable|integer|min:0|max:9',
         ];
     }
 
