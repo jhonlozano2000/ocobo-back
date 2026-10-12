@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\OfiArchivo\OfiArchivoDepuracionDigital;
 use App\Models\User;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
@@ -89,8 +90,8 @@ class ConciliarAdjuntosCorreoCommand extends Command
                         }
 
                         $this->line("  ↩ {$archivo} → {$destino}");
-                        if (! $dryRun) {
-                            $storage->move($archivo, $destino);
+                        if (! $dryRun && $storage->move($archivo, $destino)) {
+                            OfiArchivoDepuracionDigital::registrar($disco, 'restaurado', $destino, $archivo, $storage, $destino, $this->getName());
                         }
                         $restaurados++;
                     }

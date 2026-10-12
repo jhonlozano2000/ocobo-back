@@ -37,6 +37,11 @@ Schedule::command('archivo:depurar-digital --disco=radicados_recibidos --dias=30
     ->weekly()->sundays()->at('01:00')->withoutOverlapping()->onOneServer();
 Schedule::command('archivo:depurar-digital --disco=radicados_enviados --dias=30 --dry-run')
     ->weekly()->sundays()->at('01:30')->withoutOverlapping()->onOneServer();
+// M08-02: radicados internos y expedientes también se reportan; la purga de cuarentena es manual (--purgar-dias)
+Schedule::command('archivo:depurar-digital --disco=radicados_internos --dias=30 --dry-run')
+    ->weekly()->sundays()->at('02:00')->withoutOverlapping()->onOneServer();
+Schedule::command('archivo:depurar-digital --disco=archivo_expedientes --dias=30 --dry-run')
+    ->weekly()->sundays()->at('02:30')->withoutOverlapping()->onOneServer();
 
 // Grupos Colaborativos: liberar bloqueos expirados cada hora
 Schedule::command('grupos-colaborativos:liberar-bloqueos')->hourly()->withoutOverlapping()->onOneServer();

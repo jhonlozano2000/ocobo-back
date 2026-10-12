@@ -8,6 +8,7 @@ use App\Services\VentanillaUnica\EmailRadicacionService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\TablaDepuracionDigital;
 use Tests\TestCase;
 
 /**
@@ -16,13 +17,14 @@ use Tests\TestCase;
  */
 class AdjuntosCorreoDepuracionTest extends TestCase
 {
-    use DatabaseTransactions;
+    use DatabaseTransactions, TablaDepuracionDigital;
 
     protected VentanillaRadicaReci $radicado;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->asegurarTablaDepuracionDigital();
 
         $this->actingAs(User::factory()->create(['estado' => 1]));
         Storage::fake('radicados_recibidos');

@@ -18,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -368,16 +369,21 @@ class OfiArchivoExpedienteController extends Controller
             return $this->warningResponse('El nombre del tipo documental es requerido');
         }
 
+        $disk = 'archivo_expedientes';
+        // M08-02: binarios ya escritos; si la transacción se revierte se borran para no dejar huérfanos
+        $guardados = [];
+
         try {
             DB::beginTransaction();
 
             $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->findOrFail($expedienteId);
 
             if ($expediente->estado !== 'abierto') {
+                DB::rollBack();
+
                 return $this->warningResponse('No se pueden subir archivos a un expediente cerrado o transferido');
             }
 
-            $disk = 'archivo_expedientes';
             $documentosCreados = [];
 
             foreach ($request->file('archivos') as $archivo) {
@@ -385,6 +391,7 @@ class OfiArchivoExpedienteController extends Controller
                 $validacion = ArchivoHelper::validarArchivoSeguro($archivo);
                 if (! $validacion['valido']) {
                     DB::rollBack();
+                    Storage::disk($disk)->delete($guardados);
 
                     return $this->warningResponse(
                         "Archivo no válido: {$archivo->getClientOriginalName()}",
@@ -398,9 +405,13 @@ class OfiArchivoExpedienteController extends Controller
                     'archivo',
                     $disk
                 );
+                if (! empty($uploadData['path'])) {
+                    $guardados[] = $uploadData['path'];
+                }
 
                 if (! $uploadData || empty($uploadData['path'])) {
                     DB::rollBack();
+                    Storage::disk($disk)->delete($guardados);
 
                     return $this->serverErrorResponse(
                         "Error al guardar el archivo: {$archivo->getClientOriginalName()}"
@@ -454,10 +465,11 @@ class OfiArchivoExpedienteController extends Controller
             if ($e instanceof ValidationException) {
                 throw $e;
             }
+            DB::rollBack();
+            Storage::disk($disk)->delete($guardados);
             if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
                 throw $e;
             }
-            DB::rollBack();
 
             return $this->serverErrorResponse('Error al subir los archivos', $e->getMessage());
         }
