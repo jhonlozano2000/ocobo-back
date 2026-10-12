@@ -13,7 +13,6 @@ use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoArchivosEliminado
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -133,8 +132,8 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
                 'nombre' => $archivo->nom_origi ?? basename($archivo->archivo),
                 'ruta' => $archivo->archivo,
                 'url' => ArchivoHelper::obtenerUrl($archivo->archivo, self::DISK),
-                'tamaño' => $archivo->archivo_peso ?? Storage::disk(self::DISK)->size($archivo->archivo),
-                'tipo' => Storage::disk(self::DISK)->mimeType($archivo->archivo),
+                'tamaño' => $archivo->archivo_peso ?? ArchivoHelper::tamanio($archivo->archivo, self::DISK),
+                'tipo' => ArchivoHelper::tipoMime($archivo->archivo, self::DISK),
                 'fecha_subida' => $archivo->created_at,
                 'subido_por' => $archivo->usuarioSubido
                     ? trim($archivo->usuarioSubido->nombres.' '.$archivo->usuarioSubido->apellidos)
@@ -182,11 +181,11 @@ class VentanillaRadicaInternoAdjuntosController extends Controller
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 
-            if (! ArchivoHelper::obtenerUrl($archivo->archivo, self::DISK)) {
+            if (! ArchivoHelper::existe($archivo->archivo, self::DISK)) {
                 return $this->errorResponse('El archivo no existe en el servidor', null, 404);
             }
 
-            return Storage::disk(self::DISK)->download($archivo->archivo);
+            return ArchivoHelper::descargar($archivo->archivo, self::DISK);
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;

@@ -14,7 +14,6 @@ use App\Services\VentanillaUnica\OcrHttpService;
 use App\Services\VentanillaUnica\OcrService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -133,11 +132,11 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 
-            if (! ArchivoHelper::obtenerUrl($radicado->archivo_digital, self::DISK)) {
+            if (! ArchivoHelper::existe($radicado->archivo_digital, self::DISK)) {
                 return $this->errorResponse('El archivo no existe en el servidor', null, 404);
             }
 
-            return Storage::disk(self::DISK)->download($radicado->archivo_digital);
+            return ArchivoHelper::descargar($radicado->archivo_digital, self::DISK);
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -201,14 +200,14 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
                 return $this->errorResponse('Archivo no encontrado', null, 404);
             }
 
-            if (! ArchivoHelper::obtenerUrl($radicado->archivo_digital, self::DISK)) {
+            if (! ArchivoHelper::existe($radicado->archivo_digital, self::DISK)) {
                 return $this->errorResponse('El archivo no existe en el servidor', null, 404);
             }
 
             $fileInfo = [
                 'file_name' => $radicado->nom_origi ?: basename($radicado->archivo_digital),
-                'file_size' => Storage::disk(self::DISK)->size($radicado->archivo_digital),
-                'file_type' => Storage::disk(self::DISK)->mimeType($radicado->archivo_digital),
+                'file_size' => ArchivoHelper::tamanio($radicado->archivo_digital, self::DISK),
+                'file_type' => ArchivoHelper::tipoMime($radicado->archivo_digital, self::DISK),
                 'uploaded_at' => $radicado->updated_at,
                 'uploaded_by' => $radicado->usuarioSubio
                     ? trim($radicado->usuarioSubio->nombres.' '.$radicado->usuarioSubio->apellidos)

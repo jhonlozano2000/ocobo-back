@@ -566,6 +566,54 @@ class ArchivoHelper
     }
 
     /**
+     * Descarga un archivo del disco especificado.
+     */
+    public static function descargar(string $path, string $disk, ?string $nombreDescarga = null)
+    {
+        return self::getStorage($disk)->download($path, $nombreDescarga);
+    }
+
+    /**
+     * Verifica si un archivo existe en el disco especificado.
+     */
+    public static function existe(?string $path, string $disk): bool
+    {
+        return $path ? self::getStorage($disk)->exists($path) : false;
+    }
+
+    /**
+     * Obtiene el tamaño en bytes de un archivo en el disco especificado.
+     */
+    public static function tamanio(string $path, string $disk): int
+    {
+        return self::getStorage($disk)->size($path);
+    }
+
+    /**
+     * Obtiene el tipo MIME de un archivo en el disco especificado.
+     */
+    public static function tipoMime(string $path, string $disk): ?string
+    {
+        return self::getStorage($disk)->mimeType($path);
+    }
+
+    /**
+     * Obtiene el contenido binario o texto de un archivo en el disco especificado.
+     */
+    public static function obtenerContenido(string $path, string $disk): ?string
+    {
+        return self::getStorage($disk)->get($path);
+    }
+
+    /**
+     * Almacena contenido en un archivo en el disco especificado.
+     */
+    public static function guardarContenido(string $path, string $contenido, string $disk): bool
+    {
+        return self::getStorage($disk)->put($path, $contenido);
+    }
+
+    /**
      * Borra los archivos cuando se confirme la transacción en curso (M01-06/M02-06/M03-06): si la
      * transacción o el savepoint se revierten, el registro sigue en BD y su archivo también.
      * Sin transacción abierta se borran de inmediato.

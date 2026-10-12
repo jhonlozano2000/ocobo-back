@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\VentanillaUnica\Enviados;
 
+use App\Helpers\ArchivoHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\MiBandejaTemp;
@@ -9,7 +10,6 @@ use App\Models\MiBandeja\MiBandejaTempArchivoVersion;
 use App\Models\MiBandeja\MiBandejaTempGrupoArchiAdjunto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class VentanillaRadicaEnviadosPendientesController extends Controller
@@ -307,11 +307,11 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
                 return $this->errorResponse('Archivo del documento no encontrado', null, 404);
             }
 
-            if (! Storage::disk(self::DISK)->exists($version->ruta_completa)) {
+            if (! ArchivoHelper::existe($version->ruta_completa, self::DISK)) {
                 return $this->errorResponse('Archivo no encontrado en disco', null, 404);
             }
 
-            return Storage::disk(self::DISK)->download($version->ruta_completa, $version->nombre_original);
+            return ArchivoHelper::descargar($version->ruta_completa, self::DISK, $version->nombre_original);
         } catch (\Exception $e) {
             \Log::error('Error al descargar documento de pendiente: '.$e->getMessage(), ['id' => $id, 'versionId' => $versionId]);
 
@@ -331,11 +331,11 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
                 return $this->errorResponse('Adjunto no encontrado', null, 404);
             }
 
-            if (! Storage::disk(self::DISK)->exists($adjunto->archivo)) {
+            if (! ArchivoHelper::existe($adjunto->archivo, self::DISK)) {
                 return $this->errorResponse('Archivo adjunto no encontrado en disco', null, 404);
             }
 
-            return Storage::disk(self::DISK)->download($adjunto->archivo, $adjunto->nombre_original);
+            return ArchivoHelper::descargar($adjunto->archivo, self::DISK, $adjunto->nombre_original);
         } catch (\Exception $e) {
             \Log::error('Error al descargar adjunto de pendiente: '.$e->getMessage(), ['id' => $id, 'adjuntoId' => $adjuntoId]);
 

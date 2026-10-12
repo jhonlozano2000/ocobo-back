@@ -187,7 +187,7 @@ class VentanillaRadicaReciAdjuntosController extends Controller
 
             $nombreOriginal = $archivo->nom_origi ?: basename($archivo->archivo);
 
-            return \Storage::disk(self::DISK)->download($archivo->archivo, $nombreOriginal);
+            return ArchivoHelper::descargar($archivo->archivo, self::DISK, $nombreOriginal);
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;

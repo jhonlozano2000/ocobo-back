@@ -28,7 +28,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -248,15 +247,15 @@ class VentanillaRadicaEnviadosController extends Controller
                         $discoOrigen = 'plantillas_grupos';
                         $discoDestino = 'radicados_enviados';
 
-                        if (Storage::disk($discoOrigen)->exists($version->ruta_completa)) {
+                        if (ArchivoHelper::existe($version->ruta_completa, $discoOrigen)) {
                             $extension = $version->extension ?: pathinfo($version->nombre_original, PATHINFO_EXTENSION);
                             $nombreDestino = $numRadicado.'_'.time().'.'.$extension;
-                            $contenidoArchivo = Storage::disk($discoOrigen)->get($version->ruta_completa);
+                            $contenidoArchivo = ArchivoHelper::obtenerContenido($version->ruta_completa, $discoOrigen);
 
-                            Storage::disk($discoDestino)->put($nombreDestino, $contenidoArchivo);
+                            ArchivoHelper::guardarContenido($nombreDestino, $contenidoArchivo, $discoDestino);
 
-                            $fileSize = Storage::disk($discoDestino)->size($nombreDestino);
-                            $mimeType = Storage::disk($discoDestino)->mimeType($nombreDestino) ?? $version->mime_type;
+                            $fileSize = ArchivoHelper::tamanio($nombreDestino, $discoDestino);
+                            $mimeType = ArchivoHelper::tipoMime($nombreDestino, $discoDestino) ?? $version->mime_type;
                             $hashSha256 = $version->hash_seguridad ?: hash('sha256', $contenidoArchivo);
 
                             $radicado->update([

@@ -13,7 +13,6 @@ use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoArchivosEliminado
 use App\Services\VentanillaUnica\OcrHttpService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -141,11 +140,11 @@ class VentanillaRadicaInternoDigitalController extends Controller
                 return $this->errorResponse('No tiene permisos para consultar este radicado', null, 403);
             }
 
-            if (! ArchivoHelper::obtenerUrl($radicado->archivo_digital, self::DISK)) {
+            if (! ArchivoHelper::existe($radicado->archivo_digital, self::DISK)) {
                 return $this->errorResponse('El archivo no existe en el servidor', null, 404);
             }
 
-            return Storage::disk(self::DISK)->download($radicado->archivo_digital);
+            return ArchivoHelper::descargar($radicado->archivo_digital, self::DISK);
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -219,8 +218,8 @@ class VentanillaRadicaInternoDigitalController extends Controller
 
             $fileInfo = [
                 'file_name' => basename($radicado->archivo_digital),
-                'file_size' => Storage::disk(self::DISK)->size($radicado->archivo_digital),
-                'file_type' => Storage::disk(self::DISK)->mimeType($radicado->archivo_digital),
+                'file_size' => ArchivoHelper::tamanio($radicado->archivo_digital, self::DISK),
+                'file_type' => ArchivoHelper::tipoMime($radicado->archivo_digital, self::DISK),
                 'uploaded_at' => $radicado->updated_at,
                 'uploaded_by' => $radicado->usuarioSubido
                     ? trim($radicado->usuarioSubido->nombres.' '.$radicado->usuarioSubido->apellidos)
