@@ -8,9 +8,9 @@ Aplicación gestora del proceso de gestión documental desarrollada en Laravel.
 ![Version](https://img.shields.io/badge/Version-2.7-blue?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Producci%C3%B3n-green?style=flat-square)
 
-**Versión**: 2.7  
+**Versión**: 2.8  
 **Última actualización**: Octubre 2026  
-**Estado**: Producción — en remediación de la auditoría integral 2026-10 (ver `ocobo-documents/AUDITORIA-INTEGRAL-OCOBO-2026-10.md`)
+**Estado**: Producción — Auditoría integral 2026-10 completada en sus niveles críticos: **100% de hallazgos P0 (bloqueantes), P1 (altos) y P2 (medios-altos) completamente resueltos y verificados** (157 hallazgos corregidos, suite automatizada con 310 pruebas en verde; ver `ocobo-documents/AUDITORIA-INTEGRAL-OCOBO-2026-10.md`).
 
 ## 📋 Descripción
 
@@ -19,20 +19,21 @@ OCOBO-BACK es una aplicación web desarrollada en Laravel que gestiona procesos 
 ## 🚀 Características Principales
 
 - **Autenticación**: Sanctum SPA con cookie HttpOnly, CSRF, 2FA TOTP, bloqueo de cuenta (5 intentos → 15 min), sesión máxima de 12 h, expulsión inmediata de usuarios desactivados o sesiones revocadas y aviso de sesiones simultáneas
-- **Autorización**: RBAC con Spatie Permission (permiso por módulo y acción en cada ruta) + ABAC jerárquico por dependencia (`AbacHierarquico`, middleware `acceso_radicado`, que responde 404 a registros ajenos)
-- **Control de Acceso**: Usuarios, roles, permisos directos ("otros permisos"), cargos y sedes
+- **Autorización**: RBAC con Spatie Permission (permiso por módulo y acción en cada ruta con principio de menor privilegio) + ABAC jerárquico por dependencia (`AbacHierarquico`, middleware `acceso_radicado`, que responde 404 a registros ajenos)
+- **Control de Acceso**: Usuarios, roles, permisos directos ("otros permisos"), cargos y sedes; optimización N+1 en árbol de cargos disponibles
 - **Configuración**: División política, sedes, listas maestras, numeración de radicados, semáforo, SMTP/IMAP (credencial cifrada)
 - **Clasificación Documental**: TRD versionada (TEMP → ACTIVO → HISTÓRICO) con aprobación del Jefe de Archivo, segregación (quien elabora no aprueba) e inmutabilidad de versiones aprobadas; importación desde Excel; TVD con aprobación por dependencia
-- **Ventanilla Única**: Radicación recibida, enviada, interna y PQRS con consecutivo atómico (`RadicadoConsecutivoService`), líneas de tiempo, acuses digitales, anulación con aprobación, relación enviados↔recibidos; `created_at` es la fecha oficial de radicación; los internos guardan `dependencia_origen_id` (dependencia del custodio principal, mostrada como «Dependencia / Oficina»)
+- **Ventanilla Única**: Radicación recibida, enviada, interna y PQRS con consecutivo atómico (`RadicadoConsecutivoService`), líneas de tiempo, acuses digitales, anulación con aprobación, relación enviados↔recibidos; `created_at` es la fecha oficial de radicación; los internos guardan `dependencia_origen_id` (dependencia del custodio principal, mostrada como «Dependencia / Oficina»); **inmutabilidad y conservación física en Recibidos (`SoftDeletes`)** bajo Ley 594/2000 y Acuerdo AGN 060/2001
+- **Gestión de Terceros y Habeas Data**: Cumplimiento de la Ley 1581/2012 y Decreto 1377/2013 con consentimiento explícito de tratamiento de datos (`autoriza_tratamiento_datos`, `fecha_autorizacion_datos`), validación estricta de unicidad de correo y teléfono, cálculo automático del Dígito de Verificación DIAN (Módulo 11) para NIT de personas jurídicas, y **Blind Index HMAC SHA-256 (`num_docu_nit_hash`)** para búsquedas exactas sin exposición de datos en claro
 - **PQRS**: Términos de la Ley 1755 por tipo en días hábiles, prioridad Tutela, prórroga única (no aplica a tutelas ni fallos judiciales), notificación por modo, reserva de identidad en denuncias y PQRS anónimas (`es_anonimo` + permiso `Radicar -> PQRSF -> Ver identidad reservada`)
-- **Firma Electrónica**: OTP ligado al firmante designado y al documento (hash, 5 min, 5 intentos, un solo uso); sello de texto en el PDF con FPDI, hash SHA-256 antes/después, estampa TSA RFC 3161 en firmas de PDF con verificación criptográfica (PKIStatus, firma CMS, cadena hasta raíz con EKU timeStamping, messageImprint y nonce); DOCX con estampa en grupos colaborativos; firma de PQRS atómica con hash del contenido; firmantes de internos marcados al firmar (sin doble firma)
+- **Firma Electrónica**: OTP ligado al firmante designado y al documento (hash, 5 min, 5 intentos, un solo uso); sello de texto en el PDF con FPDI, hash SHA-256 antes/después, estampa TSA RFC 3161 sobre canal seguro HTTPS nativo (`https://timestamp.digicert.com`) con verificación criptográfica (PKIStatus, firma CMS, cadena hasta raíz con EKU timeStamping, messageImprint y nonce); DOCX con estampa en grupos colaborativos; firma de PQRS atómica con hash del contenido; firmantes de internos marcados al firmar (sin doble firma)
 - **Bandeja de Correo**: Lectura del buzón IMAP en vivo, radicación manual de un correo como recibido/enviado, PDF del correo, rótulo PNG con código de barras y respuesta al remitente con el rótulo
 - **Gestión de Archivo**: Expedientes con foliado automático, índice electrónico con hash por folio, cierre sellado (`hash_indice`), préstamos, transferencias y eliminaciones con precondiciones TRD y aprobador distinto (AGN 003/2015)
 - **Mi Bandeja**: Grupos colaborativos (proyector, revisor, aprobador, firmante), plantillas DOCX con variables, check-in/check-out, notas en tiempo real, Mi Disco; listado de internos con dependencia de origen y `puede_firmar` por fila
 - **Workflows**: Diseñador visual, instancias, tareas, checklists, tablero Kanban y reportes
 - **Uploads seguros**: `InspectorArchivos` (contenido real, extensiones y MIME peligrosos, zip-bomb) vía regla `ArchivoSeguro`, también en adjuntos IMAP; nombres de adjunto sin path traversal
 - **OCR**: Microservicio PaddleOCR 3 en entorno virtual propio (`start.bat` lo instala), autenticado por token y solo en loopback, con fallback a Tesseract; PDF con texto embebido y OCR solo en páginas escaneadas; búsqueda por contenido
-- **Notificaciones**: In-app (centro de notificaciones), correos a responsables y terceros, acuse de recibo automático, alertas de vencimiento (diario) y de retención TRD (30/7/1 días)
+- **Notificaciones en Tiempo Real (Reverb)**: WebSockets mediante Laravel Reverb con actualización instantánea de la campana de notificaciones en toda la entidad y polling de respaldo cada 2 min; correos a responsables y terceros, acuse de recibo automático, alertas de vencimiento (diario) y de retención TRD (30/7/1 días)
 - **Calendario Días No Hábiles**: 18 festivos de Colombia por año (fijos, Ley Emiliani y Semana Santa), todo en hora de Colombia
 - **Auditoría ISO 27001**: Canal `audit` con retención de 365 días, logs de autenticación con IP y user agent, `VentanillaAuditTrait` por documento
 - **Exportaciones**: Excel/CSV/PDF en servidor protegidas contra inyección de fórmulas (`ExportSeguroHelper`)
