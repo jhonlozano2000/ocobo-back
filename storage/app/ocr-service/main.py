@@ -7,6 +7,7 @@ import os
 import io
 import hmac
 import logging
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -50,9 +51,12 @@ def get_ocr_engine():
         logger.info("Inicializando PaddleOCR...")
         try:
             from paddleocr import PaddleOCR
+            # oneDNN falla en paddlepaddle 3.3 sobre CPU Windows
+            # ("ConvertPirAttribute2RuntimeAttribute not support"); OCR_ENABLE_MKLDNN=1 lo reactiva
             ocr_engine = PaddleOCR(
                 use_textline_orientation=True,
-                lang='es'
+                lang='es',
+                enable_mkldnn=os.environ.get("OCR_ENABLE_MKLDNN", "0") == "1",
             )
             logger.info("PaddleOCR inicializado correctamente")
         except Exception as e:
@@ -165,97 +169,52 @@ def process_image(content: bytes) -> str:
         if image.mode != 'RGB':
             image = image.convert('RGB')
 
-        # Convertir a numpy array
-        img_array = np.array(image)
-
-        # Obtener motor OCR
-        ocr = get_ocr_engine()
-
-        # Extraer texto
-        result = ocr.ocr(img_array, cls=True)
-
-        # Procesar resultado
-        if not result or not result[0]:
-            return ""
-
-        text_lines = []
-        for line in result[0]:
-            if line and len(line) >= 2:
-                text_lines.append(line[1][0])  # texto
-
-        return "\n".join(text_lines)
+        return "\n".join(ocr_lines(np.array(image)))
 
     except Exception as e:
         logger.error(f"Error en process_image: {e}")
         return ""
 
 
+def ocr_lines(img_array) -> list:
+    """Líneas reconocidas por PaddleOCR 3 (`predict` → `rec_texts`)."""
+    result = get_ocr_engine().predict(img_array)
+    if not result:
+        return []
+    return [texto for texto in (result[0].get("rec_texts") or []) if texto and texto.strip()]
+
+
 def process_pdf(content: bytes) -> str:
-    """Procesa un PDF y extrae texto de cada página"""
+    """
+    Procesa un PDF con PyMuPDF (máx. 5 páginas): usa el texto embebido de cada página y,
+    si la página no lo tiene (escaneada), la renderiza y la pasa por OCR.
+    """
     try:
-        from pdf2image import convert_from_bytes
+        import pymupdf
 
-        # Convertir PDF a imágenes
-        images = convert_from_bytes(content, first_page=1, last_page=5)  # Limitar a 5 páginas
-
-        all_text = []
-
-        for i, image in enumerate(images):
-            logger.info(f"Procesando página {i+1}/{len(images)}")
-
-            # Convertir a numpy array
-            img_array = np.array(image)
-
-            # Obtener motor OCR
-            ocr = get_ocr_engine()
-
-            # Extraer texto
-            result = ocr.ocr(img_array, cls=True)
-
-            if result and result[0]:
-                page_text = []
-                for line in result[0]:
-                    if line and len(line) >= 2:
-                        page_text.append(line[1][0])
-
-                if page_text:
-                    all_text.append(f"--- Página {i+1} ---")
-                    all_text.extend(page_text)
-
-        return "\n".join(all_text)
-
-    except ImportError:
-        logger.warning("pdf2image no está instalado, intentando con PyMuPDF")
-        return process_pdf_pymupdf(content)
-    except Exception as e:
-        logger.error(f"Error en process_pdf: {e}")
-        return ""
-
-
-def process_pdf_pymupdf(content: bytes) -> str:
-    """Procesa PDF con PyMuPDF como alternativa"""
-    try:
-        import fitz  # PyMuPDF
-
-        doc = fitz.open(stream=content, filetype="pdf")
+        doc = pymupdf.open(stream=content, filetype="pdf")
 
         all_text = []
         max_pages = min(5, len(doc))  # Limitar a 5 páginas
 
         for page_num in range(max_pages):
             page = doc[page_num]
-            text = page.get_text()
-            if text.strip():
+            text = page.get_text().strip()
+            if not text:
+                logger.info(f"Página {page_num + 1} sin texto embebido: aplicando OCR")
+                pix = page.get_pixmap(dpi=200)
+                img_array = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
+                if pix.n == 4:
+                    img_array = img_array[:, :, :3]
+                text = "\n".join(ocr_lines(img_array))
+            if text:
                 all_text.append(f"--- Página {page_num + 1} ---")
-                all_text.append(text.strip())
+                all_text.append(text)
 
         return "\n".join(all_text)
 
-    except ImportError:
-        logger.error("Ni pdf2image ni PyMuPDF están instalados")
-        return ""
     except Exception as e:
-        logger.error(f"Error en process_pdf_pymupdf: {e}")
+        logger.error(f"Error en process_pdf: {e}")
         return ""
 
 
@@ -375,8 +334,6 @@ async def extract_structured(file: UploadFile = File(...)):
     """
     Extrae texto y datos estructurados (números, fechas, etc.)
     """
-    import re
-
     try:
         # Primero extraer texto
         content = await file.read()
