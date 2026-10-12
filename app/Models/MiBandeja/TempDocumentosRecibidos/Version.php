@@ -98,7 +98,7 @@ class Version extends Model
             'numero_version' => ($ultimaVersion?->numero_version ?? 0) + 1,
         ]);
 
-        $documento->limitarVersiones();
+        self::limitarVersiones($documento);
 
         return $version;
     }
