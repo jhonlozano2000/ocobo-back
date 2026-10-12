@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\MiBandeja\Temp;
 
-use App\Events\NotificationPushed;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
 use App\Http\Requests\MiBandeja\StoreGrupoProyectorRequest;
@@ -93,7 +92,7 @@ class MiBandejaTempGrupoProyectorController extends Controller
             $proyector->load(['user.cargo', 'cargo']);
 
             // Crear notificación in-app para el proyector
-            $notificacion = Notificacion::create([
+            Notificacion::create([
                 'user_id' => $request->user_id,
                 'type' => 'asignacion_proyector',
                 'title' => 'Proyector asignado en grupo colaborativo',
@@ -106,11 +105,6 @@ class MiBandejaTempGrupoProyectorController extends Controller
                     'asignado_por' => auth()->id(),
                 ],
             ]);
-            try {
-                event(new NotificationPushed($notificacion));
-            } catch (\Throwable $e) {
-                \Log::warning('Broadcast NotificationPushed falló en proyector: '.$e->getMessage());
-            }
 
             return $this->successResponse($proyector, 'Proyector agregado exitosamente', 201);
         } catch (\Exception $e) {

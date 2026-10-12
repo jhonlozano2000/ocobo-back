@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\MiBandeja\Temp;
 
-use App\Events\NotificationPushed;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
 use App\Http\Requests\MiBandeja\StoreGrupoRevisorRequest;
@@ -71,7 +70,7 @@ class MiBandejaTempGrupoRevisorController extends Controller
             $revisor->load(['user.cargo', 'cargo']);
 
             // Crear notificación in-app para el revisor
-            $notificacion = Notificacion::create([
+            Notificacion::create([
                 'user_id' => $request->user_id,
                 'type' => 'asignacion_responsable',
                 'title' => 'Revisor asignado en grupo colaborativo',
@@ -84,11 +83,6 @@ class MiBandejaTempGrupoRevisorController extends Controller
                     'asignado_por' => auth()->id(),
                 ],
             ]);
-            try {
-                event(new NotificationPushed($notificacion));
-            } catch (\Throwable $e) {
-                \Log::warning('Broadcast NotificationPushed falló en revisor: '.$e->getMessage());
-            }
 
             return $this->successResponse($revisor, 'Revisor agregado exitosamente', 201);
         } catch (\Exception $e) {

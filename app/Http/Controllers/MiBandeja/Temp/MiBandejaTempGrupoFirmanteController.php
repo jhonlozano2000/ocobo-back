@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\MiBandeja\Temp;
 
-use App\Events\NotificationPushed;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
 use App\Http\Requests\MiBandeja\StoreGrupoFirmanteRequest;
@@ -99,7 +98,7 @@ class MiBandejaTempGrupoFirmanteController extends Controller
             $firmante->load(['user.cargo', 'cargo']);
 
             // Crear notificación in-app para el firmante
-            $notificacion = Notificacion::create([
+            Notificacion::create([
                 'user_id' => $request->user_id,
                 'type' => 'asignacion_firmante',
                 'title' => 'Firmante asignado en grupo colaborativo',
@@ -112,11 +111,6 @@ class MiBandejaTempGrupoFirmanteController extends Controller
                     'asignado_por' => auth()->id(),
                 ],
             ]);
-            try {
-                event(new NotificationPushed($notificacion));
-            } catch (\Throwable $e) {
-                \Log::warning('Broadcast NotificationPushed falló en firmante: '.$e->getMessage());
-            }
 
             return $this->successResponse($firmante, 'Firmante agregado exitosamente', 201);
         } catch (\Exception $e) {

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\MiBandeja\Temp;
 
-use App\Events\NotificationPushed;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
 use App\Http\Requests\MiBandeja\StoreGrupoAprobadorRequest;
@@ -71,7 +70,7 @@ class MiBandejaTempGrupoAprobadorController extends Controller
             $aprobador->load(['user.cargo', 'cargo']);
 
             // Crear notificación in-app para el aprobador
-            $notificacion = Notificacion::create([
+            Notificacion::create([
                 'user_id' => $request->user_id,
                 'type' => 'asignacion_responsable',
                 'title' => 'Aprobador asignado en grupo colaborativo',
@@ -84,11 +83,6 @@ class MiBandejaTempGrupoAprobadorController extends Controller
                     'asignado_por' => auth()->id(),
                 ],
             ]);
-            try {
-                event(new NotificationPushed($notificacion));
-            } catch (\Throwable $e) {
-                \Log::warning('Broadcast NotificationPushed falló en aprobador: '.$e->getMessage());
-            }
 
             return $this->successResponse($aprobador, 'Aprobador agregado exitosamente', 201);
         } catch (\Exception $e) {

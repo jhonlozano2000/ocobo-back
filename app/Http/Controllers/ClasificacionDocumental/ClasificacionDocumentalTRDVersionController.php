@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\ClasificacionDocumental;
 
-use App\Events\NotificationPushed;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ClasificacionDocumental\AprobarTRDVersionRequest;
 use App\Http\Requests\ClasificacionDocumental\ClasificacionDocumentalTRDVersionRequest;
@@ -295,7 +294,7 @@ class ClasificacionDocumentalTRDVersionController extends Controller
             try {
                 $versionPendiente->loadMissing('userRegister', 'dependencia');
 
-                $notificacion = Notificacion::create([
+                Notificacion::create([
                     'user_id' => $versionPendiente->user_register,
                     'type' => 'trd.aprobada',
                     'title' => 'Versión TRD aprobada',
@@ -310,8 +309,6 @@ class ClasificacionDocumentalTRDVersionController extends Controller
                         'url' => "/clasificacion-documental/trd-versiones/{$versionPendiente->id}",
                     ],
                 ]);
-
-                event(new NotificationPushed($notificacion));
             } catch (\Throwable $e) {
                 logger()->warning('Failed to notify TRD version approval', [
                     'version_id' => $versionPendiente->id,

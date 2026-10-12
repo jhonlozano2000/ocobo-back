@@ -2,8 +2,6 @@
 
 namespace App\Services\Workflows;
 
-use App\Events\NotificationPushed;
-use App\Models\ControlAcceso\UserNotificationSetting;
 use App\Models\Notificacion;
 use App\Models\User;
 use App\Models\Workflows\Tarea;
@@ -16,7 +14,7 @@ class WorkflowNotificationService
     {
         $tarea->loadMissing('workflow:id,nombre');
 
-        $notificacion = Notificacion::create([
+        Notificacion::create([
             'user_id' => $userId,
             'type' => 'tarea.asignada',
             'title' => 'Nueva tarea asignada',
@@ -29,15 +27,13 @@ class WorkflowNotificationService
                 'url' => "/workflows/{$tarea->workflow_id}/tareas",
             ],
         ]);
-
-        $this->dispatch($notificacion);
     }
 
     public function notificarTareaAsignadaSistemaB(WorkFlowTarea $tarea, int $userId): void
     {
         $tarea->loadMissing('nodo.workflow:id,nombre');
 
-        $notificacion = Notificacion::create([
+        Notificacion::create([
             'user_id' => $userId,
             'type' => 'tarea.asignada',
             'title' => 'Nueva tarea asignada',
@@ -51,8 +47,6 @@ class WorkflowNotificationService
                 'url' => "/workflows/{$tarea->nodo->workflow_id}",
             ],
         ]);
-
-        $this->dispatch($notificacion);
     }
 
     public function notificarTareaCompletada(Tarea $tarea, User $completadoPor): void
@@ -63,7 +57,7 @@ class WorkflowNotificationService
             ->get();
 
         foreach ($usuarios as $usuario) {
-            $notificacion = Notificacion::create([
+            Notificacion::create([
                 'user_id' => $usuario->id,
                 'type' => 'tarea.completada',
                 'title' => 'Tarea completada',
@@ -77,8 +71,6 @@ class WorkflowNotificationService
                     'url' => "/workflows/{$tarea->workflow_id}/tareas",
                 ],
             ]);
-
-            $this->dispatch($notificacion);
         }
     }
 
@@ -88,7 +80,7 @@ class WorkflowNotificationService
         $usuarios = $tarea->responsables;
 
         foreach ($usuarios as $usuario) {
-            $notificacion = Notificacion::create([
+            Notificacion::create([
                 'user_id' => $usuario->id,
                 'type' => 'tarea.vencida',
                 'title' => 'Tarea vencida',
@@ -101,8 +93,6 @@ class WorkflowNotificationService
                     'url' => "/workflows/{$tarea->workflow_id}/tareas",
                 ],
             ]);
-
-            $this->dispatch($notificacion);
         }
     }
 
@@ -114,7 +104,7 @@ class WorkflowNotificationService
 
         $tarea->loadMissing('nodo.workflow:id,nombre');
 
-        $notificacion = Notificacion::create([
+        Notificacion::create([
             'user_id' => $tarea->responsable_usuario_id,
             'type' => 'tarea.vencida',
             'title' => 'Tarea vencida',
@@ -128,8 +118,6 @@ class WorkflowNotificationService
                 'url' => "/workflows/{$tarea->nodo->workflow_id}",
             ],
         ]);
-
-        $this->dispatch($notificacion);
     }
 
     public function notificarInstanciaAvanzada(WorkflowInstancia $instancia, string $nodoNombre): void
@@ -143,7 +131,7 @@ class WorkflowNotificationService
         ]));
 
         foreach ($userIds as $userId) {
-            $notificacion = Notificacion::create([
+            Notificacion::create([
                 'user_id' => $userId,
                 'type' => 'instancia.nodo_ejecutado',
                 'title' => 'Flujo avanzado',
@@ -156,8 +144,6 @@ class WorkflowNotificationService
                     'url' => "/workflows/{$workflow->id}/instancias/{$instancia->id}",
                 ],
             ]);
-
-            $this->dispatch($notificacion);
         }
     }
 
@@ -172,7 +158,7 @@ class WorkflowNotificationService
         ]));
 
         foreach ($userIds as $userId) {
-            $notificacion = Notificacion::create([
+            Notificacion::create([
                 'user_id' => $userId,
                 'type' => 'instancia.completada',
                 'title' => 'Flujo completado',
@@ -185,40 +171,6 @@ class WorkflowNotificationService
                     'url' => "/workflows/{$workflow->id}/instancias/{$instancia->id}",
                 ],
             ]);
-
-            $this->dispatch($notificacion);
         }
-    }
-
-    private function dispatch(Notificacion $notificacion): void
-    {
-        try {
-            if (! $this->userAllowsNotification($notificacion->user_id, $notificacion->type)) {
-                return;
-            }
-
-            event(new NotificationPushed($notificacion));
-        } catch (\Throwable $e) {
-            logger()->warning('Failed to broadcast notification', [
-                'notification_id' => $notificacion->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    private function userAllowsNotification(int $userId, string $type): bool
-    {
-        $preferenceKey = match ($type) {
-            'tarea.asignada' => 'new_for_you',
-            default => 'account_activity',
-        };
-
-        $settings = UserNotificationSetting::forUser($userId);
-
-        if (! $settings) {
-            return true;
-        }
-
-        return $settings->isEnabled($preferenceKey);
     }
 }

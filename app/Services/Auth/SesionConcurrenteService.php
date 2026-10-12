@@ -2,7 +2,6 @@
 
 namespace App\Services\Auth;
 
-use App\Events\NotificationPushed;
 use App\Mail\NuevoInicioSesionMail;
 use App\Models\ControlAcceso\UserNotificationSetting;
 use App\Models\ControlAcceso\UsersSession;
@@ -52,15 +51,13 @@ class SesionConcurrenteService
         $fecha = now();
 
         if (! $preferencias || $preferencias->new_browser_login) {
-            $notificacion = Notificacion::create([
+            Notificacion::create([
                 'user_id' => $user->id,
                 'type' => 'seguridad.sesion_concurrente',
                 'title' => 'Nuevo inicio de sesión',
                 'message' => "Se inició sesión en tu cuenta desde la IP {$ip} mientras tenías otra sesión activa. Si no fuiste tú, cierra las demás sesiones y cambia tu contraseña.",
                 'data' => ['url' => '/control-acceso/usuarios/mi-perfil', 'ip' => $ip],
             ]);
-
-            event(new NotificationPushed($notificacion));
         }
 
         if ($preferencias?->new_browser_login_email && $user->email) {
