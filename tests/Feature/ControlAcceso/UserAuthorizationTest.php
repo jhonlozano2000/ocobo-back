@@ -71,6 +71,23 @@ class UserAuthorizationTest extends TestCase
         );
     }
 
+    /**
+     * RBAC-002: actividad, historial, conexiones, permisos y sesiones de otro usuario exigen permiso.
+     */
+    public function test_detalle_de_otro_usuario_exige_permiso(): void
+    {
+        foreach (['actividad', 'historial', 'conexiones', 'permisos', 'sessions'] as $recurso) {
+            $this->actingAs($this->funcionario)
+                ->getJson(self::PREFIX.'/users/'.$this->otro->id.'/'.$recurso)
+                ->assertForbidden();
+        }
+
+        $this->funcionario->givePermissionTo('Control de acceso - Usuarios -> Mostrar');
+        $this->actingAs($this->funcionario->fresh())
+            ->getJson(self::PREFIX.'/users/'.$this->otro->id.'/permisos')
+            ->assertOk();
+    }
+
     public function test_usuario_puede_ver_su_propio_perfil_sin_permiso(): void
     {
         $this->actingAs($this->funcionario)
