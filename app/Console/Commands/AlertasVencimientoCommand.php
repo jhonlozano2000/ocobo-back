@@ -52,30 +52,31 @@ class AlertasVencimientoCommand extends Command
             $this->warn('Advertencia al configurar mail: '.$e->getMessage());
         }
 
+        $maxDias = ! empty($diasAlerta) ? max($diasAlerta) : 3;
+        $hoy = CalendarioHelper::hoy()->toDateString();
+        $fechaMax = CalendarioHelper::sumarDiasHabiles(CalendarioHelper::hoy(), $maxDias)->toDateString();
+
+        $this->info("Buscando documentos con vencimiento entre {$hoy} y {$fechaMax} ({$maxDias} días hábiles)...");
+
         $totalEnviados = 0;
-
-        foreach ($diasAlerta as $dias) {
-            $fecha = CalendarioHelper::hoy()->addDays($dias)->toDateString();
-
-            $totalEnviados += $this->procesarRecibidos($fecha, $dias, $dryRun);
-            $totalEnviados += $this->procesarEnviados($fecha, $dias, $dryRun);
-            $totalEnviados += $this->procesarPqrs($fecha, $dias, $dryRun);
-        }
+        $totalEnviados += $this->procesarRecibidos($hoy, $fechaMax, $dryRun);
+        $totalEnviados += $this->procesarEnviados($hoy, $fechaMax, $dryRun);
+        $totalEnviados += $this->procesarPqrs($hoy, $fechaMax, $dryRun);
 
         $this->info("Alertas completadas. Total emails enviados: {$totalEnviados}");
-        Log::info("AlertasVencimiento: {$totalEnviados} alertas enviadas para días: {$diasStr}");
+        Log::info("AlertasVencimiento: {$totalEnviados} alertas enviadas para ventana: {$hoy} a {$fechaMax}");
 
         return Command::SUCCESS;
     }
 
     /**
-     * Procesa radicados recibidos próximos a vencer.
+     * Procesa radicados recibidos próximos a vencer en la ventana de días hábiles.
      */
-    private function procesarRecibidos(string $fecha, int $dias, bool $dryRun): int
+    private function procesarRecibidos(string $hoy, string $fechaMax, bool $dryRun): int
     {
         $radicados = VentanillaRadicaReci::with(['responsables.userCargo.user'])
             ->whereIn('estado_trabajo', ['Pendiente', 'En Proceso'])
-            ->whereDate('fec_venci', $fecha)
+            ->whereBetween('fec_venci', [$hoy, $fechaMax])
             ->get();
 
         $enviados = 0;
@@ -111,14 +112,14 @@ class AlertasVencimientoCommand extends Command
     }
 
     /**
-     * Procesa radicados enviados próximos a vencer.
+     * Procesa radicados enviados próximos a vencer en la ventana de días hábiles.
      */
-    private function procesarEnviados(string $fecha, int $dias, bool $dryRun): int
+    private function procesarEnviados(string $hoy, string $fechaMax, bool $dryRun): int
     {
         $radicados = VentanillaRadicaEnviados::with(['responsables.userCargo.user'])
             ->whereIn('estado_trabajo', ['Pendiente', 'En Proceso'])
-            ->whereDate('fec_venci', $fecha)
             ->whereNotNull('fec_venci')
+            ->whereBetween('fec_venci', [$hoy, $fechaMax])
             ->get();
 
         $enviados = 0;
@@ -134,7 +135,7 @@ class AlertasVencimientoCommand extends Command
                 continue;
             }
 
-            $this->line("  [Enviado] {$radicado->num_radicado} → vence {$fecha} → {$emails->implode(', ')}");
+            $this->line("  [Enviado] {$radicado->num_radicado} → vence {$radicado->fec_venci} → {$emails->implode(', ')}");
 
             if (! $dryRun) {
                 foreach ($emails as $email) {
@@ -154,13 +155,13 @@ class AlertasVencimientoCommand extends Command
     }
 
     /**
-     * Procesa PQRS próximas a vencer.
+     * Procesa PQRS próximas a vencer en la ventana de días hábiles.
      */
-    private function procesarPqrs(string $fecha, int $dias, bool $dryRun): int
+    private function procesarPqrs(string $hoy, string $fechaMax, bool $dryRun): int
     {
         $pqrsList = VentanillaPqrs::with(['radicado.responsables.userCargo.user'])
             ->whereIn('estado_tramite', ['Pendiente', 'En Tramite'])
-            ->whereDate('fecha_vencimiento', $fecha)
+            ->whereBetween('fecha_vencimiento', [$hoy, $fechaMax])
             ->get();
 
         $enviados = 0;
@@ -183,7 +184,7 @@ class AlertasVencimientoCommand extends Command
             }
 
             $numRadi = $radicado->num_radicado ?? "PQRS#{$pqrs->id}";
-            $this->line("  [PQRS] {$numRadi} → vence {$fecha} → {$emails->implode(', ')}");
+            $this->line("  [PQRS] {$numRadi} → vence {$pqrs->fecha_vencimiento} → {$emails->implode(', ')}");
 
             if (! $dryRun) {
                 foreach ($emails as $email) {

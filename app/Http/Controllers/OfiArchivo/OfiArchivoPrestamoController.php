@@ -92,8 +92,29 @@ class OfiArchivoPrestamoController extends Controller
 
             $expediente = OfiArchivoExpediente::findOrFail($request->expediente_id);
 
-            if ($expediente->estado !== 'abierto') {
-                return $this->warningResponse('No se puede prestar un expediente que no está abierto');
+            // M08-12: Se pueden prestar expedientes abiertos, cerrados o transferidos (archivo central).
+            // Un expediente eliminado nunca se presta.
+            if ($expediente->estado === 'eliminado') {
+                DB::rollBack();
+
+                return $this->warningResponse('No se puede prestar un expediente que ha sido eliminado.');
+            }
+
+            if (! in_array($expediente->estado, ['abierto', 'cerrado', 'transferido'])) {
+                DB::rollBack();
+
+                return $this->warningResponse("No se puede prestar un expediente en estado '{$expediente->estado}'.");
+            }
+
+            // M08-12: Prevenir doble préstamo activo del mismo expediente
+            $prestamoActivo = OfiArchivoPrestamo::where('expediente_id', $expediente->id)
+                ->whereIn('estado', ['prestado', 'vencido'])
+                ->exists();
+
+            if ($prestamoActivo) {
+                DB::rollBack();
+
+                return $this->warningResponse('El expediente ya se encuentra en préstamo activo.');
             }
 
             $prestamo = OfiArchivoPrestamo::create([
@@ -165,10 +186,11 @@ class OfiArchivoPrestamoController extends Controller
 
             $prestamo = OfiArchivoPrestamo::findOrFail($id);
 
-            if ($prestamo->estado !== 'prestado') {
+            // M08-12: Permite devolver préstamos tanto activos ('prestado') como vencidos ('vencido')
+            if (! in_array($prestamo->estado, ['prestado', 'vencido'])) {
                 DB::rollBack();
 
-                return $this->warningResponse('Este préstamo ya fue devuelto');
+                return $this->warningResponse('Este préstamo ya fue devuelto o se encuentra cerrado');
             }
 
             $prestamo->update([

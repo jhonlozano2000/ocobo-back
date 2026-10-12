@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\VentanillaUnica;
 
+use App\Models\Configuracion\ConfigVarias;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
@@ -142,6 +143,19 @@ class PqrsResource extends JsonResource
         if ($this->estado_tramite === 'Vencida' || $dias < 0) {
             return ['class' => 'badge-light-danger', 'color' => 'danger', 'label' => 'Vencida'];
         }
+
+        $semaforo = ConfigVarias::getEstadoSemaforo($dias);
+
+        if ($semaforo === 'rojo') {
+            return ['class' => 'badge-light-danger', 'color' => 'danger', 'label' => 'Crítico'];
+        }
+        if ($semaforo === 'amarillo') {
+            return ['class' => 'badge-light-warning', 'color' => 'warning', 'label' => 'Urgente'];
+        }
+        if ($semaforo === 'verde') {
+            return ['class' => 'badge-light-info', 'color' => 'info', 'label' => 'En término'];
+        }
+
         if ($dias <= 2) {
             return ['class' => 'badge-light-danger', 'color' => 'danger', 'label' => 'Crítico'];
         }

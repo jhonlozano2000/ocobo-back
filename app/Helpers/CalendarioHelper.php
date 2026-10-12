@@ -90,6 +90,16 @@ class CalendarioHelper
     }
 
     /**
+     * Alias semántico para sumar días hábiles a una fecha dada.
+     *
+     * @param  Carbon|string  $fechaInicio
+     */
+    public static function sumarDiasHabiles($fechaInicio, int $diasHabiles): Carbon
+    {
+        return self::calcularVencimiento($fechaInicio, $diasHabiles);
+    }
+
+    /**
      * Último día que cuenta como "próximo a vencer": hoy más N días hábiles (M04-09; antes
      * se sumaban días calendario y un fin de semana o festivo recortaba la ventana).
      */

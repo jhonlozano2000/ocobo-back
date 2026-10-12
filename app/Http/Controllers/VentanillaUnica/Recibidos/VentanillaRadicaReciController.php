@@ -1871,34 +1871,68 @@ class VentanillaRadicaReciController extends Controller
      */
     public function searchByOcr(Request $request): JsonResponse
     {
-        $searchTerm = $request->get('q', '');
-        $searchOcr = $request->get('searchOcr', '');
+        $searchTerm = trim((string) $request->get('q', ''));
+        $searchOcr = trim((string) $request->get('searchOcr', ''));
 
-        // Usar searchOcr si está presente, si no usar q
-        $query = $searchOcr ?: $searchTerm;
+        // Usar searchOcr si está presente (como flag o como término)
+        $isOcrOnly = false;
+        if (in_array(strtolower($searchOcr), ['true', '1', 'yes', 'on'], true)) {
+            $isOcrOnly = true;
+            $query = $searchTerm;
+        } elseif (! empty($searchOcr)) {
+            $isOcrOnly = true;
+            $query = $searchOcr;
+        } else {
+            $query = $searchTerm;
+        }
 
-        if (strlen($query) < 3) {
+        if (mb_strlen($query) < 3) {
             return $this->warningResponse('Mínimo 3 caracteres', ['data' => []]);
         }
 
         // M12-01: la búsqueda (también por contenido OCR) se limita a los radicados visibles por ABAC
         $base = VentanillaRadicaReci::conPermisoJerarquico($request->user());
 
-        // Si es búsqueda específica de OCR
-        if ($searchOcr) {
-            $radicados = $base->where('ocr', 'LIKE', "%{$query}%")
-                ->limit(20)
-                ->get();
+        $fullTextQuery = $this->prepareFullTextQuery($query);
+        $isMysql = DB::connection()->getDriverName() === 'mysql';
+
+        // M12-04: usar índice FULLTEXT ft_ocr_content aprovechando prepareFullTextQuery con fallback LIKE para registros en transacción
+        if ($isOcrOnly) {
+            $base->where(function ($q) use ($query, $isMysql, $fullTextQuery) {
+                if ($isMysql && ! empty($fullTextQuery)) {
+                    $q->whereRaw('MATCH(ocr) AGAINST(? IN BOOLEAN MODE)', [$fullTextQuery])
+                        ->orWhere('ocr', 'LIKE', "%{$query}%");
+                } else {
+                    $q->where('ocr', 'LIKE', "%{$query}%");
+                }
+            });
         } else {
             // Búsqueda general
-            $radicados = $base->where(function ($q) use ($query) {
+            $base->where(function ($q) use ($query, $isMysql, $fullTextQuery) {
                 $q->where('num_radicado', 'LIKE', "%{$query}%")
-                    ->orWhere('asunto', 'LIKE', "%{$query}%")
-                    ->orWhere('ocr', 'LIKE', "%{$query}%");
-            })
-                ->limit(20)
-                ->get();
+                    ->orWhere('asunto', 'LIKE', "%{$query}%");
+
+                if ($isMysql && ! empty($fullTextQuery)) {
+                    $q->orWhereRaw('MATCH(ocr) AGAINST(? IN BOOLEAN MODE)', [$fullTextQuery])
+                        ->orWhere('ocr', 'LIKE', "%{$query}%");
+                } else {
+                    $q->orWhere('ocr', 'LIKE', "%{$query}%");
+                }
+            });
         }
+
+        $perPage = min(max((int) $request->get('per_page', 20), 1), 100);
+        $page = max((int) $request->get('page', 1), 1);
+
+        $radicados = $base->with(['tercero', 'clasificacionDocumental', 'responsables.userCargo.user'])
+            ->orderBy('id', 'desc')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $radicados->getCollection()->transform(function ($radicado) use ($query) {
+            $radicado->ocr_resumen = $this->extractOcrContext($radicado->ocr, $query);
+
+            return $radicado;
+        });
 
         return $this->successResponse($radicados, 'Búsqueda exitosa');
     }
@@ -1909,15 +1943,15 @@ class VentanillaRadicaReciController extends Controller
     private function prepareFullTextQuery(string $query): string
     {
         // Dividir en palabras y agregar wildcard a cada una
-        $words = array_filter(explode(' ', $query));
+        $words = array_filter(explode(' ', trim($query)));
         $prepared = array_map(function ($word) {
             // Remover caracteres especiales de MySQL
-            $word = preg_replace('/[+\-><()~*\"@]/', '', $word);
+            $word = preg_replace('/[+\-><()~*\"@]/', '', trim($word));
 
-            return '+'.$word.'*';
+            return mb_strlen($word) >= 3 ? '+'.$word.'*' : '';
         }, $words);
 
-        return implode(' ', $prepared);
+        return implode(' ', array_filter($prepared));
     }
 
     /**
@@ -1929,7 +1963,7 @@ class VentanillaRadicaReciController extends Controller
             return null;
         }
 
-        $position = stripos($ocr, $query);
+        $position = mb_stripos($ocr, $query);
         if ($position === false) {
             // Si no encontró coincidencia exacta, devolver el inicio
             return mb_substr($ocr, 0, $contextLength).'...';
