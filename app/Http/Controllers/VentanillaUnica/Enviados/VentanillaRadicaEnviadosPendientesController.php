@@ -210,7 +210,7 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
                     'id' => $radicadoRecibido->id,
                     'num_radicado' => $radicadoRecibido->num_radicado,
                     'asunto' => $radicadoRecibido->asunto,
-                    'fec_radicado' => $radicadoRecibido->fec_radicado,
+                    'created_at' => $radicadoRecibido->created_at,
                     'fec_venci' => $radicadoRecibido->fec_venci,
                 ] : null,
                 'tercero_id' => $tercero?->id,

@@ -13,7 +13,7 @@ class RadicadoPqrsResource extends JsonResource
             'id' => $this->id,
             'num_radicado' => $this->num_radicado,
             'asunto' => $this->asunto,
-            'fec_radicado' => $this->fec_radicado?->format('Y-m-d H:i:s'),
+            'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'estado_trabajo' => $this->estado_trabajo,
             'tercero' => $this->whenLoaded('tercero', function () {
                 return [

@@ -126,7 +126,7 @@ class GestionTerceroController extends Controller
 
             // 2. Obtener Radicados Recibidos (Entradas)
             $radicadosRecibidos = VentanillaRadicaReci::where('tercero_id', $tercero->id)
-                ->select('id', 'num_radicado', 'asunto', 'fec_radicado', 'estado')
+                ->select('id', 'num_radicado', 'asunto', 'created_at', 'estado_trabajo')
                 ->with(['expedientes' => function ($q) {
                     $q->select('ofi_archivo_expedientes.id', 'numero_expediente', 'nombre_expediente');
                 }])
@@ -135,7 +135,7 @@ class GestionTerceroController extends Controller
 
             // 3. Obtener Radicados Enviados (Salidas)
             $radicadosEnviados = VentanillaRadicaEnviados::where('tercero_id', $tercero->id)
-                ->select('id', 'num_radicado', 'asunto', 'fec_radicado', 'estado')
+                ->select('id', 'num_radicado', 'asunto', 'created_at', 'estado_trabajo')
                 ->with(['expedientes' => function ($q) {
                     $q->select('ofi_archivo_expedientes.id', 'numero_expediente', 'nombre_expediente');
                 }])
