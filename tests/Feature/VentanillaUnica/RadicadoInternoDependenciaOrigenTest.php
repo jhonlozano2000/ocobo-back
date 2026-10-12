@@ -117,6 +117,36 @@ class RadicadoInternoDependenciaOrigenTest extends TestCase
         $this->assertSame(['id' => $depCustodio->id, 'nombre' => 'Dep Custodio / Ofi Custodio', 'dependencia' => 'Dep Custodio', 'oficina' => 'Ofi Custodio'], $fila['dependencia_origen']);
     }
 
+    public function test_al_radicar_se_guarda_la_oficina_del_custodio_principal(): void
+    {
+        $trd = DB::table('clasificacion_documental_trd')->value('id');
+        if (! $trd) {
+            $this->markTestSkipped('BD sin clasificación documental TRD.');
+        }
+
+        [, $creador] = $this->usuarioEnDependencia('Creador');
+        [, $otro] = $this->usuarioEnDependencia('Otro');
+        [, $custodio] = $this->usuarioEnDependencia('Custodio');
+        $creador->givePermissionTo(Permission::findOrCreate('Radicar -> Cores. Interna -> Crear', 'web'));
+
+        $this->actingAs($creador)->postJson('/api/ventanilla/radica-interno', [
+            'asunto' => 'Prueba dependencia origen al radicar',
+            'clasifica_documen_id' => $trd,
+            'num_folios' => 1,
+            'destinatarios' => [$otro->id],
+            'responsables' => [
+                ['user_id' => $otro->id, 'custodio' => false],
+                ['user_id' => $custodio->id, 'custodio' => true],
+            ],
+        ])->assertSuccessful();
+
+        $radicado = VentanillaRadicaInterno::where('usuario_crea', $creador->id)->latest('id')->firstOrFail();
+        $oficinaCustodio = CalidadOrganigrama::where('nom_organico', 'Ofi Custodio')->latest('id')->value('id');
+
+        $this->assertSame($oficinaCustodio, $radicado->dependencia_origen_id);
+        $this->assertSame('Dep Custodio / Ofi Custodio', $radicado->dependencia_origen['nombre']);
+    }
+
     public function test_sin_custodio_se_usa_la_dependencia_del_creador(): void
     {
         [$depCreador, $creador] = $this->usuarioEnDependencia('Creador');

@@ -151,6 +151,22 @@ class VentanillaRadicaInterno extends Model
     }
 
     /**
+     * Nodo de origen que se guarda al radicar: la oficina o dependencia de la que cuelga el cargo.
+     */
+    public static function nodoOrigenDeCargo(?CalidadOrganigrama $cargo): ?int
+    {
+        $node = $cargo;
+        $visited = 0;
+        while ($node && ! in_array($node->tipo, ['Oficina', 'Dependencia'], true) && $visited < 20) {
+            $parentId = $node->getAttribute('parent');
+            $node = $parentId ? $node->parent()->first() : null;
+            $visited++;
+        }
+
+        return $node?->id;
+    }
+
+    /**
      * Sube por el organigrama desde un cargo, oficina o dependencia y devuelve la dependencia
      * y la oficina más cercana; `nombre` las combina ("Dependencia / Oficina").
      *

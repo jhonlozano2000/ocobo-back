@@ -288,6 +288,7 @@ class VentanillaRadicaInternoController extends Controller
             }
 
             // 3. Responsables - buscar users_cargos_id a partir de user_id
+            $cargoCustodio = null;
             if ($request->has('responsables')) {
                 foreach ($request->responsables as $resp) {
                     $cargo = UserCargo::where('user_id', $resp['user_id'])->where('estado', 1)->first();
@@ -298,9 +299,18 @@ class VentanillaRadicaInternoController extends Controller
                             'custodio' => $resp['custodio'],
                             'created_at' => now(),
                         ]);
+                        if ($resp['custodio'] && ! $cargoCustodio) {
+                            $cargoCustodio = $cargo;
+                        }
                     }
                 }
             }
+
+            // Dependencia de origen fija al radicar: la del cargo del custodio principal
+            // (sin custodio, la del creador); no cambia si luego cambian el custodio o su cargo.
+            $cargoOrigen = $cargoCustodio ?? UserCargo::where('user_id', auth()->id())->where('estado', 1)->first();
+            $radicado->dependencia_origen_id = VentanillaRadicaInterno::nodoOrigenDeCargo($cargoOrigen?->cargo);
+            $radicado->save();
 
             // 4. Proyectores - buscar users_cargos_id a partir de user_id
             if ($request->has('proyectores')) {
