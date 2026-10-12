@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Exists;
 
 class MiDiscoController extends Controller
 {
@@ -38,7 +40,7 @@ class MiDiscoController extends Controller
 
         $breadcrumb = [];
         if ($carpetaId) {
-            $current = MiDiscoCarpeta::find($carpetaId);
+            $current = MiDiscoCarpeta::where('user_id', $user->id)->find($carpetaId);
             while ($current) {
                 array_unshift($breadcrumb, [
                     'id' => $current->id,
@@ -59,7 +61,7 @@ class MiDiscoController extends Controller
     {
         $request->validate([
             'nombre' => 'required|string|max:255',
-            'carpeta_padre_id' => 'nullable|exists:mi_disco_carpetas,id',
+            'carpeta_padre_id' => ['nullable', $this->carpetaPropia()],
         ]);
 
         $user = Auth::user();
@@ -89,7 +91,7 @@ class MiDiscoController extends Controller
         $request->validate([
             'archivos' => 'required|array|max:10',
             'archivos.*' => 'file|max:51200',
-            'carpeta_id' => 'nullable|exists:mi_disco_carpetas,id',
+            'carpeta_id' => ['nullable', $this->carpetaPropia()],
         ]);
 
         $user = Auth::user();
@@ -141,6 +143,14 @@ class MiDiscoController extends Controller
         $archivo->delete();
 
         return $this->successResponse(null, 'Archivo eliminado');
+    }
+
+    /**
+     * Solo se puede crear o subir dentro de una carpeta del propio usuario.
+     */
+    private function carpetaPropia(): Exists
+    {
+        return Rule::exists('mi_disco_carpetas', 'id')->where('user_id', Auth::id());
     }
 
     private function eliminarCarpetaRecursivo(MiDiscoCarpeta $carpeta): void
