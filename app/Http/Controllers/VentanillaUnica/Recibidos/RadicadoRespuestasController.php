@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\VentanillaUnica\Recibidos;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\AccesoRadicado;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Recibidos\RadicadoRespuesta;
 use Illuminate\Http\Request;
@@ -30,6 +31,11 @@ class RadicadoRespuestasController extends Controller
             'usuarioCrea',
             'usuarioActualiza',
         ])->findOrFail($id);
+
+        // M01-10: la ruta va por id de respuesta, así que el ABAC del radicado se valida aquí
+        if (! AccesoRadicado::permitido(Auth::user(), 'recibido', $respuesta->radicado_id)) {
+            abort(404, 'Respuesta no encontrada');
+        }
 
         return $this->successResponse($respuesta, 'Respuesta obtenida');
     }
@@ -60,6 +66,15 @@ class RadicadoRespuestasController extends Controller
     public function update(Request $request, int $id)
     {
         $respuesta = RadicadoRespuesta::findOrFail($id);
+
+        if (! AccesoRadicado::permitido(Auth::user(), 'recibido', $respuesta->radicado_id)) {
+            abort(404, 'Respuesta no encontrada');
+        }
+
+        // M01-10: igual que al eliminar, solo el autor modifica su respuesta
+        if ((int) $respuesta->user_crea_id !== (int) Auth::id()) {
+            return $this->errorResponse('No puedes editar esta respuesta', null, 403);
+        }
 
         $respuesta->update([
             'titulo' => $request->titulo ?? $respuesta->titulo,
