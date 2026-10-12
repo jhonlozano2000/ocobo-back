@@ -55,7 +55,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/responsables-internos/{id}/marcar-visto', [VentanillaRadicaInternoResponsableController::class, 'marcarVisto'])->name('radica-interno.responsables.marcar-visto')->middleware('can:'.$permInterno.'Editar');
     Route::post('/destinatarios-internos/{id}/marcar-visto', [VentanillaRadicaInternoDestinatariosController::class, 'marcarVisto'])->name('radica-interno.destinatarios.marcar-visto')->middleware('can:'.$permInterno.'Editar');
-    Route::apiResource('responsables-internos', VentanillaRadicaInternoResponsableController::class)->except('create', 'edit')->middleware('can:'.$permInterno.'Editar');
+    // index/store se retiraron: listaban o creaban asignaciones de cualquier radicado; se usan las rutas
+    // anidadas /radica-*/{id}/... (M01-08, M03-15..18)
+    Route::apiResource('responsables-internos', VentanillaRadicaInternoResponsableController::class)->only('show', 'update', 'destroy')->middleware('can:'.$permInterno.'Editar')->middleware('acceso_asignacion:responsable_interno');
     Route::get('/radica-interno/{radica_interno_id}/responsables', [VentanillaRadicaInternoResponsableController::class, 'getByRadicado'])->name('radica-interno.responsables.listar')->middleware('acceso_radicado:interno,radica_interno_id');
     Route::post('/radica-interno/{radica_interno_id}/responsables', [VentanillaRadicaInternoResponsableController::class, 'assignToRadicado'])->name('radica-interno.responsables.asignar')->middleware('can:'.$permInterno.'Editar')->middleware('acceso_radicado:interno,radica_interno_id');
 
@@ -65,11 +67,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/radica-interno/{radica_interno_id}/compartir', [VentanillaRadicaInternoCompartirHistorialController::class, 'store'])->name('radica-interno.compartir.registrar')->middleware('can:'.$permInterno.'Editar')->middleware('acceso_radicado:interno,radica_interno_id');
     Route::get('/radica-interno/{radica_interno_id}/compartir-historial', [VentanillaRadicaInternoCompartirHistorialController::class, 'byRadicado'])->name('radica-interno.compartir.historial')->middleware('acceso_radicado:interno,radica_interno_id');
 
-    Route::apiResource('proyectores-internos', VentanillaRadicaInternoProyectoresController::class)->except('create', 'edit')->middleware('can:'.$permInterno.'Editar');
+    Route::apiResource('proyectores-internos', VentanillaRadicaInternoProyectoresController::class)->only('show', 'update', 'destroy')->middleware('can:'.$permInterno.'Editar')->middleware('acceso_asignacion:proyector_interno');
     Route::get('/radica-interno/{radica_interno_id}/proyectores', [VentanillaRadicaInternoProyectoresController::class, 'getByRadicado'])->name('radica-interno.proyectores.listar')->middleware('acceso_radicado:interno,radica_interno_id');
     Route::post('/radica-interno/{radica_interno_id}/proyectores', [VentanillaRadicaInternoProyectoresController::class, 'assignToRadicado'])->name('radica-interno.proyectores.asignar')->middleware('can:'.$permInterno.'Editar')->middleware('acceso_radicado:interno,radica_interno_id');
 
-    Route::apiResource('firmantes-internos', VentanillaRadicaInternoFirmantesController::class)->except('create', 'edit')->middleware('can:'.$permInterno.'Editar');
+    Route::apiResource('firmantes-internos', VentanillaRadicaInternoFirmantesController::class)->only('show', 'update', 'destroy')->middleware('can:'.$permInterno.'Editar')->middleware('acceso_asignacion:firmante_interno');
     Route::get('/radica-interno/{radica_interno_id}/firmantes', [VentanillaRadicaInternoFirmantesController::class, 'getByRadicado'])->name('radica-interno.firmantes.listar')->middleware('acceso_radicado:interno,radica_interno_id');
     Route::post('/radica-interno/{radica_interno_id}/firmantes', [VentanillaRadicaInternoFirmantesController::class, 'assignToRadicado'])->name('radica-interno.firmantes.asignar')->middleware('can:'.$permInterno.'Editar')->middleware('acceso_radicado:interno,radica_interno_id');
 
@@ -78,7 +80,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/radica-interno/{radica_interno_id}/respuestas', [VentanillaRadicaInternoRespuestasController::class, 'store'])->name('radica-interno.respuestas.asignar')->middleware('can:'.$permInterno.'Editar')->middleware('acceso_radicado:interno,radica_interno_id');
     Route::delete('/radica-interno/{radica_interno_id}/respuestas/{respuestaId}', [VentanillaRadicaInternoRespuestasController::class, 'destroy'])->name('radica-interno.respuestas.desasociar')->middleware('can:'.$permInterno.'Editar')->middleware('acceso_radicado:interno,radica_interno_id');
 
-    Route::apiResource('destinatarios-internos', VentanillaRadicaInternoDestinatariosController::class)->except('create', 'edit')->middleware('can:'.$permInterno.'Editar');
+    Route::apiResource('destinatarios-internos', VentanillaRadicaInternoDestinatariosController::class)->only('show', 'update', 'destroy')->middleware('can:'.$permInterno.'Editar')->middleware('acceso_asignacion:destinatario_interno');
     Route::get('/radica-interno/{radica_interno_id}/destinatarios', [VentanillaRadicaInternoDestinatariosController::class, 'getByRadicado'])->name('radica-interno.destinatarios.listar')->middleware('acceso_radicado:interno,radica_interno_id');
     Route::post('/radica-interno/{radica_interno_id}/destinatarios', [VentanillaRadicaInternoDestinatariosController::class, 'assignToRadicado'])->name('radica-interno.destinatarios.asignar')->middleware('can:'.$permInterno.'Editar')->middleware('acceso_radicado:interno,radica_interno_id');
 });

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AccesoAsignacion;
 use App\Http\Middleware\AccesoRadicado;
 use App\Http\Middleware\AuditLogMiddleware;
 use App\Http\Middleware\Authenticate;
@@ -102,6 +103,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'propio_o_can' => PropioOPermiso::class,
             'can_any' => PuedeAlguno::class,
             'acceso_radicado' => AccesoRadicado::class,
+            'acceso_asignacion' => AccesoAsignacion::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

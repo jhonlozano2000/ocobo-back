@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
@@ -26,19 +27,25 @@ class AccesoRadicado
             abort(401);
         }
 
-        $id = (string) $request->route($parametro);
+        if (! self::permitido($user, $tipo, $request->route($parametro))) {
+            abort(404, 'Radicado no encontrado');
+        }
 
-        $permitido = ctype_digit($id) && match ($tipo) {
+        return $next($request);
+    }
+
+    /**
+     * Si el radicado $id del tipo dado es visible para el usuario (ABAC del módulo).
+     */
+    public static function permitido(User $user, string $tipo, mixed $id): bool
+    {
+        $id = (string) $id;
+
+        return ctype_digit($id) && match ($tipo) {
             'recibido' => VentanillaRadicaReci::accesiblePara($user, (int) $id),
             'pqrs' => VentanillaPqrs::accesiblePara($user, (int) $id),
             'enviado' => VentanillaRadicaEnviados::accesiblePara($user, (int) $id),
             'interno' => VentanillaRadicaInterno::accesiblePara($user, (int) $id),
         };
-
-        if (! $permitido) {
-            abort(404, 'Radicado no encontrado');
-        }
-
-        return $next($request);
     }
 }

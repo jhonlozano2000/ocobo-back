@@ -57,15 +57,17 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::post('/responsables-enviados/{id}/marcar-visto', [VentanillaRadicaEnviadosResponsableController::class, 'marcarVisto'])->name('radica-enviada.responsables.marcar-visto')->middleware('can:'.$permEnvi.'Editar');
-    Route::apiResource('responsables-enviados', VentanillaRadicaEnviadosResponsableController::class)->except('create', 'edit')->middleware('can:'.$permEnvi.'Editar');
+    // index/store se retiraron: listaban o creaban asignaciones de cualquier radicado; se usan las rutas
+    // anidadas /radica-*/{id}/... (M01-08, M03-15..18)
+    Route::apiResource('responsables-enviados', VentanillaRadicaEnviadosResponsableController::class)->only('show', 'update', 'destroy')->middleware('can:'.$permEnvi.'Editar')->middleware('acceso_asignacion:responsable_enviado');
     Route::get('/radica-enviada/{radica_enviado_id}/responsables', [VentanillaRadicaEnviadosResponsableController::class, 'getByRadicado'])->name('radica-enviada.responsables.listar')->middleware('can:'.$permEnvi.'Editar')->middleware('acceso_radicado:enviado,radica_enviado_id');
     Route::post('/radica-enviada/{radica_enviado_id}/responsables', [VentanillaRadicaEnviadosResponsableController::class, 'assignToRadicado'])->name('radica-enviada.responsables.asignar')->middleware('can:'.$permEnvi.'Editar')->middleware('acceso_radicado:enviado,radica_enviado_id');
 
-    Route::apiResource('firmantes-enviados', VentanillaRadicaEnviadosFirmantesController::class)->except('create', 'edit')->middleware('can:'.$permEnvi.'Editar');
+    Route::apiResource('firmantes-enviados', VentanillaRadicaEnviadosFirmantesController::class)->only('show', 'update', 'destroy')->middleware('can:'.$permEnvi.'Editar')->middleware('acceso_asignacion:firmante_enviado');
     Route::get('/radica-enviada/{radica_enviado_id}/firmantes', [VentanillaRadicaEnviadosFirmantesController::class, 'getByRadicado'])->name('radica-enviada.firmantes.listar')->middleware('can:'.$permEnvi.'Editar')->middleware('acceso_radicado:enviado,radica_enviado_id');
     Route::post('/radica-enviada/{radica_enviado_id}/firmantes', [VentanillaRadicaEnviadosFirmantesController::class, 'assignToRadicado'])->name('radica-enviada.firmantes.asignar')->middleware('can:'.$permEnvi.'Editar')->middleware('acceso_radicado:enviado,radica_enviado_id');
 
-    Route::apiResource('proyectores-enviados', VentanillaRadicaEnviadosProyectoresController::class)->except('create', 'edit')->middleware('can:'.$permEnvi.'Editar');
+    Route::apiResource('proyectores-enviados', VentanillaRadicaEnviadosProyectoresController::class)->only('show', 'update', 'destroy')->middleware('can:'.$permEnvi.'Editar')->middleware('acceso_asignacion:proyector_enviado');
     Route::get('/radica-enviada/{radica_enviado_id}/proyectores', [VentanillaRadicaEnviadosProyectoresController::class, 'getByRadicado'])->name('radica-enviada.proyectores.listar')->middleware('can:'.$permEnvi.'Editar')->middleware('acceso_radicado:enviado,radica_enviado_id');
     Route::post('/radica-enviada/{radica_enviado_id}/proyectores', [VentanillaRadicaEnviadosProyectoresController::class, 'assignToRadicado'])->name('radica-enviada.proyectores.asignar')->middleware('can:'.$permEnvi.'Editar')->middleware('acceso_radicado:enviado,radica_enviado_id');
 
