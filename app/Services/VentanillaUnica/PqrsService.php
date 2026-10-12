@@ -169,17 +169,30 @@ class PqrsService
         return $pqrs;
     }
 
+    /**
+     * @throws \DomainException si el cambio no está en VentanillaPqrs::TRANSICIONES_ESTADO (M04-07)
+     */
     public function cambiarEstado(int $pqrsId, string $nuevoEstado, ?string $fechaRespuesta = null): VentanillaPqrs
     {
-        $pqrs = VentanillaPqrs::findOrFail($pqrsId);
+        $pqrs = DB::transaction(function () use ($pqrsId, $nuevoEstado, $fechaRespuesta) {
+            // M04-06: el bloqueo evita que dos cambios simultáneos validen contra el mismo estado
+            $pqrs = VentanillaPqrs::lockForUpdate()->findOrFail($pqrsId);
+            $actual = $pqrs->estado_tramite;
 
-        $updateData = ['estado_tramite' => $nuevoEstado];
+            if (! in_array($nuevoEstado, VentanillaPqrs::TRANSICIONES_ESTADO[$actual] ?? [], true)) {
+                throw new \DomainException("No se puede pasar una PQRS de «{$actual}» a «{$nuevoEstado}».");
+            }
 
-        if ($nuevoEstado === 'Respondida') {
-            $updateData['fecha_respuesta'] = $fechaRespuesta ?? now();
-        }
+            $updateData = ['estado_tramite' => $nuevoEstado];
 
-        $pqrs->update($updateData);
+            if ($nuevoEstado === 'Respondida') {
+                $updateData['fecha_respuesta'] = $fechaRespuesta ?? now();
+            }
+
+            $pqrs->update($updateData);
+
+            return $pqrs;
+        });
 
         $pqrs->load(['radicado', 'tercero', 'tipoPqrs', 'clasificacionDocumental']);
 

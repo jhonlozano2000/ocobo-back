@@ -107,6 +107,19 @@ class VentanillaPqrs extends Model
     protected const ABAC_VER_TODOS_PERMISO = self::PERMISO_VER_TODOS;
 
     /**
+     * M04-07: cambios de estado permitidos desde cada estado del trámite.
+     * Un cambio fuera de este mapa (p. ej. Vencida → Pendiente) alteraría los indicadores de oportunidad.
+     *
+     * @var array<string, list<string>>
+     */
+    public const TRANSICIONES_ESTADO = [
+        'Pendiente' => ['En Tramite', 'Respondida', 'Vencida'],
+        'En Tramite' => ['Respondida', 'Vencida', 'Pendiente'],
+        'Respondida' => ['En Tramite'],
+        'Vencida' => ['En Tramite', 'Respondida'],
+    ];
+
+    /**
      * M04-01: la tabla no tiene usuario_crea (vive en el radicado) y los responsables están en el
      * radicado, así que el filtrado ABAC se delega en el scope de la vista optimizada.
      */

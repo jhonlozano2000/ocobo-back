@@ -423,6 +423,8 @@ class VentanillaPqrsController extends Controller
             return $this->successResponse(new PqrsResource($pqrs), 'Estado actualizado a: '.$validated['estado_tramite']);
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('PQRS no encontrada', null, 404);
+        } catch (\DomainException $e) {
+            return $this->warningResponse($e->getMessage());
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -1602,13 +1604,7 @@ class VentanillaPqrsController extends Controller
     public function transicionesEstado(string $estadoActual): JsonResponse
     {
         try {
-            $transiciones = match ($estadoActual) {
-                'Pendiente' => ['En Tramite', 'Respondida', 'Vencida'],
-                'En Tramite' => ['Respondida', 'Vencida', 'Pendiente'],
-                'Respondida' => ['En Tramite'],
-                'Vencida' => ['En Tramite', 'Respondida'],
-                default => [],
-            };
+            $transiciones = VentanillaPqrs::TRANSICIONES_ESTADO[$estadoActual] ?? [];
 
             return $this->successResponse($transiciones, 'Transiciones válidas');
         } catch (\Exception $e) {
