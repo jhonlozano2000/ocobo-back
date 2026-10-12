@@ -77,7 +77,11 @@ class MiBandejaInternosController extends Controller
                 ->with(['responsables.userCargo.cargo', 'usuarioCrea.cargoActivo.cargo', 'dependenciaOrigen'])
                 ->paginate($perPage);
 
-            $radicados->getCollection()->each->append('dependencia_origen');
+            // La relación `dependenciaOrigen` se serializa con la misma clave y, vacía, pisaría
+            // el valor inferido: se calcula y se descarta la relación antes de responder.
+            $radicados->getCollection()->each(fn ($radicado) => $radicado
+                ->setAttribute('dependencia_origen', $radicado->dependencia_origen)
+                ->unsetRelation('dependenciaOrigen'));
             $this->marcarPuedeFirmar($radicados->getCollection(), $userId);
 
             return $this->successResponse($radicados, 'Mis radicados internos obtenidos exitosamente');

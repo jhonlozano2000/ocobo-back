@@ -117,6 +117,22 @@ class RadicadoInternoDependenciaOrigenTest extends TestCase
         $this->assertSame(['id' => $depCustodio->id, 'nombre' => 'Dep Custodio / Ofi Custodio', 'dependencia' => 'Dep Custodio', 'oficina' => 'Ofi Custodio'], $fila['dependencia_origen']);
     }
 
+    public function test_mi_bandeja_devuelve_la_dependencia_del_custodio(): void
+    {
+        [, $creador] = $this->usuarioEnDependencia('Creador');
+        [$depCustodio, $custodio, $custodioCargo] = $this->usuarioEnDependencia('Custodio');
+        $custodio->givePermissionTo(Permission::findOrCreate('Mi Bandeja - Internos -> Ver', 'web'));
+
+        $id = $this->interno('DOT-TEST-0005', $creador->id);
+        $this->responsable($id, $custodioCargo, true);
+
+        // El listado precarga `dependenciaOrigen` (vacía), que se serializa con la misma clave
+        $fila = collect($this->actingAs($custodio)->getJson('/api/mi-bandeja/internos/mis-radicados')->assertOk()->json('data'))
+            ->firstWhere('id', $id);
+
+        $this->assertSame(['id' => $depCustodio->id, 'nombre' => 'Dep Custodio / Ofi Custodio', 'dependencia' => 'Dep Custodio', 'oficina' => 'Ofi Custodio'], $fila['dependencia_origen']);
+    }
+
     public function test_al_radicar_se_guarda_la_oficina_del_custodio_principal(): void
     {
         $trd = DB::table('clasificacion_documental_trd')->value('id');
