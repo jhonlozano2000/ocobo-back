@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Services\MiBandeja\MiBandejaFiltroService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -76,6 +78,7 @@ class MiBandejaInternosController extends Controller
                 ->paginate($perPage);
 
             $radicados->getCollection()->each->append('dependencia_origen');
+            $this->marcarPuedeFirmar($radicados->getCollection(), $userId);
 
             return $this->successResponse($radicados, 'Mis radicados internos obtenidos exitosamente');
         } catch (\Exception $e) {
@@ -88,6 +91,34 @@ class MiBandejaInternosController extends Controller
 
             return $this->serverErrorResponse('Error al obtener mis radicados internos', $e->getMessage());
         }
+    }
+
+    /**
+     * Indica en cada fila si el usuario puede firmarla, con las mismas reglas del flujo de firma:
+     * tiene PDF, es firmante designado (FirmaService::esFirmanteDesignado) y, si figura como
+     * firmante, aún no ha firmado (M03-19).
+     */
+    private function marcarPuedeFirmar(Collection $radicados, int $userId): void
+    {
+        $ids = $radicados->pluck('id');
+
+        $firmados = DB::table('ventanilla_radica_internos_firmantes')
+            ->whereIn('radica_interno_id', $ids)
+            ->where('users_id', $userId)
+            ->pluck('firmado', 'radica_interno_id');
+
+        $responsable = DB::table('ventanilla_radica_internos_responsa')
+            ->join('users_cargos', 'users_cargos.id', '=', 'ventanilla_radica_internos_responsa.users_cargos_id')
+            ->whereIn('ventanilla_radica_internos_responsa.radica_interno_id', $ids)
+            ->where('users_cargos.user_id', $userId)
+            ->pluck('ventanilla_radica_internos_responsa.radica_interno_id')
+            ->flip();
+
+        $radicados->each(function ($radicado) use ($firmados, $responsable) {
+            $designado = $firmados->has($radicado->id) || $responsable->has($radicado->id);
+
+            $radicado->setAttribute('puede_firmar', ! empty($radicado->archivo_digital) && $designado && ! $firmados->get($radicado->id));
+        });
     }
 
     /**
