@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Transversal;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Transversal\FirmaValidarRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\Transversal\FirmaEvento;
 use App\Services\Firma\FirmaValidacionService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -20,6 +21,13 @@ class FirmaValidacionController extends Controller
 
     public function validar(FirmaValidarRequest $request)
     {
+        $modelClass = FirmaValidacionService::MODEL_MAP[$request->input('documentable_type')];
+
+        // M06-12: la validación devuelve el firmante y su correo; mismo alcance que el historial de firmas
+        if (! FirmaEvento::usuarioPuedeConsultar($modelClass, (int) $request->input('documentable_id'), $request->user())) {
+            return $this->errorResponse('No tiene permisos para validar este documento', null, 403);
+        }
+
         try {
             $resultado = $this->validacionService->validar(
                 $request->input('documentable_type'),

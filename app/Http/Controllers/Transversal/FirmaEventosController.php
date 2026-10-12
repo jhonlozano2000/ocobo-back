@@ -40,6 +40,13 @@ class FirmaEventosController extends Controller
             return $this->errorResponse('Tipo de documento no válido. Use: reci, enviados, interno, pqrs', null, 422);
         }
 
+        // M06-12: el historial expone firmantes y correos
+        $tieneAcceso = FirmaEvento::usuarioPuedeConsultar($modelClass, $documentoId, request()->user());
+
+        if (! $tieneAcceso) {
+            return $this->errorResponse('No tiene permisos para consultar las firmas de este documento', null, 403);
+        }
+
         $eventos = FirmaEvento::where('documentable_type', $modelClass)
             ->where('documentable_id', $documentoId)
             ->with('user:id,nombres,apellidos,email')
@@ -53,7 +60,8 @@ class FirmaEventosController extends Controller
                 'hash_firmado' => $e->hash_firmado,
                 'ip_address' => $e->ip_address,
                 'fecha_firma' => $e->fecha_firma?->toIso8601String() ?? $e->created_at?->toIso8601String(),
-                'integro' => $e->hash_original !== $e->hash_firmado,
+                'estampado' => $e->estaEstampado(),
+                'con_estampa_tiempo' => (bool) $e->timestamp_token,
             ]);
 
         return $this->successResponse([

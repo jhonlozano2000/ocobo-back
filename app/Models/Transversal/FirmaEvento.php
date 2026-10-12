@@ -40,4 +40,32 @@ class FirmaEvento extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    /**
+     * M06-12: las firmas de un documento (firmantes, correos, hashes) solo las consulta quien tiene acceso
+     * al documento con el mismo alcance jerárquico de los listados, o quien firmó en él.
+     *
+     * @param  class-string  $modelClass  Modelo con el scope conPermisoJerarquico
+     */
+    public static function usuarioPuedeConsultar(string $modelClass, int $documentoId, ?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $modelClass::conPermisoJerarquico($user)->whereKey($documentoId)->exists()
+            || static::where('documentable_type', $modelClass)
+                ->where('documentable_id', $documentoId)
+                ->where('user_id', $user->id)
+                ->exists();
+    }
+
+    /**
+     * El PDF quedó estampado: la firma generó una versión nueva con hash propio (M06-11).
+     * No prueba integridad; eso lo hace FirmaValidacionService recalculando el hash del archivo.
+     */
+    public function estaEstampado(): bool
+    {
+        return ! empty($this->hash_firmado) && $this->hash_firmado !== $this->hash_original;
+    }
 }
