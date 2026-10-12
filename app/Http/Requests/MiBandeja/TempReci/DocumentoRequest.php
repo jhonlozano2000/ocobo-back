@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\MiBandeja\TempReci;
 
+use App\Rules\RadicadoAccesible;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -31,7 +32,8 @@ class DocumentoRequest extends FormRequest
         return [
             'radica_reci_id' => [
                 'nullable',
-                'exists:ventanilla_radica_reci,id',
+                // Solo radicados a los que el usuario tiene acceso; al editar se puede conservar el ya vinculado
+                new RadicadoAccesible('recibido', $this->route('documento')?->radica_reci_id),
             ],
             'titulo' => [
                 'required',
