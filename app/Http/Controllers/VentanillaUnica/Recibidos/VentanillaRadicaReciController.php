@@ -547,6 +547,8 @@ class VentanillaRadicaReciController extends Controller
                 'tipo' => $clasificacion->tipo,
             ] : null;
 
+            $this->auditVentanilla($radicado, 'view', $radicado->num_radicado);
+
             return $this->successResponse($data, 'Radicación encontrada exitosamente');
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
@@ -1000,11 +1002,20 @@ class VentanillaRadicaReciController extends Controller
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
 
+            $oldValues = array_intersect_key($radicado->getOriginal(), $request->validated());
             $radicado->update($request->validated());
+            $newValues = array_intersect_key($radicado->getChanges(), $request->validated());
 
-            $this->auditVentanilla($radicado, 'updated', $radicado->num_radicado, [
-                'campos' => array_keys($request->validated()),
-            ]);
+            $this->auditVentanilla(
+                $radicado,
+                'updated',
+                $radicado->num_radicado,
+                [
+                    'campos' => array_keys($request->validated()),
+                    'cambios' => $newValues,
+                ],
+                $oldValues
+            );
 
             DB::commit();
 

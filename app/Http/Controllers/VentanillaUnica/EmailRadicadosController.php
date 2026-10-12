@@ -144,6 +144,8 @@ class EmailRadicadosController extends Controller
                 : 'Radicado recibido creado exitosamente desde el correo';
 
             return $this->createdResponse($resultado, $mensaje);
+        } catch (\DomainException $e) {
+            return $this->warningResponse($e->getMessage());
         } catch (\Exception $e) {
             $message = $e->getMessage();
 

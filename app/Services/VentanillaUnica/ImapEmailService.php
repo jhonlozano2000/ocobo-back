@@ -41,6 +41,9 @@ class ImapEmailService
             throw new \Exception('La configuración IMAP está incompleta. Verifique host, usuario y contraseña.');
         }
 
+        // Prevención SSRF: validar que el host IMAP no resuelva a rangos privados/loopback
+        $this->validarHostSeguro($host);
+
         $decryptedPassword = MailConfigHelper::decryptPassword($password);
 
         $this->mailbox = Mailbox::make([
@@ -398,5 +401,34 @@ class ImapEmailService
         $password = ConfigVarias::getValor('correo_password');
 
         return ! empty($host) && ! empty($username) && ! empty($password);
+    }
+
+    /**
+     * Valida que el host IMAP no resuelva a direcciones IP de bucle invertido o privadas (Prevención SSRF).
+     *
+     * @throws \DomainException Si el host resuelve a un destino interno no permitido.
+     */
+    protected function validarHostSeguro(string $host): void
+    {
+        // En entorno local o de pruebas unitarias permitimos localhost si es explícito
+        if (app()->environment(['local', 'testing']) && in_array(strtolower($host), ['localhost', '127.0.0.1', '::1', 'mailpit', 'mailhog'])) {
+            return;
+        }
+
+        $ips = @gethostbynamel($host);
+        if ($ips === false || empty($ips)) {
+            // Si no resuelve por DNS directo, verificar si el host mismo es una IP
+            $ips = [$host];
+        }
+
+        foreach ($ips as $ip) {
+            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+                Log::warning('ImapEmailService: Intento de conexión IMAP a red interna o no permitida (SSRF)', [
+                    'host' => $host,
+                    'ip' => $ip,
+                ]);
+                throw new \DomainException("El host configurado para IMAP ({$host}) no está permitido por seguridad de red.");
+            }
+        }
     }
 }

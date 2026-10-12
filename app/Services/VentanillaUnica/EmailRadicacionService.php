@@ -56,6 +56,14 @@ class EmailRadicacionService
     public function radicarFromEmailData(array $emailData, array $data = []): array
     {
         return DB::transaction(function () use ($emailData, $data) {
+            $imapUid = $emailData['uid'] ?? null;
+            if ($imapUid) {
+                $existe = VentanillaRadicaReci::where('imap_uid', (string) $imapUid)->first();
+                if ($existe) {
+                    throw new \DomainException("El correo (UID {$imapUid}) ya fue radicado previamente con el número {$existe->num_radicado}.");
+                }
+            }
+
             $hashSha256 = $this->calcularHashEmailArray($emailData);
             $numRadicado = $this->obtenerSiguienteNumeroRadicado();
 

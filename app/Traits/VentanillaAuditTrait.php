@@ -16,7 +16,7 @@ trait VentanillaAuditTrait
      * @param  array  $metadata  Metadatos adicionales
      * @return void
      */
-    public function auditVentanilla($model, string $action, string $numRadicado = '', array $metadata = [])
+    public function auditVentanilla($model, string $action, string $numRadicado = '', array $metadata = [], ?array $oldValues = null)
     {
         $descriptions = [
             'created' => "Radicado creado: {$numRadicado}",
@@ -31,6 +31,7 @@ trait VentanillaAuditTrait
             'description' => $descriptions[$action] ?? "Operación {$action} en {$numRadicado}",
             'entity_id' => $model->getKey(),
             'entity_type' => get_class($model),
+            'old_values' => $oldValues,
             'new_values' => array_merge([
                 'num_radicado' => $numRadicado,
             ], $metadata),

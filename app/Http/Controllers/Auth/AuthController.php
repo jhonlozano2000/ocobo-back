@@ -16,10 +16,10 @@ use App\Services\Auth\TwoFactorToken;
 use App\Services\Seguridad\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -52,18 +52,15 @@ class AuthController extends Controller
         // Sanitización de entrada para prevenir inyección
         $email = filter_var($credentials['email'], FILTER_SANITIZE_EMAIL);
 
-        // Claves de bloqueo temporal por fuerza bruta (ISO 27001 / OWASP)
-        $lockoutKey = 'login_lockout_'.sha1(strtolower($email));
-        $attemptsKey = 'login_attempts_'.sha1(strtolower($email));
+        // Clave de bloqueo por cuenta para fuerza bruta (ISO 27001 / OWASP)
+        $accountLimiterKey = 'login_account:'.sha1(strtolower($email));
 
-        if (Cache::has($lockoutKey)) {
-            $secondsRemaining = (int) Cache::get($lockoutKey) - now()->timestamp;
+        if (RateLimiter::tooManyAttempts($accountLimiterKey, 5)) {
+            $secondsRemaining = RateLimiter::availableIn($accountLimiterKey);
             $minutesRemaining = max(1, (int) ceil($secondsRemaining / 60));
 
-            return $this->errorResponse(
-                "Cuenta bloqueada temporalmente por múltiples intentos fallidos. Intenta nuevamente en {$minutesRemaining} minuto(s).",
-                null,
-                429
+            return $this->tooManyRequestsResponse(
+                "Cuenta bloqueada temporalmente por múltiples intentos fallidos. Intenta nuevamente en {$minutesRemaining} minuto(s)."
             );
         }
 
@@ -75,31 +72,26 @@ class AuthController extends Controller
 
         // Si no se encuentra el usuario
         if (! $user) {
+            RateLimiter::hit($accountLimiterKey, 900);
             $this->logFailedLoginAttempt(null, $email, 'Usuario no encontrado', $request);
 
-            return $this->errorResponse('Las credenciales proporcionadas son incorrectas.', null, 401);
+            return $this->unauthorizedResponse('Las credenciales proporcionadas son incorrectas.');
         }
 
         // Verificar estado de cuenta (asumiendo que 1 = activo, 0 = inactivo)
         if (! isset($user->estado) || $user->estado == 0) {
             $this->logFailedLoginAttempt($user->id, $user->email, 'Cuenta desactivada', $request);
 
-            return $this->errorResponse('Tu cuenta se encuentra desactivada.', null, 401);
+            return $this->unauthorizedResponse('Tu cuenta se encuentra desactivada.');
         }
 
         // Validar credenciales
         if (! Hash::check($credentials['password'], $user->password)) {
             $this->logFailedLoginAttempt($user->id, $user->email, 'Credenciales incorrectas', $request);
 
-            // Incrementar contador de intentos fallidos con expiración de 15 minutos
-            $attempts = (int) Cache::get($attemptsKey, 0) + 1;
-            Cache::put($attemptsKey, $attempts, now()->addMinutes(15));
+            RateLimiter::hit($accountLimiterKey, 900);
 
-            if ($attempts >= 5) {
-                // Bloquear la cuenta temporalmente por 15 minutos (900 segundos)
-                Cache::put($lockoutKey, now()->addMinutes(15)->timestamp, now()->addMinutes(15));
-                Cache::forget($attemptsKey);
-
+            if (RateLimiter::tooManyAttempts($accountLimiterKey, 5)) {
                 UsersAuthenticationLog::logEvent([
                     'user_id' => $user->id,
                     'event' => 'account_locked',
@@ -108,19 +100,16 @@ class AuthController extends Controller
                     'details' => 'Cuenta bloqueada temporalmente por 15 minutos tras 5 intentos fallidos consecutivos. IP: '.$request->ip(),
                 ]);
 
-                return $this->errorResponse(
-                    'Demasiados intentos fallidos. Tu cuenta ha sido bloqueada temporalmente por 15 minutos por seguridad.',
-                    null,
-                    429
+                return $this->tooManyRequestsResponse(
+                    'Demasiados intentos fallidos. Tu cuenta ha sido bloqueada temporalmente por 15 minutos por seguridad.'
                 );
             }
 
-            return $this->errorResponse('Las credenciales proporcionadas son incorrectas.', null, 401);
+            return $this->unauthorizedResponse('Las credenciales proporcionadas son incorrectas.');
         }
 
-        // Limpiar contadores de intentos fallidos tras autenticación exitosa
-        Cache::forget($attemptsKey);
-        Cache::forget($lockoutKey);
+        // Limpiar contador de intentos fallidos tras autenticación exitosa
+        RateLimiter::clear($accountLimiterKey);
 
         // Si el usuario tiene 2FA activo, NO crear sesión aún
         if ($user->twoFactorEnabled) {

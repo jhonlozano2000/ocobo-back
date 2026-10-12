@@ -198,8 +198,9 @@ class RotuloPngService
         }
 
         // Guardar archivo
-        $nombreArchivo = 'rotulo_'.preg_replace('/[^a-zA-Z0-9-]/', '_', $numRadicado).'_'.now()->format('Ymd_His').'.png';
-        $directorio = 'radicados_recibidos/'.$numRadicado;
+        $numRadicadoLimpio = preg_replace('/[^a-zA-Z0-9_-]/', '_', $numRadicado);
+        $nombreArchivo = 'rotulo_'.$numRadicadoLimpio.'_'.now()->format('Ymd_His').'.png';
+        $directorio = 'radicados_recibidos/'.$numRadicadoLimpio;
         $rutaCompleta = storage_path("app/{$directorio}");
 
         if (! is_dir($rutaCompleta)) {
