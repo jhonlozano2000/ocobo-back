@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\View;
 use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -23,11 +24,15 @@ class SecurityHeadersMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // SES-006: nonce por petición; las vistas lo usan en <style nonce="{{ $cspNonce }}">
+        $nonce = base64_encode(random_bytes(16));
+        View::share('cspNonce', $nonce);
+
         $response = $next($request);
 
         // Solo agregar headers a respuestas que no sean para downloads
         if ($this->shouldApplyHeaders($response)) {
-            $this->applySecurityHeaders($response, $request);
+            $this->applySecurityHeaders($response, $request, $nonce);
             $this->cleanConflictingCookies($response, $request);
         }
 
@@ -100,7 +105,7 @@ class SecurityHeadersMiddleware
     /**
      * Aplica los headers de seguridad a la respuesta.
      */
-    private function applySecurityHeaders(Response $response, Request $request): void
+    private function applySecurityHeaders(Response $response, Request $request, string $nonce): void
     {
         $isProduction = app()->environment('production');
 
@@ -121,7 +126,7 @@ class SecurityHeadersMiddleware
 
         // Content-Security-Policy (solo en producción para evitar problemas en desarrollo)
         if ($isProduction) {
-            $csp = $this->buildCSP();
+            $csp = $this->buildCSP($nonce);
             $response->headers->set('Content-Security-Policy', $csp);
         }
 
@@ -144,14 +149,14 @@ class SecurityHeadersMiddleware
     /**
      * Construye la Content Security Policy.
      */
-    private function buildCSP(): string
+    private function buildCSP(string $nonce): string
     {
         $directives = [
             "default-src 'self'",
             "script-src 'self' 'strict-dynamic'",
-            "style-src 'self' 'nonce-{NONCE}'",
+            "style-src 'self' 'nonce-{$nonce}' https://fonts.bunny.net",
             "img-src 'self' data: blob: https://",
-            "font-src 'self' data:",
+            "font-src 'self' data: https://fonts.bunny.net",
             "connect-src 'self' http://localhost:* http://*.test",
             "frame-ancestors 'none'",
             "base-uri 'self'",
