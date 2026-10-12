@@ -82,21 +82,15 @@ class FirmaElectronicaHelper
     /**
      * Solicita un timestamp RFC 3161 para un hash SHA-256.
      *
+     * M06-01: el servicio verifica firma, certificado, huella y nonce del sello; si no
+     * es válido lanza excepción y no se guarda token ni fecha (antes se guardaba now()).
+     *
      * @param  string  $hash  Hash SHA-256 en hexadecimal
-     * @return array ['token' => string, 'fecha' => ?string]
+     * @return array ['token' => string, 'fecha' => string]
      */
     public static function solicitarTimestamp(string $hash): array
     {
-        $tsaService = new TsaService;
-        $token = $tsaService->solicitarTimestamp($hash);
-
-        // Obtener la fecha del token verificándolo
-        $verificacion = $tsaService->verificarTimestamp($token, $hash);
-
-        return [
-            'token' => $token,
-            'fecha' => $verificacion['fecha_firma'] ?? now()->format('Y-m-d H:i:s'),
-        ];
+        return (new TsaService)->solicitarTimestamp($hash);
     }
 
     /**
@@ -104,7 +98,7 @@ class FirmaElectronicaHelper
      *
      * @param  string  $tokenBase64  Token TSR en base64
      * @param  string  $hash  Hash SHA-256 esperado en hexadecimal
-     * @return array ['valido' => bool, 'fecha_firma' => ?string]
+     * @return array ['valido' => bool, 'fecha_firma' => ?string, 'motivo' => ?string]
      */
     public static function verificarTimestamp(string $tokenBase64, string $hash): array
     {
