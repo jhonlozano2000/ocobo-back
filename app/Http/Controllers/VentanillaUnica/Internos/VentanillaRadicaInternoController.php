@@ -79,6 +79,9 @@ class VentanillaRadicaInternoController extends Controller
             $radicados = $query->paginate($perPage);
 
             $radicados->getCollection()->transform(function ($radicado) {
+                // dependencia_origen (no está en $appends) se calcula antes de reemplazar `responsables`
+                // por arreglos: el accessor usa los modelos precargados para hallar al custodio.
+                $radicado->dependencia_origen = $radicado->dependencia_origen;
                 $clasifInfo = $radicado->getClasificacionDocumentalInfo();
                 $responsablesInfo = $radicado->getResponsablesInfo();
 
@@ -90,8 +93,6 @@ class VentanillaRadicaInternoController extends Controller
                 $radicado->estado_trabajo_info = $radicado->getEstadoTrabajoInfo();
                 $radicado->dias_para_vencer = $radicado->getDiasParaVencerAttribute();
                 $radicado->is_vencida = $radicado->isVencida();
-                // Explicitly include dependencia_origen (accessor not in $appends)
-                $radicado->dependencia_origen = $radicado->dependencia_origen;
                 // Transform destinatarios to match the same structure as responsables
                 $transformedDestinatarios = $radicado->destinatarios->map(function ($dest) {
                     $user = $dest->userCargo?->user;

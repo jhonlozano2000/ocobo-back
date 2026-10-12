@@ -113,11 +113,18 @@ class VentanillaRadicaInterno extends Model
     }
 
     /**
-     * Atributo compuesto: prefiere la relación guardada, fallback a inferencia del usuario creador.
+     * Atributo compuesto: prefiere la dependencia guardada; si no hay, la del cargo del custodio
+     * principal (responsable con custodio) y, sin custodio, la del cargo activo del creador.
      */
-    public function getDependenciaOrigenAttribute()
+    public function getDependenciaOrigenAttribute($value = null)
     {
-        // Con la relación precargada y sin dependencia guardada también se infiere del creador.
+        // Valor ya calculado y asignado (p. ej. por el listado de Ventanilla antes de reemplazar
+        // `responsables` por arreglos): se respeta al serializar.
+        if ($value !== null) {
+            return $value;
+        }
+
+        // Con la relación precargada y sin dependencia guardada también se infiere.
         // `$this->dependenciaOrigen` resolvería a este mismo accessor: se usa la relación explícita.
         $dep = match (true) {
             $this->relationLoaded('dependenciaOrigen') => $this->getRelation('dependenciaOrigen'),
@@ -129,12 +136,25 @@ class VentanillaRadicaInterno extends Model
             return ['id' => $dep->id, 'nombre' => $dep->nom_organico];
         }
 
-        $cargoActivo = $this->usuarioCrea?->cargoActivo;
-        if (! $cargoActivo?->cargo) {
-            return null;
+        // Algunos listados reemplazan `responsables` por arreglos de presentación: entonces se consulta
+        $responsables = $this->relationLoaded('responsables') ? $this->getRelation('responsables') : null;
+        if (! $responsables || ! $responsables->every(fn ($r) => $r instanceof VentanillaRadicaInternoResponsable)) {
+            $responsables = $this->responsables()->with('userCargo.cargo')->get();
         }
+        $custodio = $responsables->first(fn ($responsable) => (bool) $responsable->custodio);
 
-        $node = $cargoActivo->cargo;
+        $node = $custodio
+            ? $custodio->userCargo?->cargo
+            : $this->usuarioCrea?->cargoActivo?->cargo;
+
+        return self::dependenciaDelNodo($node);
+    }
+
+    /**
+     * Sube por el organigrama desde un cargo u oficina hasta su dependencia.
+     */
+    private static function dependenciaDelNodo(?CalidadOrganigrama $node): ?array
+    {
         $visited = 0;
         while ($node && $node->tipo !== 'Dependencia' && $visited < 20) {
             $parentId = $node->getAttribute('parent');
