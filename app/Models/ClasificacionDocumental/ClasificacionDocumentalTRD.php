@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\ValidationException;
 
 class ClasificacionDocumentalTRD extends Model
 {
@@ -52,6 +53,61 @@ class ClasificacionDocumentalTRD extends Model
         's' => 'boolean',
         'estado' => 'boolean',
     ];
+
+    /**
+     * M09-02/M09-03: la jerarquía y la unicidad de códigos se validan al guardar, para que
+     * apliquen a cualquier escritura (formularios, importación de Excel, servicios).
+     */
+    protected static function booted(): void
+    {
+        static::saving(fn (self $trd) => $trd->validarIntegridad());
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    public function validarIntegridad(): void
+    {
+        // `parent` es a la vez columna y relación; se lee la columna
+        $parentId = $this->attributes['parent'] ?? null;
+        $padre = $parentId ? self::find($parentId) : null;
+
+        $error = match (true) {
+            $this->exists && $parentId && (int) $parentId === (int) $this->id => ['parent', 'Un elemento no puede ser padre de sí mismo.'],
+            $this->exists && $this->isDirty(['tipo', 'dependencia_id', 'version_id']) && $this->children()->exists() => ['tipo', 'No se puede cambiar el tipo, la dependencia ni la versión de un elemento que tiene hijos.'],
+            $this->tipo === 'Serie' && $parentId !== null => ['parent', 'Una Serie no puede tener elemento padre.'],
+            $this->tipo !== 'Serie' && ! $padre => ['parent', 'El elemento padre es obligatorio para SubSerie y TipoDocumento.'],
+            $padre && ! $this->puedeSerPadre($padre) => ['parent', $this->tipo === 'SubSerie'
+                ? 'Las SubSeries solo pueden tener como padre una Serie.'
+                : 'Los Tipos de Documento solo pueden tener como padre una Serie o SubSerie.'],
+            $padre && (int) $padre->dependencia_id !== (int) $this->dependencia_id => ['parent', 'El elemento padre debe pertenecer a la misma dependencia.'],
+            $padre && $padre->version_id !== null && (int) $padre->version_id !== (int) $this->version_id => ['parent', 'El elemento padre debe pertenecer a la misma versión de la TRD.'],
+            $this->codigoRepetido() => ['cod', 'El código ya existe en este nivel de la TRD (misma dependencia, versión y padre).'],
+            default => null,
+        };
+
+        if ($error) {
+            throw ValidationException::withMessages([$error[0] => $error[1]]);
+        }
+    }
+
+    /** El código es único entre hermanos: misma dependencia, versión y padre. */
+    private function codigoRepetido(): bool
+    {
+        $parentId = $this->attributes['parent'] ?? null;
+
+        if ($this->cod === null || trim((string) $this->cod) === '') {
+            return false;
+        }
+
+        return self::query()
+            ->where('dependencia_id', $this->dependencia_id)
+            ->where('cod', $this->cod)
+            ->when($this->version_id === null, fn ($q) => $q->whereNull('version_id'), fn ($q) => $q->where('version_id', $this->version_id))
+            ->when($parentId === null, fn ($q) => $q->whereNull('parent'), fn ($q) => $q->where('parent', $parentId))
+            ->when($this->exists, fn ($q) => $q->whereKeyNot($this->id))
+            ->exists();
+    }
 
     /**
      * Relación con los elementos hijos.

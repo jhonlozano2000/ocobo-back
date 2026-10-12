@@ -32,7 +32,9 @@ class CalidadOrganigramaRequest extends FormRequest
             $organigramaId = is_object($organigrama) ? $organigrama->id : $organigrama;
         }
 
+        // M09-03: el código de la dependencia forma parte de la numeración de expedientes
         $codOrganicoRules = [
+            Rule::requiredIf(fn () => $this->input('tipo') === 'Dependencia'),
             'nullable',
             'string',
             'max:10',
@@ -118,6 +120,7 @@ class CalidadOrganigramaRequest extends FormRequest
             'nom_organico.max' => 'El nombre no puede superar los 100 caracteres.',
             'cod_organico.max' => 'El código orgánico no puede superar los 10 caracteres.',
             'cod_organico.unique' => 'El código orgánico ya está en uso.',
+            'cod_organico.required' => 'El código orgánico es obligatorio para las dependencias.',
             'observaciones.max' => 'Las observaciones no pueden superar los 500 caracteres.',
             'parent.integer' => 'El ID del nodo padre debe ser un número entero.',
             'parent.exists' => 'El nodo padre seleccionado no existe.',

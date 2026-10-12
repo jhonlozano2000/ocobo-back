@@ -5,7 +5,6 @@ namespace App\Http\Requests\ClasificacionDocumental;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class UpdateClasificacionDocumentalRequest extends FormRequest
@@ -38,9 +37,7 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
                 'sometimes',
                 'string',
                 'max:50',
-                Rule::unique('clasificacion_documental_trd', 'cod')
-                    ->where('dependencia_id', $this->input('dependencia_id'))
-                    ->ignore($trdId),
+                // M09-03: la unicidad (dependencia, versión, padre) la valida el modelo al guardar
             ],
             'nom' => [
                 'sometimes',
@@ -142,7 +139,6 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
     {
         return [
             'tipo.in' => 'El tipo debe ser Serie, SubSerie o TipoDocumento.',
-            'cod.unique' => 'El código ya existe para esta dependencia.',
             'nom.max' => 'El nombre no puede superar los 255 caracteres.',
             'dependencia_id.exists' => 'La dependencia seleccionada no existe.',
             'parent.required' => 'El elemento padre es obligatorio para SubSerie y TipoDocumento.',

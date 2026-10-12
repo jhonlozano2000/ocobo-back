@@ -57,6 +57,14 @@ class OrganigramaCiclosTest extends TestCase
         ]);
     }
 
+    /** M09-03: la dependencia necesita código propio (numeración de expedientes) */
+    public function test_dependencia_requiere_codigo_organico(): void
+    {
+        $this->actingAs($this->editor())->putJson('/api/calidad/organigrama/'.$this->b->id, [
+            'tipo' => 'Dependencia', 'nom_organico' => $this->b->nom_organico, 'cod_organico' => null, 'parent' => $this->a->id,
+        ])->assertUnprocessable()->assertJsonValidationErrors('cod_organico');
+    }
+
     public function test_rechaza_mover_un_nodo_bajo_si_mismo_o_un_descendiente(): void
     {
         $this->mover($this->a, $this->a->id)->assertStatus(422)->assertJsonValidationErrors('parent');
