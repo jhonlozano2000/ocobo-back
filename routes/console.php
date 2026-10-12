@@ -21,7 +21,8 @@ Artisan::command('inspire', function () {
 
 // Las horas se interpretan en app.schedule_timezone (America/Bogota por defecto, M13-01)
 Schedule::command('pqrs:marcar-vencidas')->dailyAt('00:05')->withoutOverlapping();
-Schedule::command('email:sync-radicados')->everyFiveMinutes()->withoutOverlapping();
+// M18-06: no hay sincronización programada del buzón; la Bandeja de Correo lee IMAP en vivo y la radicación
+// es manual. Se retiró 'email:sync-radicados' (comando inexistente que fallaba cada 5 minutos).
 
 // M16: Alertas de vencimiento (Ley 1437/2011)
 // Notifica a responsables 1 y 3 días antes del vencimiento de radicados/PQRS
