@@ -74,6 +74,7 @@ Route::middleware('auth:sanctum')->prefix('archivo')->group(function () use ($pe
     Route::post('/expedientes/{id}/archivos', [OfiArchivoExpedienteController::class, 'subirArchivos'])->middleware('can:'.$permExp.'Incorporar');
     Route::post('/expedientes/{expedienteId}/documentos/{documentoId}/soft-delete', [OfiArchivoExpedienteController::class, 'softDeleteDocumento'])->middleware('can:'.$permExp.'Editar');
     Route::get('/expedientes/{id}/indice', [OfiArchivoExpedienteController::class, 'generarIndicePdf'])->middleware('can:'.$permExp.'Ver');
+    Route::get('/expedientes/{id}/indice-xml', [OfiArchivoExpedienteController::class, 'generarIndiceXml'])->middleware('can:'.$permExp.'Ver');
 
     // RUTAS DE GESTIÓN DE TERCEROS (VISTA 360)
     Route::get('/terceros/{identificacion}/historial', [GestionTerceroController::class, 'showHistory'])->middleware('can:Gestión - Terceros -> Mostrar');

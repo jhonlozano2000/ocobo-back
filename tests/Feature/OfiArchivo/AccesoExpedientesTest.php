@@ -138,6 +138,27 @@ class AccesoExpedientesTest extends TestCase
         $this->assertSame(0, (int) $abierto->fresh()->total_folios_elec);
     }
 
+    /** M08-09: el hash sellado al cerrar es el del índice PDF/XML y los folios retirados se marcan */
+    public function test_indice_es_verificable_y_marca_folios_retirados(): void
+    {
+        $this->user->givePermissionTo(Permission::findOrCreate(self::PERM.'Cerrar', 'web'));
+        $exp = $this->expediente($this->depA, '2026-M83A-S83-0005');
+        $base = ['expediente_id' => $exp->id, 'orden' => 0, 'tipo_documental' => 'Documento',
+            'fecha_documento' => '2026-10-11', 'usuario_id' => $this->otro->id];
+        OfiArchivoExpedienteDocumento::create($base + ['asunto' => 'Activo', 'hash_sha256' => str_repeat('a', 64)]);
+        OfiArchivoExpedienteDocumento::create($base + ['asunto' => 'Retirado', 'hash_sha256' => str_repeat('b', 64)])->delete();
+
+        $this->actingAs($this->user)->postJson("/api/archivo/expedientes/{$exp->id}/cerrar", ['motivo_cierre' => 'Fin'])->assertOk();
+        $hashIndice = $exp->fresh()->hash_indice;
+
+        $xml = simplexml_load_string($this->get("/api/archivo/expedientes/{$exp->id}/indice-xml")->assertOk()->getContent());
+        $this->assertSame($hashIndice, (string) $xml->Integridad->HashIndice);
+        $this->assertSame(str_repeat('a', 64), (string) $xml->Documentos->Documento[0]->Huella);
+        $this->assertSame('retirado', (string) $xml->Documentos->Documento[1]['estado']);
+
+        $this->get("/api/archivo/expedientes/{$exp->id}/indice")->assertOk()->assertHeader('Content-Type', 'application/pdf');
+    }
+
     private function assertNoIncorpora(string $tipo, int $radicadoId): void
     {
         $propio = $this->expediente($this->depA, '2026-M83A-S83-0003');

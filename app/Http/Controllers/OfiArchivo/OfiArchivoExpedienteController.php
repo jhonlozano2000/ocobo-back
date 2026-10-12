@@ -11,6 +11,7 @@ use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoExpedienteDocumento;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\OfiArchivo\IndiceExpedienteService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +19,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use setasign\Fpdi\Fpdi;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class OfiArchivoExpedienteController extends Controller
@@ -28,7 +28,7 @@ class OfiArchivoExpedienteController extends Controller
     /**
      * Constructor con protección de permisos (Spatie).
      */
-    public function __construct()
+    public function __construct(private IndiceExpedienteService $indiceService)
     {
         $this->middleware('auth:sanctum');
         // Los permisos se validarán en cada método según la Serie TRD
@@ -196,22 +196,8 @@ class OfiArchivoExpedienteController extends Controller
                 return $this->warningResponse('Solo se pueden cerrar expedientes en estado abierto');
             }
 
-            $documentos = $expediente->documentos()
-                ->select('numero_folio', 'documentable_type', 'documentable_id', 'fecha_incorporacion', 'hash_sha256')
-                ->orderBy('numero_folio')
-                ->get();
-
-            $indice = $documentos->map(function ($doc) {
-                return [
-                    'numero_folio' => $doc->numero_folio,
-                    'documentable_type' => $doc->documentable_type,
-                    'documentable_id' => $doc->documentable_id,
-                    'fecha_incorporacion' => $doc->fecha_incorporacion->toDateTimeString(),
-                    'hash_sha256' => $doc->hash_sha256,
-                ];
-            })->toArray();
-
-            $hashIndice = hash('sha256', json_encode($indice));
+            // M08-09: mismas filas que el índice PDF/XML, para que el hash sea verificable
+            $hashIndice = $this->indiceService->hash($this->indiceService->filas($expediente));
 
             $expediente->update([
                 'estado' => 'cerrado',
@@ -332,6 +318,8 @@ class OfiArchivoExpedienteController extends Controller
                 'expediente_id' => $expedienteId,
                 'documentable_id' => $request->documentable_id,
                 'documentable_type' => $modelClass,
+                // M08-09: la huella del radicado queda fijada en el folio al incorporarlo
+                'hash_sha256' => $documento->hash_sha256 ?? null,
                 'tipo_documental' => $request->detalle ?: 'Documento incorporado',
                 'asunto' => $request->detalle ?: 'Documento incorporado',
                 'detalle' => $request->detalle,
@@ -509,83 +497,23 @@ class OfiArchivoExpedienteController extends Controller
      */
     public function generarIndicePdf($id)
     {
-        try {
-            $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->with([
-                'dependencia',
-                'serieTrd',
-                'documentos.documentable',
-            ])->findOrFail($id);
+        $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->with(['dependencia', 'serieTrd'])->findOrFail($id);
 
-            // Generar PDF usando FPDF
-            $pdf = new Fpdi;
-            $pdf->AddPage('L'); // Horizontal para que quepan los hashes
-            $pdf->SetFont('Arial', 'B', 14);
+        return response($this->indiceService->pdf($expediente))
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="Indice_Expediente_'.$expediente->numero_expediente.'.pdf"');
+    }
 
-            // Encabezado AGN
-            $pdf->Cell(0, 10, mb_convert_encoding('ÍNDICE ELECTRÓNICO DE EXPEDIENTE - SGDEA OCOBO', 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
-            $pdf->SetFont('Arial', '', 10);
-            $pdf->Cell(0, 8, mb_convert_encoding("Dependencia: {$expediente->dependencia->nom_organico}", 'ISO-8859-1', 'UTF-8'), 0, 1);
-            $pdf->Cell(0, 8, mb_convert_encoding("Serie/Subserie: {$expediente->serieTrd->nombre}", 'ISO-8859-1', 'UTF-8'), 0, 1);
-            $pdf->Cell(0, 8, mb_convert_encoding("No. Expediente: {$expediente->numero_expediente} | Nombre: {$expediente->nombre_expediente}", 'ISO-8859-1', 'UTF-8'), 0, 1);
-            $pdf->Cell(0, 8, mb_convert_encoding('Fecha de Apertura: '.$expediente->fecha_apertura->format('Y-m-d'), 'ISO-8859-1', 'UTF-8'), 0, 1);
-            $pdf->Ln(5);
+    /**
+     * Índice electrónico en XML (Acuerdo 003 de 2015 AGN), con las mismas filas y hash que el PDF.
+     */
+    public function generarIndiceXml($id)
+    {
+        $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->with(['dependencia', 'serieTrd'])->findOrFail($id);
 
-            // Cabecera de la tabla de documentos
-            $pdf->SetFont('Arial', 'B', 9);
-            $pdf->SetFillColor(230, 230, 230);
-            $pdf->Cell(15, 8, 'Folio', 1, 0, 'C', true);
-            $pdf->Cell(35, 8, 'Fecha Incorp.', 1, 0, 'C', true);
-            $pdf->Cell(50, 8, 'Tipo Documento', 1, 0, 'C', true);
-            $pdf->Cell(80, 8, 'Asunto / Detalle', 1, 0, 'C', true);
-            $pdf->Cell(95, 8, 'Huella Digital (Hash SHA-256)', 1, 1, 'C', true);
-
-            // Filas de documentos
-            $pdf->SetFont('Arial', '', 8);
-
-            // Ordenar por folio estrictamente
-            $documentos = $expediente->documentos->sortBy('numero_folio');
-
-            foreach ($documentos as $doc) {
-                // Determinar el origen y datos clave del documento polimórfico
-                $esRadicado = str_contains($doc->documentable_type, 'VentanillaRadica');
-                $tipo = $esRadicado ? "Radicado: {$doc->documentable->num_radicado}" : 'Documento Interno';
-                $asunto = substr($doc->documentable->asunto ?? $doc->detalle ?? 'Sin asunto', 0, 45);
-
-                // Obtener el hash real del archivo original
-                $hash = $doc->documentable->hash_sha256 ?? 'Sin Hash Registrado';
-
-                // Escribir fila
-                $pdf->Cell(15, 8, $doc->numero_folio, 1, 0, 'C');
-                $pdf->Cell(35, 8, $doc->fecha_incorporacion->format('Y-m-d'), 1, 0, 'C');
-                $pdf->Cell(50, 8, mb_convert_encoding($tipo, 'ISO-8859-1', 'UTF-8'), 1, 0, 'L');
-                $pdf->Cell(80, 8, mb_convert_encoding($asunto, 'ISO-8859-1', 'UTF-8'), 1, 0, 'L');
-
-                // Hash truncado si es muy largo, pero usualmente 64 chars caben en 95mm a tamaño 8
-                $pdf->Cell(95, 8, $hash, 1, 1, 'L');
-            }
-
-            // Pie de página de certificación
-            $pdf->Ln(10);
-            $pdf->SetFont('Arial', 'I', 8);
-            $pdf->Cell(0, 5, mb_convert_encoding('Documento generado automáticamente por el Sistema de Gestión Documental OCOBO.', 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
-            $pdf->Cell(0, 5, mb_convert_encoding('Este índice electrónico garantiza la integridad inalterable del expediente físico y digital.', 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
-
-            $contenidoPdf = $pdf->Output('S');
-
-            return response($contenidoPdf)
-                ->header('Content-Type', 'application/pdf')
-                ->header('Content-Disposition', 'inline; filename="Indice_Expediente_'.$expediente->numero_expediente.'.pdf"');
-
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
-                throw $e;
-            }
-
-            return $this->serverErrorResponse('Error al generar el índice del expediente', $e->getMessage());
-        }
+        return response($this->indiceService->xml($expediente))
+            ->header('Content-Type', 'application/xml; charset=UTF-8')
+            ->header('Content-Disposition', 'attachment; filename="Indice_Expediente_'.$expediente->numero_expediente.'.xml"');
     }
 
     /**
