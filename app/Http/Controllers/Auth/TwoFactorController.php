@@ -10,6 +10,7 @@ use App\Http\Resources\UserResource;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\User;
 use App\Models\UsersAuthenticationLog;
+use App\Services\Auth\SesionConcurrenteService;
 use App\Services\Auth\TwoFactorToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -172,6 +173,8 @@ class TwoFactorController extends Controller
 
             return $this->errorResponse('El código ingresado no es válido.', null, 422);
         }
+
+        app(SesionConcurrenteService::class)->detectar($user, $request->ip(), $request->userAgent());
 
         // Autenticar sesión
         Auth::login($user);

@@ -11,6 +11,7 @@ use App\Mail\PasswordResetMail;
 use App\Models\ControlAcceso\UsersSession;
 use App\Models\User;
 use App\Models\UsersAuthenticationLog;
+use App\Services\Auth\SesionConcurrenteService;
 use App\Services\Auth\TwoFactorToken;
 use App\Services\Seguridad\AuditLogService;
 use Illuminate\Http\Request;
@@ -131,21 +132,8 @@ class AuthController extends Controller
             ], 'Se requiere verificación de dos factores');
         }
 
-        // Detectar sesión concurrente previa desde otra IP / dispositivo (ISO 27001 A.9.4.2)
-        $sesionPrevia = UsersSession::where('user_id', $user->id)
-            ->where('is_active', true)
-            ->where('ip_address', '!=', $request->ip())
-            ->first();
-
-        if ($sesionPrevia) {
-            UsersAuthenticationLog::logEvent([
-                'user_id' => $user->id,
-                'event' => 'concurrent_session_detected',
-                'success' => true,
-                'email' => $user->email,
-                'details' => "Nueva sesión iniciada desde IP {$request->ip()} mientras existía sesión activa previa desde IP {$sesionPrevia->ip_address}",
-            ]);
-        }
+        // Sesión concurrente desde otra IP: se registra y se avisa al titular (ISO 27001 A.9.4.2)
+        app(SesionConcurrenteService::class)->detectar($user, $request->ip(), $request->userAgent());
 
         // Autenticar al usuario (esto establecerá la sesión)
         Auth::login($user, $remember);
