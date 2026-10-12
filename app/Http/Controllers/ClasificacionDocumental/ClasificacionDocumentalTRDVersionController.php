@@ -123,6 +123,8 @@ class ClasificacionDocumentalTRDVersionController extends Controller
                 ->exists();
 
             if ($versionPendiente) {
+                DB::rollBack();
+
                 return $this->errorResponse('La dependencia ya tiene una versión pendiente por aprobar', null, 400);
             }
 
@@ -253,8 +255,14 @@ class ClasificacionDocumentalTRDVersionController extends Controller
 
             DB::beginTransaction();
 
-            // Buscar la versión por ID directamente
-            $versionPendiente = ClasificacionDocumentalTRDVersion::lockForUpdate()->find($request->versionId);
+            // M10-09: se bloquean todas las versiones de la dependencia (en orden de id, para no generar
+            // interbloqueos) y así dos aprobaciones simultáneas no dejan dos versiones ACTIVO
+            $dependenciaVersion = ClasificacionDocumentalTRDVersion::whereKey($request->versionId)->value('dependencia_id');
+            $versionPendiente = ClasificacionDocumentalTRDVersion::where('dependencia_id', $dependenciaVersion)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->firstWhere('id', (int) $request->versionId);
 
             if (! $versionPendiente) {
                 DB::rollBack();
