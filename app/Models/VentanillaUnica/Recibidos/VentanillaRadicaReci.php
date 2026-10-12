@@ -19,11 +19,12 @@ use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use App\Traits\AbacHierarquico;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
 class VentanillaRadicaReci extends Model
 {
-    use AbacHierarquico, HasFactory;
+    use AbacHierarquico, HasFactory, SoftDeletes;
 
     /**
      * Visible por ABAC (creador, responsable, jerarquía o "Ver Todos"), o radicado de una

@@ -24,7 +24,7 @@ class PermisosRadicarSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Recibida -> Crear'])->syncRoles([$Rol1, $Rol2]);
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Recibida -> Editar'])->syncRoles([$Rol1, $Rol2]);
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Recibida -> Mostrar'])->syncRoles([$Rol1, $Rol2]);
-        Permission::firstOrCreate(['name' => 'Radicar -> Cores. Recibida -> Eliminar'])->syncRoles([$Rol1, $Rol2]);
+        Permission::firstOrCreate(['name' => 'Radicar -> Cores. Recibida -> Eliminar'])->syncRoles($Rol1);
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Recibida -> Exportar'])->syncRoles([$Rol1, $Rol2]);
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Recibida -> Imprimir Rotulo'])->syncRoles('Administrador');
         Permission::firstOrCreate(['name' => 'Radicar -> Cores. Recibida -> Subir digital'])->syncRoles('Administrador');

@@ -89,7 +89,7 @@ class BorradoArchivosRadicadoTest extends TestCase
 
         $this->actingAs($this->user)->deleteJson("/api/ventanilla/radica-recibida/{$id}")->assertOk();
 
-        $this->assertDatabaseMissing('ventanilla_radica_reci', ['id' => $id]);
+        $this->assertSoftDeleted('ventanilla_radica_reci', ['id' => $id]);
         foreach ($archivos as $archivo) {
             Storage::disk('radicados_recibidos')->assertMissing($archivo);
         }
@@ -105,7 +105,7 @@ class BorradoArchivosRadicadoTest extends TestCase
         $this->actingAs($this->user)->deleteJson('/api/ventanilla/radica-recibida', ['ids' => [$ok, $falla]])
             ->assertOk()->assertJsonPath('data.eliminados', 1)->assertJsonPath('data.fallidos', 1);
 
-        $this->assertDatabaseMissing('ventanilla_radica_reci', ['id' => $ok]);
+        $this->assertSoftDeleted('ventanilla_radica_reci', ['id' => $ok]);
         // El radicado que falló queda completo: registro, adjunto y archivos
         $this->assertDatabaseHas('ventanilla_radica_reci', ['id' => $falla]);
         $this->assertDatabaseHas('ventanilla_radica_reci_archivos', ['radicado_id' => $falla]);
