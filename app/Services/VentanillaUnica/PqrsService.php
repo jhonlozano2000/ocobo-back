@@ -24,9 +24,7 @@ class PqrsService
             $tercero = $radicado->tercero;
 
             $tipoPqrs = ConfigListaDetalle::find($datosPqrs['tipo_pqrs_id']);
-            $tipoLabel = $tipoPqrs?->nombre ?? 'Peticion';
-
-            $diasTermino = VentanillaPqrs::TERMINOS[$tipoLabel] ?? 15;
+            $diasTermino = VentanillaPqrs::diasTerminoPara($tipoPqrs);
 
             if (($datosPqrs['prioridad'] ?? 'Normal') === 'Tutela') {
                 $diasTermino = 2;
@@ -82,9 +80,7 @@ class PqrsService
     {
         return DB::transaction(function () use ($datosPqrs) {
             $tipoPqrs = ConfigListaDetalle::find($datosPqrs['tipo_pqrs_id']);
-            $tipoLabel = $tipoPqrs?->nombre ?? 'Peticion';
-
-            $diasTermino = VentanillaPqrs::TERMINOS[$tipoLabel] ?? 15;
+            $diasTermino = VentanillaPqrs::diasTerminoPara($tipoPqrs);
 
             if (($datosPqrs['prioridad'] ?? 'Normal') === 'Tutela') {
                 $diasTermino = 2;

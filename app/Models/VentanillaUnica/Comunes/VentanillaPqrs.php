@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 /**
  * Modelo VentanillaPqrs — PQRS del módulo Ventanilla Única
@@ -186,21 +187,48 @@ class VentanillaPqrs extends Model
         'es_anonimo' => 'boolean',
     ];
 
+    /**
+     * Términos legales en días hábiles (Ley 1755/2015). M04-08: se resuelven por el código del
+     * catálogo y, si el tipo no tiene código, por el nombre normalizado; antes la clave 'Peticion'
+     * no coincidía con 'Petición' del catálogo y todo caía al valor por defecto.
+     */
+    public const TERMINO_POR_DEFECTO = 15;
+
     public const TERMINOS = [
-        'Peticion' => 15,
-        'Información' => 10,
-        'Informacion' => 10,
-        'Consulta' => 30,
-        'Queja' => 15,
-        'Reclamo' => 15,
-        'Sugerencia' => 15,
-        'Denuncia' => 15,
-        'Solicitud' => 15,
-        'Corrección' => 15,
-        'Correccion' => 15,
-        'Felicitación' => 15,
-        'Felicita' => 15,
+        'PET' => 15,
+        'QUE' => 15,
+        'REC' => 15,
+        'SUG' => 15,
+        'DEN' => 15,
+        'INF' => 10,
+        'CON' => 30,
+        'SOL' => 15,
+        'COR' => 15,
+        'FEL' => 15,
     ];
+
+    /** Fragmentos del nombre (sin tildes, en minúscula) con término distinto al general. */
+    public const TERMINOS_POR_NOMBRE = [
+        'informacion' => 10,
+        'consulta' => 30,
+    ];
+
+    public static function diasTerminoPara(?ConfigListaDetalle $tipo): int
+    {
+        $codigo = strtoupper(trim((string) $tipo?->codigo));
+        if ($codigo !== '' && isset(self::TERMINOS[$codigo])) {
+            return self::TERMINOS[$codigo];
+        }
+
+        $nombre = Str::lower(Str::ascii((string) $tipo?->nombre));
+        foreach (self::TERMINOS_POR_NOMBRE as $fragmento => $dias) {
+            if (str_contains($nombre, $fragmento)) {
+                return $dias;
+            }
+        }
+
+        return self::TERMINO_POR_DEFECTO;
+    }
 
     public const DERECHOS_FUNDAMENTALES = [
         'Vida',
@@ -393,8 +421,7 @@ class VentanillaPqrs extends Model
 
     public function calcularFechaVencimiento(): Carbon
     {
-        $tipoLabel = $this->tipoPqrs->nombre ?? 'Peticion';
-        $dias = self::TERMINOS[$tipoLabel] ?? 15;
+        $dias = self::diasTerminoPara($this->tipoPqrs);
 
         if ($this->prioridad === 'Tutela') {
             $dias = 2;
@@ -421,8 +448,7 @@ class VentanillaPqrs extends Model
             return false;
         }
 
-        $tipoLabel = $this->tipoPqrs->nombre ?? 'Peticion';
-        $diasExtra = self::TERMINOS[$tipoLabel] ?? 15;
+        $diasExtra = self::diasTerminoPara($this->tipoPqrs);
         $nuevaFecha = CalendarioHelper::calcularVencimiento($this->fecha_vencimiento, $diasExtra);
 
         $this->update([
