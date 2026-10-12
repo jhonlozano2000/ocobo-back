@@ -7,6 +7,7 @@ use App\Rules\TelefonoUnico;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class UpdateUserRequest extends FormRequest
 {
@@ -87,10 +88,15 @@ class UpdateUserRequest extends FormRequest
                 Rule::unique('users', 'email')->ignore($userId),
             ],
 
+            // RBAC-004: misma política que el cambio y la recuperación de contraseña
             'password' => [
                 'nullable',
                 'string',
-                'min:6',
+                'max:128',
+                Password::min(8)
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols(),
             ],
 
             'estado' => [
@@ -186,7 +192,10 @@ class UpdateUserRequest extends FormRequest
             'email.max' => 'El correo electrónico no puede superar los 70 caracteres.',
 
             'password.string' => 'La contraseña debe ser una cadena de texto.',
-            'password.min' => 'La contraseña debe tener al menos 6 caracteres.',
+            'password.min' => 'La contraseña debe tener al menos :min caracteres.',
+            'password.password.mixed' => 'La contraseña debe contener al menos una letra mayúscula y una minúscula.',
+            'password.password.numbers' => 'La contraseña debe contener al menos un número.',
+            'password.password.symbols' => 'La contraseña debe contener al menos un símbolo.',
 
             'estado.in' => 'El estado debe ser 0, 1, true o false.',
 

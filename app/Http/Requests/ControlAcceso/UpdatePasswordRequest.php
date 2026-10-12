@@ -52,9 +52,9 @@ class UpdatePasswordRequest extends FormRequest
             'password.required' => 'Debes ingresar una nueva contraseña.',
             'password.confirmed' => 'La confirmación de la nueva contraseña no coincide.',
             'password.min' => 'La nueva contraseña debe tener al menos :min caracteres.',
-            'password.mixedCase' => 'La nueva contraseña debe contener al menos una letra mayúscula y una minúscula.',
-            'password.numbers' => 'La nueva contraseña debe contener al menos un número.',
-            'password.symbols' => 'La nueva contraseña debe contener al menos un símbolo.',
+            'password.password.mixed' => 'La nueva contraseña debe contener al menos una letra mayúscula y una minúscula.',
+            'password.password.numbers' => 'La nueva contraseña debe contener al menos un número.',
+            'password.password.symbols' => 'La nueva contraseña debe contener al menos un símbolo.',
         ];
     }
 
