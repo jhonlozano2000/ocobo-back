@@ -8,6 +8,7 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRDVersion;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -216,8 +217,10 @@ class TRDService
         $dependenciaId = null; // Se obtendrás de B4 en importFromExcelInternal
         $versionId = $requestData['version_id'] ?? null;
 
-        // Guardar archivo temporal
-        $fileName = $archivoFile->getClientOriginalName();
+        // Guardar archivo temporal (M10-08: nombre único; con el nombre original, dos importaciones
+        // simultáneas del mismo archivo se pisaban y una borraba el temporal de la otra)
+        $extension = strtolower($archivoFile->getClientOriginalExtension()) === 'xls' ? 'xls' : 'xlsx';
+        $fileName = 'trd_import_'.Str::uuid().'.'.$extension;
         $tempPath = storage_path('app/temp/'.$fileName);
 
         if (! is_dir(storage_path('app/temp'))) {
