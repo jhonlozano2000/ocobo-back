@@ -31,6 +31,21 @@ class FirmaEvento extends Model
         'timestamp_fecha' => 'datetime',
     ];
 
+    /**
+     * M06-10: Inmutabilidad WORM a nivel de modelo.
+     * Los eventos de firma electrónica constituyen trazabilidad legal y no pueden mutar ni eliminarse.
+     */
+    protected static function booted(): void
+    {
+        static::updating(function () {
+            throw new \DomainException('Los eventos de firma electrónica son inmutables (WORM) y no pueden modificarse.');
+        });
+
+        static::deleting(function () {
+            throw new \DomainException('Los eventos de firma electrónica son inmutables (WORM) y no pueden eliminarse.');
+        });
+    }
+
     public function documentable()
     {
         return $this->morphTo();

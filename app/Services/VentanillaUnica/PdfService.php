@@ -52,7 +52,8 @@ class PdfService
 
         $pdf->setPaper('a4', $options['orientation'] ?? 'portrait');
 
-        $pdf->getDomPDF()->set_option('isRemoteEnabled', true);
+        // M12-07: Desactivar isRemoteEnabled para prevenir SSRF en renderizado HTML a PDF
+        $pdf->getDomPDF()->set_option('isRemoteEnabled', false);
 
         $pdf->getDomPDF()->get_canvas()->page_text(
             0, 0,

@@ -17,10 +17,11 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 import numpy as np
 
-# M12-03: límites para que un documento Office grande no acapare el servicio
+# M12-03 / M12-05: límites para que un documento no acapare el servicio o genere zip bomb
 MAX_HOJAS_EXCEL = 20
 MAX_FILAS_POR_HOJA = 5000
 MAX_CARACTERES = 1_000_000
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50 MB máximo por archivo
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -116,8 +117,10 @@ async def extract_text(file: UploadFile = File(...)):
     try:
         logger.info(f"Procesando archivo: {file.filename}")
 
-        # Leer contenido del archivo
-        content = await file.read()
+        # Leer contenido del archivo con límite (M12-05)
+        content = await file.read(MAX_UPLOAD_SIZE + 1)
+        if len(content) > MAX_UPLOAD_SIZE:
+            raise HTTPException(status_code=413, detail="El archivo excede el límite máximo de 50 MB")
 
         # Determinar tipo de archivo
         filename = file.filename.lower() if file.filename else ""
@@ -318,22 +321,37 @@ def process_powerpoint(content: bytes, filename: str) -> str:
 
 
 def process_opendocument(content: bytes, filename: str) -> str:
-    """Extrae texto de formatos OpenDocument (.odt, .ods, .odp)"""
+    """Extrae texto de formatos OpenDocument (.odt, .ods, .odp) con mitigación de zip bomb (M12-05)"""
     try:
         import zipfile
 
+        MAX_UNCOMPRESSED_TOTAL = 50 * 1024 * 1024  # 50 MB
+        MAX_XML_SIZE = 20 * 1024 * 1024  # 20 MB
+
         with zipfile.ZipFile(io.BytesIO(content)) as z:
+            total_uncompressed = sum(info.file_size for info in z.infolist())
+            if total_uncompressed > MAX_UNCOMPRESSED_TOTAL:
+                logger.warning("Posible zip bomb detectado en OpenDocument: excede 50MB descomprimido")
+                return ""
+
             if 'content.xml' in z.namelist():
+                xml_info = z.getinfo('content.xml')
+                if xml_info.file_size > MAX_XML_SIZE:
+                    logger.warning("content.xml excede el límite permitido de 20MB")
+                    return ""
+
                 with z.open('content.xml') as f:
                     import xml.etree.ElementTree as ET
-                    tree = ET.parse(f)
-                    root = tree.getroot()
-
                     text_parts = []
-                    for elem in root.iter():
-                        if elem.tag.endswith('p') or elem.tag.endswith('h') or elem.tag.endswith('td'):
+                    total_chars = 0
+                    for event, elem in ET.iterparse(f, events=('end',)):
+                        if elem.tag.endswith(('p', 'h', 'td')):
                             if elem.text and elem.text.strip():
-                                text_parts.append(elem.text)
+                                text_parts.append(elem.text.strip())
+                                total_chars += len(elem.text)
+                                if total_chars > MAX_CARACTERES:
+                                    break
+                        elem.clear()
 
                     return "\n".join(text_parts)
 
@@ -350,8 +368,10 @@ async def extract_structured(file: UploadFile = File(...)):
     Extrae texto y datos estructurados (números, fechas, etc.)
     """
     try:
-        # Primero extraer texto
-        content = await file.read()
+        # Primero extraer texto con límite (M12-05)
+        content = await file.read(MAX_UPLOAD_SIZE + 1)
+        if len(content) > MAX_UPLOAD_SIZE:
+            raise HTTPException(status_code=413, detail="El archivo excede el límite máximo de 50 MB")
         filename = file.filename.lower() if file.filename else ""
 
         if filename.endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif')):
