@@ -15,6 +15,7 @@ use App\Services\VentanillaUnica\PqrsService;
 use App\Services\VentanillaUnica\RadicacionEnviadosService;
 use App\Services\VentanillaUnica\RadicacionReciService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
@@ -30,9 +31,12 @@ class DashboardGlobalController extends Controller
 
     public function index(): JsonResponse
     {
-        $data = Cache::remember('dashboard_global_stats', 300, function () {
+        // Los contadores son agregados institucionales y se comparten en caché. Los vencimientos
+        // incluyen asunto/detalle, así que se calculan por usuario con su alcance ABAC (RBAC-003).
+        $data = Cache::remember('dashboard_global_stats_v2', 300, function () {
             return $this->aggregateAll();
         });
+        $data['vencimientos_proximos'] = $this->getVencimientosProximos(auth()->user());
 
         return response()->json(['success' => true, 'data' => $data]);
     }
@@ -76,7 +80,6 @@ class DashboardGlobalController extends Controller
                 'inactivos' => $usuarios['total_users_inactivos'],
             ],
             'firmas' => $this->getFirmasStats(),
-            'vencimientos_proximos' => $this->getVencimientosProximos(),
         ];
     }
 
@@ -89,12 +92,13 @@ class DashboardGlobalController extends Controller
         ];
     }
 
-    protected function getVencimientosProximos(): array
+    protected function getVencimientosProximos(User $user): array
     {
         $limite = CalendarioHelper::hoy()->addDays(7)->toDateString();
         $items = [];
 
-        $recibidos = VentanillaRadicaReci::where('fec_venci', '<=', $limite)
+        $recibidos = VentanillaRadicaReci::conPermisoJerarquico($user)
+            ->where('fec_venci', '<=', $limite)
             ->where('fec_venci', '>=', CalendarioHelper::hoy()->toDateString())
             ->where('estado_trabajo', '!=', 'FINALIZADO')
             ->get(['id', 'num_radicado', 'asunto', 'fec_venci']);
@@ -104,12 +108,13 @@ class DashboardGlobalController extends Controller
                 'tipo' => 'Radicado Recibido',
                 'referencia' => $r->num_radicado,
                 'descripcion' => Str::limit($r->asunto, 80),
-                'fecha_vencimiento' => $r->fec_venci?->format('Y-m-d'),
+                'fecha_vencimiento' => $this->fecha($r->fec_venci),
                 'dias_restantes' => CalendarioHelper::diasHasta($r->fec_venci),
             ];
         }
 
-        $pqrs = VentanillaPqrs::with('radicado')
+        $pqrs = VentanillaPqrs::conPermisoJerarquico($user)
+            ->with('radicado')
             ->where('fecha_vencimiento', '<=', $limite)
             ->where('fecha_vencimiento', '>=', CalendarioHelper::hoy()->toDateString())
             ->whereNotIn('estado_tramite', ['Respondida', 'Cerrado'])
@@ -120,7 +125,7 @@ class DashboardGlobalController extends Controller
                 'tipo' => 'PQRS',
                 'referencia' => $p->radicado?->num_radicado ?? "PQRS-{$p->id}",
                 'descripcion' => Str::limit($p->detalle_solicitud, 80),
-                'fecha_vencimiento' => $p->fecha_vencimiento?->format('Y-m-d'),
+                'fecha_vencimiento' => $this->fecha($p->fecha_vencimiento),
                 'dias_restantes' => CalendarioHelper::diasHasta($p->fecha_vencimiento),
             ];
         }
@@ -142,6 +147,15 @@ class DashboardGlobalController extends Controller
         usort($items, fn ($a, $b) => ($a['dias_restantes'] ?? 999) <=> ($b['dias_restantes'] ?? 999));
 
         return $items;
+    }
+
+    /**
+     * fec_venci no tiene cast de fecha en el modelo: ->format() sobre el string daba 500
+     * siempre que había un radicado por vencer.
+     */
+    private function fecha($valor): ?string
+    {
+        return $valor ? Carbon::parse($valor)->format('Y-m-d') : null;
     }
 
     /**
