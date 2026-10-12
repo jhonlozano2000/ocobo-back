@@ -227,6 +227,7 @@ class VentanillaRadicaReciController extends Controller
             ->estadoTrabajo($request->estado_trabajo)
             ->ordenadoPorFecha();
 
+        $this->exportService->validarVolumen($query, $request->format);
         $radicados = $query->get();
 
         $datos = $radicados->map(function ($r) {

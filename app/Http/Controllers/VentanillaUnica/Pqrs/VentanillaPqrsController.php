@@ -217,6 +217,7 @@ class VentanillaPqrsController extends Controller
             $query->whereBetween('fecha_vencimiento', [$request->fecha_desde, $request->fecha_hasta]);
         }
 
+        $this->exportService->validarVolumen($query, $request->format);
         $pqrsList = $query->latest()->get();
 
         $datos = $pqrsList->map(function ($p) use ($request) {

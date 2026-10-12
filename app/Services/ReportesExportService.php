@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Helpers\ExportSeguroHelper;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Contracts\Database\Query\Builder;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -12,6 +14,28 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ReportesExportService
 {
+    /**
+     * Máximo de filas por exportación síncrona. Sin tope, un export sin filtros cargaba en
+     * memoria todos los registros y dejaba el worker ocupado hasta agotar memoria o tiempo.
+     * El PDF (DomPDF) es mucho más costoso por fila.
+     */
+    public const MAX_FILAS = ['excel' => 5000, 'csv' => 5000, 'pdf' => 1000];
+
+    /**
+     * Rechaza (422) la exportación si la consulta supera el tope del formato.
+     */
+    public function validarVolumen(Builder $query, string $formato): void
+    {
+        $maximo = self::MAX_FILAS[$formato] ?? self::MAX_FILAS['pdf'];
+        $total = (clone $query)->count();
+
+        if ($total > $maximo) {
+            throw ValidationException::withMessages([
+                'format' => "La exportación tiene {$total} registros y el máximo en ".strtoupper($formato)." es {$maximo}. Acote los filtros (por ejemplo, el rango de fechas).",
+            ]);
+        }
+    }
+
     /**
      * Export data as Excel file and return the file path.
      */

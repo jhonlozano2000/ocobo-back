@@ -177,6 +177,7 @@ class VentanillaRadicaEnviadosController extends Controller
             $query->where('medio_enviado_id', $request->medio_enviado_id);
         }
 
+        $this->exportService->validarVolumen($query, $request->format);
         $radicados = $query->orderBy('created_at', 'desc')->get();
 
         $datos = $radicados->map(function ($r) {
