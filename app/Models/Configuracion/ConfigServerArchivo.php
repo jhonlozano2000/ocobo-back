@@ -4,7 +4,6 @@ namespace App\Models\Configuracion;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Hash;
 
 class ConfigServerArchivo extends Model
 {
@@ -16,12 +15,16 @@ class ConfigServerArchivo extends Model
 
     protected $hidden = ['password']; // Evita que el password se devuelva en las respuestas
 
-    // Mutator para encriptar el password antes de guardarlo
+    // M15-04: cifrado reversible (APP_KEY); el password se necesita en claro para conectarse al servidor
+    protected $casts = [
+        'password' => 'encrypted',
+    ];
+
+    // Un password vacío no reemplaza el guardado
     public function setPasswordAttribute($value)
     {
-        // Solo hashear si el valor no está vacío
         if (! empty($value)) {
-            $this->attributes['password'] = Hash::make($value);
+            $this->attributes['password'] = $this->castAttributeAsEncryptedString('password', $value);
         }
     }
 
