@@ -30,6 +30,9 @@ class DocumentoController extends Controller
 {
     use ApiResponseTrait;
 
+    /** Tamaño máximo del contenido serializado (M07-03): el body de `sincronizar` no tenía tope propio. */
+    public const MAX_CONTENIDO_BYTES = 5 * 1024 * 1024;
+
     public function __construct(
         protected CursorService $cursorService
     ) {}
@@ -278,8 +281,18 @@ class DocumentoController extends Controller
             return $this->forbiddenResponse('No tienes permisos para editar');
         }
 
+        $request->validate(['contenido' => ['required', 'array']]);
+
         $contenido = $request->input('contenido');
-        $hashCliente = hash('sha256', json_encode($contenido));
+        $json = json_encode($contenido);
+
+        if (strlen($json) > self::MAX_CONTENIDO_BYTES) {
+            throw ValidationException::withMessages([
+                'contenido' => 'El documento excede el tamaño máximo permitido ('.(self::MAX_CONTENIDO_BYTES / 1024 / 1024).' MB).',
+            ]);
+        }
+
+        $hashCliente = hash('sha256', $json);
 
         return DB::transaction(function () use ($documento, $contenido, $hashCliente, $request) {
             $contenidoDoc = $documento->contenido;

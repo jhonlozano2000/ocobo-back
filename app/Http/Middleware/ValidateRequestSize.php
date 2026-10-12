@@ -26,8 +26,11 @@ class ValidateRequestSize
     {
         $maxSize = $this->getMaxSize($request);
 
-        $contentLength = $request->header('Content-Length') ?? 0;
-        if ($contentLength > $maxSize) {
+        // Sin Content-Length (p. ej. Transfer-Encoding: chunked) se mide el body real (M07-03)
+        $contentLength = $request->header('Content-Length');
+        $size = is_numeric($contentLength) ? (int) $contentLength : strlen($request->getContent());
+
+        if ($size > $maxSize) {
             return response()->json([
                 'success' => false,
                 'message' => 'El request excede el tamaño máximo permitido.',
