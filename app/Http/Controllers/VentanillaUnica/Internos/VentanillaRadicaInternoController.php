@@ -5,10 +5,10 @@ namespace App\Http\Controllers\VentanillaUnica\Internos;
 use App\Helpers\ArchivoHelper;
 use App\Helpers\MailConfigHelper;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Ventanilla\Internos\StoreRadicadoInternoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\Notificacion;
-use App\Models\User;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoHistorialNotificacion;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoResponsable;
@@ -219,49 +219,8 @@ class VentanillaRadicaInternoController extends Controller
         return $this->successResponse($radicados, 'Resultados de búsqueda OCR');
     }
 
-    public function store(Request $request)
+    public function store(StoreRadicadoInternoRequest $request)
     {
-        $validated = $request->validate([
-            'asunto' => 'required|string|max:1000',
-            'clasifica_documen_id' => 'required|integer|exists:clasificacion_documental_trd,id',
-            'num_folios' => 'required|integer|min:1',
-            'num_anexos' => 'nullable|integer|min:0',
-            'descrip_anexos' => 'nullable|string|max:500',
-            'fec_venci' => 'nullable|date',
-            'destinatarios' => 'required|array|min:1',
-            'destinatarios.*' => 'integer|exists:users,id',
-            'responsables' => 'required|array|min:1',
-            'responsables.*.user_id' => 'required|integer|exists:users,id',
-            'responsables.*.custodio' => 'required|boolean',
-            'proyectores' => 'nullable|array',
-            'proyectores.*' => 'integer|exists:users,id',
-            'firmantes' => 'nullable|array',
-            'firmantes.*' => 'integer|exists:users,id',
-            'originadores' => 'nullable|array',
-            'originadores.*' => 'integer|exists:users,id',
-        ], [
-            'asunto.required' => 'El asunto es obligatorio.',
-            'asunto.max' => 'El asunto no puede exceder 1000 caracteres.',
-            'clasifica_documen_id.required' => 'Debe seleccionar una clasificación documental (TRD).',
-            'clasifica_documen_id.integer' => 'La clasificación documental es inválida.',
-            'clasifica_documen_id.exists' => 'La clasificación documental no existe.',
-            'num_folios.required' => 'El número de folios es obligatorio.',
-            'num_folios.integer' => 'El número de folios debe ser un número entero.',
-            'num_folios.min' => 'El número de folios debe ser al menos 1.',
-            'destinatarios.required' => 'Debe asignar al menos un destinatario.',
-            'destinatarios.array' => 'Los destinatarios deben ser una lista.',
-            'destinatarios.min' => 'Debe asignar al menos un destinatario.',
-            'destinatarios.*.integer' => 'El destinatario es inválido.',
-            'destinatarios.*.exists' => 'El destinatario no existe.',
-            'responsables.required' => 'Debe asignar al menos un responsable.',
-            'responsables.array' => 'Los responsables deben ser una lista.',
-            'responsables.*.user_id.required' => 'El responsable es obligatorio.',
-            'responsables.*.user_id.integer' => 'El responsable es inválido.',
-            'responsables.*.user_id.exists' => 'El responsable no existe.',
-            'responsables.*.custodio.required' => 'Debe indicar si es custodio.',
-            'responsables.*.custodio.boolean' => 'El valor de custodio es inválido.',
-        ]);
-
         try {
             DB::beginTransaction();
 
@@ -274,74 +233,83 @@ class VentanillaRadicaInternoController extends Controller
             $radicado->usuario_crea = auth()->id();
             $radicado->save();
 
-            // 2. Destinatarios - buscar users_cargos_id a partir de user_id
-            if ($request->has('destinatarios')) {
-                foreach ($request->destinatarios as $userId) {
-                    $cargo = UserCargo::where('user_id', $userId)->where('estado', 1)->first();
-                    if ($cargo) {
-                        DB::table('ventanilla_radica_internos_destina')->insert([
-                            'radica_interno_id' => $radicado->id,
-                            'users_cargos_id' => $cargo->id,
-                            'created_at' => now(),
-                        ]);
-                    }
+            // M03-08/21: Precargar todos los cargos activos en una sola consulta para evitar N+1
+            $destinatarios = (array) $request->input('destinatarios', []);
+            $responsables = (array) $request->input('responsables', []);
+            $proyectores = (array) $request->input('proyectores', []);
+
+            $allUserIds = array_unique(array_merge(
+                $destinatarios,
+                collect($responsables)->pluck('user_id')->all(),
+                $proyectores,
+                [auth()->id()]
+            ));
+
+            $cargosActivos = UserCargo::whereIn('user_id', $allUserIds)
+                ->where('estado', 1)
+                ->with('cargo')
+                ->get()
+                ->keyBy('user_id');
+
+            // 2. Destinatarios - vincular con users_cargos_id
+            foreach ($destinatarios as $userId) {
+                $cargo = $cargosActivos->get($userId);
+                if ($cargo) {
+                    DB::table('ventanilla_radica_internos_destina')->insert([
+                        'radica_interno_id' => $radicado->id,
+                        'users_cargos_id' => $cargo->id,
+                        'created_at' => now(),
+                    ]);
                 }
             }
 
-            // 3. Responsables - buscar users_cargos_id a partir de user_id
+            // 3. Responsables - vincular con users_cargos_id
             $cargoCustodio = null;
-            if ($request->has('responsables')) {
-                foreach ($request->responsables as $resp) {
-                    $cargo = UserCargo::where('user_id', $resp['user_id'])->where('estado', 1)->first();
-                    if ($cargo) {
-                        DB::table('ventanilla_radica_internos_responsa')->insert([
-                            'radica_interno_id' => $radicado->id,
-                            'users_cargos_id' => $cargo->id,
-                            'custodio' => $resp['custodio'],
-                            'created_at' => now(),
-                        ]);
-                        if ($resp['custodio'] && ! $cargoCustodio) {
-                            $cargoCustodio = $cargo;
-                        }
+            foreach ($responsables as $resp) {
+                $cargo = $cargosActivos->get($resp['user_id']);
+                if ($cargo) {
+                    DB::table('ventanilla_radica_internos_responsa')->insert([
+                        'radica_interno_id' => $radicado->id,
+                        'users_cargos_id' => $cargo->id,
+                        'custodio' => $resp['custodio'],
+                        'created_at' => now(),
+                    ]);
+                    if ($resp['custodio'] && ! $cargoCustodio) {
+                        $cargoCustodio = $cargo;
                     }
                 }
             }
 
             // Dependencia de origen fija al radicar: la del cargo del custodio principal
             // (sin custodio, la del creador); no cambia si luego cambian el custodio o su cargo.
-            $cargoOrigen = $cargoCustodio ?? UserCargo::where('user_id', auth()->id())->where('estado', 1)->first();
+            $cargoOrigen = $cargoCustodio ?? $cargosActivos->get(auth()->id());
             $radicado->dependencia_origen_id = VentanillaRadicaInterno::nodoOrigenDeCargo($cargoOrigen?->cargo);
             $radicado->save();
 
-            // 4. Proyectores - buscar users_cargos_id a partir de user_id
-            if ($request->has('proyectores')) {
-                foreach ($request->proyectores as $userId) {
-                    $cargo = UserCargo::where('user_id', $userId)->where('estado', 1)->first();
-                    if ($cargo) {
-                        DB::table('ventanilla_radica_internos_proyectores')->insert([
-                            'radica_interno_id' => $radicado->id,
-                            'users_cargos_id' => $cargo->id,
-                            'created_at' => now(),
-                        ]);
+            // 4. Proyectores - vincular con users_cargos_id
+            foreach ($proyectores as $userId) {
+                $cargo = $cargosActivos->get($userId);
+                if ($cargo) {
+                    DB::table('ventanilla_radica_internos_proyectores')->insert([
+                        'radica_interno_id' => $radicado->id,
+                        'users_cargos_id' => $cargo->id,
+                        'created_at' => now(),
+                    ]);
 
-                        // Crear notificación in-app para el proyector
-                        $user = User::find($userId);
-                        if ($user) {
-                            Notificacion::create([
-                                'user_id' => $userId,
-                                'type' => 'asignacion_proyector',
-                                'title' => 'Proyector asignado',
-                                'message' => 'Se le ha asignado como proyector del radicado interno '.$radicado->num_radicado.'.',
-                                'notifiable_type' => 'App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno',
-                                'notifiable_id' => $radicado->id,
-                                'data' => [
-                                    'radica_interno_id' => $radicado->id,
-                                    'num_radicado' => $radicado->num_radicado,
-                                    'asignado_por' => auth()->id(),
-                                ],
-                            ]);
-                        }
-                    }
+                    // Crear notificación in-app para el proyector
+                    Notificacion::create([
+                        'user_id' => $userId,
+                        'type' => 'asignacion_proyector',
+                        'title' => 'Proyector asignado',
+                        'message' => 'Se le ha asignado como proyector del radicado interno '.$radicado->num_radicado.'.',
+                        'notifiable_type' => 'App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno',
+                        'notifiable_id' => $radicado->id,
+                        'data' => [
+                            'radica_interno_id' => $radicado->id,
+                            'num_radicado' => $radicado->num_radicado,
+                            'asignado_por' => auth()->id(),
+                        ],
+                    ]);
                 }
             }
 
@@ -355,22 +323,19 @@ class VentanillaRadicaInternoController extends Controller
                     ]);
 
                     // Crear notificación in-app para el firmante
-                    $user = User::find($id);
-                    if ($user) {
-                        Notificacion::create([
-                            'user_id' => $id,
-                            'type' => 'asignacion_firmante',
-                            'title' => 'Firmante asignado',
-                            'message' => 'Se le ha asignado como firmante del radicado interno '.$radicado->num_radicado.'.',
-                            'notifiable_type' => 'App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno',
-                            'notifiable_id' => $radicado->id,
-                            'data' => [
-                                'radica_interno_id' => $radicado->id,
-                                'num_radicado' => $radicado->num_radicado,
-                                'asignado_por' => auth()->id(),
-                            ],
-                        ]);
-                    }
+                    Notificacion::create([
+                        'user_id' => $id,
+                        'type' => 'asignacion_firmante',
+                        'title' => 'Firmante asignado',
+                        'message' => 'Se le ha asignado como firmante del radicado interno '.$radicado->num_radicado.'.',
+                        'notifiable_type' => 'App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno',
+                        'notifiable_id' => $radicado->id,
+                        'data' => [
+                            'radica_interno_id' => $radicado->id,
+                            'num_radicado' => $radicado->num_radicado,
+                            'asignado_por' => auth()->id(),
+                        ],
+                    ]);
                 }
             }
 
