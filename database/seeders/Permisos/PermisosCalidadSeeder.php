@@ -25,6 +25,13 @@ class PermisosCalidadSeeder extends Seeder
             'Calidad -> Exportar',
         ];
 
+        // M17-03: el radicador de PQRSF solo consulta el organigrama (selección de dependencia/oficina).
+        // Crear, editar o eliminar nodos cambia la jerarquía ABAC de todos los usuarios.
+        $permisosRadicadorPQRSF = [
+            'Calidad - Organigrama -> Listar',
+            'Calidad - Organigrama -> Mostrar',
+        ];
+
         $rolAdmin = Role::where('name', 'Administrador')->first();
         $rolRadicadorPQRSF = Role::where('name', 'Radicador PQRSF')->first();
 
@@ -36,7 +43,10 @@ class PermisosCalidadSeeder extends Seeder
                 $rolAdmin->givePermissionTo($permission);
             }
             if ($rolRadicadorPQRSF) {
-                $rolRadicadorPQRSF->givePermissionTo($permission);
+                // Revoca lo que versiones anteriores de este seeder le asignaron de más
+                in_array($permiso, $permisosRadicadorPQRSF, true)
+                    ? $rolRadicadorPQRSF->givePermissionTo($permission)
+                    : $rolRadicadorPQRSF->revokePermissionTo($permission);
             }
         }
 
