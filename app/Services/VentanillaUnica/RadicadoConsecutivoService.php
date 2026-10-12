@@ -5,6 +5,7 @@ namespace App\Services\VentanillaUnica;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\VentanillaUnica\Comunes\RadicadoConsecutivo;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
+use App\Services\MiBandeja\MiBandejaFiltroService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -88,10 +89,12 @@ class RadicadoConsecutivoService
             $contador->consecutivo++;
             $contador->save();
 
+            $formato = ConfigVarias::getValor($claveFormato, 'YYYYMMDD-#####');
+
             return $this->formatear(
-                ConfigVarias::getValor($claveFormato, 'YYYYMMDD-#####'),
+                $formato,
                 $contador->consecutivo,
-                $codDependencia
+                $codDependencia ?? $this->codigoDependenciaSiAplica($formato)
             );
         } catch (QueryException $exception) {
             throw new \RuntimeException('No fue posible reservar el consecutivo oficial del radicado.', 0, $exception);
@@ -113,6 +116,19 @@ class RadicadoConsecutivoService
         }
 
         return $maximo;
+    }
+
+    /**
+     * M15-09: si el formato usa COD_DEPEN y el llamador no lo da, es el código de la dependencia
+     * del usuario que radica. Sin usuario (radicación automática por correo) queda vacío.
+     */
+    private function codigoDependenciaSiAplica(string $formato): ?string
+    {
+        if (! str_contains($formato, 'COD_DEPEN') || ! auth()->id()) {
+            return null;
+        }
+
+        return MiBandejaFiltroService::getDependenciaDelUsuario(auth()->id())?->cod_organico;
     }
 
     private function formatear(string $formato, int $consecutivo, ?string $codDependencia): string

@@ -1213,55 +1213,6 @@ class VentanillaRadicaReciController extends Controller
     }
 
     /**
-     * Genera un número de radicado único basado en la configuración del sistema.
-     *
-     * @param  string|null  $cod_dependencia  Código de la dependencia (opcional)
-     * @return string Número de radicado generado
-     */
-    private function generarNumeroRadicado($cod_dependencia = null)
-    {
-        $formato = ConfigVarias::getValor('formato_num_radicado_reci', 'YYYYMMDD-#####');
-
-        // Contar la cantidad de '#' en el formato para definir la longitud del consecutivo
-        preg_match('/#+/', $formato, $matches);
-        $longitudConsecutivo = isset($matches[0]) ? strlen($matches[0]) : 5;
-
-        // Obtener datos dinámicos
-        $fecha = Carbon::now();
-        $yyyy = $fecha->format('Y');
-        $mm = $fecha->format('m');
-        $dd = $fecha->format('d');
-
-        // Obtener el último radicado del año actual y sumarle 1
-        $ultimoRadicado = VentanillaRadicaReci::whereYear('created_at', $yyyy)
-            ->orderBy('id', 'desc')
-            ->value('num_radicado');
-
-        // Extraer el número y sumarle 1
-        preg_match('/\d+$/', $ultimoRadicado, $consecutivoAnterior);
-        $nuevoConsecutivo = isset($consecutivoAnterior[0]) ? intval($consecutivoAnterior[0]) + 1 : 1;
-
-        $consecutivo = str_pad($nuevoConsecutivo, $longitudConsecutivo, '0', STR_PAD_LEFT);
-
-        // Reemplazar solo las variables que existan en el formato
-        $variables = [
-            'YYYY' => $yyyy,
-            'MM' => $mm,
-            'DD' => $dd,
-            'COD_DEPEN' => $cod_dependencia,
-            str_repeat('#', $longitudConsecutivo) => $consecutivo,
-        ];
-
-        foreach ($variables as $key => $value) {
-            if (strpos($formato, $key) !== false) {
-                $formato = str_replace($key, $value, $formato);
-            }
-        }
-
-        return $formato;
-    }
-
-    /**
      * Genera un código de verificación numérico de 10 dígitos.
      */
     private function generarCodigoVerificacion(): string
