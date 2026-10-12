@@ -34,4 +34,17 @@ class SchedulerComandosTest extends TestCase
         $this->assertGreaterThan(0, $revisados, 'No se reconoció ningún comando programado');
         $this->assertSame([], $faltantes, 'Comandos programados inexistentes: '.implode(', ', $faltantes));
     }
+
+    /**
+     * M18-03: en despliegue multi-nodo cada tarea debe correr en un solo servidor.
+     */
+    public function test_todas_las_tareas_corren_en_un_solo_servidor(): void
+    {
+        $eventos = app(Schedule::class)->events();
+        $this->assertNotEmpty($eventos);
+
+        foreach ($eventos as $evento) {
+            $this->assertTrue($evento->onOneServer, 'Sin onOneServer(): '.$evento->command);
+        }
+    }
 }
