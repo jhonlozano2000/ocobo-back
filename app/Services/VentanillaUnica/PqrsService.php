@@ -3,17 +3,16 @@
 namespace App\Services\VentanillaUnica;
 
 use App\Helpers\CalendarioHelper;
-use App\Mail\OtpFirmaMail;
 use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\Gestion\GestionTercero;
 use App\Models\Transversal\FirmaEvento;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\Firma\FirmaService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 
 class PqrsService
 {
@@ -247,36 +246,45 @@ class PqrsService
         Cache::forget('ventanilla_pqrs_estadisticas');
     }
 
+    /** Minutos que dura la validación del OTP para guardar la firma (M06-05). */
+    public const FIRMA_VALIDADA_MINUTOS = 10;
+
     /**
      * Genera un OTP de 6 dígitos y lo envía al correo del usuario para firmar PQRS.
+     *
+     * M04-14: mismo mecanismo que la firma de radicados (FirmaService): guardado solo como hash,
+     * expira a los 5 minutos y se invalida tras 5 intentos fallidos.
      */
     public function solicitarOtpFirma($user, VentanillaPqrs $pqrs): bool
     {
-        $otp = (string) random_int(100000, 999999);
-        $cacheKey = "pqrs_firma_otp_{$pqrs->id}_{$user->id}";
+        return app(FirmaService::class)->generarYEnviarOtpParaEmail($user->email, $user->nombres, 'pqrs', $pqrs->id, $user->id);
+    }
 
-        Cache::put($cacheKey, $otp, now()->addMinutes(5));
+    /**
+     * Valida el OTP de firma de PQRS (un solo uso) y habilita guardar la firma.
+     */
+    public function validarOtpFirma($user, string $otp, VentanillaPqrs $pqrs): bool
+    {
+        if (! app(FirmaService::class)->validarOtpPorDocumento($otp, 'pqrs', $pqrs->id, $user->id)) {
+            return false;
+        }
 
-        Mail::to($user->email)->send(new OtpFirmaMail($otp, $user->nombres));
+        Cache::put($this->claveFirmaValidada($pqrs, $user), true, now()->addMinutes(self::FIRMA_VALIDADA_MINUTOS));
 
         return true;
     }
 
     /**
-     * Valida que el OTP sea correcto y no haya expirado para firma de PQRS.
+     * M06-05: consume la validación del OTP; sin ella no se puede guardar la firma.
      */
-    public function validarOtpFirma($user, string $otp, VentanillaPqrs $pqrs): bool
+    public function consumirValidacionFirma(VentanillaPqrs $pqrs, $user): bool
     {
-        $cacheKey = "pqrs_firma_otp_{$pqrs->id}_{$user->id}";
-        $otpGuardado = Cache::get($cacheKey);
+        return Cache::pull($this->claveFirmaValidada($pqrs, $user)) !== null;
+    }
 
-        if (! $otpGuardado || $otpGuardado !== $otp) {
-            return false;
-        }
-
-        Cache::forget($cacheKey);
-
-        return true;
+    private function claveFirmaValidada(VentanillaPqrs $pqrs, $user): string
+    {
+        return "pqrs_firma_validada_{$pqrs->id}_{$user->id}";
     }
 
     /**

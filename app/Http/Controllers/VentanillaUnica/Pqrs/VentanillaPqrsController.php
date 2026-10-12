@@ -1284,6 +1284,11 @@ class VentanillaPqrsController extends Controller
 
             $user = Auth::user();
 
+            // M06-05: la firma exige un OTP validado por el mismo usuario para esta PQRS
+            if (! $this->pqrsService->consumirValidacionFirma($pqrs, $user)) {
+                return $this->errorResponse('Debe validar el código OTP antes de firmar', null, 403);
+            }
+
             try {
                 $pqrs = $this->pqrsService->guardarFirma($pqrs, $request->all(), $user);
             } catch (\DomainException $e) {
