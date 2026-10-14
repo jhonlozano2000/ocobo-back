@@ -89,29 +89,13 @@ class HabeasDataYDvNitTest extends TestCase
         $this->assertSame(4, $tercero->dv_nit);
     }
 
-    public function test_blind_index_hmac_calculado_automaticamente(): void
+    public function test_el_tercero_no_depende_del_blind_index_retirado(): void
     {
-        $doc = '987654321';
-        $payload = [
-            'tipo' => 'Natural',
-            'num_docu_nit' => $doc,
-            'nom_razo_soci' => 'Prueba Blind Index',
-            'autoriza_tratamiento_datos' => true,
-        ];
+        // M16-03: se acepta el riesgo de PII en claro; el hash del documento no tenía uso y se retira
+        $this->assertNotContains('num_docu_nit_hash', (new GestionTercero)->getFillable());
 
-        $res = $this->actingAs($this->admin)->postJson('/api/gestion/terceros', $payload);
-        $res->assertStatus(201);
-
-        $id = $res->json('data.id');
-        $tercero = GestionTercero::findOrFail($id);
-
-        $expectedHash = GestionTercero::calcularBlindIndex($doc);
-        $this->assertNotEmpty($tercero->num_docu_nit_hash);
-        $this->assertSame($expectedHash, $tercero->num_docu_nit_hash);
-
-        // Búsqueda por scope
-        $encontrado = GestionTercero::porDocumentoBlindIndex($doc)->first();
-        $this->assertNotNull($encontrado);
-        $this->assertSame($tercero->id, $encontrado->id);
+        $this->actingAs($this->admin)->postJson('/api/gestion/terceros', [
+            'tipo' => 'Natural', 'num_docu_nit' => '1097'.uniqid(), 'nom_razo_soci' => 'Sin Blind Index',
+        ])->assertStatus(201);
     }
 }
