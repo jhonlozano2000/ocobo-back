@@ -283,7 +283,15 @@ class TRDService
 
         // M10-03: todo o nada; si una fila falla se revierten la versión y las filas ya insertadas
         DB::transaction(function () use ($data, $dependenciaId, $versionId, $idSerie, $idSubSerie, &$inserted, &$conDias, &$errors) {
-            // Obtener o crear versión para esta dependencia
+            // Cada importación creaba otra versión TEMP aunque ya hubiera una pendiente. El bloqueo de la
+            // dependencia serializa la verificación con store() y con otra importación simultánea.
+            CalidadOrganigrama::whereKey($dependenciaId)->lockForUpdate()->first();
+            if (ClasificacionDocumentalTRDVersion::where('dependencia_id', $dependenciaId)->where('estado_version', 'TEMP')->exists()) {
+                throw ValidationException::withMessages([
+                    'archivo' => 'La dependencia ya tiene una versión pendiente por aprobar; apruébela o elimínela antes de importar.',
+                ]);
+            }
+
             $ultimaVersion = ClasificacionDocumentalTRDVersion::where('dependencia_id', $dependenciaId)->max('version') ?? 0;
             $nuevaVersion = $ultimaVersion + 1;
 

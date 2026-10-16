@@ -117,6 +117,9 @@ class ClasificacionDocumentalTRDVersionController extends Controller
         try {
             DB::beginTransaction();
 
+            // Sin el bloqueo, dos solicitudes simultáneas pasaban la verificación y creaban dos TEMP
+            CalidadOrganigrama::whereKey($request->dependencia_id)->lockForUpdate()->first();
+
             // Verificar si ya existe una versión pendiente
             $versionPendiente = ClasificacionDocumentalTRDVersion::where('dependencia_id', $request->dependencia_id)
                 ->where('estado_version', 'TEMP')

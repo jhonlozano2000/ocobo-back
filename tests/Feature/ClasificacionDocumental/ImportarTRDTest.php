@@ -81,6 +81,21 @@ class ImportarTRDTest extends TestCase
         $this->assertDatabaseMissing('clasificacion_documental_trd_versiones', ['dependencia_id' => $this->dependencia->id]);
     }
 
+    public function test_no_crea_otra_version_temp_si_hay_una_pendiente(): void
+    {
+        $this->actingAs($this->user)
+            ->post(self::URL, ['archivo' => $this->plantilla($this->dependencia->cod_organico, $this->filasValidas())], ['Accept' => 'application/json'])
+            ->assertOk();
+
+        $this->actingAs($this->user)
+            ->post(self::URL, ['archivo' => $this->plantilla($this->dependencia->cod_organico, $this->filasValidas())], ['Accept' => 'application/json'])
+            ->assertUnprocessable()->assertJsonValidationErrors('archivo');
+
+        $this->assertSame(1, \DB::table('clasificacion_documental_trd_versiones')
+            ->where('dependencia_id', $this->dependencia->id)->where('estado_version', 'TEMP')->count());
+        $this->assertSame(2, \DB::table('clasificacion_documental_trd')->where('dependencia_id', $this->dependencia->id)->count());
+    }
+
     public function test_dependencia_inexistente_responde_422(): void
     {
         $this->actingAs($this->user)
