@@ -20,7 +20,7 @@ class UpdateWorkflowNodoRequest extends FormRequest
             'descripcion' => 'nullable|string',
             'posicion_x' => 'sometimes|numeric',
             'posicion_y' => 'sometimes|numeric',
-            'configuracion_json' => 'nullable|json',
+            'configuracion_json' => 'nullable|array',
         ];
     }
 }
