@@ -5,6 +5,7 @@ namespace Tests\Feature\Workflows;
 use App\Models\User;
 use App\Models\Workflows\Workflow;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -73,6 +74,36 @@ class GuardarCanvasTest extends TestCase
             ->postJson("/api/workflows/workflows/{$this->workflow->id}/canvas", $payload)
             ->assertStatus(422)
             ->assertJsonValidationErrors('conexiones.0.nodo_destino_id');
+    }
+
+    /** M19-51: re-guardar el canvas recreaba todos los nodos y borraba en cascada sus tareas. */
+    public function test_reguardar_el_canvas_conserva_los_nodos_y_sus_tareas(): void
+    {
+        $url = "/api/workflows/workflows/{$this->workflow->id}/canvas";
+        $this->actingAs($this->creador)->postJson($url, $this->payloadDelBuilder())->assertOk();
+        $tarea = $this->workflow->nodos()->where('tipo', 'tarea')->value('id');
+        $fin = $this->workflow->nodos()->where('tipo', 'fin')->value('id');
+        $tareaNodoId = DB::table('work_flow_tareas')->insertGetId([
+            'nodo_id' => $tarea, 'titulo' => 'Revisar', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        // Así lo recarga WorkflowBuilderView: los nodos guardados vuelven como "nodo_{id}"
+        $payload = $this->payloadDelBuilder();
+        $ids = $this->workflow->nodos()->orderBy('id')->pluck('id')->all();
+        foreach ($payload['nodos'] as $k => $n) {
+            $payload['nodos'][$k]['client_id'] = "nodo_{$ids[$k]}";
+        }
+        $payload['nodos'][1]['titulo'] = 'Tarea renombrada';
+        unset($payload['nodos'][2]);
+        $payload['conexiones'] = [[
+            'nodo_origen_id' => "nodo_{$ids[0]}", 'nodo_destino_id' => "nodo_{$ids[1]}", 'etiqueta' => null, 'condicion_json' => null,
+        ]];
+
+        $this->actingAs($this->creador)->postJson($url, $payload)->assertOk()->assertJsonCount(2, 'data.nodos');
+
+        $this->assertDatabaseHas('workflow_nodos', ['id' => $tarea, 'titulo' => 'Tarea renombrada']);
+        $this->assertDatabaseHas('work_flow_tareas', ['id' => $tareaNodoId, 'nodo_id' => $tarea]);
+        $this->assertDatabaseMissing('workflow_nodos', ['id' => $fin]);
     }
 
     public function test_un_canvas_vacio_se_puede_guardar(): void

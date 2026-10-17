@@ -199,16 +199,27 @@ class WorkflowService
                 );
             }
 
-            WorkflowNodo::where('workflow_id', $workflowId)->delete();
+            // Los nodos que ya existen llegan como "nodo_{id}": se actualizan en vez de recrearse,
+            // porque borrarlos arrastra en cascada sus tareas, checklists e historial de instancias
+            $existentes = $workflow->nodos()->get()->keyBy('id');
             WorkflowConexion::where('workflow_id', $workflowId)->delete();
 
             $clientIdMap = [];
             foreach ($nodos as $nodoData) {
                 $atributos = collect($nodoData)->except(['client_id'])->toArray();
                 $atributos['orden_ejecucion'] ??= 0;
-                $nodo = $workflow->nodos()->create($atributos);
+                $idExistente = preg_match('/^nodo_(\d+)$/', $nodoData['client_id'], $m) ? (int) $m[1] : null;
+
+                if ($idExistente && $existentes->has($idExistente)) {
+                    $nodo = $existentes->get($idExistente);
+                    $nodo->update($atributos);
+                } else {
+                    $nodo = $workflow->nodos()->create($atributos);
+                }
                 $clientIdMap[$nodoData['client_id']] = $nodo->id;
             }
+
+            WorkflowNodo::where('workflow_id', $workflowId)->whereNotIn('id', array_values($clientIdMap))->delete();
 
             // Las conexiones solo pueden apuntar a nodos de este mismo canvas (client_id)
             foreach ($conexiones as $conexionData) {
