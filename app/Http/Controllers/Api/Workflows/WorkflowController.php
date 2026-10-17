@@ -191,6 +191,7 @@ class WorkflowController extends Controller
     public function guardarCanvas(StoreNodoRequest $request, int $workflowId)
     {
         try {
+            $this->authorize('update', Workflow::findOrFail($workflowId));
             $data = $request->validated();
             $workflow = $this->workflowService->guardarNodosYconexiones(
                 $workflowId,

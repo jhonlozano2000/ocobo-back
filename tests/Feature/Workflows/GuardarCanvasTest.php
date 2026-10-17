@@ -112,4 +112,17 @@ class GuardarCanvasTest extends TestCase
             ->postJson("/api/workflows/workflows/{$this->workflow->id}/canvas", ['nodos' => [], 'conexiones' => []])
             ->assertOk();
     }
+
+    /** M19-02: el permiso de ruta no basta; WorkflowPolicy::update exige ser el creador o Administrador. */
+    public function test_otro_editor_no_puede_reescribir_el_canvas_ajeno(): void
+    {
+        $otro = User::factory()->create(['estado' => 1]);
+        $otro->givePermissionTo('Workflows -> Workflows -> Editar');
+
+        $this->actingAs($otro)
+            ->postJson("/api/workflows/workflows/{$this->workflow->id}/canvas", $this->payloadDelBuilder())
+            ->assertForbidden();
+
+        $this->assertSame(0, $this->workflow->nodos()->count());
+    }
 }
