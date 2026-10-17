@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Workflows;
 
 use App\Http\Controllers\Api\Workflows\Concerns\AutorizaWorkflowDeRuta;
+use App\Http\Controllers\Api\Workflows\Concerns\RespondeErroresWorkflow;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\StoreWorkflowNodoRequest;
 use App\Http\Requests\Workflows\UpdateWorkflowNodoRequest;
@@ -16,7 +17,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
  */
 class WorkflowNodoController extends Controller
 {
-    use ApiResponseTrait, AutorizaWorkflowDeRuta;
+    use ApiResponseTrait, AutorizaWorkflowDeRuta, RespondeErroresWorkflow;
 
     public function __construct()
     {
@@ -42,7 +43,7 @@ class WorkflowNodoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener nodos', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al obtener nodos', $e);
         }
     }
 
@@ -63,7 +64,7 @@ class WorkflowNodoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al crear nodo', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al crear nodo', $e);
         }
     }
 
@@ -82,7 +83,7 @@ class WorkflowNodoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar nodo', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al actualizar nodo', $e);
         }
     }
 
@@ -101,7 +102,7 @@ class WorkflowNodoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al eliminar nodo', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al eliminar nodo', $e);
         }
     }
 }

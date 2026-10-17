@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Workflows;
 
 use App\Http\Controllers\Api\Workflows\Concerns\AutorizaWorkflowDeRuta;
+use App\Http\Controllers\Api\Workflows\Concerns\RespondeErroresWorkflow;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\Workflow;
@@ -14,7 +15,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class WorkflowReporteController extends Controller
 {
-    use ApiResponseTrait, AutorizaWorkflowDeRuta;
+    use ApiResponseTrait, AutorizaWorkflowDeRuta, RespondeErroresWorkflow;
 
     public function __construct(
         private readonly WorkflowReporteService $reporteService
@@ -38,7 +39,7 @@ class WorkflowReporteController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener reporte', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al obtener reporte', $e);
         }
     }
 
@@ -56,7 +57,7 @@ class WorkflowReporteController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener datos', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al obtener datos', $e);
         }
     }
 
@@ -74,7 +75,7 @@ class WorkflowReporteController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener tendencia', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al obtener tendencia', $e);
         }
     }
 }

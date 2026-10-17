@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Workflows;
 
+use App\Http\Controllers\Api\Workflows\Concerns\RespondeErroresWorkflow;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\WorkflowInstancia;
@@ -12,7 +13,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class MisInstanciasController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, RespondeErroresWorkflow;
 
     public function __construct()
     {
@@ -51,7 +52,7 @@ class MisInstanciasController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener instancias', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al obtener instancias', $e);
         }
     }
 }

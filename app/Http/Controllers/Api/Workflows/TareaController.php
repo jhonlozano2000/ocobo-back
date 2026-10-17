@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Workflows;
 
 use App\Exceptions\Workflows\StateTransitionException;
 use App\Exceptions\Workflows\UncompletedChecklistException;
+use App\Http\Controllers\Api\Workflows\Concerns\RespondeErroresWorkflow;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\StoreTareaRequest;
 use App\Http\Requests\Workflows\UpdateTareaRequest;
@@ -26,7 +27,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
  */
 class TareaController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, RespondeErroresWorkflow;
 
     public function __construct(
         private readonly TareaService $tareaService
@@ -70,7 +71,7 @@ class TareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener mis tareas', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al obtener mis tareas', $e);
         }
     }
 
@@ -108,7 +109,7 @@ class TareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener tareas', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al obtener tareas', $e);
         }
     }
 
@@ -135,7 +136,7 @@ class TareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener tarea', $e->getMessage(), 404);
+            return $this->errorDesdeExcepcion('Error al obtener tarea', $e);
         }
     }
 
@@ -163,7 +164,7 @@ class TareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al crear tarea', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al crear tarea', $e);
         }
     }
 
@@ -195,7 +196,7 @@ class TareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar tarea', $e->getMessage(), 500);
+            return $this->errorDesdeExcepcion('Error al actualizar tarea', $e);
         }
     }
 
@@ -221,7 +222,7 @@ class TareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al eliminar tarea', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al eliminar tarea', $e);
         }
     }
 
@@ -252,7 +253,7 @@ class TareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al completar tarea', $e->getMessage(), 500);
+            return $this->errorDesdeExcepcion('Error al completar tarea', $e);
         }
     }
 
@@ -277,7 +278,7 @@ class TareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al iniciar tarea', $e->getMessage(), 500);
+            return $this->errorDesdeExcepcion('Error al iniciar tarea', $e);
         }
     }
 
@@ -302,7 +303,7 @@ class TareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al cancelar tarea', $e->getMessage(), 500);
+            return $this->errorDesdeExcepcion('Error al cancelar tarea', $e);
         }
     }
 
@@ -325,7 +326,7 @@ class TareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al reactivar tarea', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al reactivar tarea', $e);
         }
     }
 }

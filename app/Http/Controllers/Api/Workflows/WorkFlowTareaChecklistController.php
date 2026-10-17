@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Workflows;
 
 use App\Http\Controllers\Api\Workflows\Concerns\AutorizaWorkflowDeRuta;
+use App\Http\Controllers\Api\Workflows\Concerns\RespondeErroresWorkflow;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\ReordenarWorkFlowChecklistRequest;
 use App\Http\Requests\Workflows\StoreWorkFlowTareaChecklistRequest;
@@ -18,7 +19,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class WorkFlowTareaChecklistController extends Controller
 {
-    use ApiResponseTrait, AutorizaWorkflowDeRuta;
+    use ApiResponseTrait, AutorizaWorkflowDeRuta, RespondeErroresWorkflow;
 
     public function __construct(
         private readonly WorkFlowTareaService $tareaService
@@ -50,7 +51,7 @@ class WorkFlowTareaChecklistController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener checklists', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al obtener checklists', $e);
         }
     }
 
@@ -72,7 +73,7 @@ class WorkFlowTareaChecklistController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al agregar ítem', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al agregar ítem', $e);
         }
     }
 
@@ -97,7 +98,7 @@ class WorkFlowTareaChecklistController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar ítem', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al actualizar ítem', $e);
         }
     }
 
@@ -122,7 +123,7 @@ class WorkFlowTareaChecklistController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al eliminar ítem', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al eliminar ítem', $e);
         }
     }
 
@@ -145,7 +146,7 @@ class WorkFlowTareaChecklistController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al reordenar checklists', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al reordenar checklists', $e);
         }
     }
 }

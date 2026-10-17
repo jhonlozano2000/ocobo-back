@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Workflows;
 
 use App\Exceptions\Workflows\StateTransitionException;
 use App\Exceptions\Workflows\WorkflowException;
+use App\Http\Controllers\Api\Workflows\Concerns\RespondeErroresWorkflow;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\DetenerInstanciaRequest;
 use App\Http\Requests\Workflows\EjecutarNodoRequest;
@@ -22,7 +23,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
  */
 class WorkflowInstanciaController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, RespondeErroresWorkflow;
 
     public function __construct(
         private readonly WorkflowExecutionService $executionService
@@ -48,7 +49,7 @@ class WorkflowInstanciaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener instancias', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al obtener instancias', $e);
         }
     }
 
@@ -66,7 +67,7 @@ class WorkflowInstanciaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al iniciar instancia', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al iniciar instancia', $e);
         }
     }
 
@@ -89,7 +90,7 @@ class WorkflowInstanciaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener instancia', $e->getMessage(), 404);
+            return $this->errorDesdeExcepcion('Error al obtener instancia', $e);
         }
     }
 
@@ -116,7 +117,7 @@ class WorkflowInstanciaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al ejecutar nodo', $e->getMessage(), 500);
+            return $this->errorDesdeExcepcion('Error al ejecutar nodo', $e);
         }
     }
 
@@ -140,7 +141,7 @@ class WorkflowInstanciaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al detener instancia', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al detener instancia', $e);
         }
     }
 }

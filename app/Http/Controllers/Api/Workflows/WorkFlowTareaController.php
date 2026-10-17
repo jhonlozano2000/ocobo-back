@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Workflows;
 use App\Exceptions\Workflows\StateTransitionException;
 use App\Exceptions\Workflows\UncompletedChecklistException;
 use App\Http\Controllers\Api\Workflows\Concerns\AutorizaWorkflowDeRuta;
+use App\Http\Controllers\Api\Workflows\Concerns\RespondeErroresWorkflow;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\AsignarWorkFlowTareaRequest;
 use App\Http\Requests\Workflows\CambiarEstadoWorkFlowTareaRequest;
@@ -20,7 +21,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class WorkFlowTareaController extends Controller
 {
-    use ApiResponseTrait, AutorizaWorkflowDeRuta;
+    use ApiResponseTrait, AutorizaWorkflowDeRuta, RespondeErroresWorkflow;
 
     public function __construct(
         private readonly WorkFlowTareaService $tareaService
@@ -52,7 +53,7 @@ class WorkFlowTareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener tareas', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al obtener tareas', $e);
         }
     }
 
@@ -75,7 +76,7 @@ class WorkFlowTareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al crear tarea', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al crear tarea', $e);
         }
     }
 
@@ -96,7 +97,7 @@ class WorkFlowTareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener tarea', $e->getMessage(), 404);
+            return $this->errorDesdeExcepcion('Error al obtener tarea', $e);
         }
     }
 
@@ -114,7 +115,7 @@ class WorkFlowTareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar tarea', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al actualizar tarea', $e);
         }
     }
 
@@ -132,7 +133,7 @@ class WorkFlowTareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al eliminar tarea', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al eliminar tarea', $e);
         }
     }
 
@@ -153,7 +154,7 @@ class WorkFlowTareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al asignar tarea', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al asignar tarea', $e);
         }
     }
 
@@ -182,7 +183,7 @@ class WorkFlowTareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al cambiar estado de tarea', $e->getMessage(), 500);
+            return $this->errorDesdeExcepcion('Error al cambiar estado de tarea', $e);
         }
     }
 
@@ -200,7 +201,7 @@ class WorkFlowTareaController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al reordenar tareas', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al reordenar tareas', $e);
         }
     }
 }

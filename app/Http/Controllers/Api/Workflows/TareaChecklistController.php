@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Workflows;
 
+use App\Http\Controllers\Api\Workflows\Concerns\RespondeErroresWorkflow;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\ReordenarChecklistRequest;
 use App\Http\Requests\Workflows\StoreChecklistItemRequest;
@@ -20,7 +21,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
  */
 class TareaChecklistController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, RespondeErroresWorkflow;
 
     public function __construct(
         private readonly TareaService $tareaService
@@ -49,7 +50,7 @@ class TareaChecklistController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener checklists', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al obtener checklists', $e);
         }
     }
 
@@ -71,7 +72,7 @@ class TareaChecklistController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al agregar ítem', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al agregar ítem', $e);
         }
     }
 
@@ -96,7 +97,7 @@ class TareaChecklistController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar ítem', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al actualizar ítem', $e);
         }
     }
 
@@ -121,7 +122,7 @@ class TareaChecklistController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al eliminar ítem', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al eliminar ítem', $e);
         }
     }
 
@@ -144,7 +145,7 @@ class TareaChecklistController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al reordenar checklists', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al reordenar checklists', $e);
         }
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Workflows;
 
 use App\Http\Controllers\Api\Workflows\Concerns\AutorizaWorkflowDeRuta;
+use App\Http\Controllers\Api\Workflows\Concerns\RespondeErroresWorkflow;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\StoreWorkFlowArchivoRequest;
 use App\Http\Traits\ApiResponseTrait;
@@ -18,7 +19,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class WorkFlowArchivoController extends Controller
 {
-    use ApiResponseTrait, AutorizaWorkflowDeRuta;
+    use ApiResponseTrait, AutorizaWorkflowDeRuta, RespondeErroresWorkflow;
 
     public function __construct(
         private readonly WorkFlowArchivoService $archivoService
@@ -53,7 +54,7 @@ class WorkFlowArchivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener archivos', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al obtener archivos', $e);
         }
     }
 
@@ -86,7 +87,7 @@ class WorkFlowArchivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al subir archivo', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al subir archivo', $e);
         }
     }
 
@@ -114,7 +115,7 @@ class WorkFlowArchivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al descargar archivo', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al descargar archivo', $e);
         }
     }
 
@@ -142,7 +143,7 @@ class WorkFlowArchivoController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al eliminar archivo', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al eliminar archivo', $e);
         }
     }
 }

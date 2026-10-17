@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Workflows;
 
+use App\Http\Controllers\Api\Workflows\Concerns\RespondeErroresWorkflow;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\CambiarEstadoWorkflowRequest;
 use App\Http\Requests\Workflows\StoreNodoRequest;
@@ -22,7 +23,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
  */
 class WorkflowController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, RespondeErroresWorkflow;
 
     public function __construct(
         private readonly WorkflowService $workflowService
@@ -52,7 +53,7 @@ class WorkflowController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener flujos', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al obtener flujos', $e);
         }
     }
 
@@ -73,7 +74,7 @@ class WorkflowController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al crear flujo', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al crear flujo', $e);
         }
     }
 
@@ -95,7 +96,7 @@ class WorkflowController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al obtener flujo', $e->getMessage(), 404);
+            return $this->errorDesdeExcepcion('Error al obtener flujo', $e);
         }
     }
 
@@ -117,7 +118,7 @@ class WorkflowController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al actualizar flujo', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al actualizar flujo', $e);
         }
     }
 
@@ -139,7 +140,7 @@ class WorkflowController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al eliminar flujo', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al eliminar flujo', $e);
         }
     }
 
@@ -161,7 +162,7 @@ class WorkflowController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al duplicar flujo', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al duplicar flujo', $e);
         }
     }
 
@@ -184,7 +185,7 @@ class WorkflowController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al cambiar estado', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al cambiar estado', $e);
         }
     }
 
@@ -211,7 +212,7 @@ class WorkflowController extends Controller
                 throw $e;
             }
 
-            return $this->errorResponse('Error al guardar canvas', $e->getMessage());
+            return $this->errorDesdeExcepcion('Error al guardar canvas', $e);
         }
     }
 }
