@@ -18,6 +18,9 @@ use Mews\Purifier\Facades\Purifier;
  */
 class TareaService
 {
+    /** pendiente, en_curso y el alias legado en_progreso (M19-12). */
+    private const ESTADOS_VENCIBLES = ['pendiente', 'en_curso', 'en_progreso'];
+
     public function __construct(
         private readonly WorkflowAuditService $auditService,
         private readonly WorkflowNotificationService $notificationService
@@ -266,8 +269,8 @@ class TareaService
     {
         $vencidas = Tarea::with('responsables:id')
             ->where('workflow_id', $workflowId)
-            // Solo en_curso puede transitar a vencida (máquina de estados)
-            ->where('estado', 'en_curso')
+            // Estados desde los que la máquina permite transitar a vencida
+            ->whereIn('estado', self::ESTADOS_VENCIBLES)
             ->whereNotNull('fecha_limite')
             ->where('fecha_limite', '<', now())
             ->get(['id', 'nombre', 'workflow_id']);
@@ -290,8 +293,8 @@ class TareaService
                 $q->whereHas('propietarios', fn ($q) => $q->where('user_id', $userId))
                     ->orWhereHas('responsables', fn ($q) => $q->where('user_id', $userId));
             })
-            // Solo en_curso puede transitar a vencida (máquina de estados)
-            ->where('estado', 'en_curso')
+            // Estados desde los que la máquina permite transitar a vencida
+            ->whereIn('estado', self::ESTADOS_VENCIBLES)
             ->whereNotNull('fecha_limite')
             ->where('fecha_limite', '<', now())
             ->get(['id', 'nombre', 'workflow_id']);

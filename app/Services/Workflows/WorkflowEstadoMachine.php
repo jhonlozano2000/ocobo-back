@@ -11,13 +11,14 @@ namespace App\Services\Workflows;
  *                            → vencida → en_curso (reactivar)
  *                                     → cancelada (terminal)
  *                   pendiente → cancelada (terminal)
+ *                   pendiente → vencida (una tarea nunca iniciada también vence)
  *
  * ISO 27001 A.9.4: Control de estados de sesión y tareas.
  */
 class WorkflowEstadoMachine
 {
     private const TRANSICIONES = [
-        'pendiente' => ['en_curso', 'cancelada'],
+        'pendiente' => ['en_curso', 'vencida', 'cancelada'],
         'en_curso' => ['completada', 'vencida', 'cancelada'],
         'en_progreso' => ['completada', 'vencida', 'cancelada'],
         'completada' => [],
@@ -51,7 +52,7 @@ class WorkflowEstadoMachine
         return $estado === 'en_progreso' ? 'en_curso' : $estado;
     }
 
-    public static function necesitaVencimiento(string $estado, ?string $fechaLimite): bool
+    public static function necesitaVencimiento(string $estado, \DateTimeInterface|string|null $fechaLimite): bool
     {
         $estado = self::normalizar($estado);
 
