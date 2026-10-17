@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Workflows\Tarea;
 use App\Models\Workflows\TareaChecklist;
 use App\Models\Workflows\Workflow;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Mews\Purifier\Facades\Purifier;
 
@@ -267,32 +268,26 @@ class TareaService
 
     public function verificarVencimientosPorWorkflow(int $workflowId): void
     {
-        $vencidas = Tarea::with('responsables:id')
-            ->where('workflow_id', $workflowId)
-            // Estados desde los que la máquina permite transitar a vencida
-            ->whereIn('estado', self::ESTADOS_VENCIBLES)
-            ->whereNotNull('fecha_limite')
-            ->where('fecha_limite', '<', now())
-            ->get(['id', 'nombre', 'workflow_id']);
-
-        foreach ($vencidas as $tarea) {
-            $this->auditService->registrar('tarea.vencida', $tarea->workflow_id, null, [
-                'tarea_id' => $tarea->id, 'nombre' => $tarea->nombre,
-            ]);
-
-            $this->notificationService->notificarTareaVencida($tarea);
-        }
-
-        Tarea::whereIn('id', $vencidas->pluck('id'))->update(['estado' => 'vencida']);
+        $this->vencer(Tarea::where('workflow_id', $workflowId));
     }
 
     public function verificarVencimientosDeUsuario(int $userId): void
     {
-        $vencidas = Tarea::with('responsables:id')
-            ->where(function ($q) use ($userId) {
-                $q->whereHas('propietarios', fn ($q) => $q->where('user_id', $userId))
-                    ->orWhereHas('responsables', fn ($q) => $q->where('user_id', $userId));
-            })
+        $this->vencer(Tarea::where(function ($q) use ($userId) {
+            $q->whereHas('propietarios', fn ($q) => $q->where('user_id', $userId))
+                ->orWhereHas('responsables', fn ($q) => $q->where('user_id', $userId));
+        }));
+    }
+
+    /** Barrido programado de todos los workflows (M19-13); devuelve cuántas tareas venció. */
+    public function verificarVencimientosGlobales(): int
+    {
+        return $this->vencer(Tarea::query());
+    }
+
+    private function vencer(Builder $query): int
+    {
+        $vencidas = $query->with('responsables:id')
             // Estados desde los que la máquina permite transitar a vencida
             ->whereIn('estado', self::ESTADOS_VENCIBLES)
             ->whereNotNull('fecha_limite')
@@ -308,6 +303,8 @@ class TareaService
         }
 
         Tarea::whereIn('id', $vencidas->pluck('id'))->update(['estado' => 'vencida']);
+
+        return $vencidas->count();
     }
 
     public function verificarVencimientoAlCargar(Tarea $tarea): Tarea

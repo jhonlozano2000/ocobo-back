@@ -23,6 +23,8 @@ Artisan::command('inspire', function () {
 // M18-03: onOneServer() evita que cada nodo ejecute la tarea (alertas y correos duplicados); con
 // varios servidores el cache por defecto debe ser compartido (redis/database), no 'file'.
 Schedule::command('pqrs:marcar-vencidas')->dailyAt('00:05')->withoutOverlapping()->onOneServer();
+// M19-13: el vencimiento de tareas de workflow solo se evaluaba al consultar; ahora también cada hora
+Schedule::command('workflows:marcar-tareas-vencidas')->hourly()->withoutOverlapping()->onOneServer();
 // M18-06: no hay sincronización programada del buzón; la Bandeja de Correo lee IMAP en vivo y la radicación
 // es manual. Se retiró 'email:sync-radicados' (comando inexistente que fallaba cada 5 minutos).
 
