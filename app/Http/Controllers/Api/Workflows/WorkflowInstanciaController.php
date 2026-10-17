@@ -101,7 +101,8 @@ class WorkflowInstanciaController extends Controller
             $instancia = $this->executionService->ejecutarNodo(
                 $instanciaId,
                 $data['nodo_id'],
-                $data['resultado'] ?? []
+                $data['resultado'] ?? [],
+                $workflowId
             );
 
             return $this->successResponse($instancia, 'Nodo ejecutado correctamente');
@@ -127,7 +128,8 @@ class WorkflowInstanciaController extends Controller
             $data = $request->validated();
             $instancia = $this->executionService->detenerInstancia(
                 $instanciaId,
-                $data['estado'] ?? 'detenida'
+                $data['estado'] ?? 'detenida',
+                $workflowId
             );
 
             return $this->successResponse($instancia, 'Instancia detenida correctamente');

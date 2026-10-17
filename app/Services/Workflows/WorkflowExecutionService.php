@@ -89,10 +89,12 @@ class WorkflowExecutionService
         ])->findOrFail($instanciaId);
     }
 
-    public function ejecutarNodo(int $instanciaId, int $nodoId, array $resultado = []): WorkflowInstancia
+    public function ejecutarNodo(int $instanciaId, int $nodoId, array $resultado = [], ?int $workflowId = null): WorkflowInstancia
     {
-        return DB::transaction(function () use ($instanciaId, $nodoId, $resultado) {
+        return DB::transaction(function () use ($instanciaId, $nodoId, $resultado, $workflowId) {
+            // M19-09: la instancia debe pertenecer al workflow de la ruta (si no, 404)
             $instancia = WorkflowInstancia::where('id', $instanciaId)
+                ->when($workflowId !== null, fn ($q) => $q->where('workflow_id', $workflowId))
                 ->lockForUpdate()
                 ->firstOrFail();
 
@@ -177,10 +179,14 @@ class WorkflowExecutionService
         });
     }
 
-    public function detenerInstancia(int $instanciaId, string $estado = 'detenida'): WorkflowInstancia
+    public function detenerInstancia(int $instanciaId, string $estado = 'detenida', ?int $workflowId = null): WorkflowInstancia
     {
-        return DB::transaction(function () use ($instanciaId, $estado) {
-            $instancia = WorkflowInstancia::findOrFail($instanciaId);
+        return DB::transaction(function () use ($instanciaId, $estado, $workflowId) {
+            // M19-10: bloqueo de fila, igual que ejecutarNodo (sin carrera detener vs avanzar)
+            $instancia = WorkflowInstancia::where('id', $instanciaId)
+                ->when($workflowId !== null, fn ($q) => $q->where('workflow_id', $workflowId))
+                ->lockForUpdate()
+                ->firstOrFail();
 
             // Solo instancias en curso pueden detenerse/cancelarse
             if ($instancia->estado !== 'en_curso') {
