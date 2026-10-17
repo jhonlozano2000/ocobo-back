@@ -11,6 +11,7 @@ use App\Http\Requests\Workflows\StoreTareaRequest;
 use App\Http\Requests\Workflows\UpdateTareaRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\Tarea;
+use App\Models\Workflows\Workflow;
 use App\Services\Workflows\TareaService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -79,10 +80,18 @@ class TareaController extends Controller
      */
     public function index(int $workflowId)
     {
+        $workflow = Workflow::findOrFail($workflowId);
+        $user = request()->user();
+
         try {
             $this->tareaService->verificarVencimientosPorWorkflow($workflowId);
 
+            // Quien no puede ver el workflow (creador o Administrador) solo ve las tareas donde participa
             $tareas = Tarea::where('workflow_id', $workflowId)
+                ->when($user->cannot('view', $workflow), fn ($q) => $q->where(function ($q) use ($user) {
+                    $q->whereHas('propietarios', fn ($q) => $q->where('user_id', $user->id))
+                        ->orWhereHas('responsables', fn ($q) => $q->where('user_id', $user->id));
+                }))
                 ->with(['propietarios', 'responsables', 'checklists'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(min((int) request('per_page', 15), 100));
