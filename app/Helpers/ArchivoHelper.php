@@ -518,7 +518,7 @@ class ArchivoHelper
         }
 
         // Generar URL apuntando al endpoint seguro protegido por Sanctum
-        return url('/api/documentos/ver?disk='.urlencode($disk).'&path='.urlencode($path));
+        return route('documentos.ver', ['disk' => $disk, 'path' => $path]);
     }
 
     /**

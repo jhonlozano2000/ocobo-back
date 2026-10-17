@@ -90,4 +90,15 @@ class VerDocumentoAutorizacionTest extends TestCase
         $this->ver($this->creador, 'firmas', $path)->assertOk();
         $this->ver($this->ajeno, 'firmas', $path)->assertNotFound();
     }
+
+    public function test_obtener_url_apunta_al_endpoint_real(): void
+    {
+        $path = 'url-'.uniqid().'.pdf';
+        $this->internoConDigital($path);
+
+        $url = ArchivoHelper::obtenerUrl($path, 'radicados_internos');
+
+        $this->assertStringContainsString(self::URL.'?', $url);
+        $this->actingAs($this->creador)->get($url)->assertOk();
+    }
 }

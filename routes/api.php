@@ -86,5 +86,5 @@ Route::middleware(['auth:sanctum', 'throttle:archivo'])->prefix('archivo')->grou
     });
 
     // RUTAS SEGURAS DE DOCUMENTOS (ISO 27001)
-    Route::get('/documentos/ver', [DocumentoController::class, 'verDocumento']);
+    Route::get('/documentos/ver', [DocumentoController::class, 'verDocumento'])->name('documentos.ver');
 });
