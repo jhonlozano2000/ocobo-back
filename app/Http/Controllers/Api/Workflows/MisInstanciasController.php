@@ -41,7 +41,7 @@ class MisInstanciasController extends Controller
                         });
                 })
                 ->orderBy('created_at', 'desc')
-                ->paginate(request('per_page', 10));
+                ->paginate(min(max((int) request('per_page', 10), 1), 100));
 
             return $this->successResponse($instancias, 'Mis instancias obtenidas correctamente');
         } catch (\Exception $e) {

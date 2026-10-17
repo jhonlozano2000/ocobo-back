@@ -41,7 +41,7 @@ class WorkflowService
         }
 
         return $query->orderBy('created_at', 'desc')
-            ->paginate($filtros['per_page'] ?? 10);
+            ->paginate(min(max((int) ($filtros['per_page'] ?? 10), 1), 100));
     }
 
     public function obtenerConRelaciones(int $id): Workflow

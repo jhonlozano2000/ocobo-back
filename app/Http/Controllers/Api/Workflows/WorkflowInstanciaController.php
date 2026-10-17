@@ -38,7 +38,7 @@ class WorkflowInstanciaController extends Controller
             $instancias = WorkflowInstancia::with(['usuarioEjecuta:id,nombres,apellidos', 'nodoActual', 'workflow:id,nombre'])
                 ->where('workflow_id', $workflowId)
                 ->orderBy('created_at', 'desc')
-                ->paginate(request('per_page', 10));
+                ->paginate(min(max((int) request('per_page', 10), 1), 100));
 
             return $this->successResponse($instancias, 'Instancias obtenidas correctamente');
         } catch (\Exception $e) {

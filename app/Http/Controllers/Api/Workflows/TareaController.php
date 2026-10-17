@@ -57,7 +57,7 @@ class TareaController extends Controller
             })
                 ->with(['propietarios', 'responsables', 'checklists', 'workflow'])
                 ->orderBy('created_at', 'desc')
-                ->paginate(min((int) request('per_page', 15), 100));
+                ->paginate(min(max((int) request('per_page', 15), 1), 100));
 
             return $this->successResponse($tareas, 'Mis tareas obtenidas correctamente');
         } catch (\Exception $e) {
@@ -95,7 +95,7 @@ class TareaController extends Controller
                 }))
                 ->with(['propietarios', 'responsables', 'checklists'])
                 ->orderBy('created_at', 'desc')
-                ->paginate(min((int) request('per_page', 15), 100));
+                ->paginate(min(max((int) request('per_page', 15), 1), 100));
 
             return $this->successResponse($tareas, 'Tareas obtenidas correctamente');
         } catch (\Exception $e) {
