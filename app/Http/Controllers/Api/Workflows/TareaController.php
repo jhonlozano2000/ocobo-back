@@ -259,7 +259,9 @@ class TareaController extends Controller
 
     public function iniciar(Tarea $tarea)
     {
-        $this->authorize('update', $tarea);
+        // Empezar a trabajarla es cosa del responsable; con 'update' solo el propietario podía
+        // y, como completar exige en_curso, el responsable nunca podía terminar su tarea.
+        $this->authorize('completar', $tarea);
 
         try {
             $tarea = $this->tareaService->iniciar($tarea);
