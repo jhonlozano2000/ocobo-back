@@ -37,6 +37,8 @@ class TareaChecklistController extends Controller
      */
     public function index(Tarea $tarea)
     {
+        $this->authorize('view', $tarea);
+
         try {
             return $this->successResponse(
                 $tarea->checklists()->orderBy('orden')->get(),
@@ -60,6 +62,8 @@ class TareaChecklistController extends Controller
      */
     public function store(StoreChecklistItemRequest $request, Tarea $tarea)
     {
+        $this->authorize('update', $tarea);
+
         try {
             $checklist = $tarea->checklists()->create($request->validated());
 
@@ -82,11 +86,16 @@ class TareaChecklistController extends Controller
      */
     public function update(UpdateChecklistItemRequest $request, Tarea $tarea, TareaChecklist $checklist)
     {
+        // M19-34: marcar/desmarcar es ejecución (propietario o responsable); cambiar el texto u orden es diseño
+        $datos = array_filter($request->validated(), fn ($v) => $v !== null);
+        $soloMarca = array_keys($datos) === ['esta_completado'];
+        $this->authorize($soloMarca ? 'completar' : 'update', $tarea);
+
         try {
             // Ownership: el ítem debe pertenecer a la tarea de la ruta
             abort_unless($checklist->tarea_id === $tarea->id, 404, 'Ítem no pertenece a la tarea');
 
-            $checklist->update($request->validated());
+            $checklist->update($datos);
 
             return $this->successResponse($checklist->fresh(), 'Ítem actualizado correctamente');
         } catch (\Exception $e) {
@@ -107,6 +116,8 @@ class TareaChecklistController extends Controller
      */
     public function destroy(Tarea $tarea, TareaChecklist $checklist)
     {
+        $this->authorize('update', $tarea);
+
         try {
             // Ownership: el ítem debe pertenecer a la tarea de la ruta
             abort_unless($checklist->tarea_id === $tarea->id, 404, 'Ítem no pertenece a la tarea');
@@ -132,6 +143,8 @@ class TareaChecklistController extends Controller
      */
     public function reordenar(ReordenarChecklistRequest $request, Tarea $tarea)
     {
+        $this->authorize('update', $tarea);
+
         try {
             $data = $request->validated();
             $this->tareaService->reordenarChecklist($tarea, $data['orden']);
