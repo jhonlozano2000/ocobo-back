@@ -87,10 +87,12 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
         // Metadata es compartida por recibidos/enviados/internos: el prefijo de permiso
         // depende del parámetro {tipo}, así que se autoriza dentro del controlador
         // (MetadataController::autorizarPorTipo) y no con un can: fijo aqui.
+        // archivoId >= 1: los digitales se guardan con archivo_id = 0 (centinela compartido por todos
+        // los radicados), así que /archivos/0 resolvía la metadata de un radicado cualquiera.
         Route::get('/metadata/clasificacion-niveles', [MetadataController::class, 'nivelClasificacionIndex'])->name('metadata.niveles');
-        Route::get('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'show'])->name('metadata.show');
-        Route::put('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'store'])->name('metadata.update');
-        Route::get('/metadata/historial/{archivoId}/{tipo?}', [MetadataController::class, 'historial'])->name('metadata.historial');
+        Route::get('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'show'])->name('metadata.show')->where('archivoId', '[1-9][0-9]*');
+        Route::put('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'store'])->name('metadata.update')->where('archivoId', '[1-9][0-9]*');
+        Route::get('/metadata/historial/{archivoId}/{tipo?}', [MetadataController::class, 'historial'])->name('metadata.historial')->where('archivoId', '[1-9][0-9]*');
         Route::get('/metadata/exportar/{tipo?}', [MetadataController::class, 'exportar'])->name('metadata.exportar');
         Route::get('/metadata/sugerir-clasificacion', [MetadataController::class, 'sugerirClasificacion'])->name('metadata.sugerir-clasificacion');
     });

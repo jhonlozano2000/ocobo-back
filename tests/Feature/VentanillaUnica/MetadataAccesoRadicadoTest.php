@@ -64,4 +64,26 @@ class MetadataAccesoRadicadoTest extends TestCase
 
         $this->assertDatabaseHas('ventanilla_radica_reci_metadata', ['archivo_id' => $this->archivoId, 'descripcion' => 'original']);
     }
+
+    public function test_el_centinela_cero_de_los_digitales_no_es_direccionable(): void
+    {
+        Schema::disableForeignKeyConstraints();
+        $radicadoId = DB::table('ventanilla_radica_reci')->insertGetId([
+            'num_radicado' => 'SENT0-'.uniqid(), 'medio_recep_id' => 1, 'usuario_crea' => $this->creador->id,
+            'asunto' => 'Digital',
+        ]);
+        DB::table('ventanilla_radica_reci_metadata')->insert([
+            'archivo_id' => 0, 'radicado_id' => $radicadoId, 'tipo_archivo' => 'digital', 'descripcion' => 'original',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        Schema::enableForeignKeyConstraints();
+
+        $this->actingAs($this->creador)->getJson('/api/ventanilla/metadata/archivos/0/reci')->assertNotFound();
+        $this->actingAs($this->creador)->getJson('/api/ventanilla/metadata/historial/0/reci')->assertNotFound();
+        $this->actingAs($this->creador)
+            ->putJson('/api/ventanilla/metadata/archivos/0/reci', ['descripcion' => 'alterada'])
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('ventanilla_radica_reci_metadata', ['radicado_id' => $radicadoId, 'descripcion' => 'original']);
+    }
 }
