@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Workflows;
 
+use App\Http\Controllers\Api\Workflows\Concerns\AutorizaWorkflowDeRuta;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\ReordenarWorkFlowChecklistRequest;
 use App\Http\Requests\Workflows\StoreWorkFlowTareaChecklistRequest;
@@ -17,7 +18,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class WorkFlowTareaChecklistController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, AutorizaWorkflowDeRuta;
 
     public function __construct(
         private readonly WorkFlowTareaService $tareaService
@@ -25,6 +26,9 @@ class WorkFlowTareaChecklistController extends Controller
         $this->middleware('can:Workflows -> Tareas -> Listar')->only(['index']);
         $this->middleware('can:Workflows -> Tareas -> Editar')->only(['store', 'update', 'reordenar']);
         $this->middleware('can:Workflows -> Tareas -> Eliminar')->only(['destroy']);
+        // Crear, borrar y ordenar ítems es diseño; marcar un ítem (update) lo hace quien ejecuta
+        $this->middleware($this->workflowDeRuta('update'))->only(['store', 'destroy', 'reordenar']);
+        $this->middleware($this->workflowDeRuta())->only(['index', 'update']);
     }
 
     /**

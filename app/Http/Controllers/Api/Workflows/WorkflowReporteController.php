@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Workflows;
 
+use App\Http\Controllers\Api\Workflows\Concerns\AutorizaWorkflowDeRuta;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\Workflow;
@@ -13,12 +14,14 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class WorkflowReporteController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, AutorizaWorkflowDeRuta;
 
     public function __construct(
         private readonly WorkflowReporteService $reporteService
     ) {
         $this->middleware('can:Workflows -> Workflows -> Listar');
+        // Los KPI de un workflow los ve quien puede verlo (creador o Administrador)
+        $this->middleware($this->workflowDeRuta('view'));
     }
 
     public function resumen(Workflow $workflow)

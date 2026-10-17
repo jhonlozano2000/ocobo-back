@@ -29,11 +29,12 @@ class EditarTareaNodoTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['Editar', 'Asignar'] as $accion) {
-            Permission::findOrCreate("Workflows -> Tareas -> {$accion}", 'web');
+        foreach (['Tareas -> Editar', 'Tareas -> Asignar', 'Workflows -> Editar'] as $permiso) {
+            Permission::findOrCreate("Workflows -> {$permiso}", 'web');
         }
         $this->editor = User::factory()->create(['estado' => 1]);
-        $this->editor->givePermissionTo('Workflows -> Tareas -> Editar');
+        // Editar tareas del nodo es diseño: además del permiso de tareas, WorkflowPolicy::update (M19-05)
+        $this->editor->givePermissionTo(['Workflows -> Tareas -> Editar', 'Workflows -> Workflows -> Editar']);
         $this->otro = User::factory()->create(['estado' => 1]);
 
         $workflow = Workflow::create([

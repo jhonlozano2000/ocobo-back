@@ -30,11 +30,12 @@ class ArchivosNodoTest extends TestCase
         parent::setUp();
 
         Storage::fake('workflows_archivos');
-        foreach (['Subir', 'Ver'] as $accion) {
-            Permission::findOrCreate("Workflows -> Archivos -> {$accion}", 'web');
+        foreach (['Archivos -> Subir', 'Archivos -> Ver', 'Workflows -> Editar'] as $permiso) {
+            Permission::findOrCreate("Workflows -> {$permiso}", 'web');
         }
         $this->usuario = User::factory()->create(['estado' => 1]);
-        $this->usuario->givePermissionTo(['Workflows -> Archivos -> Subir', 'Workflows -> Archivos -> Ver']);
+        // Los adjuntos de un nodo son diseño: WorkflowPolicy::update además del permiso de archivos (M19-05)
+        $this->usuario->givePermissionTo(['Workflows -> Archivos -> Subir', 'Workflows -> Archivos -> Ver', 'Workflows -> Workflows -> Editar']);
         $this->workflow = Workflow::create([
             'nombre' => 'Archivos M19-46', 'estado' => 'borrador', 'creador_user_id' => $this->usuario->id,
         ]);

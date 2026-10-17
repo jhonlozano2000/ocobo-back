@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Workflows;
 
 use App\Exceptions\Workflows\StateTransitionException;
 use App\Exceptions\Workflows\UncompletedChecklistException;
+use App\Http\Controllers\Api\Workflows\Concerns\AutorizaWorkflowDeRuta;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\AsignarWorkFlowTareaRequest;
 use App\Http\Requests\Workflows\CambiarEstadoWorkFlowTareaRequest;
@@ -19,7 +20,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class WorkFlowTareaController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, AutorizaWorkflowDeRuta;
 
     public function __construct(
         private readonly WorkFlowTareaService $tareaService
@@ -29,6 +30,9 @@ class WorkFlowTareaController extends Controller
         $this->middleware('can:Workflows -> Tareas -> Editar')->only(['update', 'cambiarEstado', 'reordenar']);
         $this->middleware('can:Workflows -> Tareas -> Eliminar')->only(['destroy']);
         $this->middleware('can:Workflows -> Tareas -> Asignar')->only(['asignar']);
+        // Definir, asignar y ordenar tareas del nodo es diseño; consultar y mover su estado lo hace quien ejecuta
+        $this->middleware($this->workflowDeRuta('update'))->only(['store', 'update', 'destroy', 'asignar', 'reordenar']);
+        $this->middleware($this->workflowDeRuta())->only(['index', 'show', 'cambiarEstado']);
     }
 
     public function index(int $workflowId, int $nodoId)

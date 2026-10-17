@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Workflows;
 
+use App\Http\Controllers\Api\Workflows\Concerns\AutorizaWorkflowDeRuta;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\StoreWorkflowNodoRequest;
 use App\Http\Requests\Workflows\UpdateWorkflowNodoRequest;
@@ -15,12 +16,14 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
  */
 class WorkflowNodoController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, AutorizaWorkflowDeRuta;
 
     public function __construct()
     {
         $this->middleware('can:Workflows -> Workflows -> Mostrar')->only(['index']);
         $this->middleware('can:Workflows -> Workflows -> Editar')->except(['index']);
+        // Modificar el grafo es diseño: creador del workflow o Administrador
+        $this->middleware($this->workflowDeRuta('update'))->except(['index']);
     }
 
     public function index(int $workflowId)

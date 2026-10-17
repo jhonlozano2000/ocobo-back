@@ -2,18 +2,23 @@
 
 namespace App\Http\Controllers\Api\Workflows;
 
+use App\Http\Controllers\Api\Workflows\Concerns\AutorizaWorkflowDeRuta;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\StoreWorkFlowArchivoRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\Workflows\Workflow;
+use App\Models\Workflows\WorkFlowArchivo;
 use App\Services\Workflows\WorkFlowArchivoService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class WorkFlowArchivoController extends Controller
 {
-    use ApiResponseTrait;
+    use ApiResponseTrait, AutorizaWorkflowDeRuta;
 
     public function __construct(
         private readonly WorkFlowArchivoService $archivoService
@@ -22,6 +27,7 @@ class WorkFlowArchivoController extends Controller
         $this->middleware('can:Workflows -> Archivos -> Subir')->only(['store']);
         $this->middleware('can:Workflows -> Archivos -> Descargar')->only(['download']);
         $this->middleware('can:Workflows -> Archivos -> Eliminar')->only(['destroy']);
+        $this->middleware($this->workflowDeRuta())->except(['store', 'destroy']);
     }
 
     public function index(int $workflowId)
@@ -55,6 +61,10 @@ class WorkFlowArchivoController extends Controller
     {
         try {
             $data = $request->validated();
+            // Los adjuntos del diseño (nodo/workflow) son del creador; los de una instancia los sube quien ejecuta
+            if ($data['archivable_type'] !== 'instancia') {
+                $this->authorize('update', Workflow::findOrFail($workflowId));
+            }
 
             $archivo = $this->archivoService->subir(
                 $request->file('archivo'),
@@ -66,6 +76,9 @@ class WorkFlowArchivoController extends Controller
 
             return $this->successResponse($archivo, 'Archivo subido correctamente', 201);
         } catch (\Exception $e) {
+            if ($e instanceof AuthorizationException) {
+                throw $e;
+            }
             if ($e instanceof ValidationException) {
                 throw $e;
             }
@@ -105,15 +118,23 @@ class WorkFlowArchivoController extends Controller
         }
     }
 
-    public function destroy(int $workflowId, int $archivoId)
+    public function destroy(Request $request, int $workflowId, int $archivoId)
     {
         try {
+            $archivo = WorkFlowArchivo::where('workflow_id', $workflowId)->findOrFail($archivoId);
+            // Borra quien lo subió, o el creador del workflow / Administrador
+            if ((int) $archivo->uploaded_by !== (int) $request->user()->id) {
+                $this->authorize('update', Workflow::findOrFail($workflowId));
+            }
             $this->archivoService->eliminar($workflowId, $archivoId);
 
             return $this->successResponse(null, 'Archivo eliminado correctamente');
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('Archivo no encontrado en este workflow', null, 404);
         } catch (\Exception $e) {
+            if ($e instanceof AuthorizationException) {
+                throw $e;
+            }
             if ($e instanceof ValidationException) {
                 throw $e;
             }
