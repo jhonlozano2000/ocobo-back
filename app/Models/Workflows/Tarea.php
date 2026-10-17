@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Tarea extends Model
 {
@@ -68,5 +69,11 @@ class Tarea extends Model
     public function checklists(): HasMany
     {
         return $this->hasMany(TareaChecklist::class, 'tarea_id')->orderBy('orden');
+    }
+
+    /** Evidencia adjunta por propietarios y responsables (M19-35). */
+    public function archivos(): MorphMany
+    {
+        return $this->morphMany(WorkFlowArchivo::class, 'archivable');
     }
 }

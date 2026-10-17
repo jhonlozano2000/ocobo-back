@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Workflows\MisInstanciasController;
+use App\Http\Controllers\Api\Workflows\TareaArchivoController;
 use App\Http\Controllers\Api\Workflows\TareaChecklistController;
 use App\Http\Controllers\Api\Workflows\TareaController;
 use App\Http\Controllers\Api\Workflows\WorkFlowArchivoController;
@@ -91,4 +92,12 @@ Route::middleware('auth:sanctum')->group(function () {
         ->whereNumber('checklist');
     Route::delete('tareas/{tarea}/checklists/{checklist}', [TareaChecklistController::class, 'destroy'])
         ->whereNumber('checklist');
+
+    // Evidencia de la tarea (M19-35)
+    Route::get('tareas/{tarea}/archivos', [TareaArchivoController::class, 'index']);
+    Route::post('tareas/{tarea}/archivos', [TareaArchivoController::class, 'store']);
+    Route::get('tareas/{tarea}/archivos/{archivo}/download', [TareaArchivoController::class, 'download'])
+        ->whereNumber('archivo');
+    Route::delete('tareas/{tarea}/archivos/{archivo}', [TareaArchivoController::class, 'destroy'])
+        ->whereNumber('archivo');
 });
