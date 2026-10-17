@@ -26,7 +26,7 @@ class WorkFlowTareaController extends Controller
     ) {
         $this->middleware('can:Workflows -> Tareas -> Listar')->only(['index', 'show']);
         $this->middleware('can:Workflows -> Tareas -> Crear')->only(['store']);
-        $this->middleware('can:Workflows -> Tareas -> Editar')->only(['update', 'cambiarEstado']);
+        $this->middleware('can:Workflows -> Tareas -> Editar')->only(['update', 'cambiarEstado', 'reordenar']);
         $this->middleware('can:Workflows -> Tareas -> Eliminar')->only(['destroy']);
         $this->middleware('can:Workflows -> Tareas -> Asignar')->only(['asignar']);
     }
