@@ -17,7 +17,6 @@ use App\Http\Middleware\SecurityHeadersMiddleware;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustProxies;
 use App\Http\Middleware\ValidateContentType;
-use App\Http\Middleware\ValidatePasswordStrength;
 use App\Http\Middleware\ValidateRequestSize;
 use App\Http\Middleware\ValidateSignature;
 use App\Http\Middleware\VerifyCsrfToken;
@@ -99,7 +98,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'api.auth' => EnsureApiAuthenticated::class,
             'cache.headers' => SetCacheHeaders::class,
             'can' => Authorize::class,
-            'password.strength' => ValidatePasswordStrength::class,
             'propio_o_can' => PropioOPermiso::class,
             'can_any' => PuedeAlguno::class,
             'acceso_radicado' => AccesoRadicado::class,

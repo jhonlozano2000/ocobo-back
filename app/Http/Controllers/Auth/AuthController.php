@@ -78,13 +78,6 @@ class AuthController extends Controller
             return $this->unauthorizedResponse('Las credenciales proporcionadas son incorrectas.');
         }
 
-        // Verificar estado de cuenta (asumiendo que 1 = activo, 0 = inactivo)
-        if (! isset($user->estado) || $user->estado == 0) {
-            $this->logFailedLoginAttempt($user->id, $user->email, 'Cuenta desactivada', $request);
-
-            return $this->unauthorizedResponse('Tu cuenta se encuentra desactivada.');
-        }
-
         // Validar credenciales
         if (! Hash::check($credentials['password'], $user->password)) {
             $this->logFailedLoginAttempt($user->id, $user->email, 'Credenciales incorrectas', $request);
@@ -106,6 +99,14 @@ class AuthController extends Controller
             }
 
             return $this->unauthorizedResponse('Las credenciales proporcionadas son incorrectas.');
+        }
+
+        // Estado de cuenta (1 = activo, 0 = inactivo): se revisa después de la contraseña para no
+        // revelar a quien no la conoce que la cuenta existe y está desactivada.
+        if (! isset($user->estado) || $user->estado == 0) {
+            $this->logFailedLoginAttempt($user->id, $user->email, 'Cuenta desactivada', $request);
+
+            return $this->unauthorizedResponse('Tu cuenta se encuentra desactivada.');
         }
 
         // Limpiar contador de intentos fallidos tras autenticación exitosa
@@ -286,18 +287,30 @@ class AuthController extends Controller
     public function forgotPassword(Request $request)
     {
         $request->validate([
-            'email' => 'required|email|exists:users,email',
+            'email' => 'required|email',
         ], [
             'email.required' => 'El correo electrónico es obligatorio.',
             'email.email' => 'Ingresa un correo electrónico válido.',
-            'email.exists' => 'No encontramos una cuenta con ese correo electrónico.',
         ]);
 
-        try {
-            $user = User::where('email', $request->email)->first();
-            $token = Password::getRepository()->create($user);
+        $mensaje = 'Si el correo está registrado, te enviaremos las instrucciones para restablecer tu contraseña.';
 
-            $resetUrl = url("/es/reset-password?token={$token}&email=".urlencode($request->email));
+        // Misma respuesta exista o no la cuenta (OWASP A07: enumeración de usuarios)
+        $user = User::where('email', $request->email)->first();
+
+        if (! $user) {
+            UsersAuthenticationLog::logEvent([
+                'event' => 'password_reset_requested',
+                'success' => false,
+                'email' => $request->email,
+                'details' => 'Solicitud de restablecimiento para un correo no registrado',
+            ]);
+
+            return $this->successResponse(null, $mensaje);
+        }
+
+        try {
+            $token = Password::getRepository()->create($user);
 
             $resetUrl = url("/es/reset-password?token={$token}&email=".urlencode($request->email));
 
@@ -320,7 +333,7 @@ class AuthController extends Controller
             'details' => 'Solicitud de restablecimiento de contraseña enviada',
         ]);
 
-        return $this->successResponse(null, 'Te hemos enviado un correo con las instrucciones para restablecer tu contraseña.');
+        return $this->successResponse(null, $mensaje);
     }
 
     /**
