@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Workflows\Tarea;
 use App\Models\Workflows\TareaChecklist;
 use App\Models\Workflows\Workflow;
+use App\Models\Workflows\WorkflowInstancia;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Mews\Purifier\Facades\Purifier;
@@ -24,7 +25,9 @@ class TareaService
 
     public function __construct(
         private readonly WorkflowAuditService $auditService,
-        private readonly WorkflowNotificationService $notificationService
+        private readonly WorkflowNotificationService $notificationService,
+        private readonly WorkflowExecutionService $executionService,
+        private readonly TareasDeNodoService $tareasDeNodo
     ) {}
 
     public function store(array $data, User $user): Tarea
@@ -104,6 +107,10 @@ class TareaService
 
             if (! empty($updateData)) {
                 $tarea->update($updateData);
+            }
+
+            if (($updateData['estado'] ?? null) === 'completada') {
+                $this->avanzarNodoSiTerminado($tarea);
             }
 
             if (isset($data['propietarios'])) {
@@ -192,9 +199,33 @@ class TareaService
             );
 
             $this->notificationService->notificarTareaCompletada($tarea, auth()->user());
+            $this->avanzarNodoSiTerminado($tarea);
 
             return $tarea->load(['propietarios', 'responsables', 'checklists', 'workflow']);
         });
+    }
+
+    /**
+     * M19-19: completar la última tarea abierta del nodo actual avanza la instancia. Cancelar no
+     * avanza (alguien debe decidir); los nodos de condición tampoco, porque necesitan resultado.
+     */
+    private function avanzarNodoSiTerminado(Tarea $tarea): void
+    {
+        if (! $tarea->instancia_id || ! $tarea->nodo_id) {
+            return;
+        }
+
+        // El bloqueo de la instancia serializa las tareas hermanas que se completan a la vez
+        $instancia = WorkflowInstancia::with('nodoActual')->lockForUpdate()->find($tarea->instancia_id);
+        if (! $instancia
+            || $instancia->estado !== 'en_curso'
+            || $instancia->nodo_actual_id !== $tarea->nodo_id
+            || $instancia->nodoActual?->tipo === 'condicion'
+            || $this->tareasDeNodo->abiertas($instancia->id, $tarea->nodo_id, true) > 0) {
+            return;
+        }
+
+        $this->executionService->ejecutarNodo($instancia->id, $tarea->nodo_id, ['origen' => 'tareas_completadas']);
     }
 
     public function iniciar(Tarea $tarea): Tarea

@@ -67,11 +67,16 @@ class TareasDeNodoService
         });
     }
 
-    public function abiertas(int $instanciaId, int $nodoId): int
+    /**
+     * Con $bloquear la lectura es FOR UPDATE: ve lo último confirmado aunque la transacción
+     * ya tenga su snapshot (dos tareas completadas a la vez no se ven abiertas mutuamente).
+     */
+    public function abiertas(int $instanciaId, int $nodoId, bool $bloquear = false): int
     {
         return Tarea::where('instancia_id', $instanciaId)
             ->where('nodo_id', $nodoId)
             ->whereNotIn('estado', self::ESTADOS_CERRADOS)
+            ->when($bloquear, fn ($q) => $q->lockForUpdate())
             ->count();
     }
 

@@ -118,6 +118,12 @@ class WorkflowExecutionService
                 throw new StateTransitionException('Este nodo ya fue ejecutado');
             }
 
+            // M19-19: el nodo no avanza con tareas abiertas (completarlas lo avanza solo)
+            $abiertas = $this->tareasDeNodo->abiertas($instanciaId, $nodoId, true);
+            if ($abiertas > 0) {
+                throw new StateTransitionException("El nodo tiene {$abiertas} tarea(s) sin completar");
+            }
+
             $siguienteNodo = $this->determinarSiguienteNodo($instanciaId, $nodoId, $resultado);
 
             $resultadoFinal = $resultado;
