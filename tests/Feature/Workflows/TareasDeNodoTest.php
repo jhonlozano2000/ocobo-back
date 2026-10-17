@@ -91,6 +91,16 @@ class TareasDeNodoTest extends TestCase
         $this->assertSame(2, $this->revision->tareas()->whereNull('instancia_id')->count());
     }
 
+    public function test_un_responsable_inactivo_pasa_al_siguiente_candidato(): void
+    {
+        // M19-23: el revisor del nodo se dio de baja después de diseñar el flujo
+        $this->revisor->update(['estado' => 0]);
+        $instanciaId = $this->iniciar();
+
+        $revisar = Tarea::with('responsables')->where('instancia_id', $instanciaId)->where('nombre', 'Revisar soporte')->first();
+        $this->assertSame([$this->ejecutor->id], $revisar->responsables->pluck('id')->all());
+    }
+
     public function test_detener_la_instancia_cancela_sus_tareas_abiertas(): void
     {
         $instanciaId = $this->iniciar();

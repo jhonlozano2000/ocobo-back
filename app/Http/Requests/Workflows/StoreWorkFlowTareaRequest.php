@@ -17,7 +17,7 @@ class StoreWorkFlowTareaRequest extends SanitizedFormRequest
             'titulo' => 'required|string|max:255',
             'descripcion' => 'nullable|string|max:5000',
             'instrucciones' => 'nullable|string|max:10000',
-            'responsable_usuario_id' => 'nullable|exists:users,id',
+            'responsable_usuario_id' => 'nullable|exists:users,id,estado,1',
             'tiempo_limite_horas' => 'nullable|integer|min:1|max:8760',
             'orden' => 'nullable|integer|min:0',
             'adjuntos_permitidos' => 'nullable|boolean',
@@ -31,7 +31,7 @@ class StoreWorkFlowTareaRequest extends SanitizedFormRequest
     {
         return [
             'titulo.required' => 'El título de la tarea es obligatorio',
-            'responsable_usuario_id.exists' => 'El usuario responsable no existe',
+            'responsable_usuario_id.exists' => 'El usuario responsable no existe o está inactivo',
             'tiempo_limite_horas.min' => 'El tiempo límite debe ser al menos 1 hora',
             'tiempo_limite_horas.max' => 'El tiempo límite no puede exceder 8760 horas (1 año)',
         ];

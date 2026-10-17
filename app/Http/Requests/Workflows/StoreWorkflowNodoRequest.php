@@ -22,7 +22,7 @@ class StoreWorkflowNodoRequest extends SanitizedFormRequest
             'posicion_y' => 'required|numeric',
             // El modelo castea a array: validar como array, no como string JSON
             'configuracion_json' => 'nullable|array',
-            'responsable_usuario_id' => 'nullable|integer|exists:users,id',
+            'responsable_usuario_id' => 'nullable|integer|exists:users,id,estado,1',
             'tiempo_limite_horas' => 'nullable|integer|min:1',
         ];
     }

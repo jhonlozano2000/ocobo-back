@@ -2,6 +2,7 @@
 
 namespace App\Services\Workflows;
 
+use App\Models\User;
 use App\Models\Workflows\Tarea;
 use App\Models\Workflows\WorkflowInstancia;
 use App\Models\Workflows\WorkflowNodo;
@@ -15,6 +16,21 @@ use Illuminate\Support\Collection;
  */
 class TareasDeNodoService
 {
+    /** Primer usuario activo de la lista, respetando el orden. */
+    private function primerActivo(array $ids): ?int
+    {
+        $ids = array_values(array_filter($ids));
+        $activos = $ids ? User::whereIn('id', $ids)->where('estado', 1)->pluck('id')->all() : [];
+
+        foreach ($ids as $id) {
+            if (in_array($id, $activos)) {
+                return (int) $id;
+            }
+        }
+
+        return null;
+    }
+
     /** Estados que ya no bloquean el avance del nodo. */
     public const ESTADOS_CERRADOS = ['completada', 'cancelada'];
 
@@ -47,7 +63,9 @@ class TareasDeNodoService
             ]);
 
             // Quien inició la instancia es el propietario; el responsable sale de la plantilla o del nodo
-            $responsableId = $plantilla->responsable_usuario_id ?? $nodo->responsable_usuario_id ?? $instancia->usuario_ejecuta_id;
+            // (M19-23: si el diseñado ya está inactivo se pasa al siguiente, y al final a quien ejecuta)
+            $responsableId = $this->primerActivo([$plantilla->responsable_usuario_id, $nodo->responsable_usuario_id])
+                ?? $instancia->usuario_ejecuta_id;
             $tarea->propietarios()->attach($instancia->usuario_ejecuta_id);
             $tarea->responsables()->attach($responsableId);
 

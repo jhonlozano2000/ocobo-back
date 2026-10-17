@@ -28,7 +28,7 @@ class StoreNodoRequest extends FormRequest
             'nodos.*.posicion_x' => 'required|numeric',
             'nodos.*.posicion_y' => 'required|numeric',
             'nodos.*.configuracion_json' => 'nullable|array',
-            'nodos.*.responsable_usuario_id' => 'nullable|integer|exists:users,id',
+            'nodos.*.responsable_usuario_id' => 'nullable|integer|exists:users,id,estado,1',
             'nodos.*.tiempo_limite_horas' => 'nullable|integer|min:1',
             'nodos.*.adjuntos_permitidos' => 'nullable|boolean',
             'nodos.*.orden_ejecucion' => 'nullable|integer|min:0',

@@ -22,7 +22,7 @@ class UpdateWorkFlowTareaRequest extends SanitizedFormRequest
             'responsable_usuario_id' => [
                 Rule::prohibitedIf(! $this->user()->hasPermissionTo('Workflows -> Tareas -> Asignar')),
                 'nullable',
-                'exists:users,id',
+                'exists:users,id,estado,1',
             ],
             'tiempo_limite_horas' => 'nullable|integer|min:1|max:8760',
             'estado' => 'sometimes|in:pendiente,en_curso,completada,vencida,cancelada',
@@ -40,7 +40,7 @@ class UpdateWorkFlowTareaRequest extends SanitizedFormRequest
         return [
             'titulo.required' => 'El título de la tarea es obligatorio',
             'estado.in' => 'El estado debe ser: pendiente, en_curso, completada, vencida o cancelada',
-            'responsable_usuario_id.exists' => 'El usuario responsable no existe',
+            'responsable_usuario_id.exists' => 'El usuario responsable no existe o está inactivo',
             'responsable_usuario_id.prohibited' => 'No tiene permiso para reasignar la tarea',
             'tiempo_limite_horas.min' => 'El tiempo límite debe ser al menos 1 hora',
         ];

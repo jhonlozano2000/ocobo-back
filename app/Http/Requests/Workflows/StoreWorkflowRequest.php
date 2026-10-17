@@ -19,7 +19,7 @@ class StoreWorkflowRequest extends SanitizedFormRequest
             'nombre' => 'required|string|max:255',
             'descripcion' => 'nullable|string|max:5000',
             'tiempo_finalizacion_horas' => 'nullable|integer|min:1|max:87600',
-            'administrador_user_id' => 'nullable|exists:users,id',
+            'administrador_user_id' => 'nullable|exists:users,id,estado,1',
         ];
     }
 
@@ -30,7 +30,7 @@ class StoreWorkflowRequest extends SanitizedFormRequest
             'nombre.max' => 'El nombre no puede exceder 255 caracteres',
             'tiempo_finalizacion_horas.min' => 'El tiempo debe ser al menos 1 hora',
             'tiempo_finalizacion_horas.max' => 'El tiempo no puede exceder 87600 horas (10 años)',
-            'administrador_user_id.exists' => 'El administrador seleccionado no existe',
+            'administrador_user_id.exists' => 'El administrador seleccionado no existe o está inactivo',
         ];
     }
 

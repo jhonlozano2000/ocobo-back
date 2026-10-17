@@ -14,7 +14,7 @@ class AsignarWorkFlowTareaRequest extends SanitizedFormRequest
     public function rules(): array
     {
         return [
-            'responsable_usuario_id' => 'required|exists:users,id',
+            'responsable_usuario_id' => 'required|exists:users,id,estado,1',
         ];
     }
 
@@ -22,7 +22,7 @@ class AsignarWorkFlowTareaRequest extends SanitizedFormRequest
     {
         return [
             'responsable_usuario_id.required' => 'Debe seleccionar un usuario responsable',
-            'responsable_usuario_id.exists' => 'El usuario seleccionado no existe',
+            'responsable_usuario_id.exists' => 'El usuario seleccionado no existe o está inactivo',
         ];
     }
 }
