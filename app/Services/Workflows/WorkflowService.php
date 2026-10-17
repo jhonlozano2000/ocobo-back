@@ -13,7 +13,8 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 class WorkflowService
 {
     public function __construct(
-        private readonly WorkflowAuditService $auditService
+        private readonly WorkflowAuditService $auditService,
+        private readonly WorkflowGrafoValidator $grafoValidator
     ) {}
 
     public function listar(array $filtros = [])
@@ -78,6 +79,9 @@ class WorkflowService
     {
         return DB::transaction(function () use ($id, $datos) {
             $workflow = Workflow::findOrFail($id);
+            if (($datos['estado'] ?? null) === 'activo') {
+                $this->grafoValidator->validarWorkflow($workflow);
+            }
             $workflow->update($datos);
 
             $this->auditService->registrar(
@@ -171,6 +175,10 @@ class WorkflowService
     {
         return DB::transaction(function () use ($id, $estado) {
             $workflow = Workflow::findOrFail($id);
+            // M19-18: solo se activa un grafo completo
+            if ($estado === 'activo') {
+                $this->grafoValidator->validarWorkflow($workflow);
+            }
             $estadoAnterior = $workflow->estado;
             $workflow->update(['estado' => $estado]);
 
@@ -202,6 +210,13 @@ class WorkflowService
             $workflow = Workflow::findOrFail($workflowId);
 
             $this->asegurarGrafoEditable($workflow, 'el canvas');
+
+            // M19-18: un borrador puede guardarse a medias; un workflow activo, solo con el grafo completo
+            $this->grafoValidator->validar(
+                collect($nodos)->pluck('tipo', 'client_id')->all(),
+                array_map(fn ($c) => [$c['nodo_origen_id'], $c['nodo_destino_id']], $conexiones),
+                $workflow->estado === 'activo'
+            );
 
             // Los nodos que ya existen llegan como "nodo_{id}": se actualizan en vez de recrearse,
             // porque borrarlos arrastra en cascada sus tareas, checklists e historial de instancias
