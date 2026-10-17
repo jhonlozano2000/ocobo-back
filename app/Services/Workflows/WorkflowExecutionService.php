@@ -64,6 +64,10 @@ class WorkflowExecutionService
                 ]);
             }
 
+            // El inicio queda completado: la instancia arranca en el nodo siguiente. Antes se quedaba
+            // apuntando al inicio ya completado y ningún nodo podía ejecutarse.
+            $this->entrarEnNodo($instancia, $this->determinarSiguienteNodo($instancia->id, $nodoInicio->id, []));
+
             $this->auditService->registrar(
                 'instancia.iniciada',
                 $workflowId,
@@ -139,25 +143,7 @@ class WorkflowExecutionService
                 'resultado_json' => $resultadoFinal,
             ]);
 
-            if ($siguienteNodo && $siguienteNodo->tipo === 'fin') {
-                $instancia->update([
-                    'nodo_actual_id' => $siguienteNodo->id,
-                    'estado' => 'completada',
-                    'fecha_fin' => now(),
-                ]);
-
-                WorkflowNodoInstancia::where('instancia_id', $instanciaId)
-                    ->where('nodo_id', $siguienteNodo->id)
-                    ->update(['estado' => 'completado', 'fecha_ejecucion' => now()]);
-            } elseif ($siguienteNodo) {
-                $instancia->update(['nodo_actual_id' => $siguienteNodo->id]);
-
-                WorkflowNodoInstancia::where('instancia_id', $instanciaId)
-                    ->where('nodo_id', $siguienteNodo->id)
-                    ->update(['estado' => 'en_curso']);
-            } else {
-                $instancia->update(['estado' => 'completada', 'fecha_fin' => now()]);
-            }
+            $this->entrarEnNodo($instancia, $siguienteNodo);
 
             $this->auditService->registrar(
                 'instancia.nodo_ejecutado',
@@ -213,6 +199,33 @@ class WorkflowExecutionService
 
             return $instancia->load(['nodosInstancia.nodo', 'nodoActual']);
         });
+    }
+
+    /**
+     * Lleva la instancia al nodo dado: un fin (o la ausencia de siguiente) la completa;
+     * cualquier otro nodo pasa a ser el actual y queda en curso.
+     */
+    private function entrarEnNodo(WorkflowInstancia $instancia, ?WorkflowNodo $siguienteNodo): void
+    {
+        if ($siguienteNodo && $siguienteNodo->tipo === 'fin') {
+            $instancia->update([
+                'nodo_actual_id' => $siguienteNodo->id,
+                'estado' => 'completada',
+                'fecha_fin' => now(),
+            ]);
+
+            WorkflowNodoInstancia::where('instancia_id', $instancia->id)
+                ->where('nodo_id', $siguienteNodo->id)
+                ->update(['estado' => 'completado', 'fecha_ejecucion' => now()]);
+        } elseif ($siguienteNodo) {
+            $instancia->update(['nodo_actual_id' => $siguienteNodo->id]);
+
+            WorkflowNodoInstancia::where('instancia_id', $instancia->id)
+                ->where('nodo_id', $siguienteNodo->id)
+                ->update(['estado' => 'en_curso']);
+        } else {
+            $instancia->update(['estado' => 'completada', 'fecha_fin' => now()]);
+        }
     }
 
     private function determinarSiguienteNodo(int $instanciaId, int $nodoActualId, array $resultado): ?WorkflowNodo
