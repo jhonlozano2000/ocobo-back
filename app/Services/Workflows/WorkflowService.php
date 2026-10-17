@@ -99,7 +99,15 @@ class WorkflowService
     public function eliminar(int $id): void
     {
         DB::transaction(function () use ($id) {
-            $workflow = Workflow::findOrFail($id);
+            $workflow = Workflow::lockForUpdate()->findOrFail($id);
+
+            // M19-21: un flujo con ejecuciones es historial; se archiva, no se elimina
+            $instancias = $workflow->instancias()->count();
+            if ($instancias > 0) {
+                throw new StateTransitionException(
+                    "El flujo tiene {$instancias} instancia(s); archívelo en lugar de eliminarlo"
+                );
+            }
 
             $this->auditService->registrar(
                 'workflow.eliminado',
