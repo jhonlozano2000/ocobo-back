@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Workflows;
 
+use App\Exceptions\Workflows\StateTransitionException;
 use App\Models\Workflows\Workflow;
 use App\Models\Workflows\WorkflowConexion;
 use App\Models\Workflows\WorkflowNodo;
@@ -78,9 +79,9 @@ class WorkflowService
     public function actualizar(int $id, array $datos): Workflow
     {
         return DB::transaction(function () use ($id, $datos) {
-            $workflow = Workflow::findOrFail($id);
-            if (($datos['estado'] ?? null) === 'activo') {
-                $this->grafoValidator->validarWorkflow($workflow);
+            $workflow = Workflow::lockForUpdate()->findOrFail($id);
+            if (isset($datos['estado']) && $datos['estado'] !== $workflow->estado) {
+                $this->asegurarTransicion($workflow, $datos['estado']);
             }
             $workflow->update($datos);
 
@@ -174,11 +175,8 @@ class WorkflowService
     public function cambiarEstado(int $id, string $estado): Workflow
     {
         return DB::transaction(function () use ($id, $estado) {
-            $workflow = Workflow::findOrFail($id);
-            // M19-18: solo se activa un grafo completo
-            if ($estado === 'activo') {
-                $this->grafoValidator->validarWorkflow($workflow);
-            }
+            $workflow = Workflow::lockForUpdate()->findOrFail($id);
+            $this->asegurarTransicion($workflow, $estado);
             $estadoAnterior = $workflow->estado;
             $workflow->update(['estado' => $estado]);
 
@@ -191,6 +189,19 @@ class WorkflowService
 
             return $workflow;
         });
+    }
+
+    /**
+     * M19-22: solo transiciones del ciclo de vida; M19-18: solo se activa un grafo completo.
+     */
+    private function asegurarTransicion(Workflow $workflow, string $estado): void
+    {
+        if (! in_array($estado, Workflow::TRANSICIONES_ESTADO[$workflow->estado] ?? [], true)) {
+            throw new StateTransitionException("Un flujo {$workflow->estado} no puede pasar a {$estado}");
+        }
+        if ($estado === 'activo') {
+            $this->grafoValidator->validarWorkflow($workflow);
+        }
     }
 
     /**

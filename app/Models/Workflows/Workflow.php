@@ -19,6 +19,17 @@ class Workflow extends Model
 
     protected $table = 'workflows';
 
+    /**
+     * M19-22: ciclo de vida del flujo. Un activo se desactiva antes de volver a borrador;
+     * archivado solo se recupera como inactivo.
+     */
+    public const TRANSICIONES_ESTADO = [
+        'borrador' => ['activo', 'archivado'],
+        'activo' => ['inactivo', 'archivado'],
+        'inactivo' => ['activo', 'borrador', 'archivado'],
+        'archivado' => ['inactivo'],
+    ];
+
     protected $fillable = [
         'uuid',
         'nombre',
