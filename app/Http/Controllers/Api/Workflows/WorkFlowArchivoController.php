@@ -27,7 +27,9 @@ class WorkFlowArchivoController extends Controller
     public function index(int $workflowId)
     {
         try {
-            $archivableType = request('archivable_type');
+            $alias = request('archivable_type');
+            abort_if($alias && ! isset(StoreWorkFlowArchivoRequest::TIPOS[$alias]), 422, 'El tipo de entidad no es válido');
+            $archivableType = $alias ? StoreWorkFlowArchivoRequest::TIPOS[$alias] : null;
             $archivableId = request('archivable_id') ? (int) request('archivable_id') : null;
 
             $archivos = $this->archivoService->listar(
@@ -54,16 +56,10 @@ class WorkFlowArchivoController extends Controller
         try {
             $data = $request->validated();
 
-            $typeMap = [
-                'nodo' => 'App\Models\Workflows\WorkflowNodo',
-                'instancia' => 'App\Models\Workflows\WorkflowInstancia',
-                'workflow' => 'App\Models\Workflows\Workflow',
-            ];
-
             $archivo = $this->archivoService->subir(
                 $request->file('archivo'),
                 $workflowId,
-                $typeMap[$data['archivable_type']] ?? 'App\Models\Workflows\Workflow',
+                StoreWorkFlowArchivoRequest::TIPOS[$data['archivable_type']],
                 (int) $data['archivable_id'],
                 $data['categoria'] ?? 'adjunto'
             );

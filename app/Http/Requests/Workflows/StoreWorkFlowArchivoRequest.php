@@ -9,6 +9,13 @@ use App\Models\Workflows\WorkflowNodo;
 
 class StoreWorkFlowArchivoRequest extends SanitizedFormRequest
 {
+    /** Alias que envía el cliente → clase que se guarda en archivable_type. */
+    public const TIPOS = [
+        'nodo' => WorkflowNodo::class,
+        'instancia' => WorkflowInstancia::class,
+        'workflow' => Workflow::class,
+    ];
+
     public function authorize(): bool
     {
         return auth()->user()->hasPermissionTo('Workflows -> Archivos -> Subir');
@@ -18,7 +25,7 @@ class StoreWorkFlowArchivoRequest extends SanitizedFormRequest
     {
         return [
             'archivo' => 'required|file|max:51200|mimes:pdf,jpeg,png,gif,doc,docx,xls,xlsx,ppt,pptx,zip,rar',
-            'archivable_type' => 'required|string',
+            'archivable_type' => 'required|string|in:'.implode(',', array_keys(self::TIPOS)),
             'archivable_id' => 'required|integer',
             'categoria' => 'nullable|in:adjunto,evidencia,instruccion,resultado',
         ];
@@ -30,20 +37,14 @@ class StoreWorkFlowArchivoRequest extends SanitizedFormRequest
             $type = $this->input('archivable_type');
             $id = $this->input('archivable_id');
 
-            if (! $type || ! $id) {
+            if (! $type || ! $id || ! isset(self::TIPOS[$type])) {
                 return;
             }
 
             // El {workflow} de la ruta manda: el archivable debe pertenecerle
             $workflowId = (int) $this->route('workflow');
 
-            $modelo = match ($type) {
-                'nodo' => WorkflowNodo::class,
-                'instancia' => WorkflowInstancia::class,
-                default => Workflow::class,
-            };
-
-            $query = $modelo::where('id', $id);
+            $query = self::TIPOS[$type]::where('id', $id);
 
             if ($type !== 'workflow') {
                 $query->where('workflow_id', $workflowId);
@@ -66,6 +67,7 @@ class StoreWorkFlowArchivoRequest extends SanitizedFormRequest
             'archivo.max' => 'El archivo no puede exceder 50MB',
             'archivo.mimes' => 'El tipo de archivo no está permitido',
             'archivable_type.required' => 'Debe especificar el tipo de entidad',
+            'archivable_type.in' => 'El tipo de entidad no es válido',
             'archivable_id.required' => 'Debe especificar el ID de la entidad',
         ];
     }
