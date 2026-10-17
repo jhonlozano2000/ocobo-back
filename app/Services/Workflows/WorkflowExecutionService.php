@@ -23,7 +23,8 @@ class WorkflowExecutionService
 {
     public function __construct(
         private readonly WorkflowAuditService $auditService,
-        private readonly WorkflowNotificationService $notificationService
+        private readonly WorkflowNotificationService $notificationService,
+        private readonly TareasDeNodoService $tareasDeNodo
     ) {}
 
     public function iniciarInstancia(int $workflowId, int $userId): WorkflowInstancia
@@ -184,6 +185,7 @@ class WorkflowExecutionService
 
             $estadoAnterior = $instancia->getOriginal('estado');
             $instancia->update(['estado' => $estado]);
+            $this->tareasDeNodo->cancelarAbiertas($instancia);
 
             $this->auditService->registrar(
                 'instancia.'.$estado,
@@ -203,7 +205,7 @@ class WorkflowExecutionService
 
     /**
      * Lleva la instancia al nodo dado: un fin (o la ausencia de siguiente) la completa;
-     * cualquier otro nodo pasa a ser el actual y queda en curso.
+     * cualquier otro nodo pasa a ser el actual, queda en curso y genera sus tareas.
      */
     private function entrarEnNodo(WorkflowInstancia $instancia, ?WorkflowNodo $siguienteNodo): void
     {
@@ -223,6 +225,9 @@ class WorkflowExecutionService
             WorkflowNodoInstancia::where('instancia_id', $instancia->id)
                 ->where('nodo_id', $siguienteNodo->id)
                 ->update(['estado' => 'en_curso']);
+
+            // M19-17: las plantillas del nodo se convierten en Tareas en "Mis tareas" de su responsable
+            $this->tareasDeNodo->crearDesdePlantillas($instancia, $siguienteNodo);
         } else {
             $instancia->update(['estado' => 'completada', 'fecha_fin' => now()]);
         }

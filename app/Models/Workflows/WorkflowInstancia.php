@@ -51,9 +51,10 @@ class WorkflowInstancia extends Model
         return $this->hasMany(WorkflowNodoInstancia::class, 'instancia_id');
     }
 
+    /** Tareas (sistema canónico, M19-17) creadas al pasar la instancia por cada nodo. */
     public function tareas()
     {
-        return $this->hasMany(WorkFlowTarea::class, 'instancia_id');
+        return $this->hasMany(Tarea::class, 'instancia_id');
     }
 
     public function archivos()

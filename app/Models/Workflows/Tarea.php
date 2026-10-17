@@ -19,6 +19,9 @@ class Tarea extends Model
 
     protected $fillable = [
         'workflow_id',
+        'instancia_id',
+        'nodo_id',
+        'plantilla_id',
         'nombre',
         'descripcion',
         'fecha_limite',
@@ -34,6 +37,22 @@ class Tarea extends Model
     public function workflow(): BelongsTo
     {
         return $this->belongsTo(Workflow::class, 'workflow_id');
+    }
+
+    /** Instancia y nodo de los que nace la tarea (M19-17); null en tareas sueltas del módulo. */
+    public function instancia(): BelongsTo
+    {
+        return $this->belongsTo(WorkflowInstancia::class, 'instancia_id');
+    }
+
+    public function nodo(): BelongsTo
+    {
+        return $this->belongsTo(WorkflowNodo::class, 'nodo_id');
+    }
+
+    public function plantilla(): BelongsTo
+    {
+        return $this->belongsTo(WorkFlowTarea::class, 'plantilla_id');
     }
 
     public function propietarios(): BelongsToMany
