@@ -31,6 +31,11 @@ class WorkflowExecutionService
         return DB::transaction(function () use ($workflowId, $userId) {
             $workflow = Workflow::with('nodos')->findOrFail($workflowId);
 
+            // M19-16: borradores, inactivos y archivados no se ejecutan
+            if ($workflow->estado !== 'activo') {
+                throw new StateTransitionException("Solo se pueden iniciar workflows activos (estado actual: {$workflow->estado})");
+            }
+
             $nodoInicio = $workflow->nodos()->where('tipo', 'inicio')->first();
             if (! $nodoInicio) {
                 throw new StateTransitionException('El workflow no tiene un nodo de inicio');
