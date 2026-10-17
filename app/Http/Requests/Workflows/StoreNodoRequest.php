@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Workflows;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreNodoRequest extends FormRequest
 {
@@ -15,9 +16,12 @@ class StoreNodoRequest extends FormRequest
 
     public function rules(): array
     {
+        $clientIds = collect($this->input('nodos', []))->pluck('client_id')->filter(fn ($id) => is_string($id))->values()->all();
+
         return [
-            'nodos' => 'required|array',
-            'nodos.*.id' => 'required|string',
+            // El builder identifica cada nodo con un client_id temporal; el servicio lo traduce al id real
+            'nodos' => 'present|array',
+            'nodos.*.client_id' => 'required|string|max:100|distinct',
             'nodos.*.tipo' => 'required|string|in:inicio,fin,tarea,notificacion,condicion',
             'nodos.*.titulo' => 'required|string|max:255',
             'nodos.*.descripcion' => 'nullable|string|max:1000',
@@ -27,11 +31,10 @@ class StoreNodoRequest extends FormRequest
             'nodos.*.responsable_usuario_id' => 'nullable|integer|exists:users,id',
             'nodos.*.tiempo_limite_horas' => 'nullable|integer|min:1',
             'nodos.*.adjuntos_permitidos' => 'nullable|boolean',
-            'nodos.*.orden_ejecucion' => 'nullable|integer|min:1',
-            'conexiones' => 'required|array',
-            'conexiones.*.id' => 'required|string',
-            'conexiones.*.nodo_origen_id' => 'required|string',
-            'conexiones.*.nodo_destino_id' => 'required|string',
+            'nodos.*.orden_ejecucion' => 'nullable|integer|min:0',
+            'conexiones' => 'present|array',
+            'conexiones.*.nodo_origen_id' => ['required', 'string', Rule::in($clientIds)],
+            'conexiones.*.nodo_destino_id' => ['required', 'string', Rule::in($clientIds)],
             'conexiones.*.etiqueta' => 'nullable|string|max:255',
             'conexiones.*.condicion_json' => 'nullable|array',
         ];

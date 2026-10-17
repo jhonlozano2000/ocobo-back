@@ -204,24 +204,16 @@ class WorkflowService
 
             $clientIdMap = [];
             foreach ($nodos as $nodoData) {
-                $clientId = $nodoData['client_id'] ?? null;
-                $nodo = $workflow->nodos()->create(
-                    collect($nodoData)->except(['client_id'])->toArray()
-                );
-                if ($clientId) {
-                    $clientIdMap[$clientId] = $nodo->id;
-                }
+                $atributos = collect($nodoData)->except(['client_id'])->toArray();
+                $atributos['orden_ejecucion'] ??= 0;
+                $nodo = $workflow->nodos()->create($atributos);
+                $clientIdMap[$nodoData['client_id']] = $nodo->id;
             }
 
+            // Las conexiones solo pueden apuntar a nodos de este mismo canvas (client_id)
             foreach ($conexiones as $conexionData) {
-                $origenId = $clientIdMap[$conexionData['nodo_origen_id']]
-                    ?? (is_numeric($conexionData['nodo_origen_id'])
-                        ? (int) $conexionData['nodo_origen_id']
-                        : null);
-                $destinoId = $clientIdMap[$conexionData['nodo_destino_id']]
-                    ?? (is_numeric($conexionData['nodo_destino_id'])
-                        ? (int) $conexionData['nodo_destino_id']
-                        : null);
+                $origenId = $clientIdMap[$conexionData['nodo_origen_id']] ?? null;
+                $destinoId = $clientIdMap[$conexionData['nodo_destino_id']] ?? null;
 
                 if ($origenId && $destinoId) {
                     $workflow->conexiones()->create([
