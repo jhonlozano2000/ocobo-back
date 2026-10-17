@@ -185,19 +185,23 @@ class WorkflowService
         });
     }
 
+    /**
+     * El grafo no se toca con instancias en curso: rompería nodo_actual_id y workflow_nodos_instancia.
+     * Lo usan el canvas y el CRUD de nodos sueltos (M19-14).
+     */
+    public function asegurarGrafoEditable(Workflow $workflow, string $que = 'los nodos'): void
+    {
+        if ($workflow->instancias()->where('estado', 'en_curso')->exists()) {
+            throw new HttpException(422, "No se puede modificar {$que}: el workflow tiene instancias en curso");
+        }
+    }
+
     public function guardarNodosYconexiones(int $workflowId, array $nodos, array $conexiones): Workflow
     {
         return DB::transaction(function () use ($workflowId, $nodos, $conexiones) {
             $workflow = Workflow::findOrFail($workflowId);
 
-            // No permitir reescribir el canvas si hay instancias en curso
-            // (rompería nodo_actual_id y workflow_nodos_instancia)
-            if ($workflow->instancias()->where('estado', 'en_curso')->exists()) {
-                throw new HttpException(
-                    422,
-                    'No se puede modificar el canvas: el workflow tiene instancias en curso'
-                );
-            }
+            $this->asegurarGrafoEditable($workflow, 'el canvas');
 
             // Los nodos que ya existen llegan como "nodo_{id}": se actualizan en vez de recrearse,
             // porque borrarlos arrastra en cascada sus tareas, checklists e historial de instancias

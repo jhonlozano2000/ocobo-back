@@ -8,7 +8,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\StoreWorkflowNodoRequest;
 use App\Http\Requests\Workflows\UpdateWorkflowNodoRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\Workflows\Workflow;
 use App\Models\Workflows\WorkflowNodo;
+use App\Services\Workflows\WorkflowService;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -19,12 +21,19 @@ class WorkflowNodoController extends Controller
 {
     use ApiResponseTrait, AutorizaWorkflowDeRuta, RespondeErroresWorkflow;
 
-    public function __construct()
+    public function __construct(private readonly WorkflowService $workflowService)
     {
         $this->middleware('can:Workflows -> Workflows -> Mostrar')->only(['index']);
         $this->middleware('can:Workflows -> Workflows -> Editar')->except(['index']);
         // Modificar el grafo es diseño: creador del workflow o Administrador
         $this->middleware($this->workflowDeRuta('update'))->except(['index']);
+        // M19-14: ni altas, ni cambios, ni bajas de nodos bajo una ejecución viva
+        $this->middleware(function ($request, $next) {
+            $workflow = $request->route('workflow');
+            $this->workflowService->asegurarGrafoEditable($workflow instanceof Workflow ? $workflow : Workflow::findOrFail($workflow));
+
+            return $next($request);
+        })->except(['index']);
     }
 
     public function index(int $workflowId)
