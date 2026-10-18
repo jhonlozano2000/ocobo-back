@@ -13,6 +13,7 @@ use App\Http\Requests\Workflows\UpdateWorkFlowTareaChecklistRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\WorkFlowTarea;
 use App\Models\Workflows\WorkFlowTareaChecklist;
+use App\Services\Workflows\WorkflowAuditService;
 use App\Services\Workflows\WorkFlowTareaService;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -22,7 +23,8 @@ class WorkFlowTareaChecklistController extends Controller
     use ApiResponseTrait, AutorizaWorkflowDeRuta, RespondeErroresWorkflow;
 
     public function __construct(
-        private readonly WorkFlowTareaService $tareaService
+        private readonly WorkFlowTareaService $tareaService,
+        private readonly WorkflowAuditService $auditService
     ) {
         $this->middleware('can:Workflows -> Tareas -> Listar')->only(['index']);
         $this->middleware('can:Workflows -> Tareas -> Editar')->only(['store', 'update', 'reordenar']);
@@ -63,6 +65,7 @@ class WorkFlowTareaChecklistController extends Controller
     {
         try {
             $checklist = $tarea->checklists()->create($request->validated());
+            $this->auditarDiseno('tarea.checklist_item_creado', $tarea, $checklist);
 
             return $this->successResponse($checklist, 'Ítem agregado correctamente', 201);
         } catch (\Exception $e) {
@@ -113,6 +116,7 @@ class WorkFlowTareaChecklistController extends Controller
             abort_unless($checklist->work_flow_tarea_id === $tarea->id, 404, 'Ítem no pertenece a la tarea');
 
             $checklist->delete();
+            $this->auditarDiseno('tarea.checklist_item_eliminado', $tarea, $checklist);
 
             return $this->successResponse(null, 'Ítem eliminado correctamente');
         } catch (\Exception $e) {
@@ -148,5 +152,15 @@ class WorkFlowTareaChecklistController extends Controller
 
             return $this->errorDesdeExcepcion('Error al reordenar checklists', $e);
         }
+    }
+
+    /** M19-15: altas y bajas de ítems son cambios de diseño de la plantilla. */
+    private function auditarDiseno(string $accion, WorkFlowTarea $tarea, WorkFlowTareaChecklist $item): void
+    {
+        $this->auditService->registrar($accion, $tarea->nodo?->workflow_id, null, [
+            'tarea_id' => $tarea->id,
+            'item_id' => $item->id,
+            'item' => $item->item_descripcion,
+        ]);
     }
 }

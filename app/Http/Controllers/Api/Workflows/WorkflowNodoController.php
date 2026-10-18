@@ -10,6 +10,7 @@ use App\Http\Requests\Workflows\UpdateWorkflowNodoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\Workflow;
 use App\Models\Workflows\WorkflowNodo;
+use App\Services\Workflows\WorkflowAuditService;
 use App\Services\Workflows\WorkflowService;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -21,8 +22,10 @@ class WorkflowNodoController extends Controller
 {
     use ApiResponseTrait, AutorizaWorkflowDeRuta, RespondeErroresWorkflow;
 
-    public function __construct(private readonly WorkflowService $workflowService)
-    {
+    public function __construct(
+        private readonly WorkflowService $workflowService,
+        private readonly WorkflowAuditService $auditService
+    ) {
         $this->middleware('can:Workflows -> Workflows -> Mostrar')->only(['index']);
         $this->middleware('can:Workflows -> Workflows -> Editar')->except(['index']);
         // Modificar el grafo es diseño: creador del workflow o Administrador
@@ -63,6 +66,7 @@ class WorkflowNodoController extends Controller
 
             $data['workflow_id'] = $workflowId;
             $nodo = WorkflowNodo::create($data);
+            $this->auditService->registrar('nodo.creado', $workflowId, null, ['nodo_id' => $nodo->id, 'titulo' => $nodo->titulo, 'tipo' => $nodo->tipo]);
 
             return $this->successResponse($nodo, 'Nodo creado correctamente', 201);
         } catch (\Exception $e) {
@@ -82,6 +86,10 @@ class WorkflowNodoController extends Controller
         try {
             $nodo = WorkflowNodo::where('workflow_id', $workflowId)->findOrFail($id);
             $nodo->update($request->validated());
+            $this->auditService->registrar('nodo.actualizado', $workflowId, null, [
+                'nodo_id' => $nodo->id,
+                'cambios' => array_diff_key($nodo->getChanges(), ['updated_at' => true]),
+            ]);
 
             return $this->successResponse($nodo, 'Nodo actualizado correctamente');
         } catch (\Exception $e) {
@@ -101,6 +109,7 @@ class WorkflowNodoController extends Controller
         try {
             $nodo = WorkflowNodo::where('workflow_id', $workflowId)->findOrFail($id);
             $nodo->delete();
+            $this->auditService->registrar('nodo.eliminado', $workflowId, null, ['nodo_id' => $id, 'titulo' => $nodo->titulo, 'tipo' => $nodo->tipo]);
 
             return $this->successResponse(null, 'Nodo eliminado correctamente');
         } catch (\Exception $e) {

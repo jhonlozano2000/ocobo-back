@@ -240,6 +240,9 @@ class WorkflowService
             // Los nodos que ya existen llegan como "nodo_{id}": se actualizan en vez de recrearse,
             // porque borrarlos arrastra en cascada sus tareas, checklists e historial de instancias
             $existentes = $workflow->nodos()->get()->keyBy('id');
+            // M19-15: qué cambió (no solo cuántos), para la trazabilidad del diseño
+            $conexionesAntes = $this->resumenConexiones($workflowId);
+            $cambiosNodos = ['creados' => [], 'modificados' => [], 'eliminados' => []];
             WorkflowConexion::where('workflow_id', $workflowId)->delete();
 
             $clientIdMap = [];
@@ -251,12 +254,19 @@ class WorkflowService
                 if ($idExistente && $existentes->has($idExistente)) {
                     $nodo = $existentes->get($idExistente);
                     $nodo->update($atributos);
+                    $campos = array_keys(array_diff_key($nodo->getChanges(), ['updated_at' => true]));
+                    if ($campos) {
+                        $cambiosNodos['modificados'][] = ['id' => $nodo->id, 'titulo' => $nodo->titulo, 'campos' => $campos];
+                    }
                 } else {
                     $nodo = $workflow->nodos()->create($atributos);
+                    $cambiosNodos['creados'][] = ['id' => $nodo->id, 'titulo' => $nodo->titulo, 'tipo' => $nodo->tipo];
                 }
                 $clientIdMap[$nodoData['client_id']] = $nodo->id;
             }
 
+            $cambiosNodos['eliminados'] = $existentes->except(array_values($clientIdMap))
+                ->map(fn ($n) => ['id' => $n->id, 'titulo' => $n->titulo, 'tipo' => $n->tipo])->values()->all();
             WorkflowNodo::where('workflow_id', $workflowId)->whereNotIn('id', array_values($clientIdMap))->delete();
 
             // Las conexiones solo pueden apuntar a nodos de este mismo canvas (client_id)
@@ -278,10 +288,23 @@ class WorkflowService
                 'workflow.canvas_guardado',
                 $workflow->id,
                 null,
-                ['total_nodos' => count($nodos), 'total_conexiones' => count($conexiones)]
+                [
+                    'total_nodos' => count($nodos),
+                    'total_conexiones' => count($conexiones),
+                    'nodos' => $cambiosNodos,
+                    'conexiones' => ['antes' => $conexionesAntes, 'despues' => $this->resumenConexiones($workflowId)],
+                ]
             );
 
             return $workflow->load(['nodos', 'conexiones']);
         });
+    }
+
+    /** Conexiones como "origen→destino (etiqueta)" para el payload de auditoría. */
+    private function resumenConexiones(int $workflowId): array
+    {
+        return WorkflowConexion::where('workflow_id', $workflowId)->orderBy('id')->get()
+            ->map(fn ($c) => $c->nodo_origen_id.'→'.$c->nodo_destino_id.($c->etiqueta ? " ({$c->etiqueta})" : ''))
+            ->all();
     }
 }
