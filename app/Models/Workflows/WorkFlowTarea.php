@@ -3,15 +3,18 @@
 namespace App\Models\Workflows;
 
 use App\Models\User;
+use App\Models\Workflows\Concerns\TextoPlano;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WorkFlowTarea extends Model
 {
-    use HasFactory;
+    use HasFactory, TextoPlano;
 
     protected $table = 'work_flow_tareas';
+
+    protected array $textoPlano = ['titulo', 'descripcion', 'instrucciones'];
 
     protected $fillable = [
         'nodo_id',

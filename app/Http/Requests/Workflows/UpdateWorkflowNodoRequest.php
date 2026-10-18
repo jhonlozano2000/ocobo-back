@@ -17,7 +17,7 @@ class UpdateWorkflowNodoRequest extends FormRequest
     {
         return [
             'titulo' => 'sometimes|required|string|max:255',
-            'descripcion' => 'nullable|string',
+            'descripcion' => 'nullable|string|max:1000',
             'posicion_x' => 'sometimes|numeric',
             'posicion_y' => 'sometimes|numeric',
             'configuracion_json' => 'nullable|array',

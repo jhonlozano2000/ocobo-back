@@ -2,14 +2,17 @@
 
 namespace App\Models\Workflows;
 
+use App\Models\Workflows\Concerns\TextoPlano;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class WorkflowNodo extends Model
 {
-    use HasFactory;
+    use HasFactory, TextoPlano;
 
     protected $table = 'workflow_nodos';
+
+    protected array $textoPlano = ['titulo', 'descripcion'];
 
     protected $fillable = [
         'workflow_id',
