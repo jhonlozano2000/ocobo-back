@@ -216,7 +216,7 @@ class WorkflowExecutionService
     }
 
     /**
-     * Lleva la instancia al nodo dado: un fin (o la ausencia de siguiente) la completa;
+     * Lleva la instancia al nodo dado: un fin la completa (sin siguiente es error de diseño);
      * cualquier otro nodo pasa a ser el actual, queda en curso y genera sus tareas.
      */
     private function entrarEnNodo(WorkflowInstancia $instancia, ?WorkflowNodo $siguienteNodo): void
@@ -241,7 +241,11 @@ class WorkflowExecutionService
             // M19-17: las plantillas del nodo se convierten en Tareas en "Mis tareas" de su responsable
             $this->tareasDeNodo->crearDesdePlantillas($instancia, $siguienteNodo);
         } else {
-            $instancia->update(['estado' => 'completada', 'fecha_fin' => now()]);
+            // M19-20: solo un nodo fin termina la instancia; un callejón es un error de diseño
+            // (la transacción se revierte y la instancia sigue donde estaba)
+            throw new StateTransitionException(
+                'El flujo no tiene salida desde este nodo; corrija el diseño (debe llegar a un nodo fin)'
+            );
         }
     }
 
