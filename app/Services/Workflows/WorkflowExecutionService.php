@@ -18,12 +18,16 @@ use Illuminate\Support\Facades\DB;
  * DB::transaction + lockForUpdate (ISO 27001 A.12.6.1).
  *
  * Estados de nodo en instancia: pendiente → en_curso → completado | saltado
+ * (M19-27: una unión queda en_espera; M19-28: una devolución vuelve los pasos a pendiente)
  * Estados de instancia: en_curso → completada | detenida | cancelada
  */
 class WorkflowExecutionService
 {
     /** Ramas de un nodo de condición (etiqueta de la conexión). */
     public const DECISIONES = ['Sí', 'No'];
+
+    /** Pasos a los que se puede devolver una instancia (los automáticos no se rehacen). */
+    public const TIPOS_DEVOLVIBLES = ['tarea', 'notificacion', 'condicion'];
 
     /** Pasos automáticos (paralelos, uniones, fines) por movimiento: corta ciclos sin tareas. */
     private const MAX_SALTOS = 200;
@@ -219,6 +223,87 @@ class WorkflowExecutionService
     }
 
     /**
+     * M19-28: devolución/reproceso. Desde un paso en curso se vuelve a un paso anterior ya completado:
+     * los pasos entre ambos vuelven a pendiente (con sus tareas abiertas canceladas) y el destino
+     * vuelve a estar en curso con tareas nuevas. El motivo queda en la instancia y en la auditoría.
+     */
+    public function devolverNodo(int $instanciaId, int $origenId, int $destinoId, string $motivo, ?int $workflowId = null): WorkflowInstancia
+    {
+        return DB::transaction(function () use ($instanciaId, $origenId, $destinoId, $motivo, $workflowId) {
+            $instancia = WorkflowInstancia::where('id', $instanciaId)
+                ->when($workflowId !== null, fn ($q) => $q->where('workflow_id', $workflowId))
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($instancia->estado !== 'en_curso') {
+                throw new StateTransitionException("La instancia está {$instancia->estado}, no se puede devolver");
+            }
+
+            $nodos = WorkflowNodoInstancia::with('nodo')->where('instancia_id', $instancia->id)->get()->keyBy('nodo_id');
+            $origen = $nodos->get($origenId);
+            $destino = $nodos->get($destinoId);
+
+            if (! $origen || $origen->estado !== 'en_curso') {
+                throw new StateTransitionException('Solo se puede devolver desde un paso en curso');
+            }
+            if (! $destino || $destino->estado !== 'completado' || ! in_array($destino->nodo?->tipo, self::TIPOS_DEVOLVIBLES, true)) {
+                throw new StateTransitionException('Solo se puede devolver a un paso de tarea, notificación o condición ya completado');
+            }
+
+            $adyacencia = WorkflowConexion::where('workflow_id', $instancia->workflow_id)->get(['nodo_origen_id', 'nodo_destino_id'])
+                ->groupBy('nodo_origen_id')->map(fn ($c) => $c->pluck('nodo_destino_id')->all())->all();
+            $alcanzables = $this->alcanzables($destinoId, $adyacencia);
+
+            if (! isset($alcanzables[$origenId])) {
+                throw new StateTransitionException('El paso de destino no es anterior al paso actual');
+            }
+            // Con ramas paralelas, devolver antes del paralelo también rehace las otras ramas: no se
+            // permite mientras alguna siga en curso (hay que terminarla o devolverla por separado)
+            $otraRama = $nodos->first(fn ($n) => $n->estado === 'en_curso' && $n->nodo_id !== $origenId && isset($alcanzables[$n->nodo_id]));
+            if ($otraRama) {
+                throw new StateTransitionException(
+                    "No se puede devolver a ese paso mientras \"{$otraRama->nodo?->titulo}\" sigue en curso en otra rama"
+                );
+            }
+
+            $rehacer = collect(array_keys($alcanzables))->push($destinoId)->unique()->all();
+            $this->tareasDeNodo->cancelarAbiertasDeNodos($instancia, $rehacer);
+            WorkflowNodoInstancia::where('instancia_id', $instancia->id)
+                ->whereIn('nodo_id', $rehacer)
+                ->update(['estado' => 'pendiente', 'fecha_ejecucion' => null, 'updated_at' => now()]);
+
+            $contexto = $instancia->datos_contexto ?? [];
+            $contexto['devoluciones'][] = [
+                'nodo_origen_id' => $origenId,
+                'nodo_origen' => $origen->nodo?->titulo,
+                'nodo_destino_id' => $destinoId,
+                'nodo_destino' => $destino->nodo->titulo,
+                'motivo' => $motivo,
+                'user_id' => auth()->id(),
+                'fecha' => now()->toIso8601String(),
+            ];
+            $instancia->update(['datos_contexto' => $contexto]);
+
+            $this->avanzar($instancia, $destino->nodo);
+
+            $this->auditService->registrar(
+                'instancia.devuelta',
+                $instancia->workflow_id,
+                $instancia->id,
+                ['nodo_origen_id' => $origenId, 'nodo_destino_id' => $destinoId, 'motivo' => $motivo]
+            );
+
+            $instanciaRefreshed = $instancia->fresh();
+            $this->notificationService->notificarInstanciaAvanzada(
+                $instanciaRefreshed,
+                "devuelta a {$destino->nodo->titulo}"
+            );
+
+            return $instanciaRefreshed->load(['nodosInstancia.nodo', 'nodoActual']);
+        });
+    }
+
+    /**
      * M19-27: mueve la instancia al nodo dado y resuelve lo automático (paralelos y uniones).
      * La instancia termina cuando llega a un fin y no le quedan ramas abiertas.
      */
@@ -324,6 +409,23 @@ class WorkflowExecutionService
             $lista->update(['estado' => 'completado', 'fecha_ejecucion' => now()]);
             $this->entrarEnNodo($instancia, $this->determinarSiguienteNodo($instancia->id, $lista->nodo_id, []));
         }
+    }
+
+    /** Nodos a los que se llega desde $desde siguiendo las conexiones (sin incluirlo, salvo ciclo). */
+    private function alcanzables(int $desde, array $adyacencia): array
+    {
+        $visitados = [];
+        $pendientes = [$desde];
+        while ($pendientes) {
+            foreach ($adyacencia[array_pop($pendientes)] ?? [] as $siguiente) {
+                if (! isset($visitados[$siguiente])) {
+                    $visitados[$siguiente] = true;
+                    $pendientes[] = $siguiente;
+                }
+            }
+        }
+
+        return $visitados;
     }
 
     private function alcanza(int $desde, int $hasta, array $adyacencia): bool

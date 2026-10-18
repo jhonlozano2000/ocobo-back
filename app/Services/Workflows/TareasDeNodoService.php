@@ -156,6 +156,15 @@ class TareasDeNodoService
             ->count();
     }
 
+    /** M19-28: al devolver la instancia, las tareas de los pasos que se rehacen se cancelan. */
+    public function cancelarAbiertasDeNodos(WorkflowInstancia $instancia, array $nodoIds): int
+    {
+        return Tarea::where('instancia_id', $instancia->id)
+            ->whereIn('nodo_id', $nodoIds)
+            ->whereNotIn('estado', self::ESTADOS_CERRADOS)
+            ->update(['estado' => 'cancelada', 'updated_at' => now()]);
+    }
+
     /** Al detener o cancelar la instancia sus tareas abiertas dejan de tener sentido. */
     public function cancelarAbiertas(WorkflowInstancia $instancia): int
     {

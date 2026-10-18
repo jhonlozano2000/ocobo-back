@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('workflows/{workflow}/instancias/{instancia}', [WorkflowInstanciaController::class, 'show']);
     Route::post('workflows/{workflow}/instancias/{instancia}/ejecutar', [WorkflowInstanciaController::class, 'ejecutarNodo']);
     Route::patch('workflows/{workflow}/instancias/{instancia}/detener', [WorkflowInstanciaController::class, 'detener']);
+    Route::post('workflows/{workflow}/instancias/{instancia}/devolver', [WorkflowInstanciaController::class, 'devolver']);
 
     Route::get('workflows/{workflow}/nodos/{nodo}/tareas', [WorkFlowTareaController::class, 'index']);
     Route::post('workflows/{workflow}/nodos/{nodo}/tareas', [WorkFlowTareaController::class, 'store']);

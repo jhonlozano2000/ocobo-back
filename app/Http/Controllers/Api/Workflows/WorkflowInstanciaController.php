@@ -7,6 +7,7 @@ use App\Exceptions\Workflows\WorkflowException;
 use App\Http\Controllers\Api\Workflows\Concerns\RespondeErroresWorkflow;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\DetenerInstanciaRequest;
+use App\Http\Requests\Workflows\DevolverNodoRequest;
 use App\Http\Requests\Workflows\EjecutarNodoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\WorkflowInstancia;
@@ -29,7 +30,7 @@ class WorkflowInstanciaController extends Controller
         private readonly WorkflowExecutionService $executionService
     ) {
         $this->middleware('can:Workflows -> Instancias -> Consultar')->only(['index', 'show']);
-        $this->middleware('can:Workflows -> Instancias -> Ejecutar')->only(['store', 'ejecutarNodo', 'detener']);
+        $this->middleware('can:Workflows -> Instancias -> Ejecutar')->only(['store', 'ejecutarNodo', 'detener', 'devolver']);
     }
 
     public function index(int $workflowId)
@@ -144,6 +145,34 @@ class WorkflowInstanciaController extends Controller
             }
 
             return $this->errorDesdeExcepcion('Error al detener instancia', $e);
+        }
+    }
+
+    /** M19-28: reproceso; la instancia vuelve a un paso ya completado y se registra el motivo. */
+    public function devolver(DevolverNodoRequest $request, int $workflowId, int $instanciaId)
+    {
+        try {
+            $data = $request->validated();
+            $instancia = $this->executionService->devolverNodo(
+                $instanciaId,
+                (int) $data['nodo_origen_id'],
+                (int) $data['nodo_destino_id'],
+                $data['motivo'],
+                $workflowId
+            );
+
+            return $this->successResponse($instancia, 'Instancia devuelta correctamente');
+        } catch (WorkflowException $e) {
+            return $this->errorResponse($e->getMessage(), null, $e->getStatusCode());
+        } catch (\Exception $e) {
+            if ($e instanceof ValidationException) {
+                throw $e;
+            }
+            if ($e instanceof HttpExceptionInterface) {
+                throw $e;
+            }
+
+            return $this->errorDesdeExcepcion('Error al devolver instancia', $e);
         }
     }
 }
