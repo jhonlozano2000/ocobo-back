@@ -15,6 +15,7 @@ use App\Models\Workflows\Tarea;
 use App\Models\Workflows\Workflow;
 use App\Services\Workflows\TareaService;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -55,6 +56,7 @@ class TareaController extends Controller
                 $q->whereHas('propietarios', fn ($q) => $q->where('user_id', $user->id))
                     ->orWhereHas('responsables', fn ($q) => $q->where('user_id', $user->id));
             })
+                ->tap(fn ($q) => $this->filtrar($q))
                 ->with(['propietarios', 'responsables', 'checklists', 'workflow'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(min(max((int) request('per_page', 15), 1), 100));
@@ -93,6 +95,7 @@ class TareaController extends Controller
                     $q->whereHas('propietarios', fn ($q) => $q->where('user_id', $user->id))
                         ->orWhereHas('responsables', fn ($q) => $q->where('user_id', $user->id));
                 }))
+                ->tap(fn ($q) => $this->filtrar($q))
                 ->with(['propietarios', 'responsables', 'checklists'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(min(max((int) request('per_page', 15), 1), 100));
@@ -329,6 +332,23 @@ class TareaController extends Controller
             }
 
             return $this->errorDesdeExcepcion('Error al reactivar tarea', $e);
+        }
+    }
+
+    /**
+     * M19-38: búsqueda y filtro de estado en el servidor (el front solo recibe una página).
+     */
+    private function filtrar(Builder $query): void
+    {
+        $estado = request('estado');
+        if (in_array($estado, ['pendiente', 'en_curso', 'completada', 'vencida', 'cancelada'], true)) {
+            $query->where('estado', $estado);
+        }
+
+        $search = trim((string) request('search', ''));
+        if ($search !== '') {
+            $query->where(fn ($q) => $q->where('nombre', 'like', "%{$search}%")
+                ->orWhere('descripcion', 'like', "%{$search}%"));
         }
     }
 }
