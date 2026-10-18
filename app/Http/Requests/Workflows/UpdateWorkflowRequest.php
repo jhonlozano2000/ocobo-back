@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Workflows;
 
 use App\Http\Requests\SanitizedFormRequest;
+use App\Models\Workflows\WorkflowSetting;
 
 class UpdateWorkflowRequest extends SanitizedFormRequest
 {
@@ -21,6 +22,9 @@ class UpdateWorkflowRequest extends SanitizedFormRequest
             'estado' => 'sometimes|in:borrador,activo,inactivo,archivado',
             'tiempo_finalizacion_horas' => 'nullable|integer|min:1|max:87600',
             'administrador_user_id' => 'nullable|exists:users,id,estado,1',
+            'estrategia_asignacion' => 'sometimes|in:'.implode(',', WorkflowSetting::ESTRATEGIAS),
+            'equipo_ids' => 'sometimes|array|max:50',
+            'equipo_ids.*' => 'integer|distinct|exists:users,id,estado,1',
         ];
     }
 
@@ -32,6 +36,8 @@ class UpdateWorkflowRequest extends SanitizedFormRequest
             'tiempo_finalizacion_horas.min' => 'El tiempo debe ser al menos 1 hora',
             'tiempo_finalizacion_horas.max' => 'El tiempo no puede exceder 87600 horas (10 años)',
             'administrador_user_id.exists' => 'El administrador seleccionado no existe o está inactivo',
+            'estrategia_asignacion.in' => 'La estrategia de asignación debe ser: manual, fila o autoasignar',
+            'equipo_ids.*.exists' => 'Un miembro del equipo no existe o está inactivo',
         ];
     }
 }

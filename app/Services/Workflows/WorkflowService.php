@@ -8,7 +8,10 @@ use App\Exceptions\Workflows\StateTransitionException;
 use App\Models\Workflows\Workflow;
 use App\Models\Workflows\WorkflowConexion;
 use App\Models\Workflows\WorkflowNodo;
+use App\Models\Workflows\WorkflowSetting;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class WorkflowService
@@ -23,6 +26,7 @@ class WorkflowService
         $query = Workflow::with([
             'creador:id,nombres,apellidos',
             'administrador:id,nombres,apellidos',
+            'settings:id,workflow_id,estrategia_asignacion,configuracion_asignacion_json',
         ])->withCount([
             'nodos',
             'instancias',
@@ -65,6 +69,8 @@ class WorkflowService
                 $workflow->update(['administrador_user_id' => $datos['administrador_user_id']]);
             }
 
+            $this->guardarAsignacion($workflow, $datos);
+
             $this->auditService->registrar(
                 'workflow.creado',
                 $workflow->id,
@@ -83,7 +89,8 @@ class WorkflowService
             if (isset($datos['estado']) && $datos['estado'] !== $workflow->estado) {
                 $this->asegurarTransicion($workflow, $datos['estado']);
             }
-            $workflow->update($datos);
+            $this->guardarAsignacion($workflow, $datos);
+            $workflow->update(Arr::except($datos, ['estrategia_asignacion', 'equipo_ids']));
 
             $this->auditService->registrar(
                 'workflow.actualizado',
@@ -94,6 +101,31 @@ class WorkflowService
 
             return $workflow;
         });
+    }
+
+    /**
+     * M19-26: estrategia de asignación y equipo. Fila y autoasignar necesitan al menos un miembro.
+     */
+    private function guardarAsignacion(Workflow $workflow, array $datos): void
+    {
+        if (! array_key_exists('estrategia_asignacion', $datos) && ! array_key_exists('equipo_ids', $datos)) {
+            return;
+        }
+
+        $settings = $workflow->settings()->firstOrNew();
+        $estrategia = $datos['estrategia_asignacion'] ?? $settings->estrategia_asignacion ?? 'manual';
+        $config = $settings->configuracion_asignacion_json ?? [];
+        if (array_key_exists('equipo_ids', $datos)) {
+            $config['equipo'] = array_values(array_map('intval', $datos['equipo_ids'] ?? []));
+        }
+
+        if (in_array($estrategia, WorkflowSetting::ESTRATEGIAS_CON_EQUIPO, true) && empty($config['equipo'])) {
+            throw ValidationException::withMessages([
+                'equipo_ids' => 'La estrategia elegida necesita al menos un miembro en el equipo',
+            ]);
+        }
+
+        $settings->fill(['estrategia_asignacion' => $estrategia, 'configuracion_asignacion_json' => $config])->save();
     }
 
     public function eliminar(int $id): void

@@ -11,6 +11,7 @@ use App\Models\Workflows\Tarea;
 use App\Models\Workflows\TareaChecklist;
 use App\Models\Workflows\Workflow;
 use App\Models\Workflows\WorkflowInstancia;
+use App\Models\Workflows\WorkflowSetting;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Mews\Purifier\Facades\Purifier;
@@ -231,6 +232,9 @@ class TareaService
     public function iniciar(Tarea $tarea): Tarea
     {
         return DB::transaction(function () use ($tarea) {
+            // Bloqueo: con autoasignar dos miembros del equipo pueden intentar tomarla a la vez
+            $tarea = Tarea::lockForUpdate()->findOrFail($tarea->id);
+
             if (! WorkflowEstadoMachine::puedeTransitar($tarea->estado, 'en_curso')) {
                 throw new StateTransitionException(
                     "No se puede iniciar una tarea en estado '{$tarea->estado}'"
@@ -238,6 +242,7 @@ class TareaService
             }
 
             $tarea->update(['estado' => 'en_curso']);
+            $this->reclamarSiAutoasignada($tarea);
 
             $this->auditService->registrar(
                 'tarea.iniciada',
@@ -248,6 +253,30 @@ class TareaService
 
             return $tarea->load(['propietarios', 'responsables', 'checklists', 'workflow']);
         });
+    }
+
+    /**
+     * M19-26: con la estrategia autoasignar la tarea de nodo llega a todo el equipo;
+     * el responsable que la inicia se la queda y deja de estar en la bandeja de los demás.
+     */
+    private function reclamarSiAutoasignada(Tarea $tarea): void
+    {
+        $user = auth()->user();
+        $responsables = $tarea->responsables()->pluck('users.id')->map(fn ($id) => (int) $id)->all();
+
+        if (! $tarea->instancia_id || ! $user || count($responsables) < 2 || ! in_array($user->id, $responsables, true)
+            || WorkflowSetting::where('workflow_id', $tarea->workflow_id)->value('estrategia_asignacion') !== 'autoasignar') {
+            return;
+        }
+
+        $tarea->responsables()->sync([$user->id]);
+
+        $this->auditService->registrar(
+            'tarea.reclamada',
+            $tarea->workflow_id,
+            $tarea->instancia_id,
+            ['tarea_id' => $tarea->id, 'nombre' => $tarea->nombre, 'liberada_de' => array_values(array_diff($responsables, [$user->id]))]
+        );
     }
 
     public function cancelar(Tarea $tarea): Tarea

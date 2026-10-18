@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Workflows\Tarea;
 use App\Models\Workflows\WorkflowInstancia;
 use App\Models\Workflows\WorkflowNodo;
+use App\Models\Workflows\WorkflowSetting;
 use App\Models\Workflows\WorkFlowTarea;
 use Illuminate\Support\Collection;
 
@@ -49,7 +50,9 @@ class TareasDeNodoService
             ->orderBy('orden')
             ->get();
 
-        return $plantillas->map(function (WorkFlowTarea $plantilla) use ($instancia, $nodo) {
+        $settings = WorkflowSetting::where('workflow_id', $instancia->workflow_id)->first();
+
+        return $plantillas->map(function (WorkFlowTarea $plantilla) use ($instancia, $nodo, $settings) {
             $horas = $plantilla->tiempo_limite_horas ?? $nodo->tiempo_limite_horas;
             $tarea = Tarea::create([
                 'workflow_id' => $instancia->workflow_id,
@@ -63,11 +66,11 @@ class TareasDeNodoService
             ]);
 
             // Quien inició la instancia es el propietario; el responsable sale de la plantilla o del nodo
-            // (M19-23: si el diseñado ya está inactivo se pasa al siguiente, y al final a quien ejecuta)
-            $responsableId = $this->primerActivo([$plantilla->responsable_usuario_id, $nodo->responsable_usuario_id])
-                ?? $instancia->usuario_ejecuta_id;
+            // (M19-23: si el diseñado ya está inactivo se pasa al siguiente, y al final a quien ejecuta).
+            // M19-26: lo que el diseño no fija lo reparte la estrategia del flujo.
+            $responsables = $this->responsables($plantilla, $nodo, $settings) ?: [$instancia->usuario_ejecuta_id];
             $tarea->propietarios()->attach($instancia->usuario_ejecuta_id);
-            $tarea->responsables()->attach($responsableId);
+            $tarea->responsables()->attach($responsables);
 
             foreach ($plantilla->checklists as $item) {
                 $tarea->checklists()->create([
@@ -77,12 +80,67 @@ class TareasDeNodoService
                 ]);
             }
 
-            if ($responsableId !== $instancia->usuario_ejecuta_id) {
+            foreach (array_diff($responsables, [$instancia->usuario_ejecuta_id]) as $responsableId) {
                 $this->notificationService->notificarTareaAsignadaSistemaA($tarea, $responsableId);
             }
 
             return $tarea;
         });
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function responsables(WorkFlowTarea $plantilla, WorkflowNodo $nodo, ?WorkflowSetting $settings): array
+    {
+        $fijo = $this->primerActivo([$plantilla->responsable_usuario_id, $nodo->responsable_usuario_id]);
+        if ($fijo) {
+            return [$fijo];
+        }
+
+        $estrategia = $settings?->estrategia_asignacion;
+        if (! $settings || ! in_array($estrategia, WorkflowSetting::ESTRATEGIAS_CON_EQUIPO, true)) {
+            return [];
+        }
+
+        $activos = $this->activos($settings->equipo());
+
+        return $estrategia === 'autoasignar' ? $activos : array_filter([$this->siguienteEnFila($settings, $activos)]);
+    }
+
+    /**
+     * Rotación: el siguiente activo después del último asignado. La fila de settings se bloquea
+     * para que dos instancias que entran a la vez no le den la tarea a la misma persona.
+     */
+    private function siguienteEnFila(WorkflowSetting $settings, array $activos): ?int
+    {
+        if (! $activos) {
+            return null;
+        }
+
+        $settings = WorkflowSetting::lockForUpdate()->find($settings->id);
+        $config = $settings->configuracion_asignacion_json ?? [];
+        $equipo = $settings->equipo();
+        $ultimo = array_search($config['ultimo_asignado'] ?? null, $equipo, true);
+        $orden = $ultimo === false ? $equipo : [...array_slice($equipo, $ultimo + 1), ...array_slice($equipo, 0, $ultimo + 1)];
+        $siguiente = current(array_intersect($orden, $activos)) ?: null;
+
+        $config['ultimo_asignado'] = $siguiente;
+        $settings->update(['configuracion_asignacion_json' => $config]);
+
+        return $siguiente;
+    }
+
+    /**
+     * Activos de la lista, en su orden.
+     *
+     * @return list<int>
+     */
+    private function activos(array $ids): array
+    {
+        $activos = $ids ? User::whereIn('id', $ids)->where('estado', 1)->pluck('id')->map(fn ($id) => (int) $id)->all() : [];
+
+        return array_values(array_filter($ids, fn ($id) => in_array($id, $activos, true)));
     }
 
     /**
