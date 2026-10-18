@@ -13,13 +13,15 @@ use Illuminate\Validation\ValidationException;
  * - Completitud (workflow activo o al activarlo): exactamente un inicio, al menos un fin, todos los
  *   nodos alcanzables desde el inicio y con camino a algún fin (los ciclos sin salida no pasan).
  *
- * Los nodos se reciben como [clave => tipo] y las conexiones como [[origen, destino], ...].
+ * - Condiciones (M19-27, al activar): exactamente dos salidas, una "Sí" y otra "No".
+ *
+ * Los nodos se reciben como [clave => tipo] y las conexiones como [[origen, destino, etiqueta?], ...].
  */
 class WorkflowGrafoValidator
 {
     /**
      * @param  array<int|string, string>  $nodos
-     * @param  array<int, array{0: int|string, 1: int|string}>  $conexiones
+     * @param  array<int, array{0: int|string, 1: int|string, 2?: ?string}>  $conexiones
      */
     public function validar(array $nodos, array $conexiones, bool $completo): void
     {
@@ -34,8 +36,8 @@ class WorkflowGrafoValidator
     {
         $this->validar(
             $workflow->nodos()->pluck('tipo', 'id')->all(),
-            $workflow->conexiones()->get(['nodo_origen_id', 'nodo_destino_id'])
-                ->map(fn ($c) => [$c->nodo_origen_id, $c->nodo_destino_id])->all(),
+            $workflow->conexiones()->get(['nodo_origen_id', 'nodo_destino_id', 'etiqueta'])
+                ->map(fn ($c) => [$c->nodo_origen_id, $c->nodo_destino_id, $c->etiqueta])->all(),
             true
         );
     }
@@ -55,7 +57,10 @@ class WorkflowGrafoValidator
 
         $salientes = [];
         $entrantes = [];
-        foreach ($conexiones as [$origen, $destino]) {
+        $etiquetas = [];
+        foreach ($conexiones as $conexion) {
+            [$origen, $destino] = $conexion;
+            $etiquetas[$origen][] = $conexion[2] ?? null;
             if ($origen === $destino) {
                 $errores[] = 'Un nodo no puede conectarse consigo mismo';
 
@@ -77,6 +82,13 @@ class WorkflowGrafoValidator
             }
             if (count($fines) === 0) {
                 $errores[] = 'El flujo necesita al menos un nodo de fin';
+            }
+            foreach (array_keys($nodos, 'condicion', true) as $condicion) {
+                $ramas = $etiquetas[$condicion] ?? [];
+                sort($ramas);
+                if ($ramas !== ['No', 'Sí']) {
+                    $errores[] = 'Cada condición necesita dos salidas: una "Sí" y otra "No"';
+                }
             }
             if (count($inicios) === 1 && count($fines) > 0) {
                 $alcanzables = $this->recorrer($inicios, $salientes);

@@ -19,8 +19,19 @@ class WorkflowGrafoValidatorTest extends TestCase
             'lineal' => [...self::LINEAL, true, []],
             'condición con retorno y salida' => [
                 ['a' => 'inicio', 'b' => 'tarea', 'c' => 'condicion', 'd' => 'fin'],
-                [['a', 'b'], ['b', 'c'], ['c', 'b'], ['c', 'd']], true, [],
+                [['a', 'b'], ['b', 'c'], ['c', 'b', 'No'], ['c', 'd', 'Sí']], true, [],
             ],
+            'condición sin ramas Sí/No no se activa' => [
+                ['a' => 'inicio', 'c' => 'condicion', 'd' => 'fin', 'e' => 'fin'],
+                [['a', 'c'], ['c', 'd'], ['c', 'e', 'Sí']], true,
+                ['Cada condición necesita dos salidas: una "Sí" y otra "No"'],
+            ],
+            'condición con tres salidas no se activa' => [
+                ['a' => 'inicio', 'c' => 'condicion', 'd' => 'fin'],
+                [['a', 'c'], ['c', 'd', 'Sí'], ['c', 'd', 'No'], ['c', 'd', 'Sí']], true,
+                ['Cada condición necesita dos salidas: una "Sí" y otra "No"'],
+            ],
+            'borrador con condición a medias se acepta' => [['a' => 'inicio', 'c' => 'condicion'], [['a', 'c']], false, []],
             'borrador a medias se acepta' => [['a' => 'inicio', 'b' => 'tarea'], [['a', 'b']], false, []],
             'borrador vacío se acepta' => [[], [], false, []],
             'dos inicios' => [

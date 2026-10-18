@@ -265,7 +265,7 @@ class WorkflowService
             // M19-18: un borrador puede guardarse a medias; un workflow activo, solo con el grafo completo
             $this->grafoValidator->validar(
                 collect($nodos)->pluck('tipo', 'client_id')->all(),
-                array_map(fn ($c) => [$c['nodo_origen_id'], $c['nodo_destino_id']], $conexiones),
+                array_map(fn ($c) => [$c['nodo_origen_id'], $c['nodo_destino_id'], $c['etiqueta'] ?? null], $conexiones),
                 $workflow->estado === 'activo'
             );
 

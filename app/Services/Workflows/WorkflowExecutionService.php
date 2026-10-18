@@ -8,6 +8,7 @@ use App\Models\Workflows\WorkflowConexion;
 use App\Models\Workflows\WorkflowInstancia;
 use App\Models\Workflows\WorkflowNodo;
 use App\Models\Workflows\WorkflowNodoInstancia;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -21,6 +22,9 @@ use Illuminate\Support\Facades\DB;
  */
 class WorkflowExecutionService
 {
+    /** Ramas de un nodo de condición (etiqueta de la conexión). */
+    public const DECISIONES = ['Sí', 'No'];
+
     public function __construct(
         private readonly WorkflowAuditService $auditService,
         private readonly WorkflowNotificationService $notificationService,
@@ -131,16 +135,10 @@ class WorkflowExecutionService
             $resultadoFinal = $resultado;
             $nodo = $nodoInstancia->nodo;
             if ($nodo && $nodo->tipo === 'condicion') {
-                $ramaTomada = null;
-                if ($siguienteNodo) {
-                    $conexion = WorkflowConexion::where('nodo_origen_id', $nodoId)
-                        ->where('nodo_destino_id', $siguienteNodo->id)
-                        ->first();
-                    $ramaTomada = $conexion?->etiqueta;
-                }
                 $resultadoFinal = array_merge($resultado, [
                     '_evaluacion' => [
-                        'rama_tomada' => $ramaTomada,
+                        'rama_tomada' => $resultado['decision'],
+                        'decidido_por' => auth()->id(),
                         'evaluado_en' => now()->toIso8601String(),
                     ],
                 ]);
@@ -260,48 +258,30 @@ class WorkflowExecutionService
         $nodoOrigen = WorkflowNodo::find($nodoActualId);
 
         if ($nodoOrigen && $nodoOrigen->tipo === 'condicion') {
-            $ramaVerdadera = $conexionesSalientes->firstWhere('etiqueta', 'Sí');
-            $ramaFalsa = $conexionesSalientes->firstWhere('etiqueta', 'No');
-
-            $cumpleCondicion = $this->evaluarCondicion($conexionesSalientes->first()?->condicion_json, $resultado);
-
-            $conexionElegida = $cumpleCondicion ? ($ramaVerdadera ?? $conexionesSalientes->first())
-                : ($ramaFalsa ?? $conexionesSalientes->last());
-
-            return $conexionElegida?->nodoDestino;
+            return $this->ramaDecidida($conexionesSalientes, $resultado['decision'] ?? null)->nodoDestino;
         }
 
         return $conexionesSalientes->first()?->nodoDestino;
     }
 
-    private function evaluarCondicion(?array $condicion, array $contexto): bool
+    /**
+     * M19-27: la rama de una condición la decide quien la ejecuta (Sí/No). Antes se evaluaba una
+     * condicion_json que el builder nunca escribía y el flujo seguía siempre por "Sí".
+     * Las condiciones guardadas sin etiquetas toman la primera conexión como Sí y la última como No.
+     */
+    private function ramaDecidida(Collection $conexiones, mixed $decision): WorkflowConexion
     {
-        if (empty($condicion)) {
-            return true;
+        if (! in_array($decision, self::DECISIONES, true)) {
+            throw new StateTransitionException('Elija la rama de la condición: Sí o No');
         }
 
-        $campo = $condicion['campo'] ?? null;
-        $operador = $condicion['operador'] ?? '==';
-        $valorEsperado = $condicion['valor'] ?? null;
-
-        if (! $campo) {
-            return true;
+        $rama = $conexiones->firstWhere('etiqueta', $decision);
+        if (! $rama && $conexiones->whereIn('etiqueta', self::DECISIONES)->isEmpty() && $conexiones->count() === 2) {
+            $rama = $decision === 'Sí' ? $conexiones->first() : $conexiones->last();
         }
 
-        $valorReal = $contexto[$campo] ?? null;
-
-        // Comparación estricta para igualdad: evita coerciones sorpresivas
-        // ('0' == false, null == '', etc.) en condiciones de rama
-        return match ($operador) {
-            '==' => $valorReal === $valorEsperado,
-            '!=' => $valorReal !== $valorEsperado,
-            '>' => $valorReal > $valorEsperado,
-            '>=' => $valorReal >= $valorEsperado,
-            '<' => $valorReal < $valorEsperado,
-            '<=' => $valorReal <= $valorEsperado,
-            'contains' => is_string($valorReal) && str_contains($valorReal, (string) $valorEsperado),
-            'in' => in_array($valorReal, (array) $valorEsperado, true),
-            default => $valorReal === $valorEsperado,
-        };
+        return $rama ?? throw new StateTransitionException(
+            "La condición no tiene rama \"{$decision}\"; corrija el diseño"
+        );
     }
 }
