@@ -25,6 +25,13 @@ class WorkflowExecutionService
     /** Ramas de un nodo de condición (etiqueta de la conexión). */
     public const DECISIONES = ['Sí', 'No'];
 
+    /** Pasos automáticos (paralelos, uniones, fines) por movimiento: corta ciclos sin tareas. */
+    private const MAX_SALTOS = 200;
+
+    private int $saltos = 0;
+
+    private ?int $ultimoFin = null;
+
     public function __construct(
         private readonly WorkflowAuditService $auditService,
         private readonly WorkflowNotificationService $notificationService,
@@ -71,7 +78,7 @@ class WorkflowExecutionService
 
             // El inicio queda completado: la instancia arranca en el nodo siguiente. Antes se quedaba
             // apuntando al inicio ya completado y ningún nodo podía ejecutarse.
-            $this->entrarEnNodo($instancia, $this->determinarSiguienteNodo($instancia->id, $nodoInicio->id, []));
+            $this->avanzar($instancia, $this->determinarSiguienteNodo($instancia->id, $nodoInicio->id, []));
 
             $this->auditService->registrar(
                 'instancia.iniciada',
@@ -112,16 +119,14 @@ class WorkflowExecutionService
                 ->where('nodo_id', $nodoId)
                 ->firstOrFail();
 
-            // Solo se puede ejecutar el nodo ACTUAL de la instancia
-            // (evita saltar directo al nodo fin o ejecutar nodos futuros)
-            if ($instancia->nodo_actual_id !== $nodoId) {
-                throw new StateTransitionException(
-                    'El nodo '.$nodoId.' no es el nodo actual de la instancia'
-                );
-            }
-
             if ($nodoInstancia->estado === 'completado') {
                 throw new StateTransitionException('Este nodo ya fue ejecutado');
+            }
+
+            // Solo se ejecutan nodos en curso (M19-27: con ramas paralelas puede haber varios);
+            // evita saltar directo al nodo fin o ejecutar nodos futuros
+            if ($nodoInstancia->estado !== 'en_curso') {
+                throw new StateTransitionException('El nodo '.$nodoId.' no está en curso en la instancia');
             }
 
             // M19-19: el nodo no avanza con tareas abiertas (completarlas lo avanza solo)
@@ -150,7 +155,7 @@ class WorkflowExecutionService
                 'resultado_json' => $resultadoFinal,
             ]);
 
-            $this->entrarEnNodo($instancia, $siguienteNodo);
+            $this->avanzar($instancia, $siguienteNodo);
 
             $this->auditService->registrar(
                 'instancia.nodo_ejecutado',
@@ -214,37 +219,130 @@ class WorkflowExecutionService
     }
 
     /**
-     * Lleva la instancia al nodo dado: un fin la completa (sin siguiente es error de diseño);
-     * cualquier otro nodo pasa a ser el actual, queda en curso y genera sus tareas.
+     * M19-27: mueve la instancia al nodo dado y resuelve lo automático (paralelos y uniones).
+     * La instancia termina cuando llega a un fin y no le quedan ramas abiertas.
      */
-    private function entrarEnNodo(WorkflowInstancia $instancia, ?WorkflowNodo $siguienteNodo): void
+    private function avanzar(WorkflowInstancia $instancia, ?WorkflowNodo $nodo): void
     {
-        if ($siguienteNodo && $siguienteNodo->tipo === 'fin') {
+        $this->saltos = 0;
+        $this->ultimoFin = null;
+
+        $this->entrarEnNodo($instancia, $nodo);
+        $this->liberarUniones($instancia);
+
+        $abiertos = WorkflowNodoInstancia::where('instancia_id', $instancia->id)
+            ->whereIn('estado', ['en_curso', 'en_espera'])
+            ->orderByDesc('updated_at')->orderByDesc('id')
+            ->get(['nodo_id', 'estado']);
+
+        if ($abiertos->isEmpty()) {
             $instancia->update([
-                'nodo_actual_id' => $siguienteNodo->id,
+                'nodo_actual_id' => $this->ultimoFin ?? $instancia->nodo_actual_id,
                 'estado' => 'completada',
                 'fecha_fin' => now(),
             ]);
-
-            WorkflowNodoInstancia::where('instancia_id', $instancia->id)
-                ->where('nodo_id', $siguienteNodo->id)
-                ->update(['estado' => 'completado', 'fecha_ejecucion' => now()]);
-        } elseif ($siguienteNodo) {
-            $instancia->update(['nodo_actual_id' => $siguienteNodo->id]);
-
-            WorkflowNodoInstancia::where('instancia_id', $instancia->id)
-                ->where('nodo_id', $siguienteNodo->id)
-                ->update(['estado' => 'en_curso']);
-
-            // M19-17: las plantillas del nodo se convierten en Tareas en "Mis tareas" de su responsable
-            $this->tareasDeNodo->crearDesdePlantillas($instancia, $siguienteNodo);
         } else {
+            $actual = $abiertos->firstWhere('estado', 'en_curso') ?? $abiertos->first();
+            $instancia->update(['nodo_actual_id' => $actual->nodo_id]);
+        }
+    }
+
+    /**
+     * Un fin consume la rama; un paralelo abre todas sus salidas; una unión queda en espera;
+     * cualquier otro nodo queda en curso y genera sus tareas. Sin nodo es un error de diseño.
+     */
+    private function entrarEnNodo(WorkflowInstancia $instancia, ?WorkflowNodo $nodo): void
+    {
+        if (! $nodo) {
             // M19-20: solo un nodo fin termina la instancia; un callejón es un error de diseño
             // (la transacción se revierte y la instancia sigue donde estaba)
             throw new StateTransitionException(
                 'El flujo no tiene salida desde este nodo; corrija el diseño (debe llegar a un nodo fin)'
             );
         }
+        if (++$this->saltos > self::MAX_SALTOS) {
+            throw new StateTransitionException('El flujo entra en un ciclo sin pasos que ejecutar; corrija el diseño');
+        }
+
+        $nodoInstancia = WorkflowNodoInstancia::where('instancia_id', $instancia->id)
+            ->where('nodo_id', $nodo->id)
+            ->first();
+
+        switch ($nodo->tipo) {
+            case 'fin':
+                $nodoInstancia?->update(['estado' => 'completado', 'fecha_ejecucion' => now()]);
+                $this->ultimoFin = $nodo->id;
+                break;
+            case 'paralelo':
+                $nodoInstancia?->update(['estado' => 'completado', 'fecha_ejecucion' => now()]);
+                $destinos = WorkflowConexion::with('nodoDestino')->where('nodo_origen_id', $nodo->id)->orderBy('id')->get()
+                    ->pluck('nodoDestino')->filter()->unique('id');
+                foreach ($destinos as $destino) {
+                    $this->entrarEnNodo($instancia, $destino);
+                }
+                break;
+            case 'union':
+                $nodoInstancia?->update(['estado' => 'en_espera']);
+                break;
+            default:
+                // Dos ramas que llegan al mismo paso sin unión no duplican sus tareas
+                if ($nodoInstancia?->estado === 'en_curso') {
+                    break;
+                }
+                $nodoInstancia?->update(['estado' => 'en_curso']);
+
+                // M19-17: las plantillas del nodo se convierten en Tareas en "Mis tareas" de su responsable
+                $this->tareasDeNodo->crearDesdePlantillas($instancia, $nodo);
+        }
+    }
+
+    /**
+     * Una unión en espera sigue cuando ninguna otra rama abierta puede llegar a ella: así espera a
+     * todas las ramas de su paralelo, pero no a las que una condición descartó o que acabaron en un fin.
+     */
+    private function liberarUniones(WorkflowInstancia $instancia): void
+    {
+        $adyacencia = WorkflowConexion::where('workflow_id', $instancia->workflow_id)->get(['nodo_origen_id', 'nodo_destino_id'])
+            ->groupBy('nodo_origen_id')->map(fn ($c) => $c->pluck('nodo_destino_id')->all())->all();
+
+        while (true) {
+            $abiertos = WorkflowNodoInstancia::where('instancia_id', $instancia->id)
+                ->whereIn('estado', ['en_curso', 'en_espera'])->get(['id', 'nodo_id', 'estado']);
+            $esperando = $abiertos->where('estado', 'en_espera');
+
+            $lista = $esperando->first(fn ($union) => $abiertos->every(
+                fn ($otro) => $otro->id === $union->id || ! $this->alcanza($otro->nodo_id, $union->nodo_id, $adyacencia)
+            ));
+            // Uniones que se esperan entre sí (ciclo) y nada más abierto: se libera la primera
+            if (! $lista && $esperando->isNotEmpty() && $esperando->count() === $abiertos->count()) {
+                $lista = $esperando->first();
+            }
+            if (! $lista) {
+                return;
+            }
+
+            $lista->update(['estado' => 'completado', 'fecha_ejecucion' => now()]);
+            $this->entrarEnNodo($instancia, $this->determinarSiguienteNodo($instancia->id, $lista->nodo_id, []));
+        }
+    }
+
+    private function alcanza(int $desde, int $hasta, array $adyacencia): bool
+    {
+        $visitados = [$desde => true];
+        $pendientes = [$desde];
+        while ($pendientes) {
+            foreach ($adyacencia[array_pop($pendientes)] ?? [] as $siguiente) {
+                if ($siguiente === $hasta) {
+                    return true;
+                }
+                if (! isset($visitados[$siguiente])) {
+                    $visitados[$siguiente] = true;
+                    $pendientes[] = $siguiente;
+                }
+            }
+        }
+
+        return false;
     }
 
     private function determinarSiguienteNodo(int $instanciaId, int $nodoActualId, array $resultado): ?WorkflowNodo

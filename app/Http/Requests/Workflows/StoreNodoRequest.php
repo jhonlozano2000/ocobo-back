@@ -22,7 +22,7 @@ class StoreNodoRequest extends FormRequest
             // El builder identifica cada nodo con un client_id temporal; el servicio lo traduce al id real
             'nodos' => 'present|array',
             'nodos.*.client_id' => 'required|string|max:100|distinct',
-            'nodos.*.tipo' => 'required|string|in:inicio,fin,tarea,notificacion,condicion',
+            'nodos.*.tipo' => 'required|string|in:inicio,fin,tarea,notificacion,condicion,paralelo,union',
             'nodos.*.titulo' => 'required|string|max:255',
             'nodos.*.descripcion' => 'nullable|string|max:1000',
             'nodos.*.posicion_x' => 'required|numeric',

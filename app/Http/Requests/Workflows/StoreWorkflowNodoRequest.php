@@ -15,7 +15,7 @@ class StoreWorkflowNodoRequest extends SanitizedFormRequest
     public function rules(): array
     {
         return [
-            'tipo' => 'required|in:inicio,tarea,condicion,notificacion,fin',
+            'tipo' => 'required|in:inicio,tarea,condicion,notificacion,fin,paralelo,union',
             'titulo' => 'required|string|max:255',
             'descripcion' => 'nullable|string|max:1000',
             'posicion_x' => 'required|numeric',

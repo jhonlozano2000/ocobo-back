@@ -31,6 +31,15 @@ class WorkflowGrafoValidatorTest extends TestCase
                 [['a', 'c'], ['c', 'd', 'Sí'], ['c', 'd', 'No'], ['c', 'd', 'Sí']], true,
                 ['Cada condición necesita dos salidas: una "Sí" y otra "No"'],
             ],
+            'paralelo con unión' => [
+                ['a' => 'inicio', 'p' => 'paralelo', 'x' => 'tarea', 'y' => 'tarea', 'u' => 'union', 'f' => 'fin'],
+                [['a', 'p'], ['p', 'x'], ['p', 'y'], ['x', 'u'], ['y', 'u'], ['u', 'f']], true, [],
+            ],
+            'paralelo de una rama y unión de una entrada' => [
+                ['a' => 'inicio', 'p' => 'paralelo', 'x' => 'tarea', 'u' => 'union', 'f' => 'fin', 'g' => 'fin'],
+                [['a', 'p'], ['p', 'x'], ['x', 'u'], ['u', 'f'], ['u', 'g']], true,
+                ['Cada nodo paralelo necesita al menos dos salidas', 'Cada unión necesita al menos dos entradas y una sola salida'],
+            ],
             'borrador con condición a medias se acepta' => [['a' => 'inicio', 'c' => 'condicion'], [['a', 'c']], false, []],
             'borrador a medias se acepta' => [['a' => 'inicio', 'b' => 'tarea'], [['a', 'b']], false, []],
             'borrador vacío se acepta' => [[], [], false, []],

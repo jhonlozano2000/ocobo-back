@@ -14,6 +14,8 @@ use Illuminate\Validation\ValidationException;
  *   nodos alcanzables desde el inicio y con camino a algún fin (los ciclos sin salida no pasan).
  *
  * - Condiciones (M19-27, al activar): exactamente dos salidas, una "Sí" y otra "No".
+ * - Paralelos (M19-27, al activar): un paralelo abre al menos dos ramas; una unión recibe al menos
+ *   dos y tiene una sola salida.
  *
  * Los nodos se reciben como [clave => tipo] y las conexiones como [[origen, destino, etiqueta?], ...].
  */
@@ -88,6 +90,16 @@ class WorkflowGrafoValidator
                 sort($ramas);
                 if ($ramas !== ['No', 'Sí']) {
                     $errores[] = 'Cada condición necesita dos salidas: una "Sí" y otra "No"';
+                }
+            }
+            foreach (array_keys($nodos, 'paralelo', true) as $paralelo) {
+                if (count(array_unique($salientes[$paralelo] ?? [])) < 2) {
+                    $errores[] = 'Cada nodo paralelo necesita al menos dos salidas';
+                }
+            }
+            foreach (array_keys($nodos, 'union', true) as $union) {
+                if (count(array_unique($entrantes[$union] ?? [])) < 2 || count($salientes[$union] ?? []) !== 1) {
+                    $errores[] = 'Cada unión necesita al menos dos entradas y una sola salida';
                 }
             }
             if (count($inicios) === 1 && count($fines) > 0) {

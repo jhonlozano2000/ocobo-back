@@ -11,6 +11,8 @@ use App\Models\Workflows\Tarea;
 use App\Models\Workflows\TareaChecklist;
 use App\Models\Workflows\Workflow;
 use App\Models\Workflows\WorkflowInstancia;
+use App\Models\Workflows\WorkflowNodo;
+use App\Models\Workflows\WorkflowNodoInstancia;
 use App\Models\Workflows\WorkflowSetting;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -217,11 +219,12 @@ class TareaService
         }
 
         // El bloqueo de la instancia serializa las tareas hermanas que se completan a la vez
-        $instancia = WorkflowInstancia::with('nodoActual')->lockForUpdate()->find($tarea->instancia_id);
+        $instancia = WorkflowInstancia::lockForUpdate()->find($tarea->instancia_id);
+        // M19-27: con ramas paralelas puede haber varios nodos en curso; vale cualquiera de ellos
         if (! $instancia
             || $instancia->estado !== 'en_curso'
-            || $instancia->nodo_actual_id !== $tarea->nodo_id
-            || $instancia->nodoActual?->tipo === 'condicion'
+            || ! WorkflowNodoInstancia::where('instancia_id', $instancia->id)->where('nodo_id', $tarea->nodo_id)->where('estado', 'en_curso')->exists()
+            || WorkflowNodo::whereKey($tarea->nodo_id)->value('tipo') === 'condicion'
             || $this->tareasDeNodo->abiertas($instancia->id, $tarea->nodo_id, true) > 0) {
             return;
         }
