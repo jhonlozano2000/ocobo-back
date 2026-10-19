@@ -18,6 +18,7 @@ use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoExpedienteDocumento;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\OfiArchivo\ExpedienteEventosService;
 use App\Services\OfiArchivo\IndiceExpedienteService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -538,6 +539,26 @@ class OfiArchivoExpedienteController extends Controller
         return response($this->indiceService->xml($expediente))
             ->header('Content-Type', 'application/xml; charset=UTF-8')
             ->header('Content-Disposition', 'attachment; filename="Indice_Expediente_'.$expediente->numero_expediente.'.xml"');
+    }
+
+    /**
+     * B12: historial del expediente con el resultado de verificar su cadena de huellas.
+     */
+    public function historial($id, ExpedienteEventosService $eventos)
+    {
+        $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->findOrFail($id);
+
+        if (! ExpedienteEventosService::disponible()) {
+            return $this->successResponse(['eventos' => [], 'integro' => null, 'rupturas' => []], 'El historial aún no está habilitado');
+        }
+
+        $rupturas = $eventos->verificar($expediente->id);
+
+        return $this->successResponse([
+            'eventos' => $expediente->eventos()->with('usuario:id,nombres,apellidos')->orderBy('secuencia')->get(),
+            'integro' => $rupturas === [],
+            'rupturas' => $rupturas,
+        ], 'Historial del expediente');
     }
 
     /**

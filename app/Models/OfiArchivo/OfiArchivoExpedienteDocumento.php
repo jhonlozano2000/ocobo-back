@@ -3,6 +3,7 @@
 namespace App\Models\OfiArchivo;
 
 use App\Models\User;
+use App\Services\OfiArchivo\ExpedienteEventosService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -63,6 +64,15 @@ class OfiArchivoExpedienteDocumento extends Model
 
         static::created(function ($doc) {
             $doc->expediente->increment('total_folios_elec');
+
+            app(ExpedienteEventosService::class)->registrar($doc->expediente_id, 'incorporacion', array_filter([
+                'documento_id' => $doc->id,
+                'numero_folio' => $doc->numero_folio,
+                'tipo_documental' => $doc->tipo_documental,
+                'origen' => $doc->documentable_type ? class_basename($doc->documentable_type).'#'.$doc->documentable_id : null,
+                'nombre_original' => $doc->nombre_original,
+                'hash_sha256' => $doc->hash_sha256,
+            ], fn ($v) => $v !== null));
         });
 
         // No hay boot deleted: delete() override maneja el decremento
@@ -75,6 +85,11 @@ class OfiArchivoExpedienteDocumento extends Model
     {
         $this->expediente->decrement('total_folios_elec');
         $this->update(['activo' => false]);
+
+        app(ExpedienteEventosService::class)->registrar($this->expediente_id, 'retiro', [
+            'documento_id' => $this->id,
+            'numero_folio' => $this->numero_folio,
+        ]);
 
         return true;
     }

@@ -7,6 +7,7 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Concerns\GuardaSnapshotDependencia;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\User;
+use App\Services\OfiArchivo\ExpedienteEventosService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -67,11 +68,21 @@ class OfiArchivoExpediente extends Model
                 $expediente->capturarSnapshotDependencia();
             }
         });
+
+        // B12: toda apertura y todo cambio del expediente quedan en su historial encadenado
+        static::created(fn (self $expediente) => app(ExpedienteEventosService::class)->apertura($expediente));
+        static::updated(fn (self $expediente) => app(ExpedienteEventosService::class)->cambio($expediente));
     }
 
     public function documentos()
     {
         return $this->hasMany(OfiArchivoExpedienteDocumento::class, 'expediente_id')->orderBy('numero_folio', 'asc');
+    }
+
+    /** B12: historial encadenado (solo inserción). */
+    public function eventos()
+    {
+        return $this->hasMany(OfiArchivoExpedienteEvento::class, 'expediente_id');
     }
 
     public function dependencia()

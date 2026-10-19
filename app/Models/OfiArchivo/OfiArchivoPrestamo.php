@@ -3,6 +3,7 @@
 namespace App\Models\OfiArchivo;
 
 use App\Models\User;
+use App\Services\OfiArchivo\ExpedienteEventosService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -49,6 +50,21 @@ class OfiArchivoPrestamo extends Model
         'fecha_devolucion_esperada' => 'datetime',
         'fecha_devolucion_real' => 'datetime',
     ];
+
+    /** B12: la salida y la devolución del expediente quedan en su historial. */
+    protected static function booted(): void
+    {
+        static::created(fn (self $prestamo) => app(ExpedienteEventosService::class)->registrar($prestamo->expediente_id, 'prestamo', [
+            'prestamo_id' => $prestamo->id,
+            'solicitante_id' => $prestamo->solicitante_id,
+            'fecha_devolucion_esperada' => $prestamo->fecha_devolucion_esperada?->toDateString(),
+        ]));
+        static::updated(function (self $prestamo) {
+            if ($prestamo->wasChanged('estado') && $prestamo->estado === 'devuelto') {
+                app(ExpedienteEventosService::class)->registrar($prestamo->expediente_id, 'devolucion', ['prestamo_id' => $prestamo->id]);
+            }
+        });
+    }
 
     /** Relación: Expediente prestado */
     public function expediente()
