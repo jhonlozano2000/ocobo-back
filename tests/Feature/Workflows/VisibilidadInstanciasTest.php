@@ -6,8 +6,10 @@ use App\Models\User;
 use App\Models\Workflows\Workflow;
 use App\Models\Workflows\WorkflowInstancia;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -20,6 +22,11 @@ class VisibilidadInstanciasTest extends TestCase
 {
     use DatabaseTransactions;
 
+    private const PERMISOS = [
+        'Workflows -> Instancias -> Consultar', 'Workflows -> Instancias -> Ejecutar', 'Workflows -> Workflows -> Editar',
+        'Workflows -> Archivos -> Ver', 'Workflows -> Archivos -> Subir', 'Workflows -> Archivos -> Descargar',
+    ];
+
     private User $creador;
 
     private Workflow $workflow;
@@ -31,9 +38,10 @@ class VisibilidadInstanciasTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['Workflows -> Instancias -> Consultar', 'Workflows -> Instancias -> Ejecutar'] as $permiso) {
+        foreach (self::PERMISOS as $permiso) {
             Permission::findOrCreate($permiso, 'web');
         }
+        Storage::fake('workflows_archivos');
 
         $this->creador = $this->usuario();
         $this->workflow = Workflow::create(['nombre' => 'M19-52', 'estado' => 'activo', 'creador_user_id' => $this->creador->id]);
@@ -49,7 +57,7 @@ class VisibilidadInstanciasTest extends TestCase
     private function usuario(): User
     {
         $user = User::factory()->create(['estado' => 1]);
-        $user->givePermissionTo(['Workflows -> Instancias -> Consultar', 'Workflows -> Instancias -> Ejecutar']);
+        $user->givePermissionTo(self::PERMISOS);
 
         return $user;
     }
@@ -112,5 +120,35 @@ class VisibilidadInstanciasTest extends TestCase
         $this->actingAs($ajeno)->postJson("{$base}/devolver", ['nodo_origen_id' => 1, 'nodo_destino_id' => 2, 'motivo' => 'Corregir'])->assertNotFound();
 
         $this->assertDatabaseHas('workflow_instancias', ['id' => $id, 'estado' => 'en_curso']);
+    }
+
+    private function subir(User $user, string $tipo, int $id, ?Workflow $workflow = null)
+    {
+        $archivo = UploadedFile::fake()->createWithContent('soporte.pdf', "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
+
+        return $this->actingAs($user)->post('/api/workflows/workflows/'.($workflow ?? $this->workflow)->id.'/archivos',
+            ['archivo' => $archivo, 'archivable_type' => $tipo, 'archivable_id' => $id], ['Accept' => 'application/json']);
+    }
+
+    public function test_los_archivos_de_una_instancia_siguen_su_visibilidad(): void
+    {
+        $ejecutor = $this->usuario();
+        $ajeno = $this->usuario();
+        $instancia = $this->instancia($ejecutor);
+        $url = "/api/workflows/workflows/{$this->workflow->id}/archivos";
+
+        $deInstancia = $this->subir($ejecutor, 'instancia', $instancia)->assertCreated()->json('data.id');
+        $deDiseno = $this->subir($this->creador, 'workflow', $this->workflow->id)->assertCreated()->json('data.id');
+
+        $ids = fn (User $u) => collect($this->actingAs($u)->getJson($url)->assertOk()->json('data'))->pluck('id')->sort()->values()->all();
+        $this->assertSame([$deInstancia, $deDiseno], $ids($ejecutor));
+        $this->assertSame([$deDiseno], $ids($ajeno));
+        $this->actingAs($ajeno)->getJson("{$url}?archivable_type=instancia&archivable_id={$instancia}")->assertOk()->assertJsonCount(0, 'data');
+
+        $this->actingAs($ejecutor)->get("{$url}/{$deInstancia}/download")->assertOk();
+        $this->actingAs($ajeno)->get("{$url}/{$deInstancia}/download")->assertNotFound();
+        $this->subir($ajeno, 'instancia', $instancia)->assertStatus(422)
+            ->assertJsonPath('errors.archivable_id.0', 'El instancia especificado no existe en este workflow');
+        $this->assertSame(2, DB::table('work_flow_archivos')->where('workflow_id', $this->workflow->id)->count());
     }
 }

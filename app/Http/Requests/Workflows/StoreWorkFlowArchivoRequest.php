@@ -54,6 +54,11 @@ class StoreWorkFlowArchivoRequest extends SanitizedFormRequest
                 return;
             }
 
+            // M19-52: a una instancia solo adjunta quien puede verla; se responde igual que si no existiera
+            if ($type === 'instancia') {
+                $query->visiblesPara($this->user());
+            }
+
             if (! $query->exists()) {
                 $validator->errors()->add('archivable_id', "El {$type} especificado no existe en este workflow");
             }

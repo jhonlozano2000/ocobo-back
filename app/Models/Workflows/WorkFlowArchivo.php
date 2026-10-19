@@ -3,6 +3,7 @@
 namespace App\Models\Workflows;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -11,6 +12,13 @@ class WorkFlowArchivo extends Model
     use HasFactory;
 
     protected $table = 'work_flow_archivos';
+
+    /** M19-52: los adjuntos del diseño son visibles; los de una instancia, solo si se ve la instancia. */
+    public function scopeVisiblesPara(Builder $query, User $user): Builder
+    {
+        return $query->where(fn ($q) => $q->where('archivable_type', '!=', WorkflowInstancia::class)
+            ->orWhereIn('archivable_id', WorkflowInstancia::visiblesPara($user)->select('id')));
+    }
 
     protected $fillable = [
         'workflow_id',

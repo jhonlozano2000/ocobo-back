@@ -40,6 +40,7 @@ class WorkFlowArchivoController extends Controller
             $archivableId = request('archivable_id') ? (int) request('archivable_id') : null;
 
             $archivos = $this->archivoService->listar(
+                auth()->user(),
                 $workflowId,
                 $archivableType,
                 $archivableId
@@ -94,7 +95,7 @@ class WorkFlowArchivoController extends Controller
     public function download(int $workflowId, int $archivoId)
     {
         try {
-            $ruta = $this->archivoService->obtenerRuta($workflowId, $archivoId);
+            $ruta = $this->archivoService->obtenerRuta(auth()->user(), $workflowId, $archivoId);
 
             if (! Storage::disk($ruta['disk'])->exists($ruta['path'])) {
                 return $this->errorResponse('El archivo no existe en el servidor', null, 404);

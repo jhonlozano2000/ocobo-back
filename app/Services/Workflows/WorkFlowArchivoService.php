@@ -3,6 +3,7 @@
 namespace App\Services\Workflows;
 
 use App\Helpers\ArchivoHelper;
+use App\Models\User;
 use App\Models\Workflows\WorkFlowArchivo;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
@@ -17,9 +18,10 @@ class WorkFlowArchivoService
         private readonly WorkflowAuditService $auditService
     ) {}
 
-    public function listar(int $workflowId, ?string $archivableType = null, ?int $archivableId = null): Collection
+    public function listar(User $user, int $workflowId, ?string $archivableType = null, ?int $archivableId = null): Collection
     {
         $query = WorkFlowArchivo::where('workflow_id', $workflowId)
+            ->visiblesPara($user)
             ->with('uploader:id,nombres,apellidos');
 
         if ($archivableType && $archivableId) {
@@ -104,10 +106,10 @@ class WorkFlowArchivoService
         });
     }
 
-    public function obtenerRuta(int $workflowId, int $id): array
+    public function obtenerRuta(User $user, int $workflowId, int $id): array
     {
         // Scope por workflow: evita IDOR cross-workflow
-        $archivo = WorkFlowArchivo::where('workflow_id', $workflowId)->findOrFail($id);
+        $archivo = WorkFlowArchivo::where('workflow_id', $workflowId)->visiblesPara($user)->findOrFail($id);
 
         return [
             'disk' => $archivo->disk,
