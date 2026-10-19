@@ -64,7 +64,7 @@ class AccesoExpedientesTest extends TestCase
             'estado' => $estado,
             'fecha_apertura' => '2026-10-11',
             'usuario_apertura_id' => $this->otro->id,
-        ]);
+        ] + (Schema::hasColumn('ofi_archivo_expedientes', 'nivel_acceso') ? ['nivel_acceso' => 'publico'] : []));
     }
 
     public function test_solo_ve_expedientes_de_su_dependencia(): void
@@ -162,7 +162,9 @@ class AccesoExpedientesTest extends TestCase
         $this->user->givePermissionTo(Permission::findOrCreate(self::PERM.'Cerrar', 'web'));
         $exp = $this->expediente($this->depA, '2026-M83A-S83-0005');
         $base = ['expediente_id' => $exp->id, 'orden' => 0, 'tipo_documental' => 'Documento',
-            'fecha_documento' => '2026-10-11', 'usuario_id' => $this->otro->id];
+            'fecha_documento' => '2026-10-11', 'usuario_id' => $this->otro->id]
+            // B14: el cierre exige folios tipificados con la TRD
+            + (Schema::hasColumn('ofi_archivo_expedientes_documentos', 'tipo_documental_id') ? ['tipo_documental_id' => 1] : []);
         OfiArchivoExpedienteDocumento::create($base + ['asunto' => 'Activo', 'hash_sha256' => str_repeat('a', 64)]);
         OfiArchivoExpedienteDocumento::create($base + ['asunto' => 'Retirado', 'hash_sha256' => str_repeat('b', 64)])->delete();
 

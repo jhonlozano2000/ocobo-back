@@ -18,6 +18,8 @@ class CerrarExpedienteRequest extends FormRequest
     {
         return [
             'motivo_cierre' => 'required|string|max:500',
+            // B14: fecha en que terminó el trámite; por defecto hoy
+            'fecha_cierre' => 'nullable|date|before_or_equal:today',
         ];
     }
 
@@ -26,6 +28,8 @@ class CerrarExpedienteRequest extends FormRequest
         return [
             'motivo_cierre.required' => 'El motivo del cierre es obligatorio.',
             'motivo_cierre.max' => 'El motivo del cierre no puede superar los 500 caracteres.',
+            'fecha_cierre.date' => 'La fecha de cierre no es válida.',
+            'fecha_cierre.before_or_equal' => 'La fecha de cierre no puede ser futura.',
         ];
     }
 }

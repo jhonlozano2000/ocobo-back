@@ -402,11 +402,11 @@ class OfiArchivoTransferenciaController extends Controller
     }
 
     /**
-     * La subserie define la retención si existe; si no, la serie.
+     * B14: la instantánea de la TRD tomada al cierre; sin ella, la subserie o, si no hay, la serie.
      */
     private function trdDelExpediente(OfiArchivoExpediente $expediente): ?ClasificacionDocumentalTRD
     {
-        return ClasificacionDocumentalTRD::find($expediente->subserie_trd_id ?: $expediente->serie_trd_id);
+        return $expediente->trdRetencion();
     }
 
     private function validarRetencion(OfiArchivoExpediente $expediente, int $anios, string $etapa): ?string

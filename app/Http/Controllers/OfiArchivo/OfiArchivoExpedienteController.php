@@ -20,6 +20,7 @@ use App\Models\OfiArchivo\OfiArchivoExpedienteDocumento;
 use App\Models\OfiArchivo\OfiArchivoExpedienteIndiceVersion;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\OfiArchivo\CierreExpedienteService;
 use App\Services\OfiArchivo\ExpedienteEventosService;
 use App\Services\OfiArchivo\IndiceExpedienteService;
 use App\Services\OfiArchivo\TiposDocumentalesExpediente;
@@ -27,6 +28,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -225,7 +227,7 @@ class OfiArchivoExpedienteController extends Controller
         }
     }
 
-    public function cerrarExpediente(CerrarExpedienteRequest $request, $id)
+    public function cerrarExpediente(CerrarExpedienteRequest $request, $id, CierreExpedienteService $cierre)
     {
 
         try {
@@ -240,15 +242,28 @@ class OfiArchivoExpedienteController extends Controller
                 return $this->warningResponse('Solo se pueden cerrar expedientes en estado abierto');
             }
 
+            // B14: fecha del hecho generador (por defecto hoy) y condiciones del cierre (§3.4)
+            $fechaCierre = $request->filled('fecha_cierre')
+                ? Carbon::parse($request->fecha_cierre)->setTimeFrom(now())
+                : now();
+            $impedimentos = $cierre->impedimentos($expediente, $fechaCierre);
+            if ($impedimentos) {
+                DB::rollBack();
+
+                return $this->warningResponse('No se puede cerrar el expediente: '.implode(' ', $impedimentos), ['cierre' => $impedimentos]);
+            }
+
             // M08-09: mismas filas que el índice PDF/XML, para que el hash sea verificable
             $hashIndice = $this->indiceService->hash($this->indiceService->filas($expediente));
 
             $expediente->update([
                 'estado' => 'cerrado',
-                'fecha_cierre' => now(),
+                'fecha_cierre' => $fechaCierre,
                 'hash_indice' => $hashIndice,
                 'motivo_cierre' => $request->motivo_cierre,
                 'usuario_cierre_id' => Auth::id(),
+                // B14: retención y disposición según la TRD vigente al cierre
+                ...(CierreExpedienteService::disponible() ? $cierre->datosRetencion($expediente, $fechaCierre) : []),
             ]);
 
             // B10: el índice queda congelado y firmado en la misma transacción del cierre

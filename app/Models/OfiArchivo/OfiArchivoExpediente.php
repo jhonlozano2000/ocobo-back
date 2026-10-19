@@ -52,6 +52,9 @@ class OfiArchivoExpediente extends Model
         'motivo_cierre',
         'total_folios_elec',
         'hash_indice',
+        'trd_snapshot',
+        'fecha_fin_gestion',
+        'fecha_fin_central',
     ];
 
     protected $casts = [
@@ -60,6 +63,9 @@ class OfiArchivoExpediente extends Model
         'total_folios_elec' => 'integer',
         'folios_fisicos' => 'integer',
         'por_completar' => 'boolean',
+        'trd_snapshot' => 'array',
+        'fecha_fin_gestion' => 'date',
+        'fecha_fin_central' => 'date',
     ];
 
     /** B06: soporte del expediente; el híbrido es una sola unidad con parte física y electrónica. */
@@ -141,33 +147,49 @@ class OfiArchivoExpediente extends Model
     }
 
     /**
-     * M08-14: Calcula la fecha de finalización de retención en archivo de gestión
-     * a partir de la fecha de cierre del expediente y los años a_g de la serie TRD.
+     * M08-14: fin de la retención en el archivo de gestión, contada desde el cierre.
+     * B14: la fija el cierre con la TRD de ese momento; si el expediente se cerró antes de
+     * B14, se calcula con la TRD actual (la subserie si la tiene; si no, la serie).
      */
     public function getFechaRetencionGestionFinAttribute(): ?Carbon
     {
-        if (! $this->fecha_cierre || ! $this->serieTrd) {
-            return null;
+        if ($this->fecha_fin_gestion) {
+            return $this->fecha_fin_gestion->copy();
         }
 
-        $anios = (int) $this->serieTrd->a_g;
+        $trd = $this->trdRetencion();
 
-        return $this->fecha_cierre->copy()->addYears($anios);
+        return $this->fecha_cierre && $trd ? $this->fecha_cierre->copy()->addYears((int) $trd->a_g) : null;
     }
 
     /**
-     * M08-14: Calcula la fecha de disposición final total (gestión + central)
-     * a partir de la fecha de cierre del expediente.
+     * M08-14: fin de la retención total (gestión + central), contada desde el cierre.
      */
     public function getFechaRetencionTotalFinAttribute(): ?Carbon
     {
-        if (! $this->fecha_cierre || ! $this->serieTrd) {
-            return null;
+        if ($this->fecha_fin_central) {
+            return $this->fecha_fin_central->copy();
         }
 
-        $anios = (int) $this->serieTrd->a_g + (int) $this->serieTrd->a_c;
+        $trd = $this->trdRetencion();
 
-        return $this->fecha_cierre->copy()->addYears($anios);
+        return $this->fecha_cierre && $trd ? $this->fecha_cierre->copy()->addYears((int) $trd->a_g + (int) $trd->a_c) : null;
+    }
+
+    /**
+     * B14: TRD que rige la retención y la disposición del expediente: la instantánea del
+     * cierre si la tiene; si no, la subserie actual o, sin subserie, la serie.
+     */
+    public function trdRetencion(): ?ClasificacionDocumentalTRD
+    {
+        if ($this->trd_snapshot) {
+            return (new ClasificacionDocumentalTRD)->forceFill(collect($this->trd_snapshot)
+                ->only(['tipo', 'cod', 'nom', 'version_id', 'a_g', 'a_c', 'ct', 'e', 'm_d', 's', 'disposicion_final', 'procedimiento'])
+                ->put('id', $this->trd_snapshot['trd_id'] ?? null)
+                ->all());
+        }
+
+        return $this->subserie_trd_id ? ($this->subserieTrd ?? $this->serieTrd) : $this->serieTrd;
     }
 
     public function scopeDocumentosActivos($query)

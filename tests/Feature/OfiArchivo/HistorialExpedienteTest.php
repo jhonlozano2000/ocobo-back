@@ -54,7 +54,7 @@ class HistorialExpedienteTest extends TestCase
             'estado' => 'abierto',
             'fecha_apertura' => '2026-10-19',
             'usuario_apertura_id' => $this->user->id,
-        ]);
+        ] + (Schema::hasColumn('ofi_archivo_expedientes', 'nivel_acceso') ? ['nivel_acceso' => 'publico'] : []));
     }
 
     private function documento(): OfiArchivoExpedienteDocumento
@@ -63,7 +63,7 @@ class HistorialExpedienteTest extends TestCase
             'expediente_id' => $this->expediente->id, 'tipo' => 'tipo_documental', 'tipo_documental' => 'Acta',
             'asunto' => 'Acta de reunión', 'fecha_documento' => '2026-10-19', 'usuario_id' => $this->user->id,
             'hash_sha256' => hash('sha256', 'acta'), 'activo' => true, 'orden' => 0,
-        ]);
+        ] + (Schema::hasColumn('ofi_archivo_expedientes_documentos', 'tipo_documental_id') ? ['tipo_documental_id' => 1] : []));
     }
 
     public function test_el_ciclo_del_expediente_queda_encadenado_en_su_historial(): void

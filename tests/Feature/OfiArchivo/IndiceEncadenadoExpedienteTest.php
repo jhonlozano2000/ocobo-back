@@ -50,7 +50,7 @@ class IndiceEncadenadoExpedienteTest extends TestCase
         $this->actingAs($this->user);
         $this->expediente = OfiArchivoExpediente::create([
             'numero_expediente' => '2026-B10D-S10-'.uniqid(), 'nombre_expediente' => 'Contrato 10', 'anio' => 2026,
-            'dependencia_id' => $depId, 'serie_trd_id' => $serie, 'estado' => 'abierto',
+            'dependencia_id' => $depId, 'serie_trd_id' => $serie, 'estado' => 'abierto', 'nivel_acceso' => 'publico',
             'fecha_apertura' => '2026-10-19', 'usuario_apertura_id' => $this->user->id,
         ]);
     }
@@ -60,6 +60,7 @@ class IndiceEncadenadoExpedienteTest extends TestCase
         return OfiArchivoExpedienteDocumento::create([
             'expediente_id' => $this->expediente->id, 'tipo' => 'tipo_documental', 'tipo_documental' => 'Acta',
             'asunto' => $asunto, 'fecha_documento' => '2026-10-19', 'hash_sha256' => hash('sha256', $asunto), 'usuario_id' => $this->user->id, 'activo' => true, 'orden' => 0,
+            'tipo_documental_id' => 1,
         ]);
     }
 
