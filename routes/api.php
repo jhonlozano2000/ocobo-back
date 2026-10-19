@@ -75,6 +75,8 @@ Route::middleware(['auth:sanctum', 'throttle:archivo'])->prefix('archivo')->grou
     Route::post('/expedientes/{expedienteId}/documentos/{documentoId}/soft-delete', [OfiArchivoExpedienteController::class, 'softDeleteDocumento'])->middleware('can:'.$permExp.'Editar');
     Route::get('/expedientes/{id}/indice', [OfiArchivoExpedienteController::class, 'generarIndicePdf'])->middleware('can:'.$permExp.'Ver');
     Route::get('/expedientes/{id}/indice-xml', [OfiArchivoExpedienteController::class, 'generarIndiceXml'])->middleware('can:'.$permExp.'Ver');
+    Route::get('/expedientes/{id}/indice/versiones', [OfiArchivoExpedienteController::class, 'versionesIndice'])->middleware('can:'.$permExp.'Ver');
+    Route::get('/expedientes/{id}/indice/versiones/{version}/pdf', [OfiArchivoExpedienteController::class, 'descargarVersionIndice'])->whereNumber('version')->middleware('can:'.$permExp.'Ver');
     Route::get('/expedientes/{id}/historial', [OfiArchivoExpedienteController::class, 'historial'])->middleware('can:'.$permExp.'Ver');
     Route::get('/expedientes/{id}/tipos-documentales', [OfiArchivoExpedienteController::class, 'tiposDocumentales'])->middleware('can:'.$permExp.'Ver');
     Route::put('/expedientes/{expedienteId}/documentos/{documentoId}/tipo-documental', [OfiArchivoExpedienteController::class, 'tipificarDocumento'])->middleware('can:'.$permExp.'Editar');

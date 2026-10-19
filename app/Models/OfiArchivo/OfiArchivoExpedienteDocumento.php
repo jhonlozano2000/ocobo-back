@@ -5,6 +5,7 @@ namespace App\Models\OfiArchivo;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\User;
 use App\Services\OfiArchivo\ExpedienteEventosService;
+use App\Services\OfiArchivo\IndiceExpedienteService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -76,6 +77,11 @@ class OfiArchivoExpedienteDocumento extends Model
                 'nombre_original' => $doc->nombre_original,
                 'hash_sha256' => $doc->hash_sha256,
             ], fn ($v) => $v !== null));
+
+            // B10: el folio entra a la cadena del índice en la misma transacción que lo folia
+            if (IndiceExpedienteService::disponible()) {
+                app(IndiceExpedienteService::class)->agregar($doc);
+            }
         });
 
         // No hay boot deleted: delete() override maneja el decremento
@@ -93,6 +99,10 @@ class OfiArchivoExpedienteDocumento extends Model
             'documento_id' => $this->id,
             'numero_folio' => $this->numero_folio,
         ]);
+
+        if (IndiceExpedienteService::disponible()) {
+            app(IndiceExpedienteService::class)->anular($this);
+        }
 
         return true;
     }

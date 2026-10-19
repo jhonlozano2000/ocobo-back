@@ -77,8 +77,13 @@ class HistorialExpedienteTest extends TestCase
 
         $eventos = OfiArchivoExpedienteEvento::where('expediente_id', $this->expediente->id)->orderBy('secuencia')->get();
 
-        $this->assertSame(['apertura', 'incorporacion', 'edicion', 'retiro', 'cierre'], $eventos->pluck('accion')->all());
-        $this->assertSame([1, 2, 3, 4, 5], $eventos->pluck('secuencia')->all());
+        // B10: con el índice encadenado, el cierre deja además la versión firmada del índice
+        $esperados = ['apertura', 'incorporacion', 'edicion', 'retiro', 'cierre'];
+        if (Schema::hasTable('ofi_archivo_expediente_indice')) {
+            $esperados[] = 'indice_firmado';
+        }
+        $this->assertSame($esperados, $eventos->pluck('accion')->all());
+        $this->assertSame(range(1, count($esperados)), $eventos->pluck('secuencia')->all());
         $this->assertNull($eventos[0]->hash_anterior);
         foreach ($eventos->skip(1) as $i => $evento) {
             $this->assertSame($eventos[$i - 1]->hash, $evento->hash_anterior);
@@ -100,7 +105,7 @@ class HistorialExpedienteTest extends TestCase
         $this->getJson("/api/archivo/expedientes/{$this->expediente->id}/historial")
             ->assertOk()
             ->assertJsonPath('data.integro', true)
-            ->assertJsonCount(5, 'data.eventos')
+            ->assertJsonCount(count($esperados), 'data.eventos')
             ->assertJsonPath('data.eventos.4.accion', 'cierre');
     }
 

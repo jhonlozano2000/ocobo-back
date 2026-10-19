@@ -17,6 +17,7 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoExpedienteDocumento;
+use App\Models\OfiArchivo\OfiArchivoExpedienteIndiceVersion;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\OfiArchivo\ExpedienteEventosService;
@@ -249,6 +250,11 @@ class OfiArchivoExpedienteController extends Controller
                 'motivo_cierre' => $request->motivo_cierre,
                 'usuario_cierre_id' => Auth::id(),
             ]);
+
+            // B10: el índice queda congelado y firmado en la misma transacción del cierre
+            if (IndiceExpedienteService::disponible()) {
+                $this->indiceService->versionar($expediente->fresh(['dependencia', 'serieTrd']), Auth::user());
+            }
 
             DB::commit();
 
@@ -590,6 +596,9 @@ class OfiArchivoExpedienteController extends Controller
         DB::transaction(function () use ($doc, $tipo) {
             $antes = $doc->tipo_documental;
             $doc->update(['tipo_documental' => $tipo->nom, 'tipo_documental_id' => $tipo->id]);
+            if (IndiceExpedienteService::disponible()) {
+                $this->indiceService->actualizarTipo($doc);
+            }
 
             app(ExpedienteEventosService::class)->registrar($doc->expediente_id, 'tipificacion', [
                 'documento_id' => $doc->id,
@@ -717,6 +726,44 @@ class OfiArchivoExpedienteController extends Controller
         return response($this->indiceService->xml($expediente))
             ->header('Content-Type', 'application/xml; charset=UTF-8')
             ->header('Content-Disposition', 'attachment; filename="Indice_Expediente_'.$expediente->numero_expediente.'.xml"');
+    }
+
+    /**
+     * B10: estado de la cadena del índice y versiones firmadas en cada cierre, cada una verificada.
+     */
+    public function versionesIndice($id)
+    {
+        $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->findOrFail($id);
+
+        if (! IndiceExpedienteService::disponible()) {
+            return $this->successResponse(['cadena' => $this->indiceService->verificarCadena($expediente), 'versiones' => []], 'El índice encadenado aún no está habilitado');
+        }
+
+        $versiones = OfiArchivoExpedienteIndiceVersion::where('expediente_id', $expediente->id)
+            ->orderByDesc('version')->get()
+            ->map(fn (OfiArchivoExpedienteIndiceVersion $v) => $v->toArray() + [
+                'con_sello_tiempo' => $v->sello_tiempo !== null,
+                'verificacion' => $this->indiceService->verificarVersion($v),
+            ]);
+
+        return $this->successResponse([
+            'cadena' => $this->indiceService->verificarCadena($expediente),
+            'versiones' => $versiones,
+        ], 'Índice electrónico del expediente');
+    }
+
+    /** B10: PDF del índice tal como se firmó en esa versión. */
+    public function descargarVersionIndice($id, $version)
+    {
+        $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->findOrFail($id);
+        abort_unless(IndiceExpedienteService::disponible(), 404);
+
+        $v = OfiArchivoExpedienteIndiceVersion::where('expediente_id', $expediente->id)->where('version', $version)->firstOrFail();
+
+        return response($v->pdf)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="Indice_Expediente_'.$expediente->numero_expediente.'_v'.$v->version.'.pdf"')
+            ->header('X-Codigo-Verificacion', $v->codigo_verificacion);
     }
 
     /**

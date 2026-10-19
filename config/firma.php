@@ -6,4 +6,6 @@ return [
     // Raíces de confianza (PEM) para verificar el certificado de la TSA; si está vacío
     // se usa openssl.cafile / curl.cainfo de PHP.
     'tsa_ca_file' => env('TSA_CA_FILE'),
+    // B10: sellar con la TSA cada versión firmada del índice del expediente (llamada de red al cerrar)
+    'tsa_indice_expediente' => (bool) env('ARCHIVO_INDICE_TSA', false),
 ];
