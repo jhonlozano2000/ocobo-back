@@ -246,6 +246,10 @@ class OfiArchivoExpedienteController extends Controller
      */
     public function index(Request $request)
     {
+        $request->validate([
+            'estado' => 'nullable|in:abierto,cerrado,transferido,eliminado',
+        ]);
+
         try {
             $query = OfiArchivoExpediente::visiblesPara(Auth::user())->with(['dependencia', 'serieTrd', 'usuarioApertura']);
 
@@ -256,6 +260,11 @@ class OfiArchivoExpedienteController extends Controller
 
             if ($request->filled('serie_trd_id')) {
                 $query->where('serie_trd_id', $request->serie_trd_id);
+            }
+
+            // B03: el filtro de estado de la lista se ignoraba
+            if ($request->filled('estado')) {
+                $query->where('estado', $request->estado);
             }
 
             if ($request->filled('search')) {
