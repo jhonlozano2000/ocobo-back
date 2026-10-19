@@ -61,6 +61,7 @@ class OfiArchivoPrestamo extends Model
         'folios_devolucion',
         'recibido_por_id',
         'folios_no_coinciden',
+        'documentos_autorizados',
     ];
 
     /** §3.10: en sala y físico el expediente sale del archivo; el electrónico es un acceso de solo lectura. */
@@ -81,6 +82,7 @@ class OfiArchivoPrestamo extends Model
         'folios_entrega' => 'integer',
         'folios_devolucion' => 'integer',
         'folios_no_coinciden' => 'boolean',
+        'documentos_autorizados' => 'array',
     ];
 
     /** B12: la salida y la devolución del expediente quedan en su historial; la solicitud no. */
@@ -127,6 +129,12 @@ class OfiArchivoPrestamo extends Model
     public function expediente()
     {
         return $this->belongsTo(OfiArchivoExpediente::class, 'expediente_id');
+    }
+
+    /** Consultas y descargas del préstamo electrónico. */
+    public function accesos()
+    {
+        return $this->hasMany(OfiArchivoPrestamoAcceso::class, 'prestamo_id');
     }
 
     /** Relación: Usuario solicitante */

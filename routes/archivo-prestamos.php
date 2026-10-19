@@ -21,6 +21,11 @@ Route::middleware(['auth:sanctum', 'throttle:archivo'])->group(function () use (
         ->middleware('can:'.$perm.'Devolver');
     Route::post('prestamos/{id}/devolver', [OfiArchivoPrestamoController::class, 'devolver'])->whereNumber('id')
         ->middleware('can:'.$perm.'Devolver');
+    // Préstamo electrónico: solo el solicitante y mientras esté vigente; cada acceso queda registrado
+    Route::get('prestamos/{id}/consulta', [OfiArchivoPrestamoController::class, 'consulta'])->whereNumber('id');
+    Route::get('prestamos/{id}/documentos/{documentoId}', [OfiArchivoPrestamoController::class, 'documento'])
+        ->whereNumber(['id', 'documentoId']);
+    Route::get('prestamos/{id}/accesos', [OfiArchivoPrestamoController::class, 'accesos'])->whereNumber('id');
     Route::get('prestamos-estadisticas', [OfiArchivoPrestamoController::class, 'estadisticas'])
         ->middleware('can:'.$perm.'Ver');
 });

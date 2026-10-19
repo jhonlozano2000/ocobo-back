@@ -116,6 +116,8 @@ class PrestamosService
             }
 
             $electronico = $prestamo->modalidad === 'electronico';
+            $versionPublica = $reservado && (bool) ($datos['version_publica'] ?? false);
+            $documentos = $electronico && $versionPublica ? $this->documentosAutorizados($expediente, $datos['documentos_ids'] ?? []) : null;
             $prestamo->update(array_filter([
                 'estado' => $electronico ? 'prestado' : 'aprobado',
                 'fecha_prestamo' => $electronico ? now() : null,
@@ -123,7 +125,7 @@ class PrestamosService
                 'fecha_aprobacion' => now(),
                 'fecha_devolucion_esperada' => $fecha,
                 'fundamento_autorizacion' => $reservado ? trim($datos['fundamento_autorizacion']) : null,
-            ], fn ($v) => $v !== null) + ['version_publica' => $reservado && (bool) ($datos['version_publica'] ?? false)]);
+            ], fn ($v) => $v !== null) + ['version_publica' => $versionPublica, 'documentos_autorizados' => $documentos]);
 
             $this->avisarSolicitante($prestamo, $electronico
                 ? 'Su acceso electrónico al expediente %s fue aprobado. Puede consultarlo hasta el %s.'
@@ -385,6 +387,27 @@ class PrestamosService
             $como = $choque->estado === 'aprobado' ? 'tiene un préstamo aprobado por entregar' : 'ya se encuentra en préstamo activo';
             throw ValidationException::withMessages(['expediente_id' => "{$que} {$como}."]);
         }
+    }
+
+    /**
+     * Versión pública del préstamo electrónico: los documentos activos del expediente que el
+     * solicitante puede consultar.
+     *
+     * @return int[]
+     */
+    private function documentosAutorizados(OfiArchivoExpediente $expediente, array $ids): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        if (! $ids) {
+            throw ValidationException::withMessages(['documentos_ids' => 'Elija los documentos que forman la versión pública']);
+        }
+        $validos = $expediente->documentos()->where('activo', true)->whereIn('id', $ids)->pluck('id')->all();
+        if (count($validos) !== count($ids)) {
+            throw ValidationException::withMessages(['documentos_ids' => 'Algunos documentos no son del expediente o fueron retirados']);
+        }
+        sort($validos);
+
+        return $validos;
     }
 
     private function esReservado(?OfiArchivoExpediente $expediente): bool

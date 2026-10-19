@@ -6,10 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoPrestamo;
+use App\Models\OfiArchivo\OfiArchivoPrestamoAcceso;
 use App\Services\OfiArchivo\ConfiguracionArchivo;
+use App\Services\OfiArchivo\PrestamoConsultaService;
 use App\Services\OfiArchivo\PrestamosService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Préstamo y consulta de expedientes (diseño de expedientes §3.10): solicitud, aprobación del
@@ -124,6 +128,8 @@ class OfiArchivoPrestamoController extends Controller
             'fecha_devolucion_esperada' => 'nullable|date',
             'fundamento_autorizacion' => 'nullable|string|max:500',
             'version_publica' => 'nullable|boolean',
+            'documentos_ids' => 'nullable|array|max:5000',
+            'documentos_ids.*' => 'integer',
         ]);
 
         $prestamo = $this->prestamos()->aprobar(OfiArchivoPrestamo::findOrFail($id), $datos, $request->user());
@@ -169,6 +175,46 @@ class OfiArchivoPrestamoController extends Controller
                 ? "Devolución registrada. Los folios no coinciden: se entregaron {$prestamo->folios_entrega} y se devolvieron {$prestamo->folios_devolucion}"
                 : 'Devolución registrada exitosamente'
         );
+    }
+
+    /** Préstamo electrónico: documentos que el solicitante puede consultar. */
+    public function consulta(Request $request, int $id, PrestamoConsultaService $consulta): JsonResponse
+    {
+        $prestamo = OfiArchivoPrestamo::with('expediente')->findOrFail($id);
+
+        return $this->successResponse($consulta->consulta($prestamo, $request->user()), 'Documentos del préstamo');
+    }
+
+    /** Muestra (accion=ver) o descarga un documento del préstamo electrónico y deja la traza. */
+    public function documento(Request $request, int $id, int $documentoId, PrestamoConsultaService $consulta): StreamedResponse
+    {
+        $accion = $request->validate(['accion' => 'nullable|in:'.implode(',', OfiArchivoPrestamoAcceso::ACCIONES)])['accion'] ?? 'ver';
+        $prestamo = OfiArchivoPrestamo::with('expediente')->findOrFail($id);
+        $archivo = $consulta->abrir($prestamo, $documentoId, $accion, $request->user(), $request);
+
+        return Storage::disk($archivo['disk'])->response($archivo['path'], $archivo['nombre'], [
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'X-Content-Type-Options' => 'nosniff',
+        ], $accion === 'descargar' ? 'attachment' : 'inline');
+    }
+
+    /** Traza de consultas del préstamo electrónico: para el archivo (Ver), quien aprobó y el solicitante. */
+    public function accesos(Request $request, int $id): JsonResponse
+    {
+        $prestamo = OfiArchivoPrestamo::findOrFail($id);
+        $user = $request->user();
+        $puede = PrestamosService::tiene($user, PrestamosService::PERMISO_VER)
+            || in_array((int) $user->id, [(int) $prestamo->aprobador_id, (int) $prestamo->solicitante_id], true);
+        if (! $puede) {
+            return $this->notFoundResponse('Préstamo no encontrado');
+        }
+
+        $accesos = $prestamo->accesos()
+            ->with(['usuario:id,nombres,apellidos', 'documento:id,numero_folio,tipo_documental'])
+            ->orderByDesc('id')
+            ->paginate($request->validate(['per_page' => 'nullable|integer|min:1|max:100'])['per_page'] ?? 20);
+
+        return $this->successResponse($accesos, 'Accesos del préstamo');
     }
 
     /**
