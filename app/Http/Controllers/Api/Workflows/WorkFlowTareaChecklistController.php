@@ -29,9 +29,10 @@ class WorkFlowTareaChecklistController extends Controller
         $this->middleware('can:Workflows -> Tareas -> Listar')->only(['index']);
         $this->middleware('can:Workflows -> Tareas -> Editar')->only(['store', 'update', 'reordenar']);
         $this->middleware('can:Workflows -> Tareas -> Eliminar')->only(['destroy']);
-        // Crear, borrar y ordenar ítems es diseño; marcar un ítem (update) lo hace quien ejecuta
-        $this->middleware($this->workflowDeRuta('update'))->only(['store', 'destroy', 'reordenar']);
-        $this->middleware($this->workflowDeRuta())->only(['index', 'update']);
+        // M19-53: todo el checklist de la plantilla es diseño. Quien ejecuta marca el checklist de
+        // su Tarea (M19-17, M19-34); marcar aquí cambiaría la plantilla de todas las instancias
+        $this->middleware($this->workflowDeRuta('update'))->only(['store', 'update', 'destroy', 'reordenar']);
+        $this->middleware($this->workflowDeRuta())->only(['index']);
     }
 
     /**

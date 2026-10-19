@@ -32,8 +32,9 @@ class WorkFlowTareaController extends Controller
         $this->middleware('can:Workflows -> Tareas -> Eliminar')->only(['destroy']);
         $this->middleware('can:Workflows -> Tareas -> Asignar')->only(['asignar']);
         // Definir, asignar y ordenar tareas del nodo es diseño; consultar y mover su estado lo hace quien ejecuta
-        $this->middleware($this->workflowDeRuta('update'))->only(['store', 'update', 'destroy', 'asignar', 'reordenar']);
-        $this->middleware($this->workflowDeRuta())->only(['index', 'show', 'cambiarEstado']);
+        // M19-53: la tarea de nodo es una plantilla de diseño (M19-17); cambiar su estado también lo es
+        $this->middleware($this->workflowDeRuta('update'))->only(['store', 'update', 'destroy', 'asignar', 'reordenar', 'cambiarEstado']);
+        $this->middleware($this->workflowDeRuta())->only(['index', 'show']);
     }
 
     public function index(int $workflowId, int $nodoId)
