@@ -4,6 +4,7 @@ namespace Tests\Feature\OfiArchivo;
 
 use App\Models\User;
 use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
@@ -92,11 +93,12 @@ class SugerenciaExpedienteTest extends TestCase
         ]);
     }
 
-    private function incorporar(int $expediente, int $radicado): void
+    private function incorporar(int $expediente, int $radicado, string $clase = VentanillaRadicaReci::class): void
     {
+        $folio = DB::table('ofi_archivo_expedientes_documentos')->where('expediente_id', $expediente)->count() + 1;
         DB::table('ofi_archivo_expedientes_documentos')->insert([
-            'expediente_id' => $expediente, 'documentable_type' => VentanillaRadicaReci::class, 'documentable_id' => $radicado,
-            'numero_folio' => 1, 'orden' => 1, 'tipo_documental' => 'Oficio', 'fecha_documento' => '2026-10-01', 'asunto' => 'Folio',
+            'expediente_id' => $expediente, 'documentable_type' => $clase, 'documentable_id' => $radicado,
+            'numero_folio' => $folio, 'orden' => $folio, 'tipo_documental' => 'Oficio', 'fecha_documento' => '2026-10-01', 'asunto' => 'Folio',
             'usuario_id' => $this->user->id, 'activo' => true, 'created_at' => now(), 'updated_at' => now(),
         ]);
     }
@@ -127,6 +129,7 @@ class SugerenciaExpedienteTest extends TestCase
         ]);
         $this->assertSame([$delTercero, $general], array_column($data['sugeridos'], 'id'));
         $this->assertSame([true, false], array_column($data['sugeridos'], 'mismo_tercero'));
+        $this->assertSame('radicado_recibido', $data['radicado']['documentable_type']);
         // El que está en otra dependencia se cuenta sin revelarse
         $this->assertSame([$actual], array_column($data['expedientes_actuales']['visibles'], 'id'));
         $this->assertSame(1, $data['expedientes_actuales']['otros']);
@@ -160,7 +163,7 @@ class SugerenciaExpedienteTest extends TestCase
     public function test_respeta_el_acceso_al_radicado_y_a_la_dependencia_de_la_serie(): void
     {
         $this->actingAs($this->user)->getJson(self::URL.'?origen_tipo=radicado_recibido&origen_id='.$this->radicado($this->otro, $this->serie))->assertNotFound();
-        $this->getJson(self::URL.'?origen_tipo=radicado_enviado&origen_id=1')->assertUnprocessable();
+        $this->getJson(self::URL.'?origen_tipo=radicado_interno&origen_id=1')->assertUnprocessable();
 
         $sinClasificar = $this->sugerencia('radicado_recibido', $this->radicado($this->user, 0));
         $this->assertSame([], $sinClasificar['sugeridos']);
@@ -170,5 +173,39 @@ class SugerenciaExpedienteTest extends TestCase
         $apertura = $this->sugerencia('radicado_recibido', $this->radicado($this->user, $serieAjena))['apertura'];
         $this->assertFalse($apertura['permitida']);
         $this->assertStringContainsString('otra dependencia', $apertura['motivo']);
+    }
+
+    public function test_la_respuesta_se_sugiere_en_el_expediente_de_la_peticion(): void
+    {
+        $peticion = $this->radicado($this->user, $this->subserie);
+        $otraSerie = $this->trd('Serie', 'S10', null, $this->depA);
+        $dePeticion = $this->expediente($this->depA, null);
+        DB::table('ofi_archivo_expedientes')->where('id', $dePeticion)->update(['serie_trd_id' => $otraSerie]);
+        $this->incorporar($dePeticion, $peticion);
+        $deSerie = $this->expediente($this->depA, $this->subserie);
+
+        $enviado = DB::table('ventanilla_radica_enviados')->insertGetId([
+            'num_radicado' => 'B09-E-'.uniqid(), 'asunto' => 'Respuesta', 'clasifica_documen_id' => $this->subserie, 'medio_enviado_id' => 1,
+            'tercero_id' => $this->tercero, 'tipo_respuesta_id' => 1, 'usuario_crea' => $this->user->id,
+        ]);
+        DB::table('ventanilla_radica_enviados_respuestas')->insert(['radica_enviado_id' => $enviado, 'radica_reci_id' => $peticion]);
+
+        $data = $this->sugerencia('radicado_enviado', $enviado);
+
+        // El de la petición va primero aunque sea de otra serie
+        $this->assertSame([$dePeticion, $deSerie], array_column($data['sugeridos'], 'id'));
+        $this->assertSame([true, false], array_column($data['sugeridos'], 'contiene_peticion'));
+        $this->assertSame('radicado_enviado', $data['radicado']['documentable_type']);
+
+        $this->incorporar($dePeticion, $enviado, VentanillaRadicaEnviados::class);
+        $data = $this->sugerencia('radicado_enviado', $enviado);
+        $this->assertSame([$dePeticion], array_column($data['expedientes_actuales']['visibles'], 'id'));
+        $this->assertSame([$deSerie], array_column($data['sugeridos'], 'id'));
+
+        $ajeno = DB::table('ventanilla_radica_enviados')->insertGetId([
+            'num_radicado' => 'B09-E-'.uniqid(), 'clasifica_documen_id' => $this->subserie, 'medio_enviado_id' => 1,
+            'tercero_id' => 1, 'tipo_respuesta_id' => 1, 'usuario_crea' => $this->otro->id,
+        ]);
+        $this->getJson(self::URL.'?origen_tipo=radicado_enviado&origen_id='.$ajeno)->assertNotFound();
     }
 }

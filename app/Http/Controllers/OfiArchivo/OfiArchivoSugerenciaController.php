@@ -9,7 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * B09 (diseño de expedientes §6.1): panel "Expediente" del radicado recibido y de la PQRS.
+ * B09 (diseño de expedientes §6.1): panel "Expediente" del radicado recibido, el enviado y la PQRS.
  */
 class OfiArchivoSugerenciaController extends Controller
 {
@@ -18,10 +18,10 @@ class OfiArchivoSugerenciaController extends Controller
     public function __invoke(Request $request, SugerenciaExpedienteService $service): JsonResponse
     {
         $datos = $request->validate([
-            'origen_tipo' => 'required|in:radicado_recibido,pqrs',
+            'origen_tipo' => 'required|in:radicado_recibido,pqrs,radicado_enviado',
             'origen_id' => 'required|integer|min:1',
         ], [
-            'origen_tipo.in' => 'Solo se sugieren expedientes para radicados recibidos o PQRS.',
+            'origen_tipo.in' => 'Solo se sugieren expedientes para radicados recibidos, enviados o PQRS.',
         ]);
 
         $sugerencia = $service->para($datos['origen_tipo'], (int) $datos['origen_id'], $request->user());
