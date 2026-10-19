@@ -6,244 +6,221 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoPrestamo;
+use App\Services\OfiArchivo\ConfiguracionArchivo;
+use App\Services\OfiArchivo\PrestamosService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
- * Controlador de Préstamo de Archivo.
- *
- * Gestiona el préstamo de expedientes físicos del archivo central,
- * incluyendo registro, devolución y estadísticas.
- * Cumple con Acuerdo AGN 042/2002 — Libro de préstamo de documentos.
- *
- * @see OfiArchivoPrestamo Modelo
+ * Préstamo y consulta de expedientes (diseño de expedientes §3.10): solicitud, aprobación del
+ * responsable del archivo de la fase, entrega y devolución con folios. Las reglas están en
+ * PrestamosService; cada fila lleva las acciones que el usuario puede hacer.
  */
 class OfiArchivoPrestamoController extends Controller
 {
     use ApiResponseTrait;
 
-    public function __construct()
-    {
-        $this->middleware('auth:sanctum');
-    }
+    private const RELACIONES = [
+        'expediente:id,numero_expediente,nombre_expediente,fase,soporte,nivel_acceso,dependencia_id,dependencia_nom,estado',
+        'tomo:id,numero',
+        'solicitante:id,nombres,apellidos',
+        'aprobador:id,nombres,apellidos',
+        'entregadoPor:id,nombres,apellidos',
+        'recibidoPor:id,nombres,apellidos',
+    ];
 
     /**
-     * Listado paginado de préstamos con filtros por estado y búsqueda.
-     *
-     * @param  Request  $request  Filtros: estado, search, per_page
-     * @return JsonResponse
+     * El servicio recuerda los permisos del usuario; la instancia del controlador queda guardada en
+     * la ruta, así que se crea uno por petición para que no se arrastren entre peticiones.
      */
-    public function index(Request $request)
+    private ?PrestamosService $servicio = null;
+
+    private ?Request $peticion = null;
+
+    private function prestamos(): PrestamosService
     {
-        try {
-            $query = OfiArchivoPrestamo::with(['expediente', 'solicitante', 'usuarioRegistro']);
-
-            if ($request->has('estado') && $request->estado !== '') {
-                $query->where('estado', $request->estado);
-            }
-
-            if ($request->has('search') && $request->search !== '') {
-                $search = $request->search;
-                $query->whereHas('expediente', function ($q) use ($search) {
-                    $q->where('numero_expediente', 'like', "%{$search}%")
-                        ->orWhere('nombre_expediente', 'like', "%{$search}%");
-                });
-            }
-
-            $perPage = min($request->get('per_page', 15), 100);
-            $prestamos = $query->latest()->paginate($perPage);
-
-            return $this->successResponse($prestamos, 'Listado de préstamos obtenido');
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-
-            return $this->serverErrorResponse('Error al obtener el listado', $e->getMessage());
+        if (! $this->servicio || $this->peticion !== request()) {
+            $this->servicio = app(PrestamosService::class);
+            $this->peticion = request();
         }
+
+        return $this->servicio;
     }
 
     /**
-     * Registra un nuevo préstamo de expediente.
-     * Valida que el expediente esté en estado 'abierto'.
-     *
-     * @param  Request  $request  expediente_id, solicitante_id, fecha_devolucion_esperada (requeridos)
-     * @return JsonResponse
+     * Préstamos paginados. bandeja=mios (los que solicité), por_atender (por aprobar, entregar o
+     * recibir en mi archivo) o todos, que exige el permiso Ver; sin él se ven solo los propios.
      */
-    public function store(Request $request)
+    public function index(Request $request): JsonResponse
     {
-        $request->validate([
-            'expediente_id' => 'required|exists:ofi_archivo_expedientes,id',
-            'solicitante_id' => 'required|exists:users,id',
+        $filtros = $request->validate([
+            'bandeja' => 'nullable|in:mios,por_atender,todos',
+            'estado' => 'nullable|string|max:20',
+            'modalidad' => 'nullable|in:'.implode(',', OfiArchivoPrestamo::MODALIDADES),
+            'search' => 'nullable|string|max:100',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+        $user = $request->user();
+        $verTodos = PrestamosService::tiene($user, PrestamosService::PERMISO_VER);
+        $bandeja = $filtros['bandeja'] ?? ($verTodos ? 'todos' : 'mios');
+        if ($bandeja === 'todos' && ! $verTodos) {
+            return $this->forbiddenResponse('No tiene permiso para ver todos los préstamos');
+        }
+
+        $query = OfiArchivoPrestamo::with(self::RELACIONES)
+            ->when($bandeja === 'mios', fn ($q) => $q->where('solicitante_id', $user->id))
+            ->when($bandeja === 'por_atender', fn ($q) => $this->prestamos()->porAtender($q, $user))
+            ->when($filtros['estado'] ?? null, fn ($q, $estado) => $q->where('estado', $estado))
+            ->when($filtros['modalidad'] ?? null, fn ($q, $modalidad) => $q->where('modalidad', $modalidad))
+            ->when($filtros['search'] ?? null, fn ($q, $search) => $q->whereHas('expediente', fn ($q) => $q
+                ->where('numero_expediente', 'like', "%{$search}%")
+                ->orWhere('nombre_expediente', 'like', "%{$search}%")));
+
+        $pagina = $query->latest()->orderByDesc('id')->paginate($filtros['per_page'] ?? 15)
+            ->through(fn (OfiArchivoPrestamo $p) => $this->conAcciones($p, $user));
+
+        return $this->successResponse($pagina, 'Listado de préstamos obtenido');
+    }
+
+    public function show(Request $request, int $id): JsonResponse
+    {
+        $prestamo = OfiArchivoPrestamo::with(self::RELACIONES)->findOrFail($id);
+        $user = $request->user();
+        $acciones = $this->prestamos()->acciones($prestamo, $user);
+        $propio = (int) $prestamo->solicitante_id === (int) $user->id;
+
+        if (! $propio && ! PrestamosService::tiene($user, PrestamosService::PERMISO_VER) && ! in_array(true, $acciones, true)) {
+            return $this->notFoundResponse('Préstamo no encontrado');
+        }
+
+        return $this->successResponse($this->conAcciones($prestamo, $user), 'Préstamo obtenido exitosamente');
+    }
+
+    /** Solicitud de préstamo; quien la hace es el solicitante. */
+    public function store(Request $request): JsonResponse
+    {
+        if (! $this->prestamos()->puedeSolicitar($request->user())) {
+            return $this->forbiddenResponse('No tiene permiso para solicitar préstamos');
+        }
+
+        $datos = $request->validate([
+            'expediente_id' => 'required|integer|exists:ofi_archivo_expedientes,id',
+            'tomo_id' => 'nullable|integer',
+            'modalidad' => 'required|in:'.implode(',', OfiArchivoPrestamo::MODALIDADES),
+            'motivo' => 'required|string|min:5|max:500',
+            'fecha_devolucion_esperada' => 'required|date',
             'dependencia_destino' => 'nullable|string|max:200',
-            'fecha_devolucion_esperada' => 'required|date|after:now',
             'observaciones' => 'nullable|string|max:1000',
         ]);
 
-        try {
-            DB::beginTransaction();
+        $prestamo = $this->prestamos()->solicitar($datos, $request->user());
 
-            $expediente = OfiArchivoExpediente::findOrFail($request->expediente_id);
+        return $this->createdResponse($this->cargar($prestamo, $request), 'Solicitud de préstamo registrada');
+    }
 
-            // M08-12: Se pueden prestar expedientes abiertos, cerrados o transferidos (archivo central).
-            // Un expediente eliminado nunca se presta.
-            if ($expediente->estado === 'eliminado') {
-                DB::rollBack();
+    public function aprobar(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'fecha_devolucion_esperada' => 'nullable|date',
+            'fundamento_autorizacion' => 'nullable|string|max:500',
+            'version_publica' => 'nullable|boolean',
+        ]);
 
-                return $this->warningResponse('No se puede prestar un expediente que ha sido eliminado.');
-            }
+        $prestamo = $this->prestamos()->aprobar(OfiArchivoPrestamo::findOrFail($id), $datos, $request->user());
 
-            if (! in_array($expediente->estado, ['abierto', 'cerrado', 'transferido'])) {
-                DB::rollBack();
+        return $this->successResponse($this->cargar($prestamo, $request), 'Préstamo aprobado');
+    }
 
-                return $this->warningResponse("No se puede prestar un expediente en estado '{$expediente->estado}'.");
-            }
+    public function rechazar(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate(['motivo' => 'required|string|min:5|max:500']);
 
-            // M08-12: Prevenir doble préstamo activo del mismo expediente
-            $prestamoActivo = OfiArchivoPrestamo::where('expediente_id', $expediente->id)
-                ->whereIn('estado', ['prestado', 'vencido'])
-                ->exists();
+        $prestamo = $this->prestamos()->rechazar(OfiArchivoPrestamo::findOrFail($id), $datos['motivo'], $request->user());
 
-            if ($prestamoActivo) {
-                DB::rollBack();
+        return $this->successResponse($this->cargar($prestamo, $request), 'Solicitud rechazada');
+    }
 
-                return $this->warningResponse('El expediente ya se encuentra en préstamo activo.');
-            }
+    public function cancelar(Request $request, int $id): JsonResponse
+    {
+        $prestamo = $this->prestamos()->cancelar(OfiArchivoPrestamo::findOrFail($id), $request->user());
 
-            $prestamo = OfiArchivoPrestamo::create([
-                'expediente_id' => $request->expediente_id,
-                'solicitante_id' => $request->solicitante_id,
-                'dependencia_destino' => $request->dependencia_destino,
-                'fecha_prestamo' => now(),
-                'fecha_devolucion_esperada' => $request->fecha_devolucion_esperada,
-                'estado' => 'prestado',
-                'observaciones' => $request->observaciones,
-                'usuario_registro_id' => Auth::id(),
-            ]);
+        return $this->successResponse($this->cargar($prestamo, $request), 'Solicitud cancelada');
+    }
 
-            DB::commit();
+    public function entregar(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate(['folios' => 'required|integer|min:1|max:100000']);
 
-            return $this->createdResponse(
-                $prestamo->load(['expediente', 'solicitante', 'usuarioRegistro']),
-                'Préstamo registrado exitosamente'
-            );
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-            DB::rollBack();
+        $prestamo = $this->prestamos()->entregar(OfiArchivoPrestamo::findOrFail($id), (int) $datos['folios'], $request->user());
 
-            return $this->serverErrorResponse('Error al registrar el préstamo', $e->getMessage());
-        }
+        return $this->successResponse($this->cargar($prestamo, $request), 'Entrega registrada');
+    }
+
+    public function devolver(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate(['folios' => 'nullable|integer|min:0|max:100000']);
+        $folios = isset($datos['folios']) ? (int) $datos['folios'] : null;
+
+        $prestamo = $this->prestamos()->devolver(OfiArchivoPrestamo::findOrFail($id), $folios, $request->user());
+
+        return $this->successResponse(
+            $this->cargar($prestamo, $request),
+            $prestamo->folios_no_coinciden
+                ? "Devolución registrada. Los folios no coinciden: se entregaron {$prestamo->folios_entrega} y se devolvieron {$prestamo->folios_devolucion}"
+                : 'Devolución registrada exitosamente'
+        );
     }
 
     /**
-     * Obtiene el detalle de un préstamo específico.
-     *
-     * @param  int  $id  ID del préstamo
-     * @return JsonResponse
+     * Expedientes que se pueden solicitar, con sus tomos y si están fuera del archivo. Solo datos
+     * de identificación: el contenido se ve al aprobarse el préstamo.
      */
-    public function show($id)
+    public function expedientes(Request $request): JsonResponse
     {
-        try {
-            $prestamo = OfiArchivoPrestamo::with(['expediente', 'solicitante', 'usuarioRegistro'])
-                ->findOrFail($id);
-
-            return $this->successResponse($prestamo, 'Préstamo obtenido exitosamente');
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-
-            return $this->serverErrorResponse('Error al obtener el préstamo', $e->getMessage());
+        if (! $this->prestamos()->puedeSolicitar($request->user())) {
+            return $this->forbiddenResponse('No tiene permiso para solicitar préstamos');
         }
-    }
+        $search = $request->validate(['search' => 'nullable|string|max:100'])['search'] ?? null;
 
-    /**
-     * Registra la devolución de un préstamo.
-     * Actualiza fecha_devolucion_real y estado a 'devuelto'.
-     *
-     * @param  int  $id  ID del préstamo
-     * @return JsonResponse
-     */
-    public function devolver($id)
-    {
-        try {
-            DB::beginTransaction();
+        $expedientes = OfiArchivoExpediente::query()
+            ->whereIn('estado', PrestamosService::ESTADOS_PRESTABLES)
+            ->when($search, fn ($q) => $q->where(fn ($q) => $q
+                ->where('numero_expediente', 'like', "%{$search}%")
+                ->orWhere('nombre_expediente', 'like', "%{$search}%")))
+            ->with('tomos:id,expediente_id,numero')
+            ->withExists(['prestamos as prestado' => fn ($q) => $q->fueraDelArchivo()->whereNull('tomo_id')])
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get(['id', 'numero_expediente', 'nombre_expediente', 'dependencia_nom', 'fase', 'soporte', 'nivel_acceso', 'estado']);
 
-            $prestamo = OfiArchivoPrestamo::findOrFail($id);
-
-            // M08-12: Permite devolver préstamos tanto activos ('prestado') como vencidos ('vencido')
-            if (! in_array($prestamo->estado, ['prestado', 'vencido'])) {
-                DB::rollBack();
-
-                return $this->warningResponse('Este préstamo ya fue devuelto o se encuentra cerrado');
-            }
-
-            $prestamo->update([
-                'fecha_devolucion_real' => now(),
-                'estado' => 'devuelto',
-            ]);
-
-            DB::commit();
-
-            return $this->successResponse(
-                $prestamo->load(['expediente', 'solicitante']),
-                'Devolución registrada exitosamente'
-            );
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-            DB::rollBack();
-
-            return $this->serverErrorResponse('Error al registrar la devolución', $e->getMessage());
-        }
+        return $this->successResponse([
+            'plazo_maximo_dias' => ConfiguracionArchivo::prestamoPlazoMaximo(),
+            'expedientes' => $expedientes,
+        ], 'Expedientes disponibles para préstamo');
     }
 
     /**
      * Estadísticas rápidas de préstamos para dashboard.
-     * Retorna: activos, vencidos, devueltos_hoy, prestados_hoy.
-     *
-     * @return JsonResponse
+     * Retorna: activos, vencidos, devueltos_hoy, prestados_hoy y solicitudes por aprobar.
      */
-    public function estadisticas()
+    public function estadisticas(): JsonResponse
     {
-        try {
-            $stats = [
-                'activos' => OfiArchivoPrestamo::activos()->count(),
-                'vencidos' => OfiArchivoPrestamo::vencidos()->count(),
-                'devueltos_hoy' => OfiArchivoPrestamo::where('estado', 'devuelto')
-                    ->whereDate('fecha_devolucion_real', today())->count(),
-                'prestados_hoy' => OfiArchivoPrestamo::whereDate('fecha_prestamo', today())->count(),
-            ];
+        return $this->successResponse([
+            'activos' => OfiArchivoPrestamo::activos()->count(),
+            'vencidos' => OfiArchivoPrestamo::vencidos()->count(),
+            'devueltos_hoy' => OfiArchivoPrestamo::where('estado', 'devuelto')->whereDate('fecha_devolucion_real', today())->count(),
+            'prestados_hoy' => OfiArchivoPrestamo::whereDate('fecha_prestamo', today())->count(),
+            'solicitados' => OfiArchivoPrestamo::where('estado', 'solicitado')->count(),
+        ], 'Estadísticas de préstamos obtenidas');
+    }
 
-            return $this->successResponse($stats, 'Estadísticas de préstamos obtenidas');
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
+    private function cargar(OfiArchivoPrestamo $prestamo, Request $request): array
+    {
+        return $this->conAcciones($prestamo->fresh(self::RELACIONES), $request->user());
+    }
 
-            return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
-        }
+    private function conAcciones(OfiArchivoPrestamo $prestamo, $user): array
+    {
+        return $prestamo->toArray() + ['acciones' => $this->prestamos()->acciones($prestamo, $user)];
     }
 }

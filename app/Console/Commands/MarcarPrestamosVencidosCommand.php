@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Log;
  * B15 (diseño de expedientes §3.10): marca como vencidos los préstamos cuya fecha de devolución
  * pasó y avisa al solicitante y a quien registró el préstamo. El cambio de estado queda en el
  * historial del expediente (OfiArchivoPrestamo::booted).
+ *
+ * §3.10: el acceso electrónico no vence, expira: pasa a devuelto sin aviso y la consulta se cierra.
  */
 class MarcarPrestamosVencidosCommand extends Command
 {
@@ -23,8 +25,23 @@ class MarcarPrestamosVencidosCommand extends Command
 
     public function handle(): int
     {
+        $expirados = 0;
+        OfiArchivoPrestamo::where('estado', 'prestado')
+            ->where('modalidad', 'electronico')
+            ->where('fecha_devolucion_esperada', '<', now())
+            ->chunkById(200, function ($prestamos) use (&$expirados) {
+                foreach ($prestamos as $prestamo) {
+                    if (! $this->option('dry-run')) {
+                        $prestamo->update(['estado' => 'devuelto', 'fecha_devolucion_real' => $prestamo->fecha_devolucion_esperada]);
+                    }
+                    $expirados++;
+                }
+            });
+        $this->info("Accesos electrónicos expirados: {$expirados}");
+
         $marcados = 0;
         OfiArchivoPrestamo::where('estado', 'prestado')
+            ->where('modalidad', '!=', 'electronico')
             ->where('fecha_devolucion_esperada', '<', now())
             ->with('expediente:id,numero_expediente,nombre_expediente')
             ->chunkById(200, function ($prestamos) use (&$marcados) {
@@ -50,7 +67,7 @@ class MarcarPrestamosVencidosCommand extends Command
         $fecha = $prestamo->fecha_devolucion_esperada->toDateString();
         $nombre = $prestamo->expediente?->nombre_expediente;
 
-        $destinatarios = array_unique(array_filter([$prestamo->solicitante_id, $prestamo->usuario_registro_id]));
+        $destinatarios = array_unique(array_filter([$prestamo->solicitante_id, $prestamo->usuario_registro_id, $prestamo->entregado_por_id]));
         foreach ($destinatarios as $userId) {
             Notificacion::create([
                 'user_id' => $userId,

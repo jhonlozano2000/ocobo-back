@@ -25,12 +25,16 @@ final class ConfiguracionArchivo
     /** B20: la ubicación de los expedientes físicos solo se toma del catálogo topográfico. */
     public const UBICACION_CON_CATALOGO = 'archivo_ubicacion_con_catalogo';
 
+    /** §3.10: días máximos entre la solicitud de un préstamo y su devolución. */
+    public const PRESTAMO_PLAZO_MAXIMO = 'archivo_prestamo_plazo_maximo_dias';
+
     /** Reglas del valor de cada clave al guardarla. */
     public const REGLAS = [
         self::FOLIOS_POR_TOMO => ['required', 'integer', 'min:1', 'max:1000'],
         self::MESES_INACTIVIDAD => ['required', 'integer', 'min:1', 'max:120'],
         self::INDICE_TSA => ['required', 'in:0,1,true,false'],
         self::UBICACION_CON_CATALOGO => ['required', 'in:0,1,true,false'],
+        self::PRESTAMO_PLAZO_MAXIMO => ['required', 'integer', 'min:1', 'max:365'],
     ];
 
     private const NOMBRES = [
@@ -38,6 +42,7 @@ final class ConfiguracionArchivo
         self::MESES_INACTIVIDAD => 'meses de inactividad',
         self::INDICE_TSA => 'sello de tiempo del índice',
         self::UBICACION_CON_CATALOGO => 'ubicación con catálogo',
+        self::PRESTAMO_PLAZO_MAXIMO => 'plazo máximo del préstamo',
     ];
 
     public static function foliosPorTomo(): int
@@ -57,6 +62,11 @@ final class ConfiguracionArchivo
         return blank($valor)
             ? (bool) config('firma.tsa_indice_expediente', false)
             : filter_var($valor, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    public static function prestamoPlazoMaximo(): int
+    {
+        return self::entero(self::PRESTAMO_PLAZO_MAXIMO, config('archivo.prestamo_plazo_maximo_dias', 15));
     }
 
     /** Sin la clave o vacía, apagado: la ubicación sigue siendo texto libre. */

@@ -313,7 +313,7 @@ class OfiArchivoTransferenciaController extends Controller
         if (OfiArchivoEliminacion::where('expediente_id', $expediente->id)->exists()) {
             return 'El expediente ya tiene una eliminación registrada';
         }
-        if (OfiArchivoPrestamo::where('expediente_id', $expediente->id)->whereIn('estado', ['prestado', 'vencido'])->exists()) {
+        if (OfiArchivoPrestamo::where('expediente_id', $expediente->id)->fueraDelArchivo()->exists()) {
             return 'El expediente tiene préstamos sin devolver';
         }
 

@@ -38,6 +38,11 @@ class PermisosGestionArchivoSeeder extends Seeder
             'Gestion de Archivo -> Prestamos -> Ver',
             'Gestion de Archivo -> Prestamos -> Crear',
             'Gestion de Archivo -> Prestamos -> Devolver',
+            // §3.10: cualquier usuario solicita; aprueba el responsable del archivo de la fase
+            'Gestion de Archivo -> Prestamos -> Solicitar',
+            'Gestion de Archivo -> Prestamos -> Aprobar',
+            // §7: prestar clasificados y reservados exige poder verlos
+            'Gestion de Archivo -> Expedientes -> Ver reservados',
 
             // Transferencias y Eliminaciones (M12)
             'Gestion de Archivo -> Transferencias -> Ver',
@@ -80,6 +85,9 @@ class PermisosGestionArchivoSeeder extends Seeder
                 $rolJefe->givePermissionTo($permission);
             }
         }
+
+        // §7: solicitar un préstamo es para cualquier usuario
+        Role::all()->each(fn (Role $rol) => $rol->givePermissionTo('Gestion de Archivo -> Prestamos -> Solicitar'));
 
         $this->command->info('✅ Permisos de Gestión de Archivo creados satisfactoriamente');
     }

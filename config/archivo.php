@@ -14,4 +14,9 @@ return [
     | no cabe en el tomo actual, se abre el siguiente con la foliación continua.
     */
     'folios_por_tomo' => (int) env('ARCHIVO_FOLIOS_POR_TOMO', 200),
+
+    /*
+    | Préstamos (diseño de expedientes §3.10): días máximos entre la solicitud y la devolución.
+    */
+    'prestamo_plazo_maximo_dias' => (int) env('ARCHIVO_PRESTAMO_PLAZO_MAXIMO_DIAS', 15),
 ];

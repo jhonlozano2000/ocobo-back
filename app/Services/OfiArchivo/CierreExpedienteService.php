@@ -60,7 +60,7 @@ class CierreExpedienteService
             $impedimentos[] = 'La hoja de control no tiene documentos físicos registrados.';
         }
 
-        $prestamos = OfiArchivoPrestamo::where('expediente_id', $expediente->id)->whereIn('estado', ['prestado', 'vencido'])->count();
+        $prestamos = OfiArchivoPrestamo::where('expediente_id', $expediente->id)->fueraDelArchivo()->count();
         if ($prestamos > 0) {
             $impedimentos[] = "El expediente tiene {$prestamos} préstamo(s) sin devolver.";
         }

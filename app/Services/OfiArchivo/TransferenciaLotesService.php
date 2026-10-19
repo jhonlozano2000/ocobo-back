@@ -204,7 +204,7 @@ class TransferenciaLotesService
             }
         }
 
-        if (OfiArchivoPrestamo::where('expediente_id', $expediente->id)->whereIn('estado', ['prestado', 'vencido'])->exists()) {
+        if (OfiArchivoPrestamo::where('expediente_id', $expediente->id)->fueraDelArchivo()->exists()) {
             return 'Tiene préstamos sin devolver';
         }
 

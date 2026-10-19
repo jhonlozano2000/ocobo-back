@@ -93,6 +93,8 @@ class PrestamosVencidosTest extends TestCase
     {
         $permiso = Permission::findOrCreate('Gestion de Archivo -> Prestamos -> Devolver', 'web');
         $this->archivista->givePermissionTo($permiso);
+        // §3.10: recibe el responsable del archivo; el central ve todos los expedientes
+        $this->archivista->givePermissionTo(Permission::findOrCreate('Gestion de Archivo -> Expedientes -> Ver Todos', 'web'));
         $vencido = $this->prestamo(now()->subDay()->toDateTimeString());
         $this->artisan('archivo:marcar-prestamos-vencidos')->assertSuccessful();
 

@@ -113,6 +113,12 @@ class OfiArchivoExpediente extends Model
         return $this->hasMany(OfiArchivoExpedienteTomo::class, 'expediente_id')->orderBy('numero');
     }
 
+    /** §3.10: préstamos y solicitudes de préstamo del expediente. */
+    public function prestamos()
+    {
+        return $this->hasMany(OfiArchivoPrestamo::class, 'expediente_id');
+    }
+
     /** B20: caja del catálogo topográfico donde está el expediente. */
     public function ubicacion()
     {
