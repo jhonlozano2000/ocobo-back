@@ -71,6 +71,7 @@ Route::middleware(['auth:sanctum', 'throttle:archivo'])->prefix('archivo')->grou
     Route::get('/expedientes/{id}', [OfiArchivoExpedienteController::class, 'show'])->middleware('can:'.$permExp.'Ver');
     Route::put('/expedientes/{id}', [OfiArchivoExpedienteController::class, 'update'])->middleware('can:'.$permExp.'Editar');
     Route::post('/expedientes/{id}/cerrar', [OfiArchivoExpedienteController::class, 'cerrarExpediente'])->middleware('can:'.$permExp.'Cerrar');
+    Route::post('/expedientes/{id}/reabrir', [OfiArchivoExpedienteController::class, 'reabrirExpediente'])->middleware('can:'.$permExp.'Reabrir');
     Route::post('/expedientes/{id}/archivos', [OfiArchivoExpedienteController::class, 'subirArchivos'])->middleware('can:'.$permExp.'Incorporar');
     Route::post('/expedientes/{expedienteId}/documentos/{documentoId}/soft-delete', [OfiArchivoExpedienteController::class, 'softDeleteDocumento'])->middleware('can:'.$permExp.'Editar');
     Route::get('/expedientes/{id}/indice', [OfiArchivoExpedienteController::class, 'generarIndicePdf'])->middleware('can:'.$permExp.'Ver');

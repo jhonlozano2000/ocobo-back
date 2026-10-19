@@ -50,6 +50,7 @@ class OfiArchivoExpediente extends Model
         'usuario_apertura_id',
         'usuario_cierre_id',
         'motivo_cierre',
+        'motivo_reapertura',
         'total_folios_elec',
         'hash_indice',
         'trd_snapshot',

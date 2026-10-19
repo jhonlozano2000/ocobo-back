@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\OfiArchivo\CerrarExpedienteRequest;
 use App\Http\Requests\OfiArchivo\IncorporarDocumentoExpedienteRequest;
 use App\Http\Requests\OfiArchivo\ListarExpedientesRequest;
+use App\Http\Requests\OfiArchivo\ReabrirExpedienteRequest;
 use App\Http\Requests\OfiArchivo\StoreExpedienteRequest;
 use App\Http\Requests\OfiArchivo\SubirArchivosExpedienteRequest;
 use App\Http\Requests\OfiArchivo\TipificarDocumentoExpedienteRequest;
@@ -289,6 +290,50 @@ class OfiArchivoExpedienteController extends Controller
             }
 
             return $this->serverErrorResponse('Error al cerrar el expediente', $e->getMessage());
+        }
+    }
+
+    /**
+     * B13 (diseño de expedientes §3.5): reabre un expediente cerrado. Las versiones firmadas del
+     * índice se conservan; el cierre y la retención se limpian y se recalculan en el próximo
+     * cierre. El historial guarda el motivo y los valores que se limpiaron.
+     */
+    public function reabrirExpediente(ReabrirExpedienteRequest $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->lockForUpdate()->findOrFail($id);
+
+            if ($expediente->estado !== 'cerrado') {
+                DB::rollBack();
+
+                return $this->warningResponse('Solo se pueden reabrir expedientes cerrados. Uno transferido o eliminado no se reabre: abra un expediente nuevo para el trámite posterior.');
+            }
+
+            $expediente->update([
+                'estado' => 'abierto',
+                'motivo_reapertura' => $request->motivo_reapertura,
+                'fecha_cierre' => null,
+                'usuario_cierre_id' => null,
+                'motivo_cierre' => null,
+                'hash_indice' => null,
+                ...(CierreExpedienteService::disponible() ? ['trd_snapshot' => null, 'fecha_fin_gestion' => null, 'fecha_fin_central' => null] : []),
+            ]);
+
+            DB::commit();
+
+            return $this->successResponse(
+                $expediente->load(['dependencia', 'serieTrd', 'usuarioApertura']),
+                'Expediente reabierto exitosamente'
+            );
+        } catch (\Exception $e) {
+            DB::rollBack();
+            if ($e instanceof ValidationException || $e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
+                throw $e;
+            }
+
+            return $this->serverErrorResponse('Error al reabrir el expediente', $e->getMessage());
         }
     }
 
