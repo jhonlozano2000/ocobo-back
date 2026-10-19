@@ -64,14 +64,6 @@ class TransferenciaEliminacionTest extends TestCase
         ]);
     }
 
-    private function transferir(int $expediente, string $tipo = 'primaria')
-    {
-        return $this->actingAs($this->archivista)->postJson('/api/archivo/transferencias', [
-            'expediente_id' => $expediente, 'tipo' => $tipo, 'origen' => 'Gestión', 'destino' => 'Central',
-            'responsable_origen_id' => $this->archivista->id, 'fecha_transferencia' => now()->toDateString(),
-        ]);
-    }
-
     public function test_eliminacion_exige_disposicion_retencion_y_aprobador_valido(): void
     {
         // Conservación total: no se elimina
@@ -104,18 +96,18 @@ class TransferenciaEliminacionTest extends TestCase
         $this->eliminar($exp)->assertStatus(422);
     }
 
-    public function test_transferencia_exige_precondiciones_y_segregacion(): void
+    /**
+     * B17: las precondiciones de la transferencia se prueban en LotesTransferenciaTest. Las
+     * pendientes sueltas, anteriores a los lotes, se siguen decidiendo con segregación de funciones.
+     */
+    public function test_la_pendiente_anterior_a_los_lotes_se_aprueba_con_segregacion(): void
     {
-        // Abierto o con retención en gestión (2 años) sin cumplir
-        $this->transferir($this->expediente(['e' => 1], 3, 'abierto'))->assertStatus(422);
-        $this->transferir($this->expediente(['e' => 1], 1))->assertStatus(422);
-        // Secundaria de un expediente aún en gestión
-        $this->transferir($this->expediente(['ct' => 1], 10), 'secundaria')->assertStatus(422);
-
         $exp = $this->expediente(['ct' => 1], 3);
-        $id = $this->transferir($exp)->assertCreated()->json('data.id');
-        // Una sola pendiente por expediente
-        $this->transferir($exp)->assertStatus(422);
+        $id = DB::table('ofi_archivo_transferencias')->insertGetId([
+            'expediente_id' => $exp, 'tipo' => 'primaria', 'origen' => 'Gestión', 'destino' => 'Central',
+            'responsable_origen_id' => $this->archivista->id, 'fecha_transferencia' => now(),
+            'estado' => 'pendiente', 'usuario_registro_id' => $this->archivista->id,
+        ]);
 
         // Quien registró no aprueba; otro usuario sí
         $this->actingAs($this->archivista)->postJson("/api/archivo/transferencias/{$id}/aprobar", ['estado' => 'aprobada'])->assertStatus(422);

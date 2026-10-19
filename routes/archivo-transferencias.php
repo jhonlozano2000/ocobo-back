@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\OfiArchivo\OfiArchivoTransferenciaController;
+use App\Http\Controllers\OfiArchivo\OfiArchivoTransferenciaLoteController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -17,6 +18,16 @@ Route::middleware(['auth:sanctum', 'throttle:archivo'])->group(function () {
         ->middleware('can:Gestion de Archivo -> Transferencias -> Crear');
     Route::post('transferencias/{id}/aprobar', [OfiArchivoTransferenciaController::class, 'aprobarTransferencia'])
         ->middleware('can:Gestion de Archivo -> Transferencias -> Aprobar');
+
+    // B17: lotes de transferencia (FUID, cotejo y acta de entrega)
+    $perm = 'can:Gestion de Archivo -> Transferencias -> ';
+    Route::get('transferencia-lotes', [OfiArchivoTransferenciaLoteController::class, 'index'])->middleware($perm.'Ver');
+    Route::get('transferencia-lotes/candidatos', [OfiArchivoTransferenciaLoteController::class, 'candidatos'])->middleware($perm.'Crear');
+    Route::post('transferencia-lotes', [OfiArchivoTransferenciaLoteController::class, 'store'])->middleware($perm.'Crear');
+    Route::get('transferencia-lotes/{id}', [OfiArchivoTransferenciaLoteController::class, 'show'])->whereNumber('id')->middleware($perm.'Ver');
+    Route::post('transferencia-lotes/{id}/recibir', [OfiArchivoTransferenciaLoteController::class, 'recibir'])->whereNumber('id')->middleware($perm.'Recibir');
+    Route::get('transferencia-lotes/{id}/fuid', [OfiArchivoTransferenciaLoteController::class, 'fuid'])->whereNumber('id')->middleware($perm.'Ver');
+    Route::get('transferencia-lotes/{id}/acta', [OfiArchivoTransferenciaLoteController::class, 'acta'])->whereNumber('id')->middleware($perm.'Ver');
 
     // Eliminaciones
     Route::get('eliminaciones', [OfiArchivoTransferenciaController::class, 'indexEliminaciones'])

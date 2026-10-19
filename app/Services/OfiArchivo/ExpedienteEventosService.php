@@ -22,6 +22,8 @@ class ExpedienteEventosService
     private const ACCION_POR_ESTADO = [
         'abierto' => 'reapertura',
         'cerrado' => 'cierre',
+        // B17: el lote se envía; si se devuelve, el expediente vuelve a cerrado en su archivo
+        'en_transferencia' => 'envio_transferencia',
         'transferido' => 'transferencia',
         'eliminado' => 'eliminacion',
     ];
@@ -100,7 +102,11 @@ class ExpedienteEventosService
         }
 
         // B16: la transferencia primaria cambia la fase y deja el estado en cerrado
-        $accion = $expediente->wasChanged('fase') ? 'transferencia' : (self::ACCION_POR_ESTADO[$expediente->estado] ?? 'cambio_estado');
+        $accion = match (true) {
+            $expediente->wasChanged('fase') => 'transferencia',
+            ($cambios['estado']['antes'] ?? null) === 'en_transferencia' => 'transferencia_devuelta',
+            default => self::ACCION_POR_ESTADO[$expediente->estado] ?? 'cambio_estado',
+        };
         $this->registrar($expediente->id, $accion, array_filter([
             'cambios' => $cambios,
             'hash_indice' => $expediente->wasChanged('hash_indice') ? $expediente->hash_indice : null,

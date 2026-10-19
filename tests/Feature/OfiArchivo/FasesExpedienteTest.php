@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\OfiArchivo;
 
+use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\User;
+use App\Services\OfiArchivo\IndiceExpedienteService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Artisan;
@@ -24,17 +26,20 @@ class FasesExpedienteTest extends TestCase
 
     private User $jefe;
 
+    private int $dependencia;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         [$this->archivista, $this->jefe] = User::factory()->count(2)->create(['estado' => 1])->all();
-        $permisos = ['Transferencias -> Crear', 'Transferencias -> Aprobar', 'Expedientes -> Reabrir', 'Expedientes -> Ver', 'Expedientes -> Ver Todos'];
+        $permisos = ['Transferencias -> Crear', 'Transferencias -> Recibir', 'Expedientes -> Reabrir', 'Expedientes -> Ver', 'Expedientes -> Ver Todos'];
         foreach ($permisos as $accion) {
             $permiso = Permission::findOrCreate('Gestion de Archivo -> '.$accion, 'web');
             $this->archivista->givePermissionTo($permiso);
             $this->jefe->givePermissionTo($permiso);
         }
+        $this->dependencia = DB::table('calidad_organigrama')->insertGetId(['tipo' => 'Dependencia', 'nom_organico' => 'Oficina B16']);
     }
 
     /** Expediente cerrado hace $aniosCerrado años, con una serie de 2 años en gestión y 3 en central. */
@@ -47,23 +52,31 @@ class FasesExpedienteTest extends TestCase
         ]);
         $id = DB::table('ofi_archivo_expedientes')->insertGetId([
             'numero_expediente' => 'B16-'.uniqid(), 'nombre_expediente' => 'Fases', 'anio' => 2015,
-            'dependencia_id' => 1, 'serie_trd_id' => $serie, 'estado' => 'cerrado',
+            'dependencia_id' => $this->dependencia, 'serie_trd_id' => $serie, 'estado' => 'cerrado',
             'fecha_apertura' => now()->subYears(12), 'usuario_apertura_id' => $this->archivista->id,
             'fecha_cierre' => now()->subDays((int) round($aniosCerrado * 365)),
         ] + $extra);
         Schema::enableForeignKeyConstraints();
+        app(IndiceExpedienteService::class)->versionar(OfiArchivoExpediente::findOrFail($id), $this->archivista);
 
         return $id;
     }
 
+    /** B17: la transferencia va en un lote que envía el archivista y recibe el jefe. */
+    private function enviar(int $expediente, string $tipo)
+    {
+        return $this->actingAs($this->archivista)->postJson('/api/archivo/transferencia-lotes', [
+            'tipo' => $tipo, 'dependencia_id' => $this->dependencia, 'origen' => 'Origen', 'destino' => 'Destino',
+            'expediente_ids' => [$expediente],
+        ]);
+    }
+
     private function transferirYAprobar(int $expediente, string $tipo)
     {
-        $id = $this->actingAs($this->archivista)->postJson('/api/archivo/transferencias', [
-            'expediente_id' => $expediente, 'tipo' => $tipo, 'origen' => 'Origen', 'destino' => 'Destino',
-            'responsable_origen_id' => $this->archivista->id, 'fecha_transferencia' => now()->toDateString(),
-        ])->assertCreated()->json('data.id');
+        $lote = $this->enviar($expediente, $tipo)->assertCreated()->json('data.id');
+        $item = DB::table('ofi_archivo_transferencias')->where('lote_id', $lote)->value('id');
 
-        return $this->actingAs($this->jefe)->postJson("/api/archivo/transferencias/{$id}/aprobar", ['estado' => 'aprobada'])->assertOk();
+        return $this->actingAs($this->jefe)->postJson("/api/archivo/transferencia-lotes/{$lote}/recibir", ['items' => [['id' => $item, 'conforme' => true]]])->assertOk();
     }
 
     private function faseYEstado(int $expediente): array
@@ -77,10 +90,7 @@ class FasesExpedienteTest extends TestCase
         $this->assertSame(['fase' => 'gestion', 'estado' => 'cerrado'], $this->faseYEstado($exp));
 
         // La secundaria exige que ya esté en el central
-        $this->actingAs($this->archivista)->postJson('/api/archivo/transferencias', [
-            'expediente_id' => $exp, 'tipo' => 'secundaria', 'origen' => 'Gestión', 'destino' => 'Histórico',
-            'responsable_origen_id' => $this->archivista->id, 'fecha_transferencia' => now()->toDateString(),
-        ])->assertStatus(422);
+        $this->enviar($exp, 'secundaria')->assertStatus(422);
 
         $this->transferirYAprobar($exp, 'primaria');
         $this->assertSame(['fase' => 'central', 'estado' => 'cerrado'], $this->faseYEstado($exp));
@@ -89,10 +99,7 @@ class FasesExpedienteTest extends TestCase
         // En el central sigue cerrado, pero no se reabre ni vuelve a transferirse al central
         $this->actingAs($this->archivista)->postJson("/api/archivo/expedientes/{$exp}/reabrir", ['motivo_reapertura' => 'Falta un documento'])
             ->assertStatus(422);
-        $this->actingAs($this->archivista)->postJson('/api/archivo/transferencias', [
-            'expediente_id' => $exp, 'tipo' => 'primaria', 'origen' => 'Gestión', 'destino' => 'Central',
-            'responsable_origen_id' => $this->archivista->id, 'fecha_transferencia' => now()->toDateString(),
-        ])->assertStatus(422);
+        $this->enviar($exp, 'primaria')->assertStatus(422);
 
         $this->transferirYAprobar($exp, 'secundaria');
         $this->assertSame(['fase' => 'historico', 'estado' => 'transferido'], $this->faseYEstado($exp));

@@ -25,6 +25,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Carbon $fecha_transferencia
  * @property string $estado pendiente|aprobada|rechazada|completada
  * @property string|null $fuid_path Ruta del FUID generado
+ * @property int|null $lote_id B17: lote al que pertenece; null en las anteriores a los lotes
+ * @property string|null $cotejo conforme|no_conforme, al recibir el lote
  */
 class OfiArchivoTransferencia extends Model
 {
@@ -33,6 +35,7 @@ class OfiArchivoTransferencia extends Model
     protected $table = 'ofi_archivo_transferencias';
 
     protected $fillable = [
+        'lote_id',
         'expediente_id',
         'tipo',
         'origen',
@@ -41,6 +44,8 @@ class OfiArchivoTransferencia extends Model
         'responsable_destino_id',
         'fecha_transferencia',
         'estado',
+        'cotejo',
+        'observacion_cotejo',
         'fuid_path',
         'observaciones',
         'usuario_registro_id',
@@ -49,6 +54,11 @@ class OfiArchivoTransferencia extends Model
     protected $casts = [
         'fecha_transferencia' => 'datetime',
     ];
+
+    public function lote()
+    {
+        return $this->belongsTo(OfiArchivoTransferenciaLote::class, 'lote_id');
+    }
 
     public function expediente()
     {

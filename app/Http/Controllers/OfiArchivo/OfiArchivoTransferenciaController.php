@@ -10,7 +10,7 @@ use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoPrestamo;
 use App\Models\OfiArchivo\OfiArchivoTransferencia;
 use App\Models\User;
-use Carbon\Carbon;
+use App\Services\OfiArchivo\TransferenciaLotesService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +43,7 @@ class OfiArchivoTransferenciaController extends Controller
     public function indexTransferencias(Request $request)
     {
         try {
-            $query = OfiArchivoTransferencia::with(['expediente', 'responsableOrigen', 'responsableDestino']);
+            $query = OfiArchivoTransferencia::with(['expediente', 'responsableOrigen', 'responsableDestino', 'lote:id,codigo,estado']);
 
             if ($request->has('tipo') && $request->tipo !== '') {
                 $query->where('tipo', $request->tipo);
@@ -78,67 +78,16 @@ class OfiArchivoTransferenciaController extends Controller
     }
 
     /**
-     * Registra una nueva transferencia documental (Acuerdo AGN 004/2019, M08-11).
-     *
-     * Primaria (gestión → central): expediente cerrado y tiempo de retención en gestión cumplido.
-     * Secundaria (central → histórico): expediente ya transferido al central, retención total
-     * cumplida y disposición final de conservación total o selección. Una sola pendiente por expediente.
+     * B17: las transferencias se envían por lote (FUID, cotejo y acta de entrega). Registrar una
+     * transferencia suelta saltaría esos controles, así que ya no se admite.
      */
-    public function storeTransferencia(Request $request)
+    public function storeTransferencia()
     {
-        $request->validate([
-            'expediente_id' => 'required|exists:ofi_archivo_expedientes,id',
-            'tipo' => 'required|in:primaria,secundaria',
-            'origen' => 'required|string|max:200',
-            'destino' => 'required|string|max:200',
-            'responsable_origen_id' => 'required|exists:users,id',
-            'responsable_destino_id' => 'nullable|exists:users,id',
-            'fecha_transferencia' => 'required|date',
-            'observaciones' => 'nullable|string|max:1000',
-        ]);
-
-        try {
-            DB::beginTransaction();
-
-            $expediente = OfiArchivoExpediente::lockForUpdate()->findOrFail($request->expediente_id);
-
-            if ($error = $this->validarTransferencia($expediente, $request->tipo)) {
-                DB::rollBack();
-
-                return $this->warningResponse($error);
-            }
-
-            $transferencia = OfiArchivoTransferencia::create([
-                ...$request->only([
-                    'expediente_id', 'tipo', 'origen', 'destino',
-                    'responsable_origen_id', 'responsable_destino_id',
-                    'fecha_transferencia', 'observaciones',
-                ]),
-                'estado' => 'pendiente',
-                'usuario_registro_id' => Auth::id(),
-            ]);
-
-            DB::commit();
-
-            return $this->createdResponse(
-                $transferencia->load(['expediente', 'responsableOrigen', 'responsableDestino']),
-                'Transferencia registrada exitosamente'
-            );
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-            DB::rollBack();
-
-            return $this->serverErrorResponse('Error al registrar la transferencia', $e->getMessage());
-        }
+        return $this->warningResponse('Las transferencias se envían por lote, con su FUID; use /api/archivo/transferencia-lotes');
     }
 
     /**
-     * Aprueba o rechaza una transferencia documental (Acuerdo AGN 004/2019).
+     * Aprueba o rechaza una transferencia suelta, anterior a los lotes (Acuerdo AGN 004/2019).
      *
      * Máquina de estados: solo transferencias 'pendiente' pueden decidirse;
      * las ya aprobadas/rechazadas son inmutables. El rechazo exige observaciones.
@@ -173,6 +122,13 @@ class OfiArchivoTransferenciaController extends Controller
                 DB::rollBack();
 
                 return $this->warningResponse("La transferencia ya fue {$transferencia->estado} y no puede modificarse");
+            }
+
+            // B17: las de un lote se reciben con el cotejo del lote
+            if ($transferencia->lote_id) {
+                DB::rollBack();
+
+                return $this->warningResponse('La transferencia pertenece a un lote; se recibe o devuelve desde el lote');
             }
 
             // Segregación de funciones (M08-11): quien registra no decide
@@ -347,38 +303,6 @@ class OfiArchivoTransferenciaController extends Controller
     // ==================== REGLAS TRD (AGN 004/2019) ====================
 
     /**
-     * Precondiciones de una transferencia; null si procede o el motivo del rechazo.
-     */
-    private function validarTransferencia(OfiArchivoExpediente $expediente, string $tipo): ?string
-    {
-        if (OfiArchivoTransferencia::where('expediente_id', $expediente->id)->where('estado', 'pendiente')->exists()) {
-            return 'El expediente ya tiene una transferencia pendiente';
-        }
-
-        $trd = $this->trdDelExpediente($expediente);
-        if (! $trd) {
-            return 'El expediente no tiene serie/subserie TRD asociada';
-        }
-
-        if ($tipo === 'primaria') {
-            if ($expediente->estado !== 'cerrado' || $expediente->fase !== 'gestion') {
-                return 'Solo se transfieren al archivo central expedientes cerrados en el archivo de gestión';
-            }
-
-            return $this->validarRetencion($expediente, (int) $trd->a_g, 'en el archivo de gestión');
-        }
-
-        if ($expediente->estado !== 'cerrado' || $expediente->fase !== 'central') {
-            return 'La transferencia secundaria exige que el expediente esté cerrado en el archivo central';
-        }
-        if (! $trd->ct && ! $trd->s) {
-            return 'La disposición final de la TRD no es conservación total ni selección';
-        }
-
-        return $this->validarRetencion($expediente, (int) $trd->a_g + (int) $trd->a_c, 'total (gestión + central)');
-    }
-
-    /**
      * Precondiciones de una eliminación; null si procede o el motivo del rechazo.
      */
     private function validarEliminacion(OfiArchivoExpediente $expediente): ?string
@@ -401,7 +325,7 @@ class OfiArchivoTransferenciaController extends Controller
             return 'La disposición final de la TRD no permite eliminación (requiere E o S)';
         }
 
-        return $this->validarRetencion($expediente, (int) $trd->a_g + (int) $trd->a_c, 'total (gestión + central)');
+        return TransferenciaLotesService::validarRetencion($expediente, (int) $trd->a_g + (int) $trd->a_c, 'total (gestión + central)');
     }
 
     /**
@@ -410,19 +334,5 @@ class OfiArchivoTransferenciaController extends Controller
     private function trdDelExpediente(OfiArchivoExpediente $expediente): ?ClasificacionDocumentalTRD
     {
         return $expediente->trdRetencion();
-    }
-
-    private function validarRetencion(OfiArchivoExpediente $expediente, int $anios, string $etapa): ?string
-    {
-        if (! $expediente->fecha_cierre) {
-            return 'El expediente no tiene fecha de cierre';
-        }
-
-        $cumple = Carbon::parse($expediente->fecha_cierre)->addYears($anios);
-        if ($cumple->isFuture()) {
-            return "No se ha cumplido el tiempo de retención {$etapa} ({$anios} años desde el cierre; se cumple el {$cumple->format('Y-m-d')})";
-        }
-
-        return null;
     }
 }
