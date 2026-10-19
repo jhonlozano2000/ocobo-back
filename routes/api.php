@@ -6,6 +6,7 @@ use App\Http\Controllers\Gestion\GestionTerceroController;
 use App\Http\Controllers\OfiArchivo\OfiArchivoExpedienteController;
 use App\Http\Controllers\OfiArchivo\OfiArchivoExpedienteTerceroController;
 use App\Http\Controllers\OfiArchivo\OfiArchivoPendientesController;
+use App\Http\Controllers\OfiArchivo\OfiArchivoSugerenciaController;
 use App\Http\Controllers\Transversal\FirmaElectronicaController;
 use App\Http\Controllers\VentanillaUnica\DocumentoController;
 use Illuminate\Http\Request;
@@ -70,6 +71,8 @@ Route::middleware(['auth:sanctum', 'throttle:archivo'])->prefix('archivo')->grou
     Route::get('/expedientes', [OfiArchivoExpedienteController::class, 'index'])->middleware('can:'.$permExp.'Ver');
     Route::post('/expedientes', [OfiArchivoExpedienteController::class, 'store'])->middleware('can:'.$permExp.'Crear');
     Route::post('/expedientes/{id}/incorporar', [OfiArchivoExpedienteController::class, 'incorporarDocumento'])->middleware('can:'.$permExp.'Incorporar');
+    // B09: panel "Expediente" del radicado recibido y de la PQRS (diseño §6.1)
+    Route::get('/expedientes/sugerencias', OfiArchivoSugerenciaController::class)->middleware('can:'.$permExp.'Ver');
     // Bandeja "Pendientes de archivar" (diseño §3.4 y §6.1); va antes de /expedientes/{id}
     Route::get('/expedientes/pendientes-archivar', [OfiArchivoPendientesController::class, 'index'])->middleware('can:'.$permExp.'Ver');
     Route::post('/expedientes/pendientes-archivar/instancias/{instanciaId}/reintentar', [OfiArchivoPendientesController::class, 'reintentar'])->whereNumber('instanciaId')->middleware('can:'.$permExp.'Incorporar');
