@@ -11,6 +11,7 @@ use App\Http\Requests\OfiArchivo\IncorporarDocumentoExpedienteRequest;
 use App\Http\Requests\OfiArchivo\ListarExpedientesRequest;
 use App\Http\Requests\OfiArchivo\StoreExpedienteRequest;
 use App\Http\Requests\OfiArchivo\SubirArchivosExpedienteRequest;
+use App\Http\Requests\OfiArchivo\TipificarDocumentoExpedienteRequest;
 use App\Http\Requests\OfiArchivo\UpdateExpedienteRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
@@ -20,6 +21,7 @@ use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\OfiArchivo\ExpedienteEventosService;
 use App\Services\OfiArchivo\IndiceExpedienteService;
+use App\Services\OfiArchivo\TiposDocumentalesExpediente;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -37,8 +39,10 @@ class OfiArchivoExpedienteController extends Controller
     /**
      * Constructor con protección de permisos (Spatie).
      */
-    public function __construct(private IndiceExpedienteService $indiceService)
-    {
+    public function __construct(
+        private IndiceExpedienteService $indiceService,
+        private TiposDocumentalesExpediente $tiposDocumentales,
+    ) {
         $this->middleware('auth:sanctum');
         // Los permisos se validarán en cada método según la Serie TRD
     }
@@ -364,6 +368,17 @@ class OfiArchivoExpedienteController extends Controller
                 return $this->warningResponse('Este documento ya se encuentra incorporado en el expediente');
             }
 
+            // B07: el tipo es opcional al incorporar un radicado; sin él el folio queda por tipificar
+            $tipo = null;
+            if ($request->filled('tipo_documental_id')) {
+                $tipo = $this->tiposDocumentales->resolver($expediente, (int) $request->tipo_documental_id);
+                if (is_string($tipo)) {
+                    DB::rollBack();
+
+                    return $this->warningResponse($tipo);
+                }
+            }
+
             // Crear el registro de índice (La foliación es automática por el boot() del modelo)
             $expedienteDocumento = OfiArchivoExpedienteDocumento::create([
                 'expediente_id' => $expedienteId,
@@ -371,14 +386,14 @@ class OfiArchivoExpedienteController extends Controller
                 'documentable_type' => $modelClass,
                 // M08-09: la huella del radicado queda fijada en el folio al incorporarlo
                 'hash_sha256' => $documento->hash_sha256 ?? null,
-                'tipo_documental' => $request->detalle ?: 'Documento incorporado',
+                'tipo_documental' => $tipo?->nom ?? ($request->detalle ?: 'Documento incorporado'),
                 'asunto' => $request->detalle ?: 'Documento incorporado',
                 'detalle' => $request->detalle,
                 'usuario_id' => Auth::id(),
                 'fecha_incorporacion' => now(),
                 'orden' => 0,
                 'fecha_documento' => now()->toDateString(),
-            ]);
+            ] + $this->tipoDocumentalId($tipo));
 
             DB::commit();
 
@@ -423,6 +438,22 @@ class OfiArchivoExpedienteController extends Controller
                 return $this->warningResponse('No se pueden subir archivos a un expediente cerrado o transferido');
             }
 
+            // B07: cada archivo por tipo documental se tipifica con el catálogo de la TRD del expediente
+            $tipo = null;
+            if ($request->tipo === 'tipo_documental') {
+                $tipo = $this->tiposDocumentales->resolver(
+                    $expediente,
+                    $request->filled('tipo_documental_id') ? (int) $request->tipo_documental_id : null,
+                    $request->tipo_documental
+                );
+                if (is_string($tipo)) {
+                    DB::rollBack();
+
+                    return $this->warningResponse($tipo);
+                }
+            }
+            $nombreTipo = $tipo?->nom ?? 'Expediente completo';
+
             $documentosCreados = [];
 
             foreach ($request->file('archivos') as $archivo) {
@@ -460,7 +491,7 @@ class OfiArchivoExpedienteController extends Controller
                 // Crear registro de índice (La foliación es automática por el boot() del modelo)
                 $detalleParts = [];
                 if ($request->tipo === 'tipo_documental') {
-                    $detalleParts[] = "Tipo documental: {$request->tipo_documental}";
+                    $detalleParts[] = "Tipo documental: {$nombreTipo}";
                 }
                 $detalleParts[] = "Archivo: {$archivo->getClientOriginalName()}";
                 $detalleParts[] = "Formato: {$archivo->getClientOriginalExtension()}";
@@ -476,7 +507,7 @@ class OfiArchivoExpedienteController extends Controller
                 $doc = OfiArchivoExpedienteDocumento::create([
                     'expediente_id' => $expedienteId,
                     'tipo' => $request->tipo,
-                    'tipo_documental' => $request->tipo_documental ?? ($request->tipo === 'expediente_completo' ? 'Expediente completo' : 'Documento'),
+                    'tipo_documental' => $nombreTipo,
                     'detalle' => implode(' | ', $detalleParts),
                     'usuario_id' => Auth::id(),
                     'archivo_path' => $uploadData['path'],
@@ -485,10 +516,10 @@ class OfiArchivoExpedienteController extends Controller
                     'formato_archivo' => $archivo->getClientOriginalExtension(),
                     'tamano_bytes' => $archivo->getSize(),
                     'fecha_documento' => now()->toDateString(),
-                    'asunto' => $request->tipo_documental ?? 'Archivo de expediente',
+                    'asunto' => $tipo?->nom ?? 'Archivo de expediente',
                     'activo' => true,
                     'orden' => 0,
-                ]);
+                ] + $this->tipoDocumentalId($tipo));
 
                 $documentosCreados[] = $doc;
             }
@@ -512,6 +543,69 @@ class OfiArchivoExpedienteController extends Controller
 
             return $this->serverErrorResponse('Error al subir los archivos', $e->getMessage());
         }
+    }
+
+    /**
+     * B07: tipos documentales con los que se pueden tipificar los folios del expediente.
+     */
+    public function tiposDocumentales($id)
+    {
+        $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->findOrFail($id);
+
+        return $this->successResponse($this->tiposDocumentales->catalogo($expediente), 'Tipos documentales del expediente');
+    }
+
+    /**
+     * B07: tipifica un folio que llegó sin tipo (radicado incorporado, archivo de un flujo) o
+     * corrige el tipo mientras el expediente está abierto. Queda en el historial.
+     */
+    public function tipificarDocumento(TipificarDocumentoExpedienteRequest $request, $expedienteId, $documentoId)
+    {
+        if (! TiposDocumentalesExpediente::disponible()) {
+            return $this->warningResponse('Falta ejecutar la migración de tipos documentales (2026_10_19_120000).');
+        }
+
+        $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->findOrFail($expedienteId);
+        $doc = OfiArchivoExpedienteDocumento::where('expediente_id', $expediente->id)->findOrFail($documentoId);
+
+        if ($expediente->estado !== 'abierto') {
+            return $this->warningResponse('Solo se tipifican documentos de un expediente abierto');
+        }
+        if (! $doc->activo) {
+            return $this->warningResponse('El documento fue retirado del expediente');
+        }
+        if ($doc->tipo !== 'tipo_documental') {
+            return $this->warningResponse('El archivo del expediente completo no lleva tipo documental');
+        }
+
+        $tipo = $this->tiposDocumentales->resolver($expediente, (int) $request->tipo_documental_id);
+        if (is_string($tipo)) {
+            return $this->warningResponse($tipo);
+        }
+
+        if ((int) $doc->tipo_documental_id === $tipo->id) {
+            return $this->successResponse($doc, 'El documento ya tenía ese tipo documental');
+        }
+
+        DB::transaction(function () use ($doc, $tipo) {
+            $antes = $doc->tipo_documental;
+            $doc->update(['tipo_documental' => $tipo->nom, 'tipo_documental_id' => $tipo->id]);
+
+            app(ExpedienteEventosService::class)->registrar($doc->expediente_id, 'tipificacion', [
+                'documento_id' => $doc->id,
+                'numero_folio' => $doc->numero_folio,
+                'antes' => $antes,
+                'despues' => $tipo->nom,
+            ]);
+        });
+
+        return $this->successResponse($doc->fresh(), "Folio {$doc->numero_folio} tipificado como {$tipo->nom}");
+    }
+
+    /** La columna puede no existir aún (migración 2026_10_19_120000 pendiente). */
+    private function tipoDocumentalId(?ClasificacionDocumentalTRD $tipo): array
+    {
+        return TiposDocumentalesExpediente::disponible() ? ['tipo_documental_id' => $tipo?->id] : [];
     }
 
     /**

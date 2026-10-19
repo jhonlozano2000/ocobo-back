@@ -76,6 +76,8 @@ Route::middleware(['auth:sanctum', 'throttle:archivo'])->prefix('archivo')->grou
     Route::get('/expedientes/{id}/indice', [OfiArchivoExpedienteController::class, 'generarIndicePdf'])->middleware('can:'.$permExp.'Ver');
     Route::get('/expedientes/{id}/indice-xml', [OfiArchivoExpedienteController::class, 'generarIndiceXml'])->middleware('can:'.$permExp.'Ver');
     Route::get('/expedientes/{id}/historial', [OfiArchivoExpedienteController::class, 'historial'])->middleware('can:'.$permExp.'Ver');
+    Route::get('/expedientes/{id}/tipos-documentales', [OfiArchivoExpedienteController::class, 'tiposDocumentales'])->middleware('can:'.$permExp.'Ver');
+    Route::put('/expedientes/{expedienteId}/documentos/{documentoId}/tipo-documental', [OfiArchivoExpedienteController::class, 'tipificarDocumento'])->middleware('can:'.$permExp.'Editar');
 
     // RUTAS DE GESTIÓN DE TERCEROS (VISTA 360)
     Route::get('/terceros/{identificacion}/historial', [GestionTerceroController::class, 'showHistory'])->middleware('can:Gestión - Terceros -> Mostrar');

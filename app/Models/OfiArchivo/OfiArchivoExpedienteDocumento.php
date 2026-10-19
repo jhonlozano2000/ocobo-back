@@ -2,6 +2,7 @@
 
 namespace App\Models\OfiArchivo;
 
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\User;
 use App\Services\OfiArchivo\ExpedienteEventosService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,6 +18,7 @@ class OfiArchivoExpedienteDocumento extends Model
         'expediente_id',
         'tipo',
         'tipo_documental',
+        'tipo_documental_id',
         'orden',
         'fecha_documento',
         'asunto',
@@ -37,6 +39,7 @@ class OfiArchivoExpedienteDocumento extends Model
     protected $casts = [
         'fecha_incorporacion' => 'datetime',
         'numero_folio' => 'integer',
+        'tipo_documental_id' => 'integer',
         'activo' => 'boolean',
     ];
 
@@ -100,6 +103,12 @@ class OfiArchivoExpedienteDocumento extends Model
     public function scopeActivos($query)
     {
         return $query->where('activo', true);
+    }
+
+    /** B07: nodo TipoDocumento de la TRD con el que se tipificó el folio. */
+    public function tipoDocumental()
+    {
+        return $this->belongsTo(ClasificacionDocumentalTRD::class, 'tipo_documental_id');
     }
 
     public function expediente()

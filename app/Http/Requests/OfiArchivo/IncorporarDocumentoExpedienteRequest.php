@@ -20,6 +20,7 @@ class IncorporarDocumentoExpedienteRequest extends FormRequest
             'documentable_id' => 'required|integer',
             'documentable_type' => 'required|string|in:radicado_recibido,radicado_enviado',
             'detalle' => 'nullable|string|max:500',
+            'tipo_documental_id' => 'nullable|integer',
         ];
     }
 

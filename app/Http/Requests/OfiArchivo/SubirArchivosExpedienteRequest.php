@@ -3,6 +3,7 @@
 namespace App\Http\Requests\OfiArchivo;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * B25: carga directa de archivos al expediente (por tipo documental o expediente completo).
@@ -21,7 +22,14 @@ class SubirArchivosExpedienteRequest extends FormRequest
             'archivos' => 'required|array|min:1|max:20',
             'archivos.*' => 'file|max:51200',
             'tipo' => 'required|in:tipo_documental,expediente_completo',
-            'tipo_documental' => 'nullable|required_if:tipo,tipo_documental|string|max:200',
+            // B07: el tipo se elige del catálogo de la TRD; el nombre se acepta de clientes anteriores
+            'tipo_documental_id' => 'nullable|integer',
+            'tipo_documental' => [
+                'nullable',
+                Rule::requiredIf(fn () => $this->input('tipo') === 'tipo_documental' && ! $this->filled('tipo_documental_id')),
+                'string',
+                'max:200',
+            ],
             'descripcion' => 'nullable|string|max:500',
             'detalle' => 'nullable|string|max:500',
         ];
@@ -36,7 +44,7 @@ class SubirArchivosExpedienteRequest extends FormRequest
             'archivos.*.max' => 'Cada archivo puede pesar como máximo 50 MB.',
             'tipo.required' => 'Debe indicar el tipo de carga.',
             'tipo.in' => 'El tipo de carga debe ser tipo documental o expediente completo.',
-            'tipo_documental.required_if' => 'El nombre del tipo documental es requerido.',
+            'tipo_documental.required' => 'El nombre del tipo documental es requerido.',
             'tipo_documental.max' => 'El tipo documental no puede superar los 200 caracteres.',
             'descripcion.max' => 'La descripción no puede superar los 500 caracteres.',
         ];
