@@ -372,7 +372,7 @@ class VentanillaRadicaReciController extends Controller
             $radicado->load(['archivos', 'tercero']);
 
             // Un solo acuse de recibo al remitente (con adjuntos según configuración)
-            $conAdjuntos = ConfigVarias::getValor('notificar_radicado_al_tercero', 'false') === 'true';
+            $conAdjuntos = ConfigVarias::getNotificarRadicadoAlTercero();
             $acuseEnviado = AcuseReciboHelper::enviar($radicado, 'recibida', $conAdjuntos);
 
             // Registrar el acuse en el historial / línea de tiempo

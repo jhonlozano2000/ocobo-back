@@ -495,6 +495,15 @@ class ConfigVarias extends Model
         return self::actualizarConfiguracion('web_empresa', $web);
     }
 
+    /**
+     * Si el acuse al radicar lleva los archivos adjuntos. El seed y el formulario guardan '1'/'0';
+     * se acepta también 'true'/'false'.
+     */
+    public static function getNotificarRadicadoAlTercero(): bool
+    {
+        return filter_var(self::getValor('notificar_radicado_al_tercero', 'false'), FILTER_VALIDATE_BOOLEAN);
+    }
+
     // ==================== MÉTODOS PARA DÍAS HÁBILES ====================
 
     public static function getConsiderarDiasHabiles($default = true)

@@ -83,8 +83,7 @@ class AcuseReciboHelper
         try {
             // Verificar si la configuración está habilitada (solo si no es llamada manual)
             if (! $skipConfigCheck) {
-                $configurado = ConfigVarias::getValor('notificar_radicado_al_tercero', 'false');
-                if ($configurado !== 'true') {
+                if (! ConfigVarias::getNotificarRadicadoAlTercero()) {
                     Log::debug('Notificación al tercero deshabilitada por configuración');
 
                     return false;
