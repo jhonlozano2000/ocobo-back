@@ -6,8 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Gestion\GestionTerceroRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Gestion\GestionTercero;
-use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
-use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\Gestion\ConsultaIntegralTerceroService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -113,12 +112,12 @@ class GestionTerceroController extends Controller
 
     /**
      * Obtiene la vista 360 de un tercero por su número de identificación.
-     * Incluye historial de radicados y expedientes vinculados.
+     * B24: delega en la consulta integral, que filtra cada fuente por los permisos del usuario
+     * (antes listaba todos los radicados y expedientes del tercero sin control de acceso).
      */
-    public function showHistory(string $identificacion): JsonResponse
+    public function showHistory(string $identificacion, ConsultaIntegralTerceroService $consulta): JsonResponse
     {
         try {
-            // 1. Buscar el tercero con sus datos básicos
             $tercero = GestionTercero::where('num_docu_nit', $identificacion)
                 ->with('divisionPolitica')
                 ->first();
@@ -127,37 +126,12 @@ class GestionTerceroController extends Controller
                 return $this->errorResponse('Tercero no encontrado', null, 404);
             }
 
-            // 2. Obtener Radicados Recibidos (Entradas)
-            $radicadosRecibidos = VentanillaRadicaReci::where('tercero_id', $tercero->id)
-                ->select('id', 'num_radicado', 'asunto', 'created_at', 'estado_trabajo')
-                ->with(['expedientes' => function ($q) {
-                    $q->select('ofi_archivo_expedientes.id', 'numero_expediente', 'nombre_expediente');
-                }])
-                ->latest()
-                ->get();
-
-            // 3. Obtener Radicados Enviados (Salidas)
-            $radicadosEnviados = VentanillaRadicaEnviados::where('tercero_id', $tercero->id)
-                ->select('id', 'num_radicado', 'asunto', 'created_at', 'estado_trabajo')
-                ->with(['expedientes' => function ($q) {
-                    $q->select('ofi_archivo_expedientes.id', 'numero_expediente', 'nombre_expediente');
-                }])
-                ->latest()
-                ->get();
-
-            // 4. Consolidar Expedientes únicos en los que participa este tercero
-            $expedientes = collect();
-            $radicadosRecibidos->each(fn ($r) => $expedientes->push(...$r->expedientes));
-            $radicadosEnviados->each(fn ($r) => $expedientes->push(...$r->expedientes));
-
-            $expedientesUnicos = $expedientes->unique('id')->values();
+            $datos = $consulta->para($tercero, request()->user());
 
             return $this->successResponse([
+                ...$datos,
                 'tercero' => $tercero,
-                'radicados_recibidos' => $radicadosRecibidos,
-                'radicados_enviados' => $radicadosEnviados,
-                'expedientes' => $expedientesUnicos,
-                'total_tramites' => $radicadosRecibidos->count() + $radicadosEnviados->count(),
+                'total_tramites' => $datos['totales']['radicados_recibidos'] + $datos['totales']['radicados_enviados'],
             ], 'Historial documental obtenido exitosamente');
 
         } catch (\Exception $e) {
@@ -172,6 +146,18 @@ class GestionTerceroController extends Controller
 
             return $this->errorResponse('Error al obtener historial del tercero', null, 500);
         }
+    }
+
+    /**
+     * B24 (diseño de expedientes §6.4): "Todo lo del tercero", de solo lectura y filtrado por
+     * los permisos del usuario. No es una unidad archivística.
+     */
+    public function expedienteIntegral(GestionTercero $tercero, ConsultaIntegralTerceroService $consulta): JsonResponse
+    {
+        return $this->successResponse(
+            $consulta->para($tercero, request()->user()),
+            'Consulta integral del tercero'
+        );
     }
 
     /**

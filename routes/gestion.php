@@ -26,6 +26,9 @@ Route::middleware('auth:sanctum')->group(function () use ($p, $conRadicar) {
         ->middleware([$conRadicar('Crear', ['Crear']), 'throttle:terceros']);
     Route::get('terceros/{tercero}', [GestionTerceroController::class, 'show'])->name('terceros.show')
         ->middleware([$conRadicar('Mostrar', ['Listar', 'Crear', 'Editar']), 'throttle:60,1']);
+    // B24: consulta integral de solo lectura; cada sección se filtra por los permisos del usuario
+    Route::get('terceros/{tercero}/expediente-integral', [GestionTerceroController::class, 'expedienteIntegral'])
+        ->whereNumber('tercero')->middleware(['can:'.$p.'Mostrar', 'throttle:60,1']);
     Route::match(['put', 'patch'], 'terceros/{tercero}', [GestionTerceroController::class, 'update'])->name('terceros.update')
         ->middleware([$conRadicar('Editar', ['Crear', 'Editar']), 'throttle:terceros']);
     Route::delete('terceros/{tercero}', [GestionTerceroController::class, 'destroy'])->name('terceros.destroy')
