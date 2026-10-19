@@ -43,7 +43,7 @@ class PendientesArchivoService
 
     public static function mesesInactividad(): int
     {
-        return max(1, (int) config('archivo.meses_inactividad', 6));
+        return ConfiguracionArchivo::mesesInactividad();
     }
 
     public function para(User $user): array

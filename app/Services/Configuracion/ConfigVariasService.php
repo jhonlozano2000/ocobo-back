@@ -3,6 +3,7 @@
 namespace App\Services\Configuracion;
 
 use App\Models\Configuracion\ConfigVarias;
+use App\Services\OfiArchivo\ConfiguracionArchivo;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -71,6 +72,8 @@ class ConfigVariasService
      */
     public function create(array $data): ConfigVarias
     {
+        ConfiguracionArchivo::validar($data['clave'], $data['valor'] ?? null);
+
         return ConfigVarias::create($data);
     }
 
@@ -83,6 +86,10 @@ class ConfigVariasService
 
         if (! $config) {
             return null;
+        }
+
+        if (array_key_exists('valor', $data)) {
+            ConfiguracionArchivo::validar($clave, $data['valor']);
         }
 
         if ($config->esSecreta() && $this->esValorSecretoVacio($data['valor'] ?? null)) {
@@ -99,6 +106,11 @@ class ConfigVariasService
      */
     public function updateBatch(array $configs): array
     {
+        // Se valida todo antes de guardar para no dejar el lote a medias
+        foreach (array_values($configs) as $i => $configData) {
+            ConfiguracionArchivo::validar($configData['clave'], $configData['valor'] ?? null, "configs.$i.valor");
+        }
+
         $results = [];
 
         foreach ($configs as $configData) {

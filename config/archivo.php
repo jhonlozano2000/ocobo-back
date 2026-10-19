@@ -1,5 +1,7 @@
 <?php
 
+// Respaldo: cada entidad los administra en config_varias (Otras configuraciones → Archivo);
+// ver App\Services\OfiArchivo\ConfiguracionArchivo. Estos valores aplican sin la clave o vacía.
 return [
     /*
     | Decisión D4 (diseño de expedientes §3.4): meses sin incorporaciones tras los cuales un

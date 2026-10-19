@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\OfiArchivo;
 
+use App\Models\Configuracion\ConfigVarias;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\User;
+use App\Services\OfiArchivo\ConfiguracionArchivo;
 use App\Services\OfiArchivo\HojaControlService;
 use App\Services\OfiArchivo\IndiceExpedienteService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -114,7 +116,7 @@ class LotesTransferenciaTest extends TestCase
 
     public function test_envia_el_lote_con_fuid_y_lo_recibe_con_acta_firmada(): void
     {
-        config(['archivo.folios_por_tomo' => 50]);
+        ConfigVarias::setValor(ConfiguracionArchivo::FOLIOS_POR_TOMO, 50);
         $a = $this->expediente();
         $b = $this->expediente(['soporte' => 'fisico', 'ubicacion_fisica' => 'Depósito 1', 'caja' => '12', 'carpeta' => '3'], hoja: [80, 7]);
 

@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\OfiArchivo;
 
+use App\Models\Configuracion\ConfigVarias;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoExpedienteDocumento;
 use App\Models\OfiArchivo\OfiArchivoExpedienteHojaControlVersion;
 use App\Models\OfiArchivo\OfiArchivoExpedienteIndiceVersion;
 use App\Models\User;
+use App\Services\OfiArchivo\ConfiguracionArchivo;
 use App\Services\OfiArchivo\HojaControlService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -78,7 +80,7 @@ class HojaControlTest extends TestCase
 
     public function test_la_foliacion_es_continua_y_un_documento_no_se_parte_entre_tomos(): void
     {
-        config(['archivo.folios_por_tomo' => 10]);
+        ConfigVarias::setValor(ConfiguracionArchivo::FOLIOS_POR_TOMO, 10);
 
         $this->registrar(4)->assertCreated()->assertJsonPath('message', 'Documento registrado en los folios 1 a 4');
         $this->registrar(5)->assertCreated();

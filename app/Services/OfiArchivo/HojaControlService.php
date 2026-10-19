@@ -44,7 +44,7 @@ class HojaControlService
 
     public static function foliosPorTomo(): int
     {
-        return max(1, (int) config('archivo.folios_por_tomo', 200));
+        return ConfiguracionArchivo::foliosPorTomo();
     }
 
     /**

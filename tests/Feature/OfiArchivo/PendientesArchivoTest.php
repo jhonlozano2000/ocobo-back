@@ -3,9 +3,11 @@
 namespace Tests\Feature\OfiArchivo;
 
 use App\Console\Commands\AlertarExpedientesInactivosCommand;
+use App\Models\Configuracion\ConfigVarias;
 use App\Models\Notificacion;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\OfiArchivo\ConfiguracionArchivo;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -32,7 +34,7 @@ class PendientesArchivoTest extends TestCase
             $this->markTestSkipped('Requiere el origen de instancias (M19-30) y la migración 2026_10_19_100000.');
         }
 
-        config(['archivo.meses_inactividad' => 6]);
+        ConfigVarias::setValor(ConfiguracionArchivo::MESES_INACTIVIDAD, 6);
         $this->user = User::factory()->create(['estado' => 1]);
         $this->otro = User::factory()->create(['estado' => 1]);
         foreach (['Ver', 'Incorporar'] as $accion) {

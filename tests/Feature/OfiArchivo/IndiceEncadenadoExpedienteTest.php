@@ -2,12 +2,15 @@
 
 namespace Tests\Feature\OfiArchivo;
 
+use App\Models\Configuracion\ConfigVarias;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoExpedienteDocumento;
 use App\Models\OfiArchivo\OfiArchivoExpedienteEvento;
 use App\Models\OfiArchivo\OfiArchivoExpedienteIndice;
 use App\Models\OfiArchivo\OfiArchivoExpedienteIndiceVersion;
 use App\Models\User;
+use App\Services\Firma\TsaService;
+use App\Services\OfiArchivo\ConfiguracionArchivo;
 use App\Services\OfiArchivo\IndiceExpedienteService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -136,6 +139,19 @@ class IndiceEncadenadoExpedienteTest extends TestCase
         $this->assertFalse($this->cadena()['integra']);
         $this->assertSame(['La huella del documento no coincide con la del índice'], $errores->where('numero_folio', 2)->pluck('motivo')->all());
         $this->assertSame(['Los datos de la fila fueron alterados'], $errores->where('numero_folio', 3)->pluck('motivo')->all());
+    }
+
+    public function test_la_entidad_activa_el_sello_de_tiempo_del_indice_en_config_varias(): void
+    {
+        ConfigVarias::setValor(ConfiguracionArchivo::INDICE_TSA, 'true');
+        $this->mock(TsaService::class)->shouldReceive('solicitarTimestamp')->once()
+            ->andReturn(['token' => 'dG9rZW4=', 'fecha' => '2026-10-19 10:00:00']);
+        $this->folio('Acta de inicio');
+
+        $this->postJson("/api/archivo/expedientes/{$this->expediente->id}/cerrar", ['motivo_cierre' => 'Terminó el trámite'])->assertOk();
+
+        $version = OfiArchivoExpedienteIndiceVersion::where('expediente_id', $this->expediente->id)->sole();
+        $this->assertSame('dG9rZW4=', $version->sello_tiempo);
     }
 
     public function test_el_cierre_congela_el_indice_en_una_version_firmada(): void

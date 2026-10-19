@@ -183,7 +183,7 @@ class IndiceExpedienteService
         ]);
         $version->firma = self::firmar($version);
 
-        if (config('firma.tsa_indice_expediente')) {
+        if (ConfiguracionArchivo::indiceConTsa()) {
             try {
                 $sello = app(TsaService::class)->solicitarTimestamp($version->hash_xml);
                 $version->sello_tiempo = $sello['token'];
