@@ -16,7 +16,7 @@ class OfiArchivoExpedienteTomo extends Model
 {
     protected $table = 'ofi_archivo_expediente_tomos';
 
-    protected $fillable = ['expediente_id', 'numero', 'folio_inicial', 'ubicacion_fisica', 'caja', 'carpeta', 'usuario_id'];
+    protected $fillable = ['expediente_id', 'numero', 'folio_inicial', 'ubicacion_fisica', 'ubicacion_id', 'caja', 'carpeta', 'usuario_id'];
 
     protected $casts = [
         'expediente_id' => 'integer',
@@ -32,6 +32,17 @@ class OfiArchivoExpedienteTomo extends Model
             }
         });
         static::deleting(fn () => throw new \LogicException('Los tomos del expediente no pueden eliminarse.'));
+    }
+
+    public function expediente()
+    {
+        return $this->belongsTo(OfiArchivoExpediente::class, 'expediente_id');
+    }
+
+    /** B20: caja del catálogo topográfico donde está el tomo. */
+    public function ubicacion()
+    {
+        return $this->belongsTo(OfiArchivoUbicacion::class, 'ubicacion_id');
     }
 
     public function registros()

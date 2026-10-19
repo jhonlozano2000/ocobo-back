@@ -25,6 +25,7 @@ class OfiArchivoHojaControlController extends Controller
 
     private const UBICACION = [
         'ubicacion_fisica' => 'nullable|string|max:200',
+        'ubicacion_id' => 'nullable|integer',
         'caja' => 'nullable|string|max:50',
         'carpeta' => 'nullable|string|max:50',
     ];

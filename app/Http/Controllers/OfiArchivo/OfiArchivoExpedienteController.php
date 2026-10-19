@@ -28,6 +28,7 @@ use App\Services\OfiArchivo\ExpedienteEventosService;
 use App\Services\OfiArchivo\HojaControlService;
 use App\Services\OfiArchivo\IndiceExpedienteService;
 use App\Services\OfiArchivo\TiposDocumentalesExpediente;
+use App\Services\OfiArchivo\UbicacionTopograficaService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -59,7 +60,7 @@ class OfiArchivoExpedienteController extends Controller
      *
      * @return JsonResponse
      */
-    public function store(StoreExpedienteRequest $request)
+    public function store(StoreExpedienteRequest $request, UbicacionTopograficaService $ubicaciones)
     {
 
         if (! OfiArchivoExpediente::puedeUsarDependencia(Auth::user(), $request->dependencia_id)) {
@@ -84,6 +85,9 @@ class OfiArchivoExpedienteController extends Controller
                 $subserie?->id
             );
 
+            // B20: la caja del catálogo deriva los textos de ubicación
+            $ubicacion = $ubicaciones->resolver($request->only(UbicacionTopograficaService::CAMPOS), [], new OfiArchivoExpediente);
+
             $expediente = OfiArchivoExpediente::create([
                 'numero_expediente' => $numeroExpediente,
                 'nombre_expediente' => $request->nombre_expediente,
@@ -96,13 +100,10 @@ class OfiArchivoExpedienteController extends Controller
                 'fundamento_acceso' => $request->nivel_acceso === 'publico' ? null : $request->fundamento_acceso,
                 'estado' => 'abierto',
                 'fecha_apertura' => CalendarioHelper::hoy()->toDateString(),
-                'ubicacion_fisica' => $request->ubicacion_fisica,
-                'caja' => $request->caja,
-                'carpeta' => $request->carpeta,
                 'folios_fisicos' => $request->folios_fisicos ?? 0,
                 'observaciones_generales' => $request->observaciones_generales,
                 'usuario_apertura_id' => Auth::id(),
-            ]);
+            ] + $ubicacion);
 
             DB::commit();
 
@@ -155,7 +156,7 @@ class OfiArchivoExpedienteController extends Controller
         }
     }
 
-    public function update(UpdateExpedienteRequest $request, $id)
+    public function update(UpdateExpedienteRequest $request, $id, UbicacionTopograficaService $ubicaciones)
     {
 
         try {
@@ -189,7 +190,8 @@ class OfiArchivoExpedienteController extends Controller
             $fields = array_filter(
                 $request->only(['nombre_expediente', 'dependencia_id', 'soporte', 'nivel_acceso']),
                 fn ($valor) => filled($valor)
-            ) + $request->only(['ubicacion_fisica', 'caja', 'carpeta', 'folios_fisicos', 'observaciones_generales']);
+            ) + $request->only(['folios_fisicos', 'observaciones_generales'])
+                + $ubicaciones->resolver($request->only(UbicacionTopograficaService::CAMPOS), $expediente->only(UbicacionTopograficaService::CAMPOS), $expediente);
 
             if (array_key_exists('folios_fisicos', $fields)) {
                 $fields['folios_fisicos'] = (int) ($fields['folios_fisicos'] ?? 0);

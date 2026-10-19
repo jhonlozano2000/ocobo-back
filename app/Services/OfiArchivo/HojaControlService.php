@@ -29,6 +29,7 @@ class HojaControlService
     public function __construct(
         private ExpedienteEventosService $eventos,
         private TiposDocumentalesExpediente $tipos,
+        private UbicacionTopograficaService $ubicaciones,
     ) {}
 
     /** Las tablas llegan con la migración 2026_10_19_200000. */
@@ -130,7 +131,7 @@ class HojaControlService
     /** La ubicación del tomo cambia también después del cierre (traslados y transferencias). */
     public function ubicarTomo(OfiArchivoExpedienteTomo $tomo, array $ubicacion): OfiArchivoExpedienteTomo
     {
-        $tomo->fill(array_intersect_key($ubicacion, array_flip(['ubicacion_fisica', 'caja', 'carpeta'])));
+        $tomo->fill($this->ubicaciones->resolver($ubicacion, $tomo->only(UbicacionTopograficaService::CAMPOS), $tomo->expediente, $tomo->id));
         $cambios = collect($tomo->getDirty())->map(fn ($despues, $campo) => ['antes' => $tomo->getOriginal($campo), 'despues' => $despues]);
 
         if ($cambios->isNotEmpty()) {
@@ -166,6 +167,7 @@ class HojaControlService
                     'fecha_inicial' => $fechas->first(),
                     'fecha_final' => $fechas->last(),
                     'ubicacion_fisica' => $tomo->ubicacion_fisica,
+                    'ubicacion_id' => $tomo->ubicacion_id,
                     'caja' => $tomo->caja,
                     'carpeta' => $tomo->carpeta,
                 ];
@@ -205,7 +207,7 @@ class HojaControlService
         $contenido = [
             'registros' => $this->filas($expediente)->map(fn ($f) => array_diff_key($f, ['id' => true]))->all(),
             'tomos' => $this->tomos($expediente)
-                ->map(fn ($t) => array_diff_key($t, array_flip(['id', 'ubicacion_fisica', 'caja', 'carpeta'])))->all(),
+                ->map(fn ($t) => array_diff_key($t, array_flip(['id', 'ubicacion_fisica', 'ubicacion_id', 'caja', 'carpeta'])))->all(),
         ];
 
         return hash('sha256', json_encode($contenido, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
@@ -428,17 +430,16 @@ class HojaControlService
         return OfiArchivoExpedienteHojaControl::where('tomo_id', $tomo->id)->exists();
     }
 
-    /** El tomo nuevo hereda la ubicación del anterior (o la del expediente) si no se indica otra. */
+    /** El tomo nuevo hereda la ubicación del anterior (o la del expediente) si no se indica otra (B20: validada con el catálogo). */
     private function crearTomo(OfiArchivoExpediente $expediente, int $numero, int $folioInicial, User $usuario, ?OfiArchivoExpedienteTomo $anterior = null, array $ubicacion = []): OfiArchivoExpedienteTomo
     {
-        $origen = $anterior ?? $expediente;
+        $heredada = ($anterior ?? $expediente)->only(UbicacionTopograficaService::campos());
         $tomo = OfiArchivoExpedienteTomo::create([
             'expediente_id' => $expediente->id,
             'numero' => $numero,
             'folio_inicial' => $folioInicial,
             'usuario_id' => $usuario->id,
-        ] + collect(['ubicacion_fisica', 'caja', 'carpeta'])
-            ->mapWithKeys(fn ($campo) => [$campo => filled($ubicacion[$campo] ?? null) ? $ubicacion[$campo] : $origen->{$campo}])->all());
+        ] + $this->ubicaciones->resolver(array_filter($ubicacion, 'filled'), $heredada, $expediente, 0) + $heredada);
 
         $this->eventos->registrar($expediente->id, 'tomo_abierto', ['tomo' => $numero, 'folio_inicial' => $folioInicial]);
 

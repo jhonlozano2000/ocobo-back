@@ -22,17 +22,22 @@ final class ConfiguracionArchivo
     /** F1: sellar con la TSA cada versión firmada del índice electrónico. */
     public const INDICE_TSA = 'archivo_indice_tsa';
 
+    /** B20: la ubicación de los expedientes físicos solo se toma del catálogo topográfico. */
+    public const UBICACION_CON_CATALOGO = 'archivo_ubicacion_con_catalogo';
+
     /** Reglas del valor de cada clave al guardarla. */
     public const REGLAS = [
         self::FOLIOS_POR_TOMO => ['required', 'integer', 'min:1', 'max:1000'],
         self::MESES_INACTIVIDAD => ['required', 'integer', 'min:1', 'max:120'],
         self::INDICE_TSA => ['required', 'in:0,1,true,false'],
+        self::UBICACION_CON_CATALOGO => ['required', 'in:0,1,true,false'],
     ];
 
     private const NOMBRES = [
         self::FOLIOS_POR_TOMO => 'folios por tomo',
         self::MESES_INACTIVIDAD => 'meses de inactividad',
         self::INDICE_TSA => 'sello de tiempo del índice',
+        self::UBICACION_CON_CATALOGO => 'ubicación con catálogo',
     ];
 
     public static function foliosPorTomo(): int
@@ -52,6 +57,12 @@ final class ConfiguracionArchivo
         return blank($valor)
             ? (bool) config('firma.tsa_indice_expediente', false)
             : filter_var($valor, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /** Sin la clave o vacía, apagado: la ubicación sigue siendo texto libre. */
+    public static function ubicacionConCatalogo(): bool
+    {
+        return filter_var(ConfigVarias::getValor(self::UBICACION_CON_CATALOGO), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**

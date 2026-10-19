@@ -31,6 +31,8 @@ class PermisosGestionArchivoSeeder extends Seeder
             'Gestion de Archivo -> Expedientes -> Cerrar',
             // B13: reabrir es un permiso distinto de cerrar (diseño de expedientes §3.5)
             'Gestion de Archivo -> Expedientes -> Reabrir',
+            // B20: catálogo topográfico (depósitos, estantes, entrepaños y cajas)
+            'Gestion de Archivo -> Ubicaciones -> Administrar',
 
             // Préstamos (M11)
             'Gestion de Archivo -> Prestamos -> Ver',

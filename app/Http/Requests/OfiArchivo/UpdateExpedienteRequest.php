@@ -25,6 +25,8 @@ class UpdateExpedienteRequest extends FormRequest
             'nivel_acceso' => 'nullable|in:publico,clasificado,reservado',
             'fundamento_acceso' => 'nullable|required_if:nivel_acceso,clasificado,reservado|string|min:10|max:500',
             'ubicacion_fisica' => 'nullable|string|max:200',
+            // B20: caja del catálogo topográfico; deriva ubicacion_fisica y caja
+            'ubicacion_id' => 'nullable|integer',
             'caja' => 'nullable|string|max:50',
             'carpeta' => 'nullable|string|max:50',
             'folios_fisicos' => 'nullable|integer|min:0',

@@ -44,6 +44,7 @@ class OfiArchivoExpediente extends Model
         'fecha_apertura',
         'fecha_cierre',
         'ubicacion_fisica',
+        'ubicacion_id',
         'caja',
         'carpeta',
         'folios_fisicos',
@@ -104,6 +105,18 @@ class OfiArchivoExpediente extends Model
     public function terceros()
     {
         return $this->hasMany(OfiArchivoExpedienteTercero::class, 'expediente_id');
+    }
+
+    /** B19: tomos (carpetas físicas) del expediente. */
+    public function tomos()
+    {
+        return $this->hasMany(OfiArchivoExpedienteTomo::class, 'expediente_id')->orderBy('numero');
+    }
+
+    /** B20: caja del catálogo topográfico donde está el expediente. */
+    public function ubicacion()
+    {
+        return $this->belongsTo(OfiArchivoUbicacion::class, 'ubicacion_id');
     }
 
     /** B12: historial encadenado (solo inserción). */

@@ -26,6 +26,8 @@ class StoreExpedienteRequest extends FormRequest
             'nivel_acceso' => 'required|in:publico,clasificado,reservado',
             'fundamento_acceso' => 'nullable|required_unless:nivel_acceso,publico|string|min:10|max:500',
             'ubicacion_fisica' => 'nullable|string|max:200',
+            // B20: caja del catálogo topográfico; deriva ubicacion_fisica y caja
+            'ubicacion_id' => 'nullable|integer',
             'caja' => 'nullable|string|max:50',
             'carpeta' => 'nullable|string|max:50',
             'folios_fisicos' => 'nullable|integer|min:0',

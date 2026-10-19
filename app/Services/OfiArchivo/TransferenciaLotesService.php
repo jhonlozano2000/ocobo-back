@@ -41,6 +41,7 @@ class TransferenciaLotesService
     public function __construct(
         private IndiceExpedienteService $indice,
         private HojaControlService $hojaControl,
+        private UbicacionTopograficaService $ubicaciones,
     ) {}
 
     /**
@@ -226,6 +227,14 @@ class TransferenciaLotesService
             ]));
             if ($faltan !== []) {
                 return 'Al ser '.($expediente->soporte === 'fisico' ? 'físico' : 'híbrido').' le falta registrar: '.implode(', ', $faltan);
+            }
+
+            // B20: con el catálogo activo, el expediente y sus tomos están en cajas del archivo de su fase
+            if (ConfiguracionArchivo::ubicacionConCatalogo() && UbicacionTopograficaService::disponible()) {
+                $tomos = HojaControlService::disponible() ? $this->hojaControl->tomos($expediente) : collect();
+                if ($motivo = $this->ubicaciones->motivoSinUbicar($expediente, $tomos)) {
+                    return $motivo;
+                }
             }
 
             // B19: cada tomo se entrega en su caja y carpeta; la hoja se firmó al cierre

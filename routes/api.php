@@ -8,6 +8,7 @@ use App\Http\Controllers\OfiArchivo\OfiArchivoExpedienteTerceroController;
 use App\Http\Controllers\OfiArchivo\OfiArchivoHojaControlController;
 use App\Http\Controllers\OfiArchivo\OfiArchivoPendientesController;
 use App\Http\Controllers\OfiArchivo\OfiArchivoSugerenciaController;
+use App\Http\Controllers\OfiArchivo\OfiArchivoUbicacionController;
 use App\Http\Controllers\Transversal\FirmaElectronicaController;
 use App\Http\Controllers\VentanillaUnica\DocumentoController;
 use Illuminate\Http\Request;
@@ -92,6 +93,13 @@ Route::middleware(['auth:sanctum', 'throttle:archivo'])->prefix('archivo')->grou
     Route::post('/expedientes/{id}/hoja-control/{registroId}/anular', [OfiArchivoHojaControlController::class, 'anular'])->whereNumber(['id', 'registroId'])->middleware('can:'.$permExp.'Editar');
     Route::post('/expedientes/{id}/tomos', [OfiArchivoHojaControlController::class, 'abrirTomo'])->whereNumber('id')->middleware('can:'.$permExp.'Editar');
     Route::put('/expedientes/{id}/tomos/{tomoId}', [OfiArchivoHojaControlController::class, 'ubicarTomo'])->whereNumber(['id', 'tomoId'])->middleware('can:'.$permExp.'Editar');
+    // B20: catálogo topográfico y ubicación del expediente (también cerrado o transferido)
+    Route::put('/expedientes/{id}/ubicacion', [OfiArchivoUbicacionController::class, 'ubicarExpediente'])->whereNumber('id')->middleware('can:'.$permExp.'Editar');
+    Route::get('/ubicaciones', [OfiArchivoUbicacionController::class, 'index'])->middleware('can:'.$permExp.'Ver');
+    Route::get('/ubicaciones/pendientes', [OfiArchivoUbicacionController::class, 'pendientes'])->middleware('can:'.$permExp.'Ver');
+    Route::post('/ubicaciones', [OfiArchivoUbicacionController::class, 'store'])->middleware('can:Gestion de Archivo -> Ubicaciones -> Administrar');
+    Route::put('/ubicaciones/{id}', [OfiArchivoUbicacionController::class, 'update'])->whereNumber('id')->middleware('can:Gestion de Archivo -> Ubicaciones -> Administrar');
+    Route::delete('/ubicaciones/{id}', [OfiArchivoUbicacionController::class, 'destroy'])->whereNumber('id')->middleware('can:Gestion de Archivo -> Ubicaciones -> Administrar');
     Route::post('/expedientes/{id}/archivos', [OfiArchivoExpedienteController::class, 'subirArchivos'])->middleware('can:'.$permExp.'Incorporar');
     Route::post('/expedientes/{expedienteId}/documentos/{documentoId}/soft-delete', [OfiArchivoExpedienteController::class, 'softDeleteDocumento'])->middleware('can:'.$permExp.'Editar');
     Route::get('/expedientes/{id}/indice', [OfiArchivoExpedienteController::class, 'generarIndicePdf'])->middleware('can:'.$permExp.'Ver');
