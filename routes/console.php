@@ -45,6 +45,11 @@ Schedule::command('archivo:depurar-digital --disco=radicados_internos --dias=30 
 Schedule::command('archivo:depurar-digital --disco=archivo_expedientes --dias=30 --dry-run')
     ->weekly()->sundays()->at('02:30')->withoutOverlapping()->onOneServer();
 
+// D4 (diseño de expedientes §3.4): aviso semanal de expedientes abiertos sin incorporaciones
+// en archivo.meses_inactividad meses. Solo avisa; no los cierra.
+Schedule::command('archivo:alertar-expedientes-inactivos')
+    ->weekly()->mondays()->at('06:45')->withoutOverlapping()->onOneServer();
+
 // Grupos Colaborativos: liberar bloqueos expirados cada hora
 Schedule::command('grupos-colaborativos:liberar-bloqueos')->hourly()->withoutOverlapping()->onOneServer();
 
