@@ -32,6 +32,12 @@ class WorkflowInstanciaController extends Controller
     ) {
         $this->middleware('can:Workflows -> Instancias -> Consultar')->only(['index', 'show']);
         $this->middleware('can:Workflows -> Instancias -> Ejecutar')->only(['store', 'ejecutarNodo', 'detener', 'devolver']);
+        // M19-52: antes de validar el request, para no revelar nada de una instancia ajena
+        $this->middleware(function ($request, $next) {
+            abort_unless(WorkflowInstancia::visiblesPara($request->user())->whereKey((int) $request->route('instancia'))->exists(), 404, 'Instancia no encontrada');
+
+            return $next($request);
+        })->only(['show', 'ejecutarNodo', 'detener', 'devolver']);
     }
 
     public function index(int $workflowId)
@@ -39,6 +45,7 @@ class WorkflowInstanciaController extends Controller
         try {
             $instancias = WorkflowInstancia::with(['usuarioEjecuta:id,nombres,apellidos', 'nodoActual', 'workflow:id,nombre', 'radicado:id,num_radicado'])
                 ->where('workflow_id', $workflowId)
+                ->visiblesPara(auth()->user())
                 ->orderBy('created_at', 'desc')
                 ->paginate(min(max((int) request('per_page', 10), 1), 100));
 

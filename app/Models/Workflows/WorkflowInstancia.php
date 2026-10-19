@@ -3,7 +3,9 @@
 namespace App\Models\Workflows;
 
 use App\Models\User;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsOptimizedView;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -37,6 +39,30 @@ class WorkflowInstancia extends Model
         'fecha_fin' => 'datetime',
         'fecha_limite_estimada' => 'datetime',
     ];
+
+    /**
+     * M19-52: instancias que el usuario puede ver. El Administrador y el creador del workflow ven
+     * todas; los demás, las que iniciaron, las que tienen una tarea suya (plantilla del nodo o
+     * tarea generada, como responsable o propietario) y las de un radicado o PQRS que pueden ver.
+     */
+    public function scopeVisiblesPara(Builder $query, User $user): Builder
+    {
+        if ($user->hasRole('Administrador')) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($user) {
+            $q->where('usuario_ejecuta_id', $user->id)
+                ->orWhereIn('workflow_id', Workflow::where('creador_user_id', $user->id)->select('id'))
+                ->orWhereIn('id', fn ($s) => $s->select('instancia_id')->from('workflow_nodos_instancia')
+                    ->whereIn('nodo_id', fn ($t) => $t->select('nodo_id')->from('work_flow_tareas')->where('responsable_usuario_id', $user->id)))
+                ->orWhereIn('id', fn ($s) => $s->select('instancia_id')->from('workflow_tareas')->whereNotNull('instancia_id')
+                    ->where(fn ($t) => $t->whereIn('id', fn ($r) => $r->select('tarea_id')->from('tarea_responsables')->where('user_id', $user->id))
+                        ->orWhereIn('id', fn ($r) => $r->select('tarea_id')->from('tarea_propietarios')->where('user_id', $user->id))))
+                ->orWhereIn('radicado_id', VentanillaRadicaReci::conPermisoJerarquico($user)->select('id'))
+                ->orWhereIn('radicado_id', VentanillaPqrsOptimizedView::conPermisoJerarquico($user)->select('ventanilla_radica_reci_id'));
+        });
+    }
 
     public function workflow()
     {
