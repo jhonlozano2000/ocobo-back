@@ -6,6 +6,12 @@ use App\Helpers\ArchivoHelper;
 use App\Helpers\CalendarioHelper;
 use App\Helpers\ExpedienteHelper;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\OfiArchivo\CerrarExpedienteRequest;
+use App\Http\Requests\OfiArchivo\IncorporarDocumentoExpedienteRequest;
+use App\Http\Requests\OfiArchivo\ListarExpedientesRequest;
+use App\Http\Requests\OfiArchivo\StoreExpedienteRequest;
+use App\Http\Requests\OfiArchivo\SubirArchivosExpedienteRequest;
+use App\Http\Requests\OfiArchivo\UpdateExpedienteRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
@@ -41,18 +47,8 @@ class OfiArchivoExpedienteController extends Controller
      *
      * @return JsonResponse
      */
-    public function store(Request $request)
+    public function store(StoreExpedienteRequest $request)
     {
-        $request->validate([
-            'nombre_expediente' => 'required|string|max:300',
-            'dependencia_id' => 'required|exists:calidad_organigrama,id',
-            'serie_trd_id' => 'required|exists:clasificacion_documental_trd,id',
-            'ubicacion_fisica' => 'nullable|string|max:200',
-            'caja' => 'nullable|string|max:50',
-            'carpeta' => 'nullable|string|max:50',
-            'folios_fisicos' => 'nullable|integer|min:0',
-            'observaciones_generales' => 'nullable|string',
-        ]);
 
         if (! OfiArchivoExpediente::puedeUsarDependencia(Auth::user(), $request->dependencia_id)) {
             return $this->forbiddenResponse('No puede abrir expedientes de otra dependencia');
@@ -93,13 +89,14 @@ class OfiArchivoExpedienteController extends Controller
             );
 
         } catch (\Exception $e) {
+            // B25: también al relanzar un 404, para no dejar la transacción abierta
+            DB::rollBack();
             if ($e instanceof ValidationException) {
                 throw $e;
             }
             if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
                 throw $e;
             }
-            DB::rollBack();
 
             return $this->serverErrorResponse('Error al abrir el expediente', $e->getMessage());
         }
@@ -131,18 +128,8 @@ class OfiArchivoExpedienteController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateExpedienteRequest $request, $id)
     {
-        $request->validate([
-            'nombre_expediente' => 'nullable|string|max:300',
-            'dependencia_id' => 'nullable|exists:calidad_organigrama,id',
-            'serie_trd_id' => 'nullable|exists:clasificacion_documental_trd,id',
-            'ubicacion_fisica' => 'nullable|string|max:200',
-            'caja' => 'nullable|string|max:50',
-            'carpeta' => 'nullable|string|max:50',
-            'folios_fisicos' => 'nullable|integer|min:0',
-            'observaciones_generales' => 'nullable|string',
-        ]);
 
         try {
             $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->findOrFail($id);
@@ -195,18 +182,18 @@ class OfiArchivoExpedienteController extends Controller
         }
     }
 
-    public function cerrarExpediente(Request $request, $id)
+    public function cerrarExpediente(CerrarExpedienteRequest $request, $id)
     {
-        $request->validate([
-            'motivo_cierre' => 'required|string|max:500',
-        ]);
 
         try {
             DB::beginTransaction();
 
-            $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->findOrFail($id);
+            // B25: bloqueo para que dos cierres simultáneos no calculen el hash dos veces
+            $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->lockForUpdate()->findOrFail($id);
 
             if ($expediente->estado !== 'abierto') {
+                DB::rollBack();
+
                 return $this->warningResponse('Solo se pueden cerrar expedientes en estado abierto');
             }
 
@@ -229,13 +216,14 @@ class OfiArchivoExpedienteController extends Controller
             );
 
         } catch (\Exception $e) {
+            // B25: también al relanzar un 404, para no dejar la transacción abierta
+            DB::rollBack();
             if ($e instanceof ValidationException) {
                 throw $e;
             }
             if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
                 throw $e;
             }
-            DB::rollBack();
 
             return $this->serverErrorResponse('Error al cerrar el expediente', $e->getMessage());
         }
@@ -244,11 +232,8 @@ class OfiArchivoExpedienteController extends Controller
     /**
      * Lista expedientes con filtros por dependencia y serie (Cumplimiento ISO 27001).
      */
-    public function index(Request $request)
+    public function index(ListarExpedientesRequest $request)
     {
-        $request->validate([
-            'estado' => 'nullable|in:abierto,cerrado,transferido,eliminado',
-        ]);
 
         try {
             $query = OfiArchivoExpediente::visiblesPara(Auth::user())->with(['dependencia', 'serieTrd', 'usuarioApertura']);
@@ -295,13 +280,8 @@ class OfiArchivoExpedienteController extends Controller
      * Incorpora un documento (Radicado Recibido/Enviado) al expediente.
      * Implementa foliación automática e integridad ISO 27001.
      */
-    public function incorporarDocumento(Request $request, $expedienteId)
+    public function incorporarDocumento(IncorporarDocumentoExpedienteRequest $request, $expedienteId)
     {
-        $request->validate([
-            'documentable_id' => 'required|integer',
-            'documentable_type' => 'required|string|in:radicado_recibido,radicado_enviado',
-            'detalle' => 'nullable|string|max:500',
-        ]);
 
         try {
             DB::beginTransaction();
@@ -309,6 +289,8 @@ class OfiArchivoExpedienteController extends Controller
             $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->findOrFail($expedienteId);
 
             if ($expediente->estado !== 'abierto') {
+                DB::rollBack();
+
                 return $this->warningResponse('No se pueden incorporar documentos a un expediente cerrado o transferido');
             }
 
@@ -333,6 +315,8 @@ class OfiArchivoExpedienteController extends Controller
                 ->exists();
 
             if ($existe) {
+                DB::rollBack();
+
                 return $this->warningResponse('Este documento ya se encuentra incorporado en el expediente');
             }
 
@@ -360,13 +344,14 @@ class OfiArchivoExpedienteController extends Controller
             );
 
         } catch (\Exception $e) {
+            // B25: también al relanzar un 404, para no dejar la transacción abierta
+            DB::rollBack();
             if ($e instanceof ValidationException) {
                 throw $e;
             }
             if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
                 throw $e;
             }
-            DB::rollBack();
 
             return $this->serverErrorResponse('Error al incorporar el documento', $e->getMessage());
         }
@@ -376,21 +361,8 @@ class OfiArchivoExpedienteController extends Controller
      * Sube archivos directamente al expediente (por tipo documental o como archivo completo).
      * Implementa foliación automática e integridad ISO 27001.
      */
-    public function subirArchivos(Request $request, $expedienteId)
+    public function subirArchivos(SubirArchivosExpedienteRequest $request, $expedienteId)
     {
-        $request->validate([
-            // M08-17: tope de cantidad; 50 MB por archivo sin límite de archivos permitía cargas enormes
-            'archivos' => 'required|array|min:1|max:20',
-            'archivos.*' => 'file|max:51200',
-            'tipo' => 'required|in:tipo_documental,expediente_completo',
-            'tipo_documental' => 'nullable|string|max:200',
-            'descripcion' => 'nullable|string|max:500',
-        ]);
-
-        // Validar que tipo_documental sea requerido cuando tipo es 'tipo_documental'
-        if ($request->tipo === 'tipo_documental' && empty($request->tipo_documental)) {
-            return $this->warningResponse('El nombre del tipo documental es requerido');
-        }
 
         $disk = 'archivo_expedientes';
         // M08-02: binarios ya escritos; si la transacción se revierte se borran para no dejar huérfanos
@@ -603,13 +575,14 @@ class OfiArchivoExpedienteController extends Controller
 
             return $this->successResponse(null, 'Documento eliminado exitosamente');
         } catch (\Exception $e) {
+            // B25: también al relanzar un 404, para no dejar la transacción abierta
+            DB::rollBack();
             if ($e instanceof ValidationException) {
                 throw $e;
             }
             if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
                 throw $e;
             }
-            DB::rollBack();
 
             return $this->serverErrorResponse('Error al eliminar el documento', $e->getMessage());
         }
