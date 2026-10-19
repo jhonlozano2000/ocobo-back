@@ -16,6 +16,7 @@ use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsOptimizedView;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaHistorialNotificacion;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciHistorialClasificacionDocumental;
+use App\Services\OfiArchivo\VerificacionCierrePqrsService;
 use App\Services\ReportesExportService;
 use App\Services\VentanillaUnica\PqrsService;
 use App\Traits\AuditViewTrait;
@@ -416,11 +417,19 @@ class VentanillaPqrsController extends Controller
 
             $pqrs = $this->pqrsService->cambiarEstado($id, $validated['estado_tramite'], $validated['fecha_respuesta'] ?? null);
 
+            // Diseño de expedientes §6.2 [A.4.2.10]: avisa, sin bloquear, lo que falta archivar
+            $archivo = $validated['estado_tramite'] === 'Respondida' ? app(VerificacionCierrePqrsService::class)->para($pqrs) : null;
+
             $this->auditVentanilla($pqrs, 'change_status', $pqrs->radicado?->num_radicado ?? $pqrs->id, [
                 'estado' => $validated['estado_tramite'],
-            ]);
+            ] + ($archivo ? ['archivo_completo' => $archivo['completo']] : []));
 
-            return $this->successResponse(new PqrsResource($pqrs), 'Estado actualizado a: '.$validated['estado_tramite']);
+            $mensaje = 'Estado actualizado a: '.$validated['estado_tramite'];
+            if ($archivo && ! $archivo['completo']) {
+                $mensaje .= '. Pendiente de archivo: '.implode(' ', $archivo['faltantes']);
+            }
+
+            return $this->successResponse(new PqrsResource($pqrs), $mensaje);
         } catch (ModelNotFoundException $e) {
             return $this->errorResponse('PQRS no encontrada', null, 404);
         } catch (\DomainException $e) {

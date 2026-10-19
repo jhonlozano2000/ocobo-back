@@ -60,7 +60,7 @@ class SugerenciaExpedienteService
             ? $this->expedientesCon(VentanillaRadicaReci::class, $radicado->recibidos()->pluck('ventanilla_radica_reci.id'))
             : [];
 
-        return [
+        $respuesta = [
             'radicado' => $radicado->only(['id', 'num_radicado', 'asunto', 'estado_trabajo']) + ['documentable_type' => self::ORIGENES[$origenTipo]],
             'clasificacion' => [
                 'serie' => $serie?->only(['id', 'cod', 'nom']),
@@ -71,6 +71,13 @@ class SugerenciaExpedienteService
             'sugeridos' => $serie || $deLaPeticion ? $this->sugeridos($serie, $subserie, $deLaPeticion, $terceroId, $radicado, $user) : [],
             'apertura' => $this->apertura($serie, $subserie, $radicado, $user),
         ];
+
+        // §6.2 [A.4.2.10]: qué falta archivar para cerrar la PQRS
+        if ($origenTipo === 'pqrs') {
+            $respuesta['verificacion_cierre'] = app(VerificacionCierrePqrsService::class)->para($pqrs);
+        }
+
+        return $respuesta;
     }
 
     /**
