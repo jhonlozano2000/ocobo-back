@@ -9,6 +9,7 @@ use App\Models\OfiArchivo\OfiArchivoExpedienteIndice;
 use App\Models\OfiArchivo\OfiArchivoExpedienteIndiceVersion;
 use App\Models\User;
 use App\Services\OfiArchivo\IndiceExpedienteService;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -64,6 +65,14 @@ class IndiceEncadenadoExpedienteTest extends TestCase
         ]);
     }
 
+    /** B11: con los triggers de la migración 2026_10_19_150000 la BD rechaza la alteración. */
+    private function hayTriggers(): bool
+    {
+        return DB::getDriverName() === 'mysql' && DB::table('information_schema.TRIGGERS')
+            ->where('TRIGGER_SCHEMA', DB::getDatabaseName())
+            ->where('TRIGGER_NAME', 'ofi_archivo_expediente_indice_inmutable_update')->exists();
+    }
+
     private function cadena(): array
     {
         return app(IndiceExpedienteService::class)->verificarCadena($this->expediente);
@@ -96,18 +105,37 @@ class IndiceEncadenadoExpedienteTest extends TestCase
     {
         $this->folio('Acta de inicio');
         $dos = $this->folio('Informe');
-        $this->folio('Cierre');
 
-        // Alteración directa en la BD, saltándose el modelo
-        DB::table('ofi_archivo_expediente_indice')->where('documento_id', $dos->id)->update(['fecha_incorporacion' => '2020-01-01 00:00:00']);
+        if ($this->hayTriggers()) {
+            try {
+                DB::table('ofi_archivo_expediente_indice')->where('documento_id', $dos->id)->update(['fecha_incorporacion' => '2020-01-01 00:00:00']);
+                $this->fail('La BD debía rechazar la alteración de una columna encadenada');
+            } catch (QueryException $e) {
+                $this->assertStringContainsString('columnas encadenadas', $e->getMessage());
+            }
+        }
+
+        // Alteraciones directas en la BD, saltándose el modelo: la huella del folio 2 y una
+        // fila del índice falsificada para un folio 3 que nunca pasó por el servicio
         DB::table('ofi_archivo_expedientes_documentos')->where('id', $dos->id)->update(['hash_sha256' => str_repeat('a', 64)]);
+        $tres = DB::table('ofi_archivo_expedientes_documentos')->insertGetId([
+            'expediente_id' => $this->expediente->id, 'tipo' => 'tipo_documental', 'tipo_documental' => 'Acta',
+            'asunto' => 'Falso', 'fecha_documento' => '2026-10-19', 'hash_sha256' => hash('sha256', 'Falso'),
+            'usuario_id' => $this->user->id, 'activo' => true, 'orden' => 3, 'numero_folio' => 3,
+            'fecha_incorporacion' => now(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('ofi_archivo_expediente_indice')->insert([
+            'expediente_id' => $this->expediente->id, 'documento_id' => $tres, 'orden' => 3, 'numero_folio' => 3,
+            'tipo_documental' => 'Acta', 'origen' => 'Ana Archivista', 'fecha_incorporacion' => now(),
+            'hash_sha256' => hash('sha256', 'Falso'),
+            'hash_anterior' => OfiArchivoExpedienteIndice::where('documento_id', $dos->id)->value('hash_cadena'),
+            'hash_cadena' => str_repeat('b', 64), 'created_at' => now(), 'updated_at' => now(),
+        ]);
 
-        $cadena = $this->cadena();
-        $this->assertFalse($cadena['integra']);
-        $this->assertEqualsCanonicalizing(
-            ['Los datos de la fila fueron alterados', 'La huella del documento no coincide con la del índice'],
-            collect($cadena['errores'])->where('numero_folio', 2)->pluck('motivo')->all()
-        );
+        $errores = collect($this->cadena()['errores']);
+        $this->assertFalse($this->cadena()['integra']);
+        $this->assertSame(['La huella del documento no coincide con la del índice'], $errores->where('numero_folio', 2)->pluck('motivo')->all());
+        $this->assertSame(['Los datos de la fila fueron alterados'], $errores->where('numero_folio', 3)->pluck('motivo')->all());
     }
 
     public function test_el_cierre_congela_el_indice_en_una_version_firmada(): void
@@ -139,10 +167,15 @@ class IndiceEncadenadoExpedienteTest extends TestCase
         $pdf = $this->get("/api/archivo/expedientes/{$this->expediente->id}/indice/versiones/1/pdf")->assertOk();
         $this->assertSame($version->hash_pdf, hash('sha256', $pdf->getContent()));
 
-        // Alterar el PDF guardado invalida la versión
-        DB::table('ofi_archivo_expediente_indice_versiones')->where('id', $version->id)->update(['pdf' => '%PDF-alterado']);
-        $this->getJson("/api/archivo/expedientes/{$this->expediente->id}/indice/versiones")
-            ->assertJsonPath('data.versiones.0.verificacion.valida', false)
-            ->assertJsonPath('data.versiones.0.verificacion.motivo', 'El PDF no coincide con su huella');
+        // Un PDF alterado invalida la versión
+        $alterada = OfiArchivoExpedienteIndiceVersion::find($version->id);
+        $alterada->pdf = '%PDF-alterado';
+        $this->assertSame(['valida' => false, 'motivo' => 'El PDF no coincide con su huella'],
+            app(IndiceExpedienteService::class)->verificarVersion($alterada));
+
+        if ($this->hayTriggers()) {
+            $this->expectException(QueryException::class);
+            DB::table('ofi_archivo_expediente_indice_versiones')->where('id', $version->id)->update(['pdf' => '%PDF-alterado']);
+        }
     }
 }

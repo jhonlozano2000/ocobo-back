@@ -101,11 +101,13 @@ class AccesoExpedientesTest extends TestCase
 
     public function test_expediente_cerrado_no_se_edita_ni_pierde_folios(): void
     {
-        $cerrado = $this->expediente($this->depA, '2026-M83A-S83-0002', 'cerrado');
+        // B11: los folios se incorporan con el expediente abierto; después se cierra
+        $cerrado = $this->expediente($this->depA, '2026-M83A-S83-0002');
         $doc = OfiArchivoExpedienteDocumento::create([
             'expediente_id' => $cerrado->id, 'orden' => 0, 'tipo_documental' => 'Documento',
             'fecha_documento' => '2026-10-11', 'asunto' => 'Doc', 'usuario_id' => $this->otro->id,
         ]);
+        $cerrado->update(['estado' => 'cerrado']);
 
         $this->actingAs($this->user)->putJson('/api/archivo/expedientes/'.$cerrado->id, ['folios_fisicos' => 99])
             ->assertUnprocessable();
