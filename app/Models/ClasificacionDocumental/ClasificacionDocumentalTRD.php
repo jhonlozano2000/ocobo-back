@@ -27,6 +27,9 @@ class ClasificacionDocumentalTRD extends Model
         'e',
         'm_d',
         's',
+        'metodo_seleccion',
+        'porcentaje_seleccion',
+        'intervalo_seleccion',
         'papel',
         'electronico',
         'mixto',
@@ -51,8 +54,13 @@ class ClasificacionDocumentalTRD extends Model
         'e' => 'boolean',
         'm_d' => 'boolean',
         's' => 'boolean',
+        'porcentaje_seleccion' => 'integer',
+        'intervalo_seleccion' => 'integer',
         'estado' => 'boolean',
     ];
+
+    /** B22: métodos con que se propone la muestra de una serie de selección (S). */
+    public const METODOS_SELECCION = ['aleatorio', 'sistematico', 'cualitativo'];
 
     /**
      * M09-02/M09-03: la jerarquía y la unicidad de códigos se validan al guardar, para que
@@ -83,6 +91,7 @@ class ClasificacionDocumentalTRD extends Model
             $padre && (int) $padre->dependencia_id !== (int) $this->dependencia_id => ['parent', 'El elemento padre debe pertenecer a la misma dependencia.'],
             $padre && $padre->version_id !== null && (int) $padre->version_id !== (int) $this->version_id => ['parent', 'El elemento padre debe pertenecer a la misma versión de la TRD.'],
             ($retencion = $this->errorRetencion()) !== null => $retencion,
+            ($seleccion = $this->errorSeleccion()) !== null => $seleccion,
             $this->codigoRepetido() => ['cod', 'El código ya existe en este nivel de la TRD (misma dependencia, versión y padre).'],
             default => null,
         };
@@ -126,6 +135,50 @@ class ClasificacionDocumentalTRD extends Model
         if ($disposiciones->isEmpty() && $tieneRetencion) {
             return ['ct', 'Indique la disposición final (CT, E o S) para el elemento que tiene tiempos de retención.'];
         }
+
+        return null;
+    }
+
+    /**
+     * B22: el método de selección solo aplica a la disposición S. La muestra aleatoria pide el
+     * porcentaje que se conserva y la sistemática el intervalo (uno de cada N); la cualitativa
+     * sigue el criterio del procedimiento. Sin método, la selección se hace a mano.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    private function errorSeleccion(): ?array
+    {
+        $campos = ['s', 'metodo_seleccion', 'porcentaje_seleccion', 'intervalo_seleccion'];
+        if ($this->exists && ! $this->isDirty($campos)) {
+            return null;
+        }
+
+        $metodo = ($this->attributes['metodo_seleccion'] ?? null) ?: null;
+        if (! $this->s) {
+            $metodo = null;
+        }
+        if ($metodo !== null && ! in_array($metodo, self::METODOS_SELECCION, true)) {
+            return ['metodo_seleccion', 'El método de selección debe ser aleatorio, sistemático o cualitativo.'];
+        }
+
+        $entero = function (string $campo): ?int {
+            $valor = $this->attributes[$campo] ?? null;
+
+            return $valor === null || trim((string) $valor) === '' || ! preg_match('/^\d{1,4}$/', trim((string) $valor)) ? null : (int) $valor;
+        };
+        $porcentaje = $metodo === 'aleatorio' ? $entero('porcentaje_seleccion') : null;
+        $intervalo = $metodo === 'sistematico' ? $entero('intervalo_seleccion') : null;
+
+        if ($metodo === 'aleatorio' && ($porcentaje === null || $porcentaje < 1 || $porcentaje > 100)) {
+            return ['porcentaje_seleccion', 'Indique el porcentaje de la muestra aleatoria (entre 1 y 100).'];
+        }
+        if ($metodo === 'sistematico' && ($intervalo === null || $intervalo < 2 || $intervalo > 1000)) {
+            return ['intervalo_seleccion', 'Indique el intervalo de la muestra sistemática: se conserva uno de cada N (entre 2 y 1000).'];
+        }
+
+        $this->attributes['metodo_seleccion'] = $metodo;
+        $this->attributes['porcentaje_seleccion'] = $porcentaje;
+        $this->attributes['intervalo_seleccion'] = $intervalo;
 
         return null;
     }

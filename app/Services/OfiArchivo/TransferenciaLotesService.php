@@ -43,6 +43,7 @@ class TransferenciaLotesService
         private HojaControlService $hojaControl,
         private UbicacionTopograficaService $ubicaciones,
         private IntegridadArchivoService $integridad,
+        private DisposicionFinalService $disposicion,
     ) {}
 
     /**
@@ -157,7 +158,8 @@ class TransferenciaLotesService
                     'responsable_destino_id' => $recibe->id,
                 ]);
                 $item->expediente->update(match (true) {
-                    ! $recibido => ['estado' => 'cerrado'],
+                    // B22: el que ya estaba en disposición final vuelve a ella
+                    ! $recibido => ['estado' => $item->expediente->fecha_disposicion ? 'en_disposicion' : 'cerrado'],
                     $lote->tipo === 'primaria' => ['estado' => 'cerrado', 'fase' => 'central'],
                     default => ['estado' => 'transferido', 'fase' => 'historico'],
                 });
@@ -202,11 +204,12 @@ class TransferenciaLotesService
                 return 'Solo se transfieren al archivo central expedientes cerrados en el archivo de gestión';
             }
         } else {
-            if ($expediente->estado !== 'cerrado' || $expediente->fase !== 'central') {
+            if (! in_array($expediente->estado, ['cerrado', 'en_disposicion'], true) || $expediente->fase !== 'central') {
                 return 'La transferencia secundaria exige que el expediente esté cerrado en el archivo central';
             }
-            if (! $trd->ct && ! $trd->s) {
-                return 'La disposición final de la TRD no es conservación total ni selección';
+            // B22: conservación total, o selección que lo conservó, y su digitalización si es M/D
+            if ($motivo = $this->disposicion->motivoNoPuede($expediente, DisposicionFinalService::CONSERVAR)) {
+                return $motivo;
             }
         }
 

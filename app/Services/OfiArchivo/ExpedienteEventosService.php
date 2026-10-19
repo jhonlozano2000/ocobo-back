@@ -24,6 +24,7 @@ class ExpedienteEventosService
         'cerrado' => 'cierre',
         // B17: el lote se envía; si se devuelve, el expediente vuelve a cerrado en su archivo
         'en_transferencia' => 'envio_transferencia',
+        'en_disposicion' => 'inicio_disposicion',
         'transferido' => 'transferencia',
         'eliminado' => 'eliminacion',
     ];

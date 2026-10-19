@@ -80,7 +80,7 @@ class OfiArchivoTransferenciaLoteController extends Controller
         $expedientes = OfiArchivoExpediente::visiblesPara(Auth::user())
             ->with(['serieTrd:id,cod,nom,a_g,a_c,ct,e,s', 'subserieTrd:id,cod,nom,a_g,a_c,ct,e,s'])
             ->where('dependencia_id', $request->dependencia_id)
-            ->where('estado', 'cerrado')
+            ->whereIn('estado', $request->tipo === 'primaria' ? ['cerrado'] : ['cerrado', 'en_disposicion'])
             ->where('fase', $request->tipo === 'primaria' ? 'gestion' : 'central')
             ->orderBy('fecha_cierre')->limit(500)
             ->get(['id', 'numero_expediente', 'nombre_expediente', 'serie_trd_id', 'subserie_trd_id', 'soporte', 'estado', 'fase',

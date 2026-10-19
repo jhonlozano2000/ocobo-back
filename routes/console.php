@@ -58,6 +58,10 @@ Schedule::command('archivo:marcar-prestamos-vencidos')
 Schedule::command('archivo:verificar-integridad')
     ->weekly()->sundays()->at('03:00')->withoutOverlapping()->onOneServer();
 
+// B22 (diseño de expedientes §3.8): pasa a disposición final los del central con la retención cumplida
+Schedule::command('archivo:marcar-disposicion')
+    ->dailyAt('01:30')->withoutOverlapping()->onOneServer();
+
 // Grupos Colaborativos: liberar bloqueos expirados cada hora
 Schedule::command('grupos-colaborativos:liberar-bloqueos')->hourly()->withoutOverlapping()->onOneServer();
 

@@ -89,7 +89,11 @@ class TransferenciaEliminacionTest extends TestCase
 
     public function test_eliminacion_valida_marca_expediente_y_no_se_repite(): void
     {
-        $exp = $this->expediente(['s' => 1], 6);
+        // B22: la de selección espera a que se confirme la selección de su serie
+        $this->eliminar($this->expediente(['s' => 1], 6))->assertStatus(422)
+            ->assertJsonFragment(['message' => 'Su disposición es selección y aún no se ha confirmado la selección de su serie']);
+
+        $exp = $this->expediente(['e' => 1], 6);
 
         $this->eliminar($exp)->assertCreated();
         $this->assertSame('eliminado', DB::table('ofi_archivo_expedientes')->where('id', $exp)->value('estado'));

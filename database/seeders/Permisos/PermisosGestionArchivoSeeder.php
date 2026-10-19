@@ -53,6 +53,10 @@ class PermisosGestionArchivoSeeder extends Seeder
             // B21: incidentes de la verificación de huellas de los folios
             'Gestion de Archivo -> Integridad -> Ver',
             'Gestion de Archivo -> Integridad -> Resolver',
+            // B22: disposición final: selección (S) y digitalización (M/D)
+            'Gestion de Archivo -> Disposicion -> Ver',
+            'Gestion de Archivo -> Disposicion -> Seleccionar',
+            'Gestion de Archivo -> Disposicion -> Digitalizar',
             'Gestion de Archivo -> Eliminaciones -> Ver',
             'Gestion de Archivo -> Eliminaciones -> Crear',
             // Quien puede figurar como aprobador de una eliminación (M08-10)

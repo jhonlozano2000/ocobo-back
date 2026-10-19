@@ -125,6 +125,11 @@ class RouteServiceProvider extends ServiceProvider
                 ->prefix('api/archivo')
                 ->group(base_path('routes/archivo-integridad.php'));
 
+            // GESTIÓN DE ARCHIVO — DISPOSICIÓN FINAL: SELECCIÓN Y DIGITALIZACIÓN (B22)
+            Route::middleware('api')
+                ->prefix('api/archivo')
+                ->group(base_path('routes/archivo-disposicion.php'));
+
             // GESTIÓN DE ARCHIVO — REPORTES
             Route::middleware('api')
                 ->prefix('api/archivo')

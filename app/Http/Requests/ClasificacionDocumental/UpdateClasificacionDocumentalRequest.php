@@ -88,6 +88,24 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
                 'string',
                 'max:500',
             ],
+            // B22: método con que se propone la muestra de una serie de selección
+            'metodo_seleccion' => [
+                'nullable',
+                'string',
+                'in:aleatorio,sistematico,cualitativo',
+            ],
+            'porcentaje_seleccion' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:100',
+            ],
+            'intervalo_seleccion' => [
+                'nullable',
+                'integer',
+                'min:2',
+                'max:1000',
+            ],
             'requiere_pdf_a' => [
                 'nullable',
                 'boolean',
@@ -171,6 +189,9 @@ class UpdateClasificacionDocumentalRequest extends FormRequest
             'm_d' => 'microfilmación digital',
             's' => 'selección',
             'procedimiento' => 'procedimiento',
+            'metodo_seleccion' => 'método de selección',
+            'porcentaje_seleccion' => 'porcentaje de la muestra',
+            'intervalo_seleccion' => 'intervalo de la muestra',
             'parent' => 'elemento padre',
         ];
     }

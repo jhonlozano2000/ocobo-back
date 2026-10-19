@@ -58,6 +58,8 @@ class OfiArchivoExpediente extends Model
         'trd_snapshot',
         'fecha_fin_gestion',
         'fecha_fin_central',
+        'fecha_disposicion',
+        'destino_disposicion',
     ];
 
     protected $casts = [
@@ -69,6 +71,7 @@ class OfiArchivoExpediente extends Model
         'trd_snapshot' => 'array',
         'fecha_fin_gestion' => 'date',
         'fecha_fin_central' => 'date',
+        'fecha_disposicion' => 'datetime',
     ];
 
     /** B16: dónde está el expediente; solo avanza (gestión → central → histórico). */
@@ -99,6 +102,12 @@ class OfiArchivoExpediente extends Model
     public function documentos()
     {
         return $this->hasMany(OfiArchivoExpedienteDocumento::class, 'expediente_id')->orderBy('numero_folio', 'asc');
+    }
+
+    /** B22: digitalizaciones (M/D) registradas en la disposición final. */
+    public function digitalizaciones()
+    {
+        return $this->hasMany(OfiArchivoDigitalizacion::class, 'expediente_id')->orderBy('digitalizado_at');
     }
 
     /** B24: terceros relacionados con el expediente y su rol. */
@@ -208,15 +217,21 @@ class OfiArchivoExpediente extends Model
 
     /**
      * B14: TRD que rige la retención y la disposición del expediente: la instantánea del
-     * cierre si la tiene; si no, la subserie actual o, sin subserie, la serie.
+     * cierre si la tiene; si no, la subserie actual o, sin subserie, la serie. B22: las
+     * instantáneas anteriores al método de selección lo toman de la TRD actual.
      */
     public function trdRetencion(): ?ClasificacionDocumentalTRD
     {
         if ($this->trd_snapshot) {
-            return (new ClasificacionDocumentalTRD)->forceFill(collect($this->trd_snapshot)
-                ->only(['tipo', 'cod', 'nom', 'version_id', 'a_g', 'a_c', 'ct', 'e', 'm_d', 's', 'disposicion_final', 'procedimiento'])
-                ->put('id', $this->trd_snapshot['trd_id'] ?? null)
-                ->all());
+            $seleccion = ['metodo_seleccion', 'porcentaje_seleccion', 'intervalo_seleccion'];
+            $datos = collect($this->trd_snapshot)
+                ->only(['tipo', 'cod', 'nom', 'version_id', 'a_g', 'a_c', 'ct', 'e', 'm_d', 's', 'disposicion_final', 'procedimiento', ...$seleccion])
+                ->put('id', $this->trd_snapshot['trd_id'] ?? null);
+            if (! array_key_exists('metodo_seleccion', $this->trd_snapshot) && ($actual = ClasificacionDocumentalTRD::find($datos['id']))) {
+                $datos = $datos->merge($actual->only($seleccion));
+            }
+
+            return (new ClasificacionDocumentalTRD)->forceFill($datos->all());
         }
 
         return $this->subserie_trd_id ? ($this->subserieTrd ?? $this->serieTrd) : $this->serieTrd;

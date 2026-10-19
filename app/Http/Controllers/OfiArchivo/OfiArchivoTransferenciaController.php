@@ -10,6 +10,7 @@ use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoPrestamo;
 use App\Models\OfiArchivo\OfiArchivoTransferencia;
 use App\Models\User;
+use App\Services\OfiArchivo\DisposicionFinalService;
 use App\Services\OfiArchivo\TransferenciaLotesService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -307,7 +308,7 @@ class OfiArchivoTransferenciaController extends Controller
      */
     private function validarEliminacion(OfiArchivoExpediente $expediente): ?string
     {
-        if (! in_array($expediente->estado, ['cerrado', 'transferido'], true)) {
+        if (! in_array($expediente->estado, ['cerrado', 'en_disposicion', 'transferido'], true)) {
             return 'Solo se pueden eliminar expedientes cerrados o transferidos';
         }
         if (OfiArchivoEliminacion::where('expediente_id', $expediente->id)->exists()) {
@@ -321,8 +322,9 @@ class OfiArchivoTransferenciaController extends Controller
         if (! $trd) {
             return 'El expediente no tiene serie/subserie TRD asociada';
         }
-        if (! $trd->e && ! $trd->s) {
-            return 'La disposición final de la TRD no permite eliminación (requiere E o S)';
+        // B22: eliminación, o selección que no lo conservó, y su digitalización si es M/D
+        if ($motivo = app(DisposicionFinalService::class)->motivoNoPuede($expediente, DisposicionFinalService::ELIMINAR)) {
+            return $motivo;
         }
 
         return TransferenciaLotesService::validarRetencion($expediente, (int) $trd->a_g + (int) $trd->a_c, 'total (gestión + central)');

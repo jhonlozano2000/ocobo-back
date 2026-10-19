@@ -45,7 +45,7 @@ class PrestamosService
 
     public const PERMISO_VER_RESERVADOS = 'Gestion de Archivo -> Expedientes -> Ver reservados';
 
-    public const ESTADOS_PRESTABLES = ['abierto', 'cerrado', 'transferido'];
+    public const ESTADOS_PRESTABLES = ['abierto', 'cerrado', 'en_disposicion', 'transferido'];
 
     public const TYPE_RESPUESTA = 'prestamo_respuesta';
 
