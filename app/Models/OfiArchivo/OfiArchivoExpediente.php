@@ -96,6 +96,12 @@ class OfiArchivoExpediente extends Model
         return $this->hasMany(OfiArchivoExpedienteDocumento::class, 'expediente_id')->orderBy('numero_folio', 'asc');
     }
 
+    /** B24: terceros relacionados con el expediente y su rol. */
+    public function terceros()
+    {
+        return $this->hasMany(OfiArchivoExpedienteTercero::class, 'expediente_id');
+    }
+
     /** B12: historial encadenado (solo inserción). */
     public function eventos()
     {

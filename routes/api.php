@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\Gestion\GestionTerceroController;
 use App\Http\Controllers\OfiArchivo\OfiArchivoExpedienteController;
+use App\Http\Controllers\OfiArchivo\OfiArchivoExpedienteTerceroController;
 use App\Http\Controllers\Transversal\FirmaElectronicaController;
 use App\Http\Controllers\VentanillaUnica\DocumentoController;
 use Illuminate\Http\Request;
@@ -72,6 +73,10 @@ Route::middleware(['auth:sanctum', 'throttle:archivo'])->prefix('archivo')->grou
     Route::put('/expedientes/{id}', [OfiArchivoExpedienteController::class, 'update'])->middleware('can:'.$permExp.'Editar');
     Route::post('/expedientes/{id}/cerrar', [OfiArchivoExpedienteController::class, 'cerrarExpediente'])->middleware('can:'.$permExp.'Cerrar');
     Route::post('/expedientes/{id}/reabrir', [OfiArchivoExpedienteController::class, 'reabrirExpediente'])->middleware('can:'.$permExp.'Reabrir');
+    // B24: terceros relacionados con el expediente y su rol
+    Route::get('/expedientes/{id}/terceros', [OfiArchivoExpedienteTerceroController::class, 'index'])->whereNumber('id')->middleware('can:'.$permExp.'Ver');
+    Route::post('/expedientes/{id}/terceros', [OfiArchivoExpedienteTerceroController::class, 'store'])->whereNumber('id')->middleware('can:'.$permExp.'Editar');
+    Route::delete('/expedientes/{id}/terceros/{vinculoId}', [OfiArchivoExpedienteTerceroController::class, 'destroy'])->whereNumber(['id', 'vinculoId'])->middleware('can:'.$permExp.'Editar');
     Route::post('/expedientes/{id}/archivos', [OfiArchivoExpedienteController::class, 'subirArchivos'])->middleware('can:'.$permExp.'Incorporar');
     Route::post('/expedientes/{expedienteId}/documentos/{documentoId}/soft-delete', [OfiArchivoExpedienteController::class, 'softDeleteDocumento'])->middleware('can:'.$permExp.'Editar');
     Route::get('/expedientes/{id}/indice', [OfiArchivoExpedienteController::class, 'generarIndicePdf'])->middleware('can:'.$permExp.'Ver');
