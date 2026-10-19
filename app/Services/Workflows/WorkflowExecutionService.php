@@ -13,6 +13,7 @@ use App\Models\Workflows\WorkflowNodo;
 use App\Models\Workflows\WorkflowNodoInstancia;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Motor de ejecución de Workflows — Máquina de estados.
@@ -364,6 +365,22 @@ class WorkflowExecutionService
                 'estado' => 'completada',
                 'fecha_fin' => now(),
             ]);
+
+            // M19-30: los archivos del flujo van al expediente del radicado de origen. Tras el commit:
+            // si la copia falla la instancia igual queda completada y el monitor muestra el aviso.
+            if ($instancia->radicado_id) {
+                $instanciaId = $instancia->id;
+                DB::afterCommit(function () use ($instanciaId) {
+                    try {
+                        $completada = WorkflowInstancia::find($instanciaId);
+                        if ($completada) {
+                            app(ArchivoFlujoEnExpedienteService::class)->archivar($completada);
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('M19-30: fallo al archivar la instancia completada', ['instancia_id' => $instanciaId, 'error' => $e->getMessage()]);
+                    }
+                });
+            }
         } else {
             $actual = $abiertos->firstWhere('estado', 'en_curso') ?? $abiertos->first();
             $instancia->update(['nodo_actual_id' => $actual->nodo_id]);
