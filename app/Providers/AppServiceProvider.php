@@ -171,6 +171,14 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Rate limit búsqueda: 30 req/min por usuario
+        // B18: página pública de eliminaciones, sin sesión: por IP
+        RateLimiter::for('publico', function (Request $request) {
+            return Limit::perMinute(60)->by('publico:'.$request->ip());
+        });
+        RateLimiter::for('publico-observaciones', function (Request $request) {
+            return [Limit::perMinute(3)->by('obs-min:'.$request->ip()), Limit::perDay(20)->by('obs-dia:'.$request->ip())];
+        });
+
         RateLimiter::for('search', function (Request $request) {
             return Limit::perMinute(30)
                 ->by($request->user()?->id ?: $request->ip());

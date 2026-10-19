@@ -207,6 +207,31 @@ class ClasificacionDocumentalTRDVersionController extends Controller
     }
 
     /**
+     * B18: registra (o corrige) la inscripción de una versión aprobada en el Registro Único de
+     * Series Documentales. Sin ella no se proponen eliminaciones de sus series.
+     */
+    public function registrarRusd(Request $request, int $id): JsonResponse
+    {
+        $datos = $request->validate([
+            'rusd_inscrita' => 'required|boolean',
+            'rusd_numero' => 'required_if_accepted:rusd_inscrita|nullable|string|max:50',
+            'rusd_fecha' => 'required_if_accepted:rusd_inscrita|nullable|date|before_or_equal:today',
+        ]);
+        $version = ClasificacionDocumentalTRDVersion::findOrFail($id);
+        if ($version->estado_version === 'TEMP') {
+            return $this->warningResponse('Solo una versión aprobada se inscribe en el RUSD');
+        }
+        $inscrita = (bool) $datos['rusd_inscrita'];
+        $version->update([
+            'rusd_inscrita' => $inscrita,
+            'rusd_numero' => $inscrita ? trim($datos['rusd_numero']) : null,
+            'rusd_fecha' => $inscrita ? $datos['rusd_fecha'] : null,
+        ]);
+
+        return $this->successResponse($version, $inscrita ? 'Inscripción en el RUSD registrada' : 'Inscripción en el RUSD retirada');
+    }
+
+    /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, ClasificacionDocumentalTRDVersion $clasificacionDocumentalTRDVersion)

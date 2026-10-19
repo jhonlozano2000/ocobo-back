@@ -10,7 +10,7 @@ use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 /**
- * M08-10: la eliminación documental no verificaba TRD, retención, préstamos ni aprobador.
+ * M08-10: la eliminación documental no verificaba TRD, retención, préstamos ni aprobador (B18: ahora va por lote).
  * M08-11: las transferencias no tenían precondiciones ni segregación de funciones.
  */
 class TransferenciaEliminacionTest extends TestCase
@@ -27,7 +27,7 @@ class TransferenciaEliminacionTest extends TestCase
 
         $this->archivista = User::factory()->create(['estado' => 1]);
         $this->jefe = User::factory()->create(['estado' => 1]);
-        foreach (['Transferencias -> Crear', 'Transferencias -> Aprobar', 'Eliminaciones -> Crear', 'Eliminaciones -> Aprobar'] as $accion) {
+        foreach (['Transferencias -> Crear', 'Transferencias -> Aprobar', 'Eliminaciones -> Ver', 'Eliminaciones -> Crear', 'Eliminaciones -> Aprobar'] as $accion) {
             $permiso = Permission::findOrCreate('Gestion de Archivo -> '.$accion, 'web');
             $this->archivista->givePermissionTo($permiso);
             $this->jefe->givePermissionTo($permiso);
@@ -64,40 +64,17 @@ class TransferenciaEliminacionTest extends TestCase
         ]);
     }
 
-    public function test_eliminacion_exige_disposicion_retencion_y_aprobador_valido(): void
+    /** B18: la eliminación va por lote de serie (EliminacionDocumentalTest); la suelta quedó cerrada. */
+    public function test_la_eliminacion_individual_quedo_cerrada(): void
     {
-        // Conservación total: no se elimina
-        $this->eliminar($this->expediente(['ct' => 1], 10))->assertStatus(422);
-        // Retención (2 + 3 años) no cumplida
-        $this->eliminar($this->expediente(['e' => 1], 4))->assertStatus(422);
-
         $exp = $this->expediente(['e' => 1], 6);
-        // El registrador no se aprueba a sí mismo
-        $this->eliminar($exp, $this->archivista->id)->assertStatus(422);
-        // Aprobador sin permiso
-        $this->eliminar($exp, User::factory()->create(['estado' => 1])->id)->assertStatus(422);
 
-        // Préstamo sin devolver
-        DB::table('ofi_archivo_prestamos')->insert([
-            'expediente_id' => $exp, 'solicitante_id' => $this->jefe->id, 'fecha_prestamo' => now(),
-            'fecha_devolucion_esperada' => now()->addDay(), 'estado' => 'prestado', 'usuario_registro_id' => $this->jefe->id,
-        ]);
-        $this->eliminar($exp)->assertStatus(422);
+        $this->eliminar($exp)->assertStatus(422)
+            ->assertJsonFragment(['message' => 'La eliminación individual ya no está disponible: proponga el lote de la serie en Gestión de Archivo → Eliminaciones']);
         $this->assertSame(0, DB::table('ofi_archivo_eliminaciones')->where('expediente_id', $exp)->count());
         $this->assertSame('cerrado', DB::table('ofi_archivo_expedientes')->where('id', $exp)->value('estado'));
-    }
-
-    public function test_eliminacion_valida_marca_expediente_y_no_se_repite(): void
-    {
-        // B22: la de selección espera a que se confirme la selección de su serie
-        $this->eliminar($this->expediente(['s' => 1], 6))->assertStatus(422)
-            ->assertJsonFragment(['message' => 'Su disposición es selección y aún no se ha confirmado la selección de su serie']);
-
-        $exp = $this->expediente(['e' => 1], 6);
-
-        $this->eliminar($exp)->assertCreated();
-        $this->assertSame('eliminado', DB::table('ofi_archivo_expedientes')->where('id', $exp)->value('estado'));
-        $this->eliminar($exp)->assertStatus(422);
+        // El historial de las eliminaciones sueltas se sigue consultando
+        $this->actingAs($this->archivista)->getJson('/api/archivo/eliminaciones')->assertOk();
     }
 
     /**

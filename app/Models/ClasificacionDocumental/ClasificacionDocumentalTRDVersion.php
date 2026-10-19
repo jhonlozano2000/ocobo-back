@@ -26,10 +26,16 @@ class ClasificacionDocumentalTRDVersion extends Model
         'aprobado_por',
         'fecha_aprobacion',
         'user_register',
+        // B18: inscripción en el RUSD, requisito para proponer eliminaciones
+        'rusd_inscrita',
+        'rusd_numero',
+        'rusd_fecha',
     ];
 
     protected $casts = [
         'fecha_aprobacion' => 'datetime',
+        'rusd_inscrita' => 'boolean',
+        'rusd_fecha' => 'date:Y-m-d',
     ];
 
     /**

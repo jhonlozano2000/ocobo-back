@@ -130,6 +130,16 @@ class RouteServiceProvider extends ServiceProvider
                 ->prefix('api/archivo')
                 ->group(base_path('routes/archivo-disposicion.php'));
 
+            // GESTIÓN DE ARCHIVO — ELIMINACIÓN DOCUMENTAL POR LOTE (B18)
+            Route::middleware('api')
+                ->prefix('api/archivo')
+                ->group(base_path('routes/archivo-eliminacion.php'));
+
+            // PÚBLICO, SIN SESIÓN: INVENTARIOS Y ACTAS DE ELIMINACIÓN (B18)
+            Route::middleware('api')
+                ->prefix('api/publico')
+                ->group(base_path('routes/archivo-publico.php'));
+
             // GESTIÓN DE ARCHIVO — REPORTES
             Route::middleware('api')
                 ->prefix('api/archivo')

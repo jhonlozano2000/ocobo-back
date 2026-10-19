@@ -61,6 +61,10 @@ class PermisosGestionArchivoSeeder extends Seeder
             'Gestion de Archivo -> Eliminaciones -> Crear',
             // Quien puede figurar como aprobador de una eliminación (M08-10)
             'Gestion de Archivo -> Eliminaciones -> Aprobar',
+            // B18: eliminación por lote; quien propone no ejecuta
+            'Gestion de Archivo -> Eliminaciones -> Proponer',
+            'Gestion de Archivo -> Eliminaciones -> Registrar comite',
+            'Gestion de Archivo -> Eliminaciones -> Ejecutar',
 
             // Reportes (M14)
             'Gestion de Archivo -> Reportes -> Ver',

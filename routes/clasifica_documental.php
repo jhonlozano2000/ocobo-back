@@ -80,6 +80,8 @@ Route::middleware('throttle:config-operations')->group(function () {
             Route::post('/aprobar/{dependenciaId}', [ClasificacionDocumentalTRDVersionController::class, 'aprobarVersion'])->name('aprobar')->middleware("can:{$pv}");
             Route::get('/pendientes/aprobar', [ClasificacionDocumentalTRDVersionController::class, 'listarPendientesPorAprobar'])->name('pendientes')->middleware('can:'.$p.'Listar');
             Route::get('/estadisticas/{dependenciaId}', [ClasificacionDocumentalTRDVersionController::class, 'estadisticas'])->name('estadisticas')->middleware('can:'.$p.'Listar');
+            // B18: inscripción de la versión en el RUSD, requisito para eliminar
+            Route::patch('/{id}/rusd', [ClasificacionDocumentalTRDVersionController::class, 'registrarRusd'])->whereNumber('id')->name('rusd')->middleware("can:{$pv}");
 
             Route::get('/', [ClasificacionDocumentalTRDVersionController::class, 'index'])->name('index')->middleware('can:'.$p.'Listar');
             Route::post('/', [ClasificacionDocumentalTRDVersionController::class, 'store'])->name('store')->middleware('can:'.$p.'Crear');

@@ -4,14 +4,8 @@ namespace App\Http\Controllers\OfiArchivo;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\OfiArchivo\OfiArchivoEliminacion;
-use App\Models\OfiArchivo\OfiArchivoExpediente;
-use App\Models\OfiArchivo\OfiArchivoPrestamo;
 use App\Models\OfiArchivo\OfiArchivoTransferencia;
-use App\Models\User;
-use App\Services\OfiArchivo\DisposicionFinalService;
-use App\Services\OfiArchivo\TransferenciaLotesService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -28,8 +22,6 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 class OfiArchivoTransferenciaController extends Controller
 {
     use ApiResponseTrait;
-
-    public const PERMISO_APROBAR_ELIMINACION = 'Gestion de Archivo -> Eliminaciones -> Aprobar';
 
     public function __construct()
     {
@@ -204,73 +196,12 @@ class OfiArchivoTransferenciaController extends Controller
     }
 
     /**
-     * Registra una eliminación documental (Acuerdo AGN 004/2019, M08-10).
-     *
-     * Exige: expediente cerrado o transferido, disposición final de eliminación o selección en la
-     * TRD, tiempo de retención (gestión + central) cumplido desde el cierre, sin préstamos activos
-     * ni eliminación previa, y un aprobador distinto de quien registra con permiso de aprobar.
-     * El expediente queda en estado 'eliminado'.
+     * B18: la eliminación se tramita por lote (publicación, concepto, comité y acta firmada); la
+     * individual quedó cerrada. Las ya registradas siguen en el listado.
      */
-    public function storeEliminacion(Request $request)
+    public function storeEliminacion()
     {
-        $request->validate([
-            'expediente_id' => 'required|exists:ofi_archivo_expedientes,id',
-            'metodo' => 'required|in:destruccion_fisica,borrado_seguro',
-            'responsable_ids' => 'required|array|min:2',
-            'responsable_ids.*' => 'integer|distinct|exists:users,id',
-            'testigos' => 'nullable|string|max:500',
-            'aprobado_por_id' => 'required|exists:users,id',
-        ]);
-
-        if ((int) $request->aprobado_por_id === (int) Auth::id()) {
-            return $this->warningResponse('El aprobador de la eliminación debe ser distinto de quien la registra');
-        }
-
-        $aprobador = User::find($request->aprobado_por_id);
-        if ((int) $aprobador->estado !== 1 || ! $aprobador->can(self::PERMISO_APROBAR_ELIMINACION)) {
-            return $this->warningResponse('El aprobador no está activo o no tiene permiso para aprobar eliminaciones');
-        }
-
-        try {
-            DB::beginTransaction();
-
-            $expediente = OfiArchivoExpediente::lockForUpdate()->findOrFail($request->expediente_id);
-
-            if ($error = $this->validarEliminacion($expediente)) {
-                DB::rollBack();
-
-                return $this->warningResponse($error);
-            }
-
-            $eliminacion = OfiArchivoEliminacion::create([
-                'expediente_id' => $request->expediente_id,
-                'fecha' => now(),
-                'responsable_ids' => $request->responsable_ids,
-                'metodo' => $request->metodo,
-                'testigos' => $request->testigos,
-                'aprobado_por_id' => $request->aprobado_por_id,
-                'usuario_registro_id' => Auth::id(),
-            ]);
-
-            $expediente->update(['estado' => 'eliminado']);
-
-            DB::commit();
-
-            return $this->createdResponse(
-                $eliminacion->load(['expediente', 'aprobadoPor']),
-                'Eliminación registrada exitosamente'
-            );
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-            DB::rollBack();
-
-            return $this->serverErrorResponse('Error al registrar la eliminación', $e->getMessage());
-        }
+        return $this->warningResponse('La eliminación individual ya no está disponible: proponga el lote de la serie en Gestión de Archivo → Eliminaciones');
     }
 
     /**
@@ -299,42 +230,5 @@ class OfiArchivoTransferenciaController extends Controller
 
             return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
         }
-    }
-
-    // ==================== REGLAS TRD (AGN 004/2019) ====================
-
-    /**
-     * Precondiciones de una eliminación; null si procede o el motivo del rechazo.
-     */
-    private function validarEliminacion(OfiArchivoExpediente $expediente): ?string
-    {
-        if (! in_array($expediente->estado, ['cerrado', 'en_disposicion', 'transferido'], true)) {
-            return 'Solo se pueden eliminar expedientes cerrados o transferidos';
-        }
-        if (OfiArchivoEliminacion::where('expediente_id', $expediente->id)->exists()) {
-            return 'El expediente ya tiene una eliminación registrada';
-        }
-        if (OfiArchivoPrestamo::where('expediente_id', $expediente->id)->fueraDelArchivo()->exists()) {
-            return 'El expediente tiene préstamos sin devolver';
-        }
-
-        $trd = $this->trdDelExpediente($expediente);
-        if (! $trd) {
-            return 'El expediente no tiene serie/subserie TRD asociada';
-        }
-        // B22: eliminación, o selección que no lo conservó, y su digitalización si es M/D
-        if ($motivo = app(DisposicionFinalService::class)->motivoNoPuede($expediente, DisposicionFinalService::ELIMINAR)) {
-            return $motivo;
-        }
-
-        return TransferenciaLotesService::validarRetencion($expediente, (int) $trd->a_g + (int) $trd->a_c, 'total (gestión + central)');
-    }
-
-    /**
-     * B14: la instantánea de la TRD tomada al cierre; sin ella, la subserie o, si no hay, la serie.
-     */
-    private function trdDelExpediente(OfiArchivoExpediente $expediente): ?ClasificacionDocumentalTRD
-    {
-        return $expediente->trdRetencion();
     }
 }

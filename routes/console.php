@@ -62,6 +62,10 @@ Schedule::command('archivo:verificar-integridad')
 Schedule::command('archivo:marcar-disposicion')
     ->dailyAt('01:30')->withoutOverlapping()->onOneServer();
 
+// B18 (§3.8 E): cierra las publicaciones de eliminación vencidas (concepto o comité)
+Schedule::command('archivo:cerrar-publicaciones-eliminacion')
+    ->dailyAt('01:45')->withoutOverlapping()->onOneServer();
+
 // Grupos Colaborativos: liberar bloqueos expirados cada hora
 Schedule::command('grupos-colaborativos:liberar-bloqueos')->hourly()->withoutOverlapping()->onOneServer();
 

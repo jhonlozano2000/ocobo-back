@@ -490,7 +490,7 @@ class TransferenciaLotesService
     }
 
     /** @return array<string, mixed> */
-    private function datosInventario(OfiArchivoExpediente $expediente): array
+    public function datosInventario(OfiArchivoExpediente $expediente): array
     {
         $documentos = $expediente->documentos()->where('activo', true)->get(['fecha_documento', 'fecha_incorporacion', 'tamano_bytes', 'archivo_path', 'hash_sha256']);
         $fechas = $documentos->map(fn ($d) => $d->fecha_documento ? substr((string) $d->fecha_documento, 0, 10) : $d->fecha_incorporacion?->format('Y-m-d'))->filter()->sort()->values();
