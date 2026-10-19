@@ -54,16 +54,23 @@ class OfiArchivoExpedienteController extends Controller
         if (! OfiArchivoExpediente::puedeUsarDependencia(Auth::user(), $request->dependencia_id)) {
             return $this->forbiddenResponse('No puede abrir expedientes de otra dependencia');
         }
-        if ($error = $this->serieInvalida((int) $request->serie_trd_id, (int) $request->dependencia_id)) {
-            return $this->warningResponse($error);
+        $clasificacion = $this->resolverClasificacion(
+            (int) $request->serie_trd_id,
+            $request->filled('subserie_trd_id') ? (int) $request->subserie_trd_id : null,
+            (int) $request->dependencia_id
+        );
+        if (is_string($clasificacion)) {
+            return $this->warningResponse($clasificacion);
         }
+        [$serie, $subserie] = $clasificacion;
 
         try {
             DB::beginTransaction();
 
             $numeroExpediente = ExpedienteHelper::generarNumeroExpediente(
                 $request->dependencia_id,
-                $request->serie_trd_id
+                $serie->id,
+                $subserie?->id
             );
 
             $expediente = OfiArchivoExpediente::create([
@@ -71,7 +78,11 @@ class OfiArchivoExpedienteController extends Controller
                 'nombre_expediente' => $request->nombre_expediente,
                 'anio' => (int) CalendarioHelper::hoy()->year,
                 'dependencia_id' => $request->dependencia_id,
-                'serie_trd_id' => $request->serie_trd_id,
+                'serie_trd_id' => $serie->id,
+                'subserie_trd_id' => $subserie?->id,
+                'soporte' => $request->soporte,
+                'nivel_acceso' => $request->nivel_acceso,
+                'fundamento_acceso' => $request->nivel_acceso === 'publico' ? null : $request->fundamento_acceso,
                 'estado' => 'abierto',
                 'fecha_apertura' => CalendarioHelper::hoy()->toDateString(),
                 'ubicacion_fisica' => $request->ubicacion_fisica,
@@ -85,7 +96,7 @@ class OfiArchivoExpedienteController extends Controller
             DB::commit();
 
             return $this->createdResponse(
-                $expediente->load(['dependencia', 'serieTrd']),
+                $expediente->load(['dependencia', 'serieTrd', 'subserieTrd']),
                 'Expediente abierto exitosamente'
             );
 
@@ -109,11 +120,15 @@ class OfiArchivoExpedienteController extends Controller
             $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->with([
                 'dependencia',
                 'serieTrd',
+                'subserieTrd',
                 'usuarioApertura',
                 'documentos' => function ($q) {
                     $q->where('activo', true)->orderBy('tipo_documental')->orderBy('orden');
                 },
             ])->findOrFail($id);
+
+            // B06/D6: qué le falta para estar conforme (nivel de acceso, subserie)
+            $expediente->setAttribute('pendientes', $expediente->pendientesDeCompletar());
 
             return $this->successResponse($expediente, 'Expediente obtenido exitosamente');
 
@@ -143,31 +158,53 @@ class OfiArchivoExpedienteController extends Controller
                 && ! OfiArchivoExpediente::puedeUsarDependencia(Auth::user(), $request->dependencia_id)) {
                 return $this->forbiddenResponse('No puede asignar el expediente a otra dependencia');
             }
-            if ($request->filled('serie_trd_id') || $request->filled('dependencia_id')) {
-                $error = $this->serieInvalida(
-                    (int) ($request->serie_trd_id ?: $expediente->serie_trd_id),
+            $reclasifica = $request->filled('serie_trd_id') || $request->filled('subserie_trd_id') || $request->filled('dependencia_id');
+            $clasificacion = null;
+            if ($reclasifica) {
+                // Sin serie nueva se revalida la clasificación actual (la subserie, si la tiene)
+                $nodo = $request->serie_trd_id ?: ($request->filled('subserie_trd_id') ? $expediente->serie_trd_id : ($expediente->subserie_trd_id ?: $expediente->serie_trd_id));
+                $clasificacion = $this->resolverClasificacion(
+                    (int) $nodo,
+                    $request->filled('subserie_trd_id') ? (int) $request->subserie_trd_id : null,
                     (int) ($request->dependencia_id ?: $expediente->dependencia_id)
                 );
-                if ($error) {
-                    return $this->warningResponse($error);
+                if (is_string($clasificacion)) {
+                    return $this->warningResponse($clasificacion);
                 }
             }
 
             // M08-16: array_filter descartaba 0 y vacíos; los datos físicos se pueden poner en 0 o vaciar,
             // y los obligatorios solo cambian si llegan con valor
             $fields = array_filter(
-                $request->only(['nombre_expediente', 'dependencia_id', 'serie_trd_id']),
+                $request->only(['nombre_expediente', 'dependencia_id', 'soporte', 'nivel_acceso']),
                 fn ($valor) => filled($valor)
             ) + $request->only(['ubicacion_fisica', 'caja', 'carpeta', 'folios_fisicos', 'observaciones_generales']);
 
             if (array_key_exists('folios_fisicos', $fields)) {
                 $fields['folios_fisicos'] = (int) ($fields['folios_fisicos'] ?? 0);
             }
+            if ($clasificacion) {
+                $fields['serie_trd_id'] = $clasificacion[0]->id;
+                $fields['subserie_trd_id'] = $clasificacion[1]?->id;
+            }
+            if (isset($fields['nivel_acceso'])) {
+                $fields['fundamento_acceso'] = $fields['nivel_acceso'] === 'publico' ? null : $request->fundamento_acceso;
+            } elseif ($request->filled('fundamento_acceso')) {
+                if (! in_array($expediente->nivel_acceso, ['clasificado', 'reservado'], true)) {
+                    return $this->warningResponse('Solo los expedientes clasificados o reservados llevan fundamento de acceso.');
+                }
+                $fields['fundamento_acceso'] = $request->fundamento_acceso;
+            }
 
-            $expediente->update($fields);
+            $expediente->fill($fields);
+            // B06/D6: un expediente "por completar" sale de ese estado al declarar lo que le faltaba
+            if ($expediente->por_completar || $reclasifica || isset($fields['nivel_acceso'])) {
+                $expediente->por_completar = $expediente->pendientesDeCompletar() !== [];
+            }
+            $expediente->save();
 
             return $this->successResponse(
-                $expediente->load(['dependencia', 'serieTrd']),
+                $expediente->load(['dependencia', 'serieTrd', 'subserieTrd']),
                 'Expediente actualizado exitosamente'
             );
 
@@ -237,7 +274,7 @@ class OfiArchivoExpedienteController extends Controller
     {
 
         try {
-            $query = OfiArchivoExpediente::visiblesPara(Auth::user())->with(['dependencia', 'serieTrd', 'usuarioApertura']);
+            $query = OfiArchivoExpediente::visiblesPara(Auth::user())->with(['dependencia', 'serieTrd', 'subserieTrd', 'usuarioApertura']);
 
             // Filtros opcionales
             if ($request->filled('dependencia_id')) {
@@ -245,7 +282,13 @@ class OfiArchivoExpedienteController extends Controller
             }
 
             if ($request->filled('serie_trd_id')) {
-                $query->where('serie_trd_id', $request->serie_trd_id);
+                $query->where(fn ($q) => $q->where('serie_trd_id', $request->serie_trd_id)
+                    ->orWhere('subserie_trd_id', $request->serie_trd_id));
+            }
+
+            // B06/D6: expedientes a los que les falta nivel de acceso o subserie
+            if ($request->has('por_completar')) {
+                $query->where('por_completar', $request->boolean('por_completar'));
             }
 
             // B03: el filtro de estado de la lista se ignoraba
@@ -486,6 +529,47 @@ class OfiArchivoExpedienteController extends Controller
             $serie->versionTRD?->estado_version !== 'ACTIVO' => 'La serie TRD seleccionada no pertenece a la versión vigente (aprobada) de la TRD.',
             default => null,
         };
+    }
+
+    /**
+     * B06: resuelve la serie y la subserie del expediente. El árbol de la TRD envía el nodo elegido
+     * en serie_trd_id (Serie o SubSerie); si es una serie con subseries, la subserie es obligatoria.
+     *
+     * @return array{0: ClasificacionDocumentalTRD, 1: ?ClasificacionDocumentalTRD}|string
+     */
+    private function resolverClasificacion(int $nodoId, ?int $subserieId, int $dependenciaId): array|string
+    {
+        if ($error = $this->serieInvalida($nodoId, $dependenciaId)) {
+            return $error;
+        }
+        $nodo = ClasificacionDocumentalTRD::find($nodoId);
+
+        if ($nodo->tipo === 'SubSerie') {
+            $serie = ClasificacionDocumentalTRD::find($nodo->getAttributes()['parent'] ?? null);
+            if (! $serie || $serie->tipo !== 'Serie') {
+                return 'La subserie seleccionada no cuelga de una serie de la TRD.';
+            }
+            if ($subserieId && $subserieId !== $nodo->id) {
+                return 'La subserie seleccionada no corresponde a la clasificación enviada.';
+            }
+
+            return [$serie, $nodo];
+        }
+
+        if ($subserieId) {
+            $subserie = ClasificacionDocumentalTRD::find($subserieId);
+            if (! $subserie || $subserie->tipo !== 'SubSerie' || (int) ($subserie->getAttributes()['parent'] ?? 0) !== $nodo->id) {
+                return 'La subserie seleccionada no pertenece a la serie del expediente.';
+            }
+
+            return [$nodo, $subserie];
+        }
+
+        if (ClasificacionDocumentalTRD::where('parent', $nodo->id)->where('tipo', 'SubSerie')->exists()) {
+            return "La serie {$nodo->cod} tiene subseries: el expediente debe clasificarse en una de ellas.";
+        }
+
+        return [$nodo, null];
     }
 
     /**

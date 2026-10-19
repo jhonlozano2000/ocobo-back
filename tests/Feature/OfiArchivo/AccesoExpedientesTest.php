@@ -87,6 +87,7 @@ class AccesoExpedientesTest extends TestCase
     {
         $this->actingAs($this->user)->postJson('/api/archivo/expedientes', [
             'nombre_expediente' => 'Ajeno', 'dependencia_id' => $this->depB, 'serie_trd_id' => $this->serieId,
+            'soporte' => 'electronico', 'nivel_acceso' => 'publico',
         ])->assertForbidden();
     }
 
@@ -179,6 +180,9 @@ class AccesoExpedientesTest extends TestCase
     /** M08-13/M09-07: el expediente se clasifica en una Serie/SubSerie vigente de su dependencia */
     public function test_solo_abre_expedientes_en_series_vigentes_de_su_dependencia(): void
     {
+        if (! Schema::hasColumn('ofi_archivo_expedientes', 'nivel_acceso')) {
+            $this->markTestSkipped('Requiere la migración 2026_10_19_110000.');
+        }
         Schema::disableForeignKeyConstraints();
         $version = fn (int $dep, string $estado) => DB::table('clasificacion_documental_trd_versiones')->insertGetId([
             'dependencia_id' => $dep, 'version' => random_int(1000, 9999), 'estado_version' => $estado, 'user_register' => $this->otro->id,
@@ -195,6 +199,7 @@ class AccesoExpedientesTest extends TestCase
         Schema::enableForeignKeyConstraints();
         $abrir = fn (int $serieId) => $this->actingAs($this->user)->postJson('/api/archivo/expedientes', [
             'nombre_expediente' => 'Clasificado', 'dependencia_id' => $this->depA, 'serie_trd_id' => $serieId,
+            'soporte' => 'electronico', 'nivel_acceso' => 'publico',
         ]);
 
         $abrir($tipoDoc)->assertUnprocessable()->assertJsonPath('message', fn ($m) => str_contains($m, 'tipo documental'));

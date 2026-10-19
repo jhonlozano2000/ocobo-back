@@ -10,13 +10,14 @@ class ExpedienteHelper
 {
     /**
      * Genera un número único de expediente basado en la normativa AGN.
-     * Formato: YYYY-DEP-SER-CONSECUTIVO. Debe llamarse dentro de una transacción.
+     * Formato: YYYY-DEP-SER[.SUB]-CONSECUTIVO. Debe llamarse dentro de una transacción.
+     * B06: con subserie, su código se agrega al de la serie (AAAA-DEP-SER.SUB-0001).
      *
      * M08-08: el consecutivo sale del mayor número ya emitido con el mismo prefijo, incluidos
      * los expedientes borrados lógicamente (antes `count()` los omitía y el siguiente número
      * chocaba con el índice único). El año es el de Colombia, no el de UTC (M13-01).
      */
-    public static function generarNumeroExpediente(int $dependenciaId, int $serieTrdId): string
+    public static function generarNumeroExpediente(int $dependenciaId, int $serieTrdId, ?int $subserieTrdId = null): string
     {
         $year = CalendarioHelper::hoy()->format('Y');
 
@@ -26,6 +27,10 @@ class ExpedienteHelper
 
         $codDep = $dependencia ? ($dependencia->cod_organico ?? $dependencia->id) : '000';
         $codSer = $serie ? ($serie->cod ?? $serie->id) : '000';
+        $subserie = $subserieTrdId ? ClasificacionDocumentalTRD::find($subserieTrdId) : null;
+        if ($subserie) {
+            $codSer .= '.'.($subserie->cod ?? $subserie->id);
+        }
 
         $prefijo = "{$year}-{$codDep}-{$codSer}-";
 

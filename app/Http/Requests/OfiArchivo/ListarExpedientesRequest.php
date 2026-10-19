@@ -18,6 +18,7 @@ class ListarExpedientesRequest extends FormRequest
     {
         return [
             'estado' => 'nullable|in:abierto,cerrado,transferido,eliminado',
+            'por_completar' => 'nullable|boolean',
         ];
     }
 

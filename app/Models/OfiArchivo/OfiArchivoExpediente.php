@@ -37,6 +37,9 @@ class OfiArchivoExpediente extends Model
         'subserie_trd_id',
         'estado',
         'soporte',
+        'nivel_acceso',
+        'fundamento_acceso',
+        'por_completar',
         'fecha_apertura',
         'fecha_cierre',
         'ubicacion_fisica',
@@ -56,7 +59,14 @@ class OfiArchivoExpediente extends Model
         'fecha_cierre' => 'datetime',
         'total_folios_elec' => 'integer',
         'folios_fisicos' => 'integer',
+        'por_completar' => 'boolean',
     ];
+
+    /** B06: soporte del expediente; el híbrido es una sola unidad con parte física y electrónica. */
+    public const SOPORTES = ['electronico', 'fisico', 'hibrido'];
+
+    /** B06: Ley 1712/2014; clasificado y reservado exigen fundamento legal. */
+    public const NIVELES_ACCESO = ['publico', 'clasificado', 'reservado'];
 
     /**
      * M09-06: el expediente conserva el código y el nombre de la dependencia productora.
@@ -93,6 +103,31 @@ class OfiArchivoExpediente extends Model
     public function serieTrd()
     {
         return $this->belongsTo(ClasificacionDocumentalTRD::class, 'serie_trd_id');
+    }
+
+    public function subserieTrd()
+    {
+        return $this->belongsTo(ClasificacionDocumentalTRD::class, 'subserie_trd_id');
+    }
+
+    /**
+     * B06/D6: lo que le falta al expediente para estar conforme (los anteriores a B06 no
+     * declaraban nivel de acceso ni subserie).
+     *
+     * @return list<string>
+     */
+    public function pendientesDeCompletar(): array
+    {
+        $pendientes = [];
+        if (! $this->nivel_acceso) {
+            $pendientes[] = 'nivel_acceso';
+        }
+        if (! $this->subserie_trd_id && $this->serie_trd_id
+            && ClasificacionDocumentalTRD::where('parent', $this->serie_trd_id)->where('tipo', 'SubSerie')->exists()) {
+            $pendientes[] = 'subserie_trd_id';
+        }
+
+        return $pendientes;
     }
 
     public function usuarioApertura()
