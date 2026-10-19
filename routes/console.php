@@ -50,6 +50,10 @@ Schedule::command('archivo:depurar-digital --disco=archivo_expedientes --dias=30
 Schedule::command('archivo:alertar-expedientes-inactivos')
     ->weekly()->mondays()->at('06:45')->withoutOverlapping()->onOneServer();
 
+// B15 (diseño de expedientes §3.10): marca los préstamos no devueltos a tiempo y avisa
+Schedule::command('archivo:marcar-prestamos-vencidos')
+    ->dailyAt('00:15')->withoutOverlapping()->onOneServer();
+
 // Grupos Colaborativos: liberar bloqueos expirados cada hora
 Schedule::command('grupos-colaborativos:liberar-bloqueos')->hourly()->withoutOverlapping()->onOneServer();
 

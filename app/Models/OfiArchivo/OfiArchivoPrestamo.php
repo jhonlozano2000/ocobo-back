@@ -63,6 +63,13 @@ class OfiArchivoPrestamo extends Model
             if ($prestamo->wasChanged('estado') && $prestamo->estado === 'devuelto') {
                 app(ExpedienteEventosService::class)->registrar($prestamo->expediente_id, 'devolucion', ['prestamo_id' => $prestamo->id]);
             }
+            // B15: archivo:marcar-prestamos-vencidos
+            if ($prestamo->wasChanged('estado') && $prestamo->estado === 'vencido') {
+                app(ExpedienteEventosService::class)->registrar($prestamo->expediente_id, 'prestamo_vencido', [
+                    'prestamo_id' => $prestamo->id,
+                    'fecha_devolucion_esperada' => $prestamo->fecha_devolucion_esperada?->toDateString(),
+                ]);
+            }
         });
     }
 
@@ -84,17 +91,21 @@ class OfiArchivoPrestamo extends Model
         return $this->belongsTo(User::class, 'usuario_registro_id');
     }
 
-    /** Scope: Préstamos activos (estado = prestado) */
+    /** Scope: Préstamos activos (prestados y dentro del plazo de devolución) */
     public function scopeActivos($query)
     {
-        return $query->where('estado', 'prestado');
+        return $query->where('estado', 'prestado')
+            ->where('fecha_devolucion_esperada', '>=', now());
     }
 
-    /** Scope: Préstamos vencidos (prestado + fecha devolución pasada) */
+    /**
+     * Scope: Préstamos vencidos. B15: incluye los ya marcados por archivo:marcar-prestamos-vencidos
+     * y los que vencieron después de su última ejecución, para que el conteo no dependa del job.
+     */
     public function scopeVencidos($query)
     {
-        return $query->where('estado', 'prestado')
-            ->where('fecha_devolucion_esperada', '<', now());
+        return $query->where(fn ($q) => $q->where('estado', 'vencido')
+            ->orWhere(fn ($q) => $q->where('estado', 'prestado')->where('fecha_devolucion_esperada', '<', now())));
     }
 
     /**
