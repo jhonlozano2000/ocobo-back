@@ -120,6 +120,11 @@ class RouteServiceProvider extends ServiceProvider
                 ->prefix('api/archivo')
                 ->group(base_path('routes/archivo-transferencias.php'));
 
+            // GESTIÓN DE ARCHIVO — INTEGRIDAD DE LOS BINARIOS (B21)
+            Route::middleware('api')
+                ->prefix('api/archivo')
+                ->group(base_path('routes/archivo-integridad.php'));
+
             // GESTIÓN DE ARCHIVO — REPORTES
             Route::middleware('api')
                 ->prefix('api/archivo')

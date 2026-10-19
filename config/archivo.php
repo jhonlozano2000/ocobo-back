@@ -19,4 +19,10 @@ return [
     | Préstamos (diseño de expedientes §3.10): días máximos entre la solicitud y la devolución.
     */
     'prestamo_plazo_maximo_dias' => (int) env('ARCHIVO_PRESTAMO_PLAZO_MAXIMO_DIAS', 15),
+
+    /*
+    | B21 (diseño de expedientes §8): porcentaje de folios cuya huella SHA-256 se recalcula cada
+    | semana; primero los nunca verificados y luego los de revisión más antigua.
+    */
+    'integridad_porcentaje_muestra' => (int) env('ARCHIVO_INTEGRIDAD_PORCENTAJE_MUESTRA', 5),
 ];

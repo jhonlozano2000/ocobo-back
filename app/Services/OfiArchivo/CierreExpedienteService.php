@@ -11,7 +11,6 @@ use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\Workflows\WorkflowInstancia;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * B14 (diseño de expedientes §3.4): condiciones para cerrar un expediente y la instantánea
@@ -165,16 +164,8 @@ class CierreExpedienteService
             return false;
         }
 
-        $disco = Storage::disk(self::DISK);
-        $stream = $disco->exists($doc->archivo_path) ? $disco->readStream($doc->archivo_path) : null;
-        if (! $stream) {
-            return false;
-        }
+        $calculado = ArchivoFolio::hashCalculado(['disk' => self::DISK, 'path' => $doc->archivo_path]);
 
-        $contexto = hash_init('sha256');
-        hash_update_stream($contexto, $stream);
-        fclose($stream);
-
-        return hash_equals($doc->hash_sha256, hash_final($contexto));
+        return $calculado !== null && hash_equals($doc->hash_sha256, $calculado);
     }
 }

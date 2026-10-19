@@ -6,9 +6,6 @@ use App\Models\OfiArchivo\OfiArchivoExpedienteDocumento;
 use App\Models\OfiArchivo\OfiArchivoPrestamo;
 use App\Models\OfiArchivo\OfiArchivoPrestamoAcceso;
 use App\Models\User;
-use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
-use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
-use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -22,13 +19,6 @@ use Illuminate\Validation\ValidationException;
  */
 class PrestamoConsultaService
 {
-    /** Disco donde está el binario de un radicado incorporado al expediente. */
-    private const DISCOS_RADICADOS = [
-        VentanillaRadicaReci::class => 'radicados_recibidos',
-        VentanillaRadicaEnviados::class => 'radicados_enviados',
-        VentanillaRadicaInterno::class => 'radicados_internos',
-    ];
-
     /** Formatos que el navegador muestra sin descargarlos. */
     private const EXTENSIONES_VISIBLES = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'];
 
@@ -126,28 +116,10 @@ class PrestamoConsultaService
             ->get();
     }
 
-    /**
-     * Dónde está el binario: el subido al expediente o el del radicado incorporado.
-     *
-     * @return array{disk: string, path: string, nombre: string}|null
-     */
+    /** Dónde está el binario: el subido al expediente o el del radicado incorporado. */
     private function archivo(OfiArchivoExpedienteDocumento $doc): ?array
     {
-        if ($doc->archivo_path) {
-            return [
-                'disk' => CierreExpedienteService::DISK,
-                'path' => $doc->archivo_path,
-                'nombre' => $doc->nombre_original ?: basename($doc->archivo_path),
-            ];
-        }
-
-        $disco = self::DISCOS_RADICADOS[$doc->documentable_type] ?? null;
-        $path = $doc->documentable?->archivo_digital;
-        if (! $disco || ! $path) {
-            return null;
-        }
-
-        return ['disk' => $disco, 'path' => $path, 'nombre' => basename($path)];
+        return ArchivoFolio::ubicacion($doc);
     }
 
     private function esReservado(OfiArchivoPrestamo $prestamo): bool

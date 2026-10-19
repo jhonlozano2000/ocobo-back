@@ -50,6 +50,9 @@ class PermisosGestionArchivoSeeder extends Seeder
             'Gestion de Archivo -> Transferencias -> Aprobar',
             // B17: el archivo de destino recibe el lote; quien lo envía no puede recibirlo
             'Gestion de Archivo -> Transferencias -> Recibir',
+            // B21: incidentes de la verificación de huellas de los folios
+            'Gestion de Archivo -> Integridad -> Ver',
+            'Gestion de Archivo -> Integridad -> Resolver',
             'Gestion de Archivo -> Eliminaciones -> Ver',
             'Gestion de Archivo -> Eliminaciones -> Crear',
             // Quien puede figurar como aprobador de una eliminación (M08-10)

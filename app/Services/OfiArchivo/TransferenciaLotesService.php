@@ -42,6 +42,7 @@ class TransferenciaLotesService
         private IndiceExpedienteService $indice,
         private HojaControlService $hojaControl,
         private UbicacionTopograficaService $ubicaciones,
+        private IntegridadArchivoService $integridad,
     ) {}
 
     /**
@@ -52,7 +53,12 @@ class TransferenciaLotesService
      */
     public function enviar(array $datos, User $envia): OfiArchivoTransferenciaLote
     {
-        return DB::transaction(function () use ($datos, $envia) {
+        // B21: antes de transferir se verifican todos los folios. Va fuera de la transacción para
+        // que las revisiones y los incidentes queden aunque el envío se rechace.
+        $integridad = $this->integridad->verificarParaTransferencia(OfiArchivoExpediente::whereIn('id', $datos['expediente_ids'])
+            ->where('dependencia_id', $datos['dependencia_id'])->pluck('id')->all(), $envia);
+
+        return DB::transaction(function () use ($datos, $envia, $integridad) {
             $expedientes = OfiArchivoExpediente::with(['serieTrd', 'subserieTrd'])
                 ->whereIn('id', $datos['expediente_ids'])->orderBy('id')->lockForUpdate()->get();
 
@@ -60,7 +66,7 @@ class TransferenciaLotesService
             foreach ($expedientes as $expediente) {
                 $motivo = (int) $expediente->dependencia_id !== (int) $datos['dependencia_id']
                     ? 'No pertenece a la dependencia del lote'
-                    : $this->validarExpediente($expediente, $datos['tipo']);
+                    : ($this->validarExpediente($expediente, $datos['tipo']) ?? $integridad[$expediente->id] ?? null);
                 if ($motivo) {
                     $errores[] = "{$expediente->numero_expediente}: {$motivo}";
                 }

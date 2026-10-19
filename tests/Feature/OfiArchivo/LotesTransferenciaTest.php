@@ -4,6 +4,8 @@ namespace Tests\Feature\OfiArchivo;
 
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
+use App\Models\OfiArchivo\OfiArchivoExpedienteDocumento;
+use App\Models\OfiArchivo\OfiArchivoIntegridadIncidente;
 use App\Models\User;
 use App\Services\OfiArchivo\ConfiguracionArchivo;
 use App\Services\OfiArchivo\HojaControlService;
@@ -11,6 +13,7 @@ use App\Services\OfiArchivo\IndiceExpedienteService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -224,6 +227,32 @@ class LotesTransferenciaTest extends TestCase
         $this->enviar([$apto])->assertCreated();
         $this->assertStringContainsString('transferencia pendiente', $this->enviar([$apto])->assertStatus(422)->json('errors.expediente_ids.0'));
         $this->assertStringContainsString('archivo central', $this->enviar([$this->expediente([], true, 6)], 'secundaria')->assertStatus(422)->json('errors.expediente_ids.0'));
+    }
+
+    /** B21: antes de enviar se verifican todos los folios; el que no coincide con su huella frena el expediente. */
+    public function test_el_lote_rechaza_el_expediente_con_un_folio_alterado(): void
+    {
+        Storage::fake('archivo_expedientes');
+        $apto = $this->expediente();
+        $alterado = $this->expediente(['estado' => 'abierto'], false);
+        $path = "exp{$alterado}/acta.pdf";
+        Storage::disk('archivo_expedientes')->put($path, 'original');
+        $doc = OfiArchivoExpedienteDocumento::create([
+            'expediente_id' => $alterado, 'tipo' => 'tipo_documental', 'tipo_documental' => 'Acta', 'orden' => 1,
+            'fecha_documento' => now()->toDateString(), 'asunto' => 'Acta', 'archivo_path' => $path,
+            'nombre_original' => 'acta.pdf', 'hash_sha256' => hash('sha256', 'original'), 'usuario_id' => $this->envia->id,
+        ]);
+        DB::table('ofi_archivo_expedientes')->where('id', $alterado)->update(['estado' => 'cerrado']);
+        app(IndiceExpedienteService::class)->versionar(OfiArchivoExpediente::findOrFail($alterado), $this->envia);
+        Storage::disk('archivo_expedientes')->put($path, 'modificado');
+
+        $errores = $this->enviar([$apto, $alterado])->assertStatus(422)->json('errors.expediente_ids');
+        $this->assertCount(1, $errores);
+        $this->assertStringContainsString("integridad falló en el folio {$doc->numero_folio} (alterado)", $errores[0]);
+        // La revisión y el incidente quedan aunque el envío se rechace
+        $this->assertSame('alterado', OfiArchivoIntegridadIncidente::where('documento_id', $doc->id)->value('tipo'));
+        $this->assertDatabaseHas('ofi_archivo_integridad_verificaciones', ['alcance' => 'transferencia', 'revisados' => 1, 'incidentes' => 1]);
+        $this->assertDatabaseCount('ofi_archivo_transferencia_lotes', 0);
     }
 
     public function test_devolver_exige_observaciones_y_regresa_los_expedientes_a_gestion(): void

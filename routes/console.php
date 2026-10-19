@@ -54,6 +54,10 @@ Schedule::command('archivo:alertar-expedientes-inactivos')
 Schedule::command('archivo:marcar-prestamos-vencidos')
     ->dailyAt('00:15')->withoutOverlapping()->onOneServer();
 
+// B21 (diseño de expedientes §8): recalcula la huella de una muestra de folios y abre incidentes
+Schedule::command('archivo:verificar-integridad')
+    ->weekly()->sundays()->at('03:00')->withoutOverlapping()->onOneServer();
+
 // Grupos Colaborativos: liberar bloqueos expirados cada hora
 Schedule::command('grupos-colaborativos:liberar-bloqueos')->hourly()->withoutOverlapping()->onOneServer();
 

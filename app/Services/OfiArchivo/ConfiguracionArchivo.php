@@ -28,6 +28,9 @@ final class ConfiguracionArchivo
     /** §3.10: días máximos entre la solicitud de un préstamo y su devolución. */
     public const PRESTAMO_PLAZO_MAXIMO = 'archivo_prestamo_plazo_maximo_dias';
 
+    /** B21 (diseño de expedientes §8): porcentaje de folios cuya huella se verifica cada semana. */
+    public const INTEGRIDAD_MUESTRA = 'archivo_integridad_porcentaje_muestra';
+
     /** Reglas del valor de cada clave al guardarla. */
     public const REGLAS = [
         self::FOLIOS_POR_TOMO => ['required', 'integer', 'min:1', 'max:1000'],
@@ -35,6 +38,7 @@ final class ConfiguracionArchivo
         self::INDICE_TSA => ['required', 'in:0,1,true,false'],
         self::UBICACION_CON_CATALOGO => ['required', 'in:0,1,true,false'],
         self::PRESTAMO_PLAZO_MAXIMO => ['required', 'integer', 'min:1', 'max:365'],
+        self::INTEGRIDAD_MUESTRA => ['required', 'integer', 'min:1', 'max:100'],
     ];
 
     private const NOMBRES = [
@@ -43,6 +47,7 @@ final class ConfiguracionArchivo
         self::INDICE_TSA => 'sello de tiempo del índice',
         self::UBICACION_CON_CATALOGO => 'ubicación con catálogo',
         self::PRESTAMO_PLAZO_MAXIMO => 'plazo máximo del préstamo',
+        self::INTEGRIDAD_MUESTRA => 'porcentaje de la muestra de integridad',
     ];
 
     public static function foliosPorTomo(): int
@@ -67,6 +72,11 @@ final class ConfiguracionArchivo
     public static function prestamoPlazoMaximo(): int
     {
         return self::entero(self::PRESTAMO_PLAZO_MAXIMO, config('archivo.prestamo_plazo_maximo_dias', 15));
+    }
+
+    public static function integridadPorcentajeMuestra(): int
+    {
+        return min(100, self::entero(self::INTEGRIDAD_MUESTRA, config('archivo.integridad_porcentaje_muestra', 5)));
     }
 
     /** Sin la clave o vacía, apagado: la ubicación sigue siendo texto libre. */
