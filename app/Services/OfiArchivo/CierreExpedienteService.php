@@ -5,6 +5,7 @@ namespace App\Services\OfiArchivo;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoExpedienteDocumento;
+use App\Models\OfiArchivo\OfiArchivoExpedienteHojaControl;
 use App\Models\OfiArchivo\OfiArchivoPrestamo;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\Workflows\WorkflowInstancia;
@@ -51,6 +52,12 @@ class CierreExpedienteService
 
         if (in_array($expediente->soporte, ['fisico', 'hibrido'], true) && blank($expediente->ubicacion_fisica)) {
             $impedimentos[] = 'El expediente '.($expediente->soporte === 'fisico' ? 'físico' : 'híbrido').' no tiene ubicación física registrada.';
+        }
+
+        // B19: la hoja de control se firma al cierre; sin documentos no hay qué firmar
+        if (HojaControlService::disponible() && HojaControlService::aplica($expediente)
+            && ! OfiArchivoExpedienteHojaControl::activos()->where('expediente_id', $expediente->id)->exists()) {
+            $impedimentos[] = 'La hoja de control no tiene documentos físicos registrados.';
         }
 
         $prestamos = OfiArchivoPrestamo::where('expediente_id', $expediente->id)->whereIn('estado', ['prestado', 'vencido'])->count();

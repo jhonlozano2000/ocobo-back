@@ -300,6 +300,10 @@ class IndiceExpedienteService
                 ? 'Verificación: el índice coincide con el sellado al cierre.'
                 : 'Verificación: el índice NO coincide con el sellado al cierre.'), 0, 1);
         }
+        if ($hoja = $this->referenciaHojaControl($expediente)) {
+            $pdf->SetFont('Arial', 'I', 8);
+            $pdf->Cell(0, 5, $txt("Expediente híbrido: los documentos físicos se relacionan en la hoja de control ({$hoja['folios']} folios en {$hoja['tomos']} tomo(s)), firmada en el mismo cierre."), 0, 1);
+        }
         $cadena = $this->verificarCadena($expediente);
         if ($cadena['disponible']) {
             $pdf->SetFont('Arial', '', 8);
@@ -350,6 +354,13 @@ class IndiceExpedienteService
             $huella->addAttribute('algoritmo', 'SHA-256');
         }
 
+        if ($hoja = $this->referenciaHojaControl($expediente)) {
+            $nodo = $xml->addChild('HojaControl');
+            $nodo->addAttribute('folios', (string) $hoja['folios']);
+            $nodo->addAttribute('tomos', (string) $hoja['tomos']);
+            $nodo->addAttribute('huella', $hoja['huella']);
+        }
+
         $integridad = $xml->addChild('Integridad');
         $integridad->addChild('HashIndice', $this->hash($filas))->addAttribute('algoritmo', 'SHA-256');
         if ($expediente->hash_indice) {
@@ -393,6 +404,22 @@ class IndiceExpedienteService
     private static function codigoVerificacion(): string
     {
         return 'IE-'.implode('-', str_split(strtoupper(bin2hex(random_bytes(6))), 4));
+    }
+
+    /**
+     * B19: el índice del híbrido remite a la hoja de control de sus documentos físicos.
+     *
+     * @return array{folios: int, tomos: int, huella: string}|null
+     */
+    private function referenciaHojaControl(OfiArchivoExpediente $expediente): ?array
+    {
+        if ($expediente->soporte !== 'hibrido' || ! HojaControlService::disponible()) {
+            return null;
+        }
+        $hoja = app(HojaControlService::class);
+        $tomos = $hoja->tomos($expediente);
+
+        return ['folios' => (int) $tomos->sum('folios'), 'tomos' => $tomos->count(), 'huella' => $hoja->hash($expediente)];
     }
 
     private function asunto(OfiArchivoExpedienteDocumento $doc): ?string

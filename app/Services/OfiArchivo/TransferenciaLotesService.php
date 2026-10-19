@@ -38,7 +38,10 @@ class TransferenciaLotesService
 {
     public const PERMISO_RECIBIR = 'Gestion de Archivo -> Transferencias -> Recibir';
 
-    public function __construct(private IndiceExpedienteService $indice) {}
+    public function __construct(
+        private IndiceExpedienteService $indice,
+        private HojaControlService $hojaControl,
+    ) {}
 
     /**
      * Crea y envía el lote. Lanza ValidationException con el motivo de cada expediente que no
@@ -224,6 +227,23 @@ class TransferenciaLotesService
             if ($faltan !== []) {
                 return 'Al ser '.($expediente->soporte === 'fisico' ? 'físico' : 'híbrido').' le falta registrar: '.implode(', ', $faltan);
             }
+
+            // B19: cada tomo se entrega en su caja y carpeta; la hoja se firmó al cierre
+            if (HojaControlService::disponible()) {
+                $sinUbicar = $this->hojaControl->tomos($expediente)->filter(fn ($t) => blank($t['caja']) || blank($t['carpeta']))->pluck('numero');
+                if ($sinUbicar->isNotEmpty()) {
+                    return 'Le falta registrar la caja o la carpeta del tomo '.$sinUbicar->implode(', ');
+                }
+                if ($tipo === 'primaria') {
+                    $hoja = $this->hojaControl->ultimaVersion($expediente);
+                    if (! $hoja) {
+                        return 'No tiene hoja de control firmada; reábralo y ciérrelo de nuevo para firmarla';
+                    }
+                    if (! ($verificacion = $this->hojaControl->verificarVersion($hoja, $expediente))['valida']) {
+                        return "Su hoja de control firmada no supera la verificación ({$verificacion['motivo']})";
+                    }
+                }
+            }
         }
 
         return $tipo === 'primaria'
@@ -331,7 +351,7 @@ class TransferenciaLotesService
             $datos = $this->datosInventario($expediente);
             $valores = [
                 $orden + 1, $datos['codigo'], $datos['nombre'], $datos['fecha_inicial'], $datos['fecha_final'],
-                (string) $expediente->caja, (string) $expediente->carpeta, '', '', $datos['folios'], $datos['soporte'],
+                $datos['caja'], $datos['carpeta'], $datos['tomos'], '', $datos['folios'], $datos['soporte'],
                 $datos['frecuencia'], $datos['notas'], $datos['ubicacion_electronica'], $datos['documentos_electronicos'],
                 $datos['tamano'], $datos['indice_codigo'], (string) $expediente->hash_indice,
             ];
@@ -459,6 +479,7 @@ class TransferenciaLotesService
         $electronicos = $documentos->filter(fn ($d) => $d->archivo_path || $d->hash_sha256);
         $serie = $expediente->subserieTrd ?? $expediente->serieTrd;
         $prestamos = OfiArchivoPrestamo::where('expediente_id', $expediente->id)->count();
+        $tomos = HojaControlService::disponible() && $expediente->soporte !== 'electronico' ? $this->hojaControl->tomos($expediente) : collect();
         $version = IndiceExpedienteService::disponible()
             ? OfiArchivoExpedienteIndiceVersion::where('expediente_id', $expediente->id)->latest('version')->value('codigo_verificacion')
             : null;
@@ -470,6 +491,10 @@ class TransferenciaLotesService
             'fecha_inicial' => $fechas->first() ?? $expediente->fecha_apertura?->format('Y-m-d'),
             'fecha_final' => $fechas->last() ?? $expediente->fecha_cierre?->format('Y-m-d'),
             'folios' => $expediente->soporte === 'electronico' ? $documentos->count() : (int) $expediente->folios_fisicos,
+            // B19: con tomos, la caja y la carpeta de cada uno
+            'caja' => $tomos->isNotEmpty() ? $tomos->pluck('caja')->filter()->unique()->implode(', ') : (string) $expediente->caja,
+            'carpeta' => $tomos->isNotEmpty() ? $tomos->pluck('carpeta')->filter()->unique()->implode(', ') : (string) $expediente->carpeta,
+            'tomos' => $tomos->isNotEmpty() ? $tomos->count() : '',
             'soporte' => ['electronico' => 'Electrónico', 'fisico' => 'Físico', 'hibrido' => 'Híbrido'][$expediente->soporte] ?? (string) $expediente->soporte,
             // Préstamos registrados del expediente: ninguno, 1-2 baja, 3-5 media, más alta
             'frecuencia' => match (true) {
@@ -523,7 +548,7 @@ class TransferenciaLotesService
         return mb_substr(trim($user->nombres.' '.$user->apellidos) ?: 'Usuario #'.$user->id, 0, 255);
     }
 
-    private static function entidad(): string
+    public static function entidad(): string
     {
         try {
             return ConfigVarias::getValor('razon_social_empresa') ?: config('app.entidad_nombre', 'OCOBO');

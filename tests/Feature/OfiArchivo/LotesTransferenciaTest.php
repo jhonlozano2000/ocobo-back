@@ -4,6 +4,7 @@ namespace Tests\Feature\OfiArchivo;
 
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\User;
+use App\Services\OfiArchivo\HojaControlService;
 use App\Services\OfiArchivo\IndiceExpedienteService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
@@ -48,7 +49,7 @@ class LotesTransferenciaTest extends TestCase
      * Expediente cerrado hace 3 años (2 en gestión, 3 en central, conservación total), con su
      * índice firmado salvo que se pida lo contrario.
      */
-    private function expediente(array $extra = [], bool $firmado = true, float $aniosCerrado = 3): int
+    private function expediente(array $extra = [], bool $firmado = true, float $aniosCerrado = 3, ?array $hoja = null): int
     {
         Schema::disableForeignKeyConstraints();
         $serie = DB::table('clasificacion_documental_trd')->insertGetId([
@@ -63,11 +64,33 @@ class LotesTransferenciaTest extends TestCase
         ]);
         Schema::enableForeignKeyConstraints();
 
+        if ($hoja !== null) {
+            $this->hojaFirmada($id, $serie, $hoja);
+        }
         if ($firmado) {
             app(IndiceExpedienteService::class)->versionar(OfiArchivoExpediente::findOrFail($id), $this->envia);
         }
 
         return $id;
+    }
+
+    /**
+     * B19: registra los documentos físicos (folios por documento) con el expediente abierto, lo
+     * vuelve a cerrar y firma su hoja de control.
+     */
+    private function hojaFirmada(int $id, int $serie, array $folios): void
+    {
+        $tipo = DB::table('clasificacion_documental_trd')->insertGetId([
+            'tipo' => 'TipoDocumento', 'cod' => 'T'.random_int(1000, 9999), 'nom' => 'Contrato', 'parent' => $serie, 'user_register' => $this->envia->id,
+        ]);
+        $estado = DB::table('ofi_archivo_expedientes')->where('id', $id)->value('estado');
+        DB::table('ofi_archivo_expedientes')->where('id', $id)->update(['estado' => 'abierto']);
+        $servicio = app(HojaControlService::class);
+        foreach ($folios as $n) {
+            $servicio->registrar(OfiArchivoExpediente::findOrFail($id), ['tipo_documental_id' => $tipo, 'folios' => $n], $this->envia);
+        }
+        DB::table('ofi_archivo_expedientes')->where('id', $id)->update(['estado' => $estado]);
+        $servicio->versionar(OfiArchivoExpediente::findOrFail($id), $this->envia);
     }
 
     private function enviar(array $expedientes, string $tipo = 'primaria')
@@ -91,8 +114,9 @@ class LotesTransferenciaTest extends TestCase
 
     public function test_envia_el_lote_con_fuid_y_lo_recibe_con_acta_firmada(): void
     {
+        config(['archivo.folios_por_tomo' => 50]);
         $a = $this->expediente();
-        $b = $this->expediente(['soporte' => 'fisico', 'ubicacion_fisica' => 'Depósito 1', 'caja' => '12', 'carpeta' => '3', 'folios_fisicos' => 87]);
+        $b = $this->expediente(['soporte' => 'fisico', 'ubicacion_fisica' => 'Depósito 1', 'caja' => '12', 'carpeta' => '3'], hoja: [80, 7]);
 
         $lote = $this->enviar([$a, $b])->assertCreated()->assertJsonPath('data.estado', 'enviado')->json('data');
         $this->assertMatchesRegularExpression('/^TP-\d{4}-\d{4}$/', $lote['codigo']);
@@ -113,6 +137,11 @@ class LotesTransferenciaTest extends TestCase
         foreach ($numeros as $numero) {
             $this->assertTrue($celdas->contains(fn ($v) => str_contains($v, $numero)), "El FUID no lista {$numero}");
         }
+        // B19: el físico va en 2 tomos (80 folios llenan el primero; los 7 siguientes abren otro)
+        $numeroB = DB::table('ofi_archivo_expedientes')->where('id', $b)->value('numero_expediente');
+        $filaB = collect($hoja)->first(fn ($fila) => collect($fila)->contains(fn ($v) => str_contains((string) $v, $numeroB)));
+        $columnaTomo = collect($hoja)->map(fn ($fila) => array_search('Tomo', array_map('strval', $fila), true))->first(fn ($c) => $c !== false);
+        $this->assertSame('2', (string) $filaB[$columnaTomo]);
 
         $items = $this->items($lote['id']);
         $cotejo = fn (array $ids) => array_map(fn ($id) => ['id' => $id, 'conforme' => true], array_values($ids));
@@ -159,6 +188,10 @@ class LotesTransferenciaTest extends TestCase
             'fecha_devolucion_esperada' => now()->addDays(3), 'estado' => 'prestado', 'usuario_registro_id' => $this->envia->id,
         ]);
         $fisicoSinCaja = $this->expediente(['soporte' => 'fisico', 'ubicacion_fisica' => 'Depósito 1']);
+        $ubicado = ['soporte' => 'fisico', 'ubicacion_fisica' => 'Depósito 1', 'caja' => '4', 'carpeta' => '1'];
+        $fisicoSinHoja = $this->expediente($ubicado);
+        $tomoSinCarpeta = $this->expediente($ubicado, hoja: [10]);
+        DB::table('ofi_archivo_expediente_tomos')->where('expediente_id', $tomoSinCarpeta)->update(['carpeta' => null]);
         $sinRetencion = $this->expediente([], true, 1);
         $otraDependencia = $this->expediente(['dependencia_id' => 999999]);
 
@@ -166,6 +199,8 @@ class LotesTransferenciaTest extends TestCase
             $sinFirma => 'índice electrónico firmado',
             $prestado => 'préstamos sin devolver',
             $fisicoSinCaja => 'caja, carpeta',
+            $fisicoSinHoja => 'No tiene hoja de control firmada',
+            $tomoSinCarpeta => 'caja o la carpeta del tomo 1',
             $sinRetencion => 'tiempo de retención',
             $otraDependencia => 'dependencia del lote',
         ];

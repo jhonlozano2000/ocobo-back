@@ -40,7 +40,7 @@ class CierreExpedienteTest extends TestCase
         }
 
         $this->user = User::factory()->create(['estado' => 1]);
-        foreach (['Ver Todos', 'Ver', 'Cerrar'] as $accion) {
+        foreach (['Ver Todos', 'Ver', 'Cerrar', 'Incorporar'] as $accion) {
             $this->user->givePermissionTo(Permission::findOrCreate('Gestion de Archivo -> Expedientes -> '.$accion, 'web'));
         }
 
@@ -103,12 +103,13 @@ class CierreExpedienteTest extends TestCase
 
         $impedimentos = $this->cerrar()->assertUnprocessable()->json('errors.cierre');
 
-        $this->assertCount(5, $impedimentos);
+        $this->assertCount(6, $impedimentos);
         $this->assertStringContainsString('híbrido no tiene ubicación física', $impedimentos[0]);
-        $this->assertStringContainsString('1 préstamo(s) sin devolver', $impedimentos[1]);
-        $this->assertStringContainsString("instancias {$instancia}", $impedimentos[2]);
-        $this->assertSame("Folios sin tipificar con la TRD: {$sinTipo->numero_folio}.", $impedimentos[3]);
-        $this->assertStringContainsString((string) $alterado->numero_folio, $impedimentos[4]);
+        $this->assertSame('La hoja de control no tiene documentos físicos registrados.', $impedimentos[1]);
+        $this->assertStringContainsString('1 préstamo(s) sin devolver', $impedimentos[2]);
+        $this->assertStringContainsString("instancias {$instancia}", $impedimentos[3]);
+        $this->assertSame("Folios sin tipificar con la TRD: {$sinTipo->numero_folio}.", $impedimentos[4]);
+        $this->assertStringContainsString((string) $alterado->numero_folio, $impedimentos[5]);
         $this->assertSame('abierto', $this->expediente->fresh()->estado);
 
         // Resuelto cada impedimento, el expediente se cierra
@@ -118,6 +119,8 @@ class CierreExpedienteTest extends TestCase
         $sinTipo->update(['tipo_documental_id' => $this->tipo, 'tipo_documental' => 'Acta']);
         $alterado->delete();
         $this->assertNotNull($radicado->id);
+        $this->postJson("/api/archivo/expedientes/{$this->expediente->id}/hoja-control", ['tipo_documental_id' => $this->tipo, 'folios' => 4])
+            ->assertCreated();
 
         $this->cerrar()->assertOk();
         $this->assertSame('cerrado', $this->expediente->fresh()->estado);

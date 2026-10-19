@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\Gestion\GestionTerceroController;
 use App\Http\Controllers\OfiArchivo\OfiArchivoExpedienteController;
 use App\Http\Controllers\OfiArchivo\OfiArchivoExpedienteTerceroController;
+use App\Http\Controllers\OfiArchivo\OfiArchivoHojaControlController;
 use App\Http\Controllers\OfiArchivo\OfiArchivoPendientesController;
 use App\Http\Controllers\OfiArchivo\OfiArchivoSugerenciaController;
 use App\Http\Controllers\Transversal\FirmaElectronicaController;
@@ -84,6 +85,13 @@ Route::middleware(['auth:sanctum', 'throttle:archivo'])->prefix('archivo')->grou
     Route::get('/expedientes/{id}/terceros', [OfiArchivoExpedienteTerceroController::class, 'index'])->whereNumber('id')->middleware('can:'.$permExp.'Ver');
     Route::post('/expedientes/{id}/terceros', [OfiArchivoExpedienteTerceroController::class, 'store'])->whereNumber('id')->middleware('can:'.$permExp.'Editar');
     Route::delete('/expedientes/{id}/terceros/{vinculoId}', [OfiArchivoExpedienteTerceroController::class, 'destroy'])->whereNumber(['id', 'vinculoId'])->middleware('can:'.$permExp.'Editar');
+    // B19: hoja de control y tomos de los expedientes físicos e híbridos
+    Route::get('/expedientes/{id}/hoja-control', [OfiArchivoHojaControlController::class, 'show'])->whereNumber('id')->middleware('can:'.$permExp.'Ver');
+    Route::get('/expedientes/{id}/hoja-control/pdf', [OfiArchivoHojaControlController::class, 'pdf'])->whereNumber('id')->middleware('can:'.$permExp.'Ver');
+    Route::post('/expedientes/{id}/hoja-control', [OfiArchivoHojaControlController::class, 'store'])->whereNumber('id')->middleware('can:'.$permExp.'Incorporar');
+    Route::post('/expedientes/{id}/hoja-control/{registroId}/anular', [OfiArchivoHojaControlController::class, 'anular'])->whereNumber(['id', 'registroId'])->middleware('can:'.$permExp.'Editar');
+    Route::post('/expedientes/{id}/tomos', [OfiArchivoHojaControlController::class, 'abrirTomo'])->whereNumber('id')->middleware('can:'.$permExp.'Editar');
+    Route::put('/expedientes/{id}/tomos/{tomoId}', [OfiArchivoHojaControlController::class, 'ubicarTomo'])->whereNumber(['id', 'tomoId'])->middleware('can:'.$permExp.'Editar');
     Route::post('/expedientes/{id}/archivos', [OfiArchivoExpedienteController::class, 'subirArchivos'])->middleware('can:'.$permExp.'Incorporar');
     Route::post('/expedientes/{expedienteId}/documentos/{documentoId}/soft-delete', [OfiArchivoExpedienteController::class, 'softDeleteDocumento'])->middleware('can:'.$permExp.'Editar');
     Route::get('/expedientes/{id}/indice', [OfiArchivoExpedienteController::class, 'generarIndicePdf'])->middleware('can:'.$permExp.'Ver');

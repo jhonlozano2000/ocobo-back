@@ -18,12 +18,14 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoExpedienteDocumento;
+use App\Models\OfiArchivo\OfiArchivoExpedienteHojaControl;
 use App\Models\OfiArchivo\OfiArchivoExpedienteIndiceVersion;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\OfiArchivo\CierreExpedienteService;
 use App\Services\OfiArchivo\ExpedienteEventosService;
+use App\Services\OfiArchivo\HojaControlService;
 use App\Services\OfiArchivo\IndiceExpedienteService;
 use App\Services\OfiArchivo\TiposDocumentalesExpediente;
 use Illuminate\Database\Eloquent\Model;
@@ -192,6 +194,15 @@ class OfiArchivoExpedienteController extends Controller
             if (array_key_exists('folios_fisicos', $fields)) {
                 $fields['folios_fisicos'] = (int) ($fields['folios_fisicos'] ?? 0);
             }
+            // B19: con documentos en la hoja de control, los folios físicos salen de ella
+            if (HojaControlService::disponible() && OfiArchivoExpedienteHojaControl::where('expediente_id', $expediente->id)->exists()) {
+                if (array_key_exists('folios_fisicos', $fields) && $fields['folios_fisicos'] !== (int) $expediente->folios_fisicos) {
+                    return $this->warningResponse('Los folios físicos se calculan con la hoja de control; registre o anule documentos en ella.');
+                }
+                if (($fields['soporte'] ?? $expediente->soporte) === 'electronico') {
+                    return $this->warningResponse('El expediente tiene documentos físicos en la hoja de control; no puede pasar a electrónico.');
+                }
+            }
             if ($clasificacion) {
                 $fields['serie_trd_id'] = $clasificacion[0]->id;
                 $fields['subserie_trd_id'] = $clasificacion[1]?->id;
@@ -269,8 +280,12 @@ class OfiArchivoExpedienteController extends Controller
             ]);
 
             // B10: el índice queda congelado y firmado en la misma transacción del cierre
-            if (IndiceExpedienteService::disponible()) {
-                $this->indiceService->versionar($expediente->fresh(['dependencia', 'serieTrd']), Auth::user());
+            $indice = IndiceExpedienteService::disponible()
+                ? $this->indiceService->versionar($expediente->fresh(['dependencia', 'serieTrd']), Auth::user())
+                : null;
+            // B19: la hoja de control del físico o híbrido se firma en el mismo cierre
+            if (HojaControlService::disponible() && HojaControlService::aplica($expediente)) {
+                app(HojaControlService::class)->versionar($expediente->fresh(['dependencia', 'serieTrd', 'subserieTrd']), Auth::user(), $indice);
             }
 
             DB::commit();
