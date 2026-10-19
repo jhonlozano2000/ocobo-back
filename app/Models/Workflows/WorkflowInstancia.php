@@ -3,12 +3,16 @@
 namespace App\Models\Workflows;
 
 use App\Models\User;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class WorkflowInstancia extends Model
 {
     use HasFactory;
+
+    /** M19-30: orígenes permitidos para una instancia. */
+    public const ORIGENES = ['radicado_recibido', 'pqrs'];
 
     protected $table = 'workflow_instancias';
 
@@ -18,6 +22,9 @@ class WorkflowInstancia extends Model
         'estado',
         'estado_vencimiento',
         'usuario_ejecuta_id',
+        'origen_tipo',
+        'origen_id',
+        'radicado_id',
         'fecha_inicio',
         'fecha_fin',
         'fecha_limite_estimada',
@@ -44,6 +51,12 @@ class WorkflowInstancia extends Model
     public function usuarioEjecuta()
     {
         return $this->belongsTo(User::class, 'usuario_ejecuta_id');
+    }
+
+    /** M19-30: radicado recibido de origen (el de la PQRS si el origen es una PQRS). */
+    public function radicado()
+    {
+        return $this->belongsTo(VentanillaRadicaReci::class, 'radicado_id');
     }
 
     public function nodosInstancia()

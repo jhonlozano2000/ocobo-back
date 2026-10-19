@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\DetenerInstanciaRequest;
 use App\Http\Requests\Workflows\DevolverNodoRequest;
 use App\Http\Requests\Workflows\EjecutarNodoRequest;
+use App\Http\Requests\Workflows\StoreInstanciaRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Workflows\WorkflowInstancia;
 use App\Services\Workflows\WorkflowExecutionService;
@@ -36,7 +37,7 @@ class WorkflowInstanciaController extends Controller
     public function index(int $workflowId)
     {
         try {
-            $instancias = WorkflowInstancia::with(['usuarioEjecuta:id,nombres,apellidos', 'nodoActual', 'workflow:id,nombre'])
+            $instancias = WorkflowInstancia::with(['usuarioEjecuta:id,nombres,apellidos', 'nodoActual', 'workflow:id,nombre', 'radicado:id,num_radicado'])
                 ->where('workflow_id', $workflowId)
                 ->orderBy('created_at', 'desc')
                 ->paginate(min(max((int) request('per_page', 10), 1), 100));
@@ -54,10 +55,16 @@ class WorkflowInstanciaController extends Controller
         }
     }
 
-    public function store(int $workflowId)
+    public function store(StoreInstanciaRequest $request, int $workflowId)
     {
         try {
-            $instancia = $this->executionService->iniciarInstancia($workflowId, auth()->id());
+            $data = $request->validated();
+            $instancia = $this->executionService->iniciarInstancia(
+                $workflowId,
+                auth()->id(),
+                $data['origen_tipo'] ?? null,
+                isset($data['origen_id']) ? (int) $data['origen_id'] : null
+            );
 
             return $this->successResponse($instancia, 'Instancia iniciada correctamente', 201);
         } catch (\Exception $e) {

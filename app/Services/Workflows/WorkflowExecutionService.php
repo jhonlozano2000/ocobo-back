@@ -3,6 +3,9 @@
 namespace App\Services\Workflows;
 
 use App\Exceptions\Workflows\StateTransitionException;
+use App\Models\User;
+use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsOptimizedView;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\Workflows\Workflow;
 use App\Models\Workflows\WorkflowConexion;
 use App\Models\Workflows\WorkflowInstancia;
@@ -42,9 +45,9 @@ class WorkflowExecutionService
         private readonly TareasDeNodoService $tareasDeNodo
     ) {}
 
-    public function iniciarInstancia(int $workflowId, int $userId): WorkflowInstancia
+    public function iniciarInstancia(int $workflowId, int $userId, ?string $origenTipo = null, ?int $origenId = null): WorkflowInstancia
     {
-        return DB::transaction(function () use ($workflowId, $userId) {
+        return DB::transaction(function () use ($workflowId, $userId, $origenTipo, $origenId) {
             $workflow = Workflow::with('nodos')->findOrFail($workflowId);
 
             // M19-16: borradores, inactivos y archivados no se ejecutan
@@ -56,6 +59,8 @@ class WorkflowExecutionService
             if (! $nodoInicio) {
                 throw new StateTransitionException('El workflow no tiene un nodo de inicio');
             }
+
+            $radicadoId = $origenTipo ? $this->radicadoDeOrigen($origenTipo, (int) $origenId, $userId) : null;
 
             $fechaLimite = null;
             if ($workflow->tiempo_finalizacion_horas) {
@@ -69,7 +74,11 @@ class WorkflowExecutionService
                 'usuario_ejecuta_id' => $userId,
                 'fecha_inicio' => now(),
                 'fecha_limite_estimada' => $fechaLimite,
-            ]);
+            ] + ($origenTipo ? [
+                'origen_tipo' => $origenTipo,
+                'origen_id' => $origenId,
+                'radicado_id' => $radicadoId,
+            ] : []));
 
             foreach ($workflow->nodos as $nodo) {
                 WorkflowNodoInstancia::create([
@@ -88,17 +97,46 @@ class WorkflowExecutionService
                 'instancia.iniciada',
                 $workflowId,
                 $instancia->id,
-                ['workflow' => $workflow->nombre]
+                array_filter([
+                    'workflow' => $workflow->nombre,
+                    'origen_tipo' => $origenTipo,
+                    'origen_id' => $origenTipo ? $origenId : null,
+                    'radicado_id' => $radicadoId,
+                ], fn ($v) => $v !== null)
             );
 
-            return $instancia->load(['nodosInstancia.nodo', 'nodoActual']);
+            return $instancia->refresh()->load(['nodosInstancia.nodo', 'nodoActual', 'radicado:id,num_radicado']);
         });
+    }
+
+    /**
+     * M19-30: el origen debe existir y ser visible para quien inicia el flujo (mismo ABAC que su
+     * bandeja). Devuelve el radicado recibido al que se archivarán los documentos del flujo.
+     */
+    private function radicadoDeOrigen(string $origenTipo, int $origenId, int $userId): int
+    {
+        $user = User::findOrFail($userId);
+
+        $radicadoId = match ($origenTipo) {
+            'radicado_recibido' => VentanillaRadicaReci::accesiblePara($user, $origenId) ? $origenId : null,
+            'pqrs' => VentanillaPqrsOptimizedView::conPermisoJerarquico($user)->whereKey($origenId)->value('ventanilla_radica_reci_id'),
+            default => null,
+        };
+
+        if (! $radicadoId) {
+            throw new StateTransitionException(
+                $origenTipo === 'pqrs' ? 'La PQRS no existe o no tiene acceso a ella' : 'El radicado no existe o no tiene acceso a él'
+            );
+        }
+
+        return (int) $radicadoId;
     }
 
     public function obtenerInstancia(int $instanciaId): WorkflowInstancia
     {
         return WorkflowInstancia::with([
             'workflow:id,nombre',
+            'radicado:id,num_radicado',
             'nodoActual',
             'nodosInstancia.nodo',
         ])->findOrFail($instanciaId);
