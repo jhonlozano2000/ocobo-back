@@ -8,6 +8,7 @@ use App\Models\Workflows\WorkflowNodo;
 use App\Models\Workflows\WorkFlowTarea;
 use App\Models\Workflows\WorkFlowTareaChecklist;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 class WorkFlowTareaService
@@ -44,7 +45,7 @@ class WorkFlowTareaService
                 'tiempo_limite_horas' => $datos['tiempo_limite_horas'] ?? null,
                 'adjuntos_permitidos' => $datos['adjuntos_permitidos'] ?? false,
                 'orden' => $datos['orden'] ?? 0,
-            ]);
+            ] + Arr::only($datos, ['tiempo_limite_unidad']));
 
             if (! empty($datos['checklists'])) {
                 $checklistItems = [];
@@ -60,7 +61,7 @@ class WorkFlowTareaService
 
             if ($tarea->tiempo_limite_horas) {
                 $tarea->update([
-                    'fecha_limite' => now()->addHours($tarea->tiempo_limite_horas),
+                    'fecha_limite' => PlazoWorkflow::vencimiento($tarea->tiempo_limite_horas, $tarea->tiempo_limite_unidad),
                 ]);
             }
 
@@ -81,7 +82,10 @@ class WorkFlowTareaService
             $tarea = WorkFlowTarea::with('checklists')->findOrFail($id);
 
             if (isset($datos['tiempo_limite_horas'])) {
-                $datos['fecha_limite'] = now()->addHours($datos['tiempo_limite_horas']);
+                $datos['fecha_limite'] = PlazoWorkflow::vencimiento(
+                    (int) $datos['tiempo_limite_horas'],
+                    $datos['tiempo_limite_unidad'] ?? $tarea->tiempo_limite_unidad
+                );
             }
 
             if (isset($datos['estado'])) {

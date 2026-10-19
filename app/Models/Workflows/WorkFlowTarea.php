@@ -24,6 +24,7 @@ class WorkFlowTarea extends Model
         'descripcion',
         'instrucciones',
         'tiempo_limite_horas',
+        'tiempo_limite_unidad',
         'fecha_limite',
         'estado',
         'adjuntos_permitidos',

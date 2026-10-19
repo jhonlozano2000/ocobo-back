@@ -63,7 +63,7 @@ class WorkflowService
                 'descripcion' => $datos['descripcion'] ?? null,
                 'tiempo_finalizacion_horas' => $datos['tiempo_finalizacion_horas'] ?? null,
                 'creador_user_id' => auth()->id(),
-            ]);
+            ] + Arr::only($datos, ['tiempo_finalizacion_unidad']));
 
             if (! empty($datos['administrador_user_id'])) {
                 $workflow->update(['administrador_user_id' => $datos['administrador_user_id']]);
@@ -164,7 +164,7 @@ class WorkflowService
                 'administrador_user_id' => $original->administrador_user_id,
                 'creador_user_id' => auth()->id(),
                 'estado' => 'borrador',
-            ]);
+            ] + Arr::only($original->getAttributes(), ['tiempo_finalizacion_unidad']));
 
             if ($original->settings) {
                 $copia->settings()->create($original->settings->only([
@@ -179,8 +179,9 @@ class WorkflowService
             foreach ($original->nodos as $nodo) {
                 $nuevoNodo = $copia->nodos()->create($nodo->only([
                     'tipo', 'titulo', 'descripcion', 'posicion_x', 'posicion_y',
-                    'configuracion_json', 'orden_ejecucion',
-                ]));
+                    'configuracion_json', 'orden_ejecucion', 'responsable_usuario_id',
+                    'tiempo_limite_horas', 'adjuntos_permitidos',
+                ]) + Arr::only($nodo->getAttributes(), ['tiempo_limite_unidad']));
                 $mapaNodos[$nodo->id] = $nuevoNodo->id;
             }
 

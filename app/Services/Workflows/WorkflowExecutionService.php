@@ -63,10 +63,7 @@ class WorkflowExecutionService
 
             $radicadoId = $origenTipo ? $this->radicadoDeOrigen($origenTipo, (int) $origenId, $userId) : null;
 
-            $fechaLimite = null;
-            if ($workflow->tiempo_finalizacion_horas) {
-                $fechaLimite = now()->addHours($workflow->tiempo_finalizacion_horas);
-            }
+            $fechaLimite = PlazoWorkflow::vencimiento($workflow->tiempo_finalizacion_horas, $workflow->tiempo_finalizacion_unidad);
 
             $instancia = WorkflowInstancia::create([
                 'workflow_id' => $workflowId,

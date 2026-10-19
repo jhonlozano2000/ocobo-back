@@ -25,6 +25,7 @@ class UpdateWorkFlowTareaRequest extends SanitizedFormRequest
                 'exists:users,id,estado,1',
             ],
             'tiempo_limite_horas' => 'nullable|integer|min:1|max:8760',
+            'tiempo_limite_unidad' => 'nullable|in:horas,dias_habiles',
             'estado' => 'sometimes|in:pendiente,en_curso,completada,vencida,cancelada',
             'orden' => 'nullable|integer|min:0',
             'adjuntos_permitidos' => 'nullable|boolean',

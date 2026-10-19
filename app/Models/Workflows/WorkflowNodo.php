@@ -24,6 +24,7 @@ class WorkflowNodo extends Model
         'configuracion_json',
         'responsable_usuario_id',
         'tiempo_limite_horas',
+        'tiempo_limite_unidad',
         'adjuntos_permitidos',
         'orden_ejecucion',
     ];

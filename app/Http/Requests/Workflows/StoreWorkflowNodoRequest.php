@@ -24,6 +24,7 @@ class StoreWorkflowNodoRequest extends SanitizedFormRequest
             'configuracion_json' => 'nullable|array',
             'responsable_usuario_id' => 'nullable|integer|exists:users,id,estado,1',
             'tiempo_limite_horas' => 'nullable|integer|min:1',
+            'tiempo_limite_unidad' => 'nullable|in:horas,dias_habiles',
         ];
     }
 }

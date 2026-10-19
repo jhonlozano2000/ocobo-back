@@ -35,6 +35,7 @@ class Workflow extends Model
         'nombre',
         'descripcion',
         'tiempo_finalizacion_horas',
+        'tiempo_finalizacion_unidad',
         'creador_user_id',
         'administrador_user_id',
         'estado',

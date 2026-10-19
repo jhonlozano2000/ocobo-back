@@ -53,7 +53,10 @@ class TareasDeNodoService
         $settings = WorkflowSetting::where('workflow_id', $instancia->workflow_id)->first();
 
         return $plantillas->map(function (WorkFlowTarea $plantilla) use ($instancia, $nodo, $settings) {
-            $horas = $plantilla->tiempo_limite_horas ?? $nodo->tiempo_limite_horas;
+            // El plazo propio de la plantilla manda; si no tiene, el del nodo, cada uno con su unidad
+            $plazo = $plantilla->tiempo_limite_horas
+                ? [$plantilla->tiempo_limite_horas, $plantilla->tiempo_limite_unidad]
+                : [$nodo->tiempo_limite_horas, $nodo->tiempo_limite_unidad];
             $tarea = Tarea::create([
                 'workflow_id' => $instancia->workflow_id,
                 'instancia_id' => $instancia->id,
@@ -61,7 +64,7 @@ class TareasDeNodoService
                 'plantilla_id' => $plantilla->id,
                 'nombre' => $plantilla->titulo,
                 'descripcion' => $plantilla->descripcion ?? $plantilla->instrucciones,
-                'fecha_limite' => $horas ? now()->addHours($horas) : null,
+                'fecha_limite' => PlazoWorkflow::vencimiento(...$plazo),
                 'estado' => 'pendiente',
             ]);
 

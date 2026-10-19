@@ -20,6 +20,7 @@ class StoreWorkflowRequest extends SanitizedFormRequest
             'nombre' => 'required|string|max:255',
             'descripcion' => 'nullable|string|max:5000',
             'tiempo_finalizacion_horas' => 'nullable|integer|min:1|max:87600',
+            'tiempo_finalizacion_unidad' => 'nullable|in:horas,dias_habiles',
             'administrador_user_id' => 'nullable|exists:users,id,estado,1',
             'estrategia_asignacion' => 'sometimes|in:'.implode(',', WorkflowSetting::ESTRATEGIAS),
             'equipo_ids' => 'sometimes|array|max:50',
