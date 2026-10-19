@@ -226,14 +226,16 @@ class AlertasRetencionTRDCommand extends Command
     }
 
     /**
-     * M08-14: Evalúa expedientes cerrados/transferidos calculando retención
+     * M08-14: Evalúa expedientes cerrados calculando retención
      * a partir de fecha_cierre + años a_g de la serie TRD asignada.
+     * B16: solo los que siguen en el archivo de gestión; los transferidos ya no tienen nada que transferir.
      */
     private function procesarExpedientes(array $ventanas, bool $dryRun): int
     {
         $expedientes = OfiArchivoExpediente::with('serieTrd')
             ->whereNotNull('fecha_cierre')
-            ->whereIn('estado', ['cerrado', 'transferido'])
+            ->where('estado', 'cerrado')
+            ->where('fase', 'gestion')
             ->get();
 
         $notificaciones = 0;

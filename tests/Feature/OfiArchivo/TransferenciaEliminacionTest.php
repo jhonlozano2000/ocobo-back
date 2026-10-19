@@ -120,6 +120,7 @@ class TransferenciaEliminacionTest extends TestCase
         // Quien registró no aprueba; otro usuario sí
         $this->actingAs($this->archivista)->postJson("/api/archivo/transferencias/{$id}/aprobar", ['estado' => 'aprobada'])->assertStatus(422);
         $this->actingAs($this->jefe)->postJson("/api/archivo/transferencias/{$id}/aprobar", ['estado' => 'aprobada'])->assertOk();
-        $this->assertSame('transferido', DB::table('ofi_archivo_expedientes')->where('id', $exp)->value('estado'));
+        // B16: la primaria lo deja cerrado en el archivo central
+        $this->assertSame(['fase' => 'central', 'estado' => 'cerrado'], (array) DB::table('ofi_archivo_expedientes')->where('id', $exp)->first(['fase', 'estado']));
     }
 }

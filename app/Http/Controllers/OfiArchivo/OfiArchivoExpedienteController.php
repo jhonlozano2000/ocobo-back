@@ -306,10 +306,11 @@ class OfiArchivoExpedienteController extends Controller
 
             $expediente = OfiArchivoExpediente::visiblesPara(Auth::user())->lockForUpdate()->findOrFail($id);
 
-            if ($expediente->estado !== 'cerrado') {
+            // B16: tampoco se reabre si ya pasó al archivo central, aunque allí siga cerrado
+            if ($expediente->estado !== 'cerrado' || $expediente->fase !== 'gestion') {
                 DB::rollBack();
 
-                return $this->warningResponse('Solo se pueden reabrir expedientes cerrados. Uno transferido o eliminado no se reabre: abra un expediente nuevo para el trámite posterior.');
+                return $this->warningResponse('Solo se pueden reabrir expedientes cerrados en el archivo de gestión. Uno transferido o eliminado no se reabre: abra un expediente nuevo para el trámite posterior.');
             }
 
             $expediente->update([
@@ -365,6 +366,10 @@ class OfiArchivoExpedienteController extends Controller
             // B03: el filtro de estado de la lista se ignoraba
             if ($request->filled('estado')) {
                 $query->where('estado', $request->estado);
+            }
+
+            if ($request->filled('fase')) {
+                $query->where('fase', $request->fase);
             }
 
             if ($request->filled('search')) {

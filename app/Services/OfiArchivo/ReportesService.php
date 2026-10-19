@@ -5,6 +5,7 @@ namespace App\Services\OfiArchivo;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoPrestamo;
 use App\Models\OfiArchivo\OfiArchivoTransferencia;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -56,13 +57,14 @@ class ReportesService
                 'dependencia' => $e->dependencia->nom_organico ?? '—',
                 'serie' => $e->serieTrd->nom ?? '—',
                 'estado' => $e->estado,
+                'fase' => $e->fase,
                 'fecha_apertura' => $e->fecha_apertura?->format('d/m/Y'),
                 'total_folios' => $e->total_folios_elec,
             ])->toArray(),
             'resumen' => [
                 'abiertos' => $expedientes->where('estado', 'abierto')->count(),
-                'cerrados' => $expedientes->where('estado', 'cerrado')->count(),
-                'transferidos' => $expedientes->where('estado', 'transferido')->count(),
+                'cerrados' => $expedientes->where('estado', 'cerrado')->where('fase', 'gestion')->count(),
+                'transferidos' => $expedientes->filter(fn ($e) => $e->fase !== 'gestion' && $e->estado !== 'eliminado')->count(),
             ],
         ];
     }
@@ -163,7 +165,7 @@ class ReportesService
                         ->whereMonth('fecha_apertura', $fecha->month)
                         ->whereYear('fecha_apertura', $fecha->year)
                         ->count(),
-                    'cerrados' => OfiArchivoExpediente::where('estado', 'cerrado')
+                    'cerrados' => OfiArchivoExpediente::where('estado', 'cerrado')->where('fase', 'gestion')
                         ->whereMonth('fecha_apertura', $fecha->month)
                         ->whereYear('fecha_apertura', $fecha->year)
                         ->count(),
@@ -188,8 +190,8 @@ class ReportesService
                 'expedientes' => [
                     'total' => OfiArchivoExpediente::count(),
                     'abiertos' => OfiArchivoExpediente::where('estado', 'abierto')->count(),
-                    'cerrados' => OfiArchivoExpediente::where('estado', 'cerrado')->count(),
-                    'transferidos' => OfiArchivoExpediente::where('estado', 'transferido')->count(),
+                    'cerrados' => OfiArchivoExpediente::where('estado', 'cerrado')->where('fase', 'gestion')->count(),
+                    'transferidos' => self::transferidos()->count(),
                 ],
                 'prestamos' => [
                     'activos' => OfiArchivoPrestamo::activos()->count(),
@@ -211,8 +213,8 @@ class ReportesService
                 'charts' => [
                     'distribucion_estados' => [
                         OfiArchivoExpediente::where('estado', 'abierto')->count(),
-                        OfiArchivoExpediente::where('estado', 'cerrado')->count(),
-                        OfiArchivoExpediente::where('estado', 'transferido')->count(),
+                        OfiArchivoExpediente::where('estado', 'cerrado')->where('fase', 'gestion')->count(),
+                        self::transferidos()->count(),
                     ],
                     'prestamos_por_mes' => $meses->pluck('prestamos_activos')->toArray(),
                     'prestamos_devueltos_por_mes' => $meses->pluck('prestamos_devueltos')->toArray(),
@@ -238,6 +240,12 @@ class ReportesService
     /**
      * Obtiene las últimas acciones del módulo de archivo para el timeline.
      */
+    /** B16: los que salieron del archivo de gestión, al central o al histórico, y no se eliminaron. */
+    private static function transferidos(): Builder
+    {
+        return OfiArchivoExpediente::where('fase', '!=', 'gestion')->where('estado', '!=', 'eliminado');
+    }
+
     private function obtenerActividadReciente(): array
     {
         $actividades = [];

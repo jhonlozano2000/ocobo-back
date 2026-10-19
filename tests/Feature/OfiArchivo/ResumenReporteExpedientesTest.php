@@ -27,7 +27,9 @@ class ResumenReporteExpedientesTest extends TestCase
         $serieId = DB::table('clasificacion_documental_trd')->insertGetId(['user_register' => $user->id, 'tipo' => 'Serie', 'cod' => 'B05']);
         Schema::enableForeignKeyConstraints();
 
-        foreach (['abierto', 'abierto', 'cerrado', 'transferido'] as $i => $estado) {
+        // B16: el transferido al central sigue cerrado; los transferidos son los que salieron de gestión
+        $casos = [['abierto', 'gestion'], ['abierto', 'gestion'], ['cerrado', 'gestion'], ['cerrado', 'central'], ['transferido', 'historico']];
+        foreach ($casos as $i => [$estado, $fase]) {
             OfiArchivoExpediente::create([
                 'numero_expediente' => '2026-B05D-B05-000'.$i,
                 'nombre_expediente' => 'Expediente '.$i,
@@ -35,6 +37,7 @@ class ResumenReporteExpedientesTest extends TestCase
                 'dependencia_id' => $depId,
                 'serie_trd_id' => $serieId,
                 'estado' => $estado,
+                'fase' => $fase,
                 'fecha_apertura' => '2026-10-18',
                 'usuario_apertura_id' => $user->id,
             ]);
@@ -42,6 +45,6 @@ class ResumenReporteExpedientesTest extends TestCase
 
         $reporte = app(ReportesService::class)->expedientes(['dependencia_id' => $depId]);
 
-        $this->assertSame(['abiertos' => 2, 'cerrados' => 1, 'transferidos' => 1], $reporte['resumen']);
+        $this->assertSame(['abiertos' => 2, 'cerrados' => 1, 'transferidos' => 2], $reporte['resumen']);
     }
 }

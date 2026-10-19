@@ -187,8 +187,11 @@ class OfiArchivoTransferenciaController extends Controller
                 'observaciones' => $request->observaciones,
             ]);
 
+            // B16: la primaria lo deja cerrado en el archivo central; la secundaria, transferido al histórico
             if ($request->estado === 'aprobada') {
-                $transferencia->expediente->update(['estado' => 'transferido']);
+                $transferencia->expediente->update($transferencia->tipo === 'primaria'
+                    ? ['fase' => 'central']
+                    : ['fase' => 'historico', 'estado' => 'transferido']);
             }
 
             DB::commit();
@@ -358,15 +361,15 @@ class OfiArchivoTransferenciaController extends Controller
         }
 
         if ($tipo === 'primaria') {
-            if ($expediente->estado !== 'cerrado') {
-                return 'Solo se transfieren al archivo central expedientes cerrados';
+            if ($expediente->estado !== 'cerrado' || $expediente->fase !== 'gestion') {
+                return 'Solo se transfieren al archivo central expedientes cerrados en el archivo de gestión';
             }
 
             return $this->validarRetencion($expediente, (int) $trd->a_g, 'en el archivo de gestión');
         }
 
-        if ($expediente->estado !== 'transferido') {
-            return 'La transferencia secundaria exige que el expediente esté en el archivo central';
+        if ($expediente->estado !== 'cerrado' || $expediente->fase !== 'central') {
+            return 'La transferencia secundaria exige que el expediente esté cerrado en el archivo central';
         }
         if (! $trd->ct && ! $trd->s) {
             return 'La disposición final de la TRD no es conservación total ni selección';

@@ -36,6 +36,7 @@ class OfiArchivoExpediente extends Model
         'serie_trd_id',
         'subserie_trd_id',
         'estado',
+        'fase',
         'soporte',
         'nivel_acceso',
         'fundamento_acceso',
@@ -68,6 +69,9 @@ class OfiArchivoExpediente extends Model
         'fecha_fin_gestion' => 'date',
         'fecha_fin_central' => 'date',
     ];
+
+    /** B16: dónde está el expediente; solo avanza (gestión → central → histórico). */
+    public const FASES = ['gestion', 'central', 'historico'];
 
     /** B06: soporte del expediente; el híbrido es una sola unidad con parte física y electrónica. */
     public const SOPORTES = ['electronico', 'fisico', 'hibrido'];

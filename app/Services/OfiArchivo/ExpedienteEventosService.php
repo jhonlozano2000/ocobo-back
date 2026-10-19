@@ -93,13 +93,15 @@ class ExpedienteEventosService
             $cambios[$campo] = ['antes' => $expediente->getRawOriginal($campo), 'despues' => $expediente->getAttributes()[$campo] ?? null];
         }
 
-        if (! $expediente->wasChanged('estado')) {
+        if (! $expediente->wasChanged('estado') && ! $expediente->wasChanged('fase')) {
             $this->registrar($expediente->id, 'edicion', ['cambios' => $cambios]);
 
             return;
         }
 
-        $this->registrar($expediente->id, self::ACCION_POR_ESTADO[$expediente->estado] ?? 'cambio_estado', array_filter([
+        // B16: la transferencia primaria cambia la fase y deja el estado en cerrado
+        $accion = $expediente->wasChanged('fase') ? 'transferencia' : (self::ACCION_POR_ESTADO[$expediente->estado] ?? 'cambio_estado');
+        $this->registrar($expediente->id, $accion, array_filter([
             'cambios' => $cambios,
             'hash_indice' => $expediente->wasChanged('hash_indice') ? $expediente->hash_indice : null,
         ]));
