@@ -38,7 +38,7 @@ class WorkFlowTareaChecklistController extends Controller
      * Listar checklists de una tarea (System B)
      * GET /api/workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists
      */
-    public function index(WorkFlowTarea $tarea)
+    public function index(int $workflowId, int $nodoId, WorkFlowTarea $tarea)
     {
         try {
             return $this->successResponse(
@@ -61,7 +61,7 @@ class WorkFlowTareaChecklistController extends Controller
      * Agregar ítem a checklist (System B)
      * POST /api/workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists
      */
-    public function store(StoreWorkFlowTareaChecklistRequest $request, WorkFlowTarea $tarea)
+    public function store(StoreWorkFlowTareaChecklistRequest $request, int $workflowId, int $nodoId, WorkFlowTarea $tarea)
     {
         try {
             $checklist = $tarea->checklists()->create($request->validated());
@@ -84,7 +84,7 @@ class WorkFlowTareaChecklistController extends Controller
      * Actualizar ítem de checklist (System B)
      * PUT /api/workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists/{checklist}
      */
-    public function update(UpdateWorkFlowTareaChecklistRequest $request, WorkFlowTarea $tarea, WorkFlowTareaChecklist $checklist)
+    public function update(UpdateWorkFlowTareaChecklistRequest $request, int $workflowId, int $nodoId, WorkFlowTarea $tarea, WorkFlowTareaChecklist $checklist)
     {
         try {
             // Ownership: el ítem debe pertenecer a la tarea de la ruta
@@ -109,7 +109,7 @@ class WorkFlowTareaChecklistController extends Controller
      * Eliminar ítem de checklist (System B)
      * DELETE /api/workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists/{checklist}
      */
-    public function destroy(WorkFlowTarea $tarea, WorkFlowTareaChecklist $checklist)
+    public function destroy(int $workflowId, int $nodoId, WorkFlowTarea $tarea, WorkFlowTareaChecklist $checklist)
     {
         try {
             // Ownership: el ítem debe pertenecer a la tarea de la ruta
@@ -135,7 +135,7 @@ class WorkFlowTareaChecklistController extends Controller
      * Reordenar checklists (System B)
      * PUT /api/workflows/{workflow}/nodos/{nodo}/tareas/{tarea}/checklists/reordenar
      */
-    public function reordenar(ReordenarWorkFlowChecklistRequest $request, WorkFlowTarea $tarea)
+    public function reordenar(ReordenarWorkFlowChecklistRequest $request, int $workflowId, int $nodoId, WorkFlowTarea $tarea)
     {
         try {
             $data = $request->validated();
