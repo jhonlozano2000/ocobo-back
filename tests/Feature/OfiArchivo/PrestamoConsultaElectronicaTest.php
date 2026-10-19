@@ -107,6 +107,10 @@ class PrestamoConsultaElectronicaTest extends TestCase
     {
         [$expId, [$pdf, $png, $docx, $sinArchivo]] = $this->expediente();
         $id = $this->prestar($expId);
+        $this->actingAs($this->solicitante)->getJson("/api/archivo/prestamos/{$id}")
+            ->assertJsonPath('data.acciones.consultar', true)->assertJsonPath('data.acciones.accesos', true);
+        $this->actingAs($this->archivista)->getJson("/api/archivo/prestamos/{$id}")
+            ->assertJsonPath('data.acciones.consultar', false)->assertJsonPath('data.acciones.accesos', true);
 
         $documentos = collect($this->actingAs($this->solicitante)->getJson("/api/archivo/prestamos/{$id}/consulta")
             ->assertOk()->json('data.documentos'))->keyBy('id');

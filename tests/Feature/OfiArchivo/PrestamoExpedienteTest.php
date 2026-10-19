@@ -120,7 +120,7 @@ class PrestamoExpedienteTest extends TestCase
         $res = $this->solicitar($expId)->assertCreated();
         $id = $res->json('data.id');
         $this->assertSame('solicitado', $res->json('data.estado'));
-        $this->assertSame(['aprobar' => false, 'rechazar' => false, 'cancelar' => true, 'entregar' => false, 'devolver' => false], $res->json('data.acciones'));
+        $this->assertSame(['aprobar' => false, 'rechazar' => false, 'cancelar' => true, 'entregar' => false, 'devolver' => false, 'consultar' => false, 'accesos' => false], $res->json('data.acciones'));
         // Solicitar no saca nada del archivo: el historial no registra el préstamo todavía
         $this->assertDatabaseMissing('ofi_archivo_expediente_eventos', ['expediente_id' => $expId, 'accion' => 'prestamo']);
 

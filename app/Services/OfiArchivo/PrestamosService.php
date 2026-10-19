@@ -226,6 +226,7 @@ class PrestamosService
         $expediente = $prestamo->expediente;
         $responsable = $expediente && $this->esDelArchivo($expediente, $ctx);
         $propio = (int) $prestamo->solicitante_id === (int) $usuario->id;
+        $electronico = $prestamo->modalidad === 'electronico';
 
         return [
             'aprobar' => $prestamo->estado === 'solicitado' && $ctx['aprobar'] && $responsable && ! $propio
@@ -234,6 +235,10 @@ class PrestamosService
             'cancelar' => $propio && in_array($prestamo->estado, OfiArchivoPrestamo::ESTADOS_PENDIENTES, true),
             'entregar' => $prestamo->estado === 'aprobado' && $ctx['devolver'] && $responsable,
             'devolver' => in_array($prestamo->estado, OfiArchivoPrestamo::ESTADOS_ACTIVOS, true) && $ctx['devolver'] && $responsable,
+            // Préstamo electrónico: consulta en línea del solicitante y traza de accesos
+            'consultar' => $electronico && $propio && $prestamo->estado === 'prestado' && (bool) $prestamo->fecha_devolucion_esperada?->isFuture(),
+            'accesos' => $electronico && $prestamo->fecha_prestamo !== null
+                && ($propio || (int) $prestamo->aprobador_id === (int) $usuario->id || self::tiene($usuario, self::PERMISO_VER)),
         ];
     }
 
