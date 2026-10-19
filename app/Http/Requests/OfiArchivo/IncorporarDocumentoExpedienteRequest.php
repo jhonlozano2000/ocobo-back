@@ -18,7 +18,7 @@ class IncorporarDocumentoExpedienteRequest extends FormRequest
     {
         return [
             'documentable_id' => 'required|integer',
-            'documentable_type' => 'required|string|in:radicado_recibido,radicado_enviado',
+            'documentable_type' => 'required|string|in:radicado_recibido,radicado_enviado,radicado_interno',
             'detalle' => 'nullable|string|max:500',
             'tipo_documental_id' => 'nullable|integer',
         ];
@@ -29,7 +29,7 @@ class IncorporarDocumentoExpedienteRequest extends FormRequest
         return [
             'documentable_id.required' => 'Debe indicar el radicado a incorporar.',
             'documentable_type.required' => 'Debe indicar el tipo de radicado.',
-            'documentable_type.in' => 'Solo se pueden incorporar radicados recibidos o enviados.',
+            'documentable_type.in' => 'Solo se pueden incorporar radicados recibidos, enviados o internos.',
             'detalle.max' => 'El detalle no puede superar los 500 caracteres.',
         ];
     }

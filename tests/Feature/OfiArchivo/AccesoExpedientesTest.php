@@ -5,6 +5,7 @@ namespace Tests\Feature\OfiArchivo;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoExpedienteDocumento;
 use App\Models\User;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -266,5 +267,35 @@ class AccesoExpedientesTest extends TestCase
         Schema::enableForeignKeyConstraints();
 
         $this->assertNoIncorpora('radicado_enviado', $id);
+    }
+
+    /** B08: las comunicaciones internas se incorporan con el mismo alcance que los radicados */
+    public function test_incorpora_internos_propios_y_no_ajenos(): void
+    {
+        // Tablas de sesión (sin commit implícito) mientras la BD no tenga el renombre a plural
+        foreach (['responsa', 'proyectores'] as $sufijo) {
+            if (! Schema::hasTable("ventanilla_radica_internos_{$sufijo}")) {
+                DB::statement("CREATE TEMPORARY TABLE ventanilla_radica_internos_{$sufijo} LIKE ventanilla_radica_interno_{$sufijo}");
+            }
+        }
+        Schema::disableForeignKeyConstraints();
+        $interno = fn (int $usuario) => DB::table('ventanilla_radica_internos')->insertGetId([
+            'num_radicado' => 'B08-I-'.uniqid(), 'clasifica_documen_id' => 1, 'usuario_crea' => $usuario,
+            'asunto' => 'Memorando de apoyo', 'hash_sha256' => str_repeat('f', 64),
+        ]);
+        $propio = $interno($this->user->id);
+        $ajeno = $interno($this->otro->id);
+        Schema::enableForeignKeyConstraints();
+
+        $this->assertNoIncorpora('radicado_interno', $ajeno);
+
+        $exp = $this->expediente($this->depA, '2026-M83A-S83-0008');
+        $this->actingAs($this->user)->postJson("/api/archivo/expedientes/{$exp->id}/incorporar", [
+            'documentable_type' => 'radicado_interno', 'documentable_id' => $propio,
+        ])->assertOk();
+
+        $folio = OfiArchivoExpedienteDocumento::where('expediente_id', $exp->id)->sole();
+        $this->assertSame(VentanillaRadicaInterno::class, $folio->documentable_type);
+        $this->assertSame(str_repeat('f', 64), $folio->hash_sha256, 'La huella del interno queda fijada en el folio');
     }
 }

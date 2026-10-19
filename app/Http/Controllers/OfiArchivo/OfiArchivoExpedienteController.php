@@ -20,6 +20,7 @@ use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoExpedienteDocumento;
 use App\Models\OfiArchivo\OfiArchivoExpedienteIndiceVersion;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\OfiArchivo\CierreExpedienteService;
 use App\Services\OfiArchivo\ExpedienteEventosService;
@@ -412,6 +413,8 @@ class OfiArchivoExpedienteController extends Controller
             $modelMap = [
                 'radicado_recibido' => VentanillaRadicaReci::class,
                 'radicado_enviado' => VentanillaRadicaEnviados::class,
+                // B08: las comunicaciones internas también son documentos del trámite
+                'radicado_interno' => VentanillaRadicaInterno::class,
             ];
 
             $modelClass = $modelMap[$request->documentable_type];
@@ -737,7 +740,8 @@ class OfiArchivoExpedienteController extends Controller
 
     /**
      * M08-04: solo se incorporan radicados que el usuario puede consultar; el archivo central
-     * (PERMISO_VER_TODOS) incorpora cualquiera.
+     * (PERMISO_VER_TODOS) incorpora cualquiera. Recibidos, enviados e internos (B08) usan el
+     * mismo alcance jerárquico (AbacHierarquico).
      */
     private function radicadoAccesible(string $modelClass, int $id): ?Model
     {
@@ -746,11 +750,7 @@ class OfiArchivoExpedienteController extends Controller
             return $modelClass::find($id);
         }
 
-        if ($modelClass === VentanillaRadicaReci::class) {
-            return VentanillaRadicaReci::conPermisoJerarquico($user)->find($id);
-        }
-
-        return VentanillaRadicaEnviados::conPermisoJerarquico($user)->find($id);
+        return $modelClass::conPermisoJerarquico($user)->find($id);
     }
 
     /**
