@@ -69,7 +69,7 @@ class OfiArchivoEliminacion extends Model
      */
     public static function puedeEliminar(OfiArchivoExpediente $expediente): bool
     {
-        if ($expediente->estado !== 'Cerrado') {
+        if ($expediente->estado !== 'cerrado') {
             return false;
         }
 

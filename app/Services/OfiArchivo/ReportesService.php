@@ -60,9 +60,9 @@ class ReportesService
                 'total_folios' => $e->total_folios_elec,
             ])->toArray(),
             'resumen' => [
-                'abiertos' => $expedientes->where('estado', 'Abierto')->count(),
-                'cerrados' => $expedientes->where('estado', 'Cerrado')->count(),
-                'transferidos' => $expedientes->where('estado', 'Transferido')->count(),
+                'abiertos' => $expedientes->where('estado', 'abierto')->count(),
+                'cerrados' => $expedientes->where('estado', 'cerrado')->count(),
+                'transferidos' => $expedientes->where('estado', 'transferido')->count(),
             ],
         ];
     }
@@ -159,11 +159,11 @@ class ReportesService
                 $fecha = now()->subMonths($i);
                 $meses->push([
                     'label' => $fecha->format('M'),
-                    'abiertos' => OfiArchivoExpediente::where('estado', 'Abierto')
+                    'abiertos' => OfiArchivoExpediente::where('estado', 'abierto')
                         ->whereMonth('fecha_apertura', $fecha->month)
                         ->whereYear('fecha_apertura', $fecha->year)
                         ->count(),
-                    'cerrados' => OfiArchivoExpediente::where('estado', 'Cerrado')
+                    'cerrados' => OfiArchivoExpediente::where('estado', 'cerrado')
                         ->whereMonth('fecha_apertura', $fecha->month)
                         ->whereYear('fecha_apertura', $fecha->year)
                         ->count(),
@@ -187,9 +187,9 @@ class ReportesService
             return [
                 'expedientes' => [
                     'total' => OfiArchivoExpediente::count(),
-                    'abiertos' => OfiArchivoExpediente::where('estado', 'Abierto')->count(),
-                    'cerrados' => OfiArchivoExpediente::where('estado', 'Cerrado')->count(),
-                    'transferidos' => OfiArchivoExpediente::where('estado', 'Transferido')->count(),
+                    'abiertos' => OfiArchivoExpediente::where('estado', 'abierto')->count(),
+                    'cerrados' => OfiArchivoExpediente::where('estado', 'cerrado')->count(),
+                    'transferidos' => OfiArchivoExpediente::where('estado', 'transferido')->count(),
                 ],
                 'prestamos' => [
                     'activos' => OfiArchivoPrestamo::activos()->count(),
@@ -210,9 +210,9 @@ class ReportesService
                 ],
                 'charts' => [
                     'distribucion_estados' => [
-                        OfiArchivoExpediente::where('estado', 'Abierto')->count(),
-                        OfiArchivoExpediente::where('estado', 'Cerrado')->count(),
-                        OfiArchivoExpediente::where('estado', 'Transferido')->count(),
+                        OfiArchivoExpediente::where('estado', 'abierto')->count(),
+                        OfiArchivoExpediente::where('estado', 'cerrado')->count(),
+                        OfiArchivoExpediente::where('estado', 'transferido')->count(),
                     ],
                     'prestamos_por_mes' => $meses->pluck('prestamos_activos')->toArray(),
                     'prestamos_devueltos_por_mes' => $meses->pluck('prestamos_devueltos')->toArray(),

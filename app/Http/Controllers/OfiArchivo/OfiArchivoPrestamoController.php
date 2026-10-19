@@ -72,7 +72,7 @@ class OfiArchivoPrestamoController extends Controller
 
     /**
      * Registra un nuevo préstamo de expediente.
-     * Valida que el expediente esté en estado 'Abierto'.
+     * Valida que el expediente esté en estado 'abierto'.
      *
      * @param  Request  $request  expediente_id, solicitante_id, fecha_devolucion_esperada (requeridos)
      * @return JsonResponse
