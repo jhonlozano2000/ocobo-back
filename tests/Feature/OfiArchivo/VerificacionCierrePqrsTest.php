@@ -96,6 +96,16 @@ class VerificacionCierrePqrsTest extends TestCase
         $this->assertSame('Respondida', DB::table('ventanilla_pqrs')->where('id', $this->pqrs)->value('estado_tramite'));
     }
 
+    // El controlador exige «Editar» para cambiarEstado (middleware en su constructor)
+    public function test_sin_permiso_de_editar_no_la_marca(): void
+    {
+        $this->user->revokePermissionTo('Radicar -> PQRSF -> Editar');
+
+        $this->actingAs($this->user)->putJson("/api/ventanilla/pqrs/{$this->pqrs}/estado", ['estado_tramite' => 'Respondida'])
+            ->assertForbidden();
+        $this->assertSame('En Tramite', DB::table('ventanilla_pqrs')->where('id', $this->pqrs)->value('estado_tramite'));
+    }
+
     public function test_con_peticion_y_respuesta_archivadas_no_hay_aviso(): void
     {
         $enviado = $this->responder();
