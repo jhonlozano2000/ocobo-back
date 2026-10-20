@@ -44,6 +44,7 @@ class TransferenciaLotesService
         private UbicacionTopograficaService $ubicaciones,
         private IntegridadArchivoService $integridad,
         private DisposicionFinalService $disposicion,
+        private PaquetePreservacionService $preservacion,
     ) {}
 
     /**
@@ -74,6 +75,13 @@ class TransferenciaLotesService
             }
             if ($errores !== []) {
                 throw ValidationException::withMessages(['expediente_ids' => $errores]);
+            }
+
+            // B23: la secundaria firma el índice (y la hoja de control) que falten antes del FUID
+            if ($datos['tipo'] === 'secundaria') {
+                foreach ($expedientes as $expediente) {
+                    $this->preservacion->firmarFaltantes($expediente, $envia);
+                }
             }
 
             $fecha = now()->startOfSecond();
@@ -217,7 +225,7 @@ class TransferenciaLotesService
             return 'Tiene préstamos sin devolver';
         }
 
-        // El índice firmado al cierre llega con F1; la secundaria valida su paquete de preservación en F5
+        // El índice firmado al cierre llega con F1; la secundaria valida su paquete de preservación (B23)
         if ($tipo === 'primaria' && IndiceExpedienteService::disponible()) {
             $version = OfiArchivoExpedienteIndiceVersion::where('expediente_id', $expediente->id)->latest('version')->first();
             if (! $version) {
@@ -264,9 +272,13 @@ class TransferenciaLotesService
             }
         }
 
-        return $tipo === 'primaria'
-            ? self::validarRetencion($expediente, (int) $trd->a_g, 'en el archivo de gestión')
-            : self::validarRetencion($expediente, (int) $trd->a_g + (int) $trd->a_c, 'total (gestión + central)');
+        if ($tipo === 'primaria') {
+            return self::validarRetencion($expediente, (int) $trd->a_g, 'en el archivo de gestión');
+        }
+
+        // B23: formatos, índice, hoja de control e historial; lee los archivos, por eso va de último
+        return self::validarRetencion($expediente, (int) $trd->a_g + (int) $trd->a_c, 'total (gestión + central)')
+            ?? $this->preservacion->motivo($expediente);
     }
 
     public static function validarRetencion(OfiArchivoExpediente $expediente, int $anios, string $etapa): ?string

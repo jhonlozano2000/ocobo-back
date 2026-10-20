@@ -28,6 +28,7 @@ Route::middleware(['auth:sanctum', 'throttle:archivo'])->group(function () {
     Route::post('transferencia-lotes/{id}/recibir', [OfiArchivoTransferenciaLoteController::class, 'recibir'])->whereNumber('id')->middleware($perm.'Recibir');
     Route::get('transferencia-lotes/{id}/fuid', [OfiArchivoTransferenciaLoteController::class, 'fuid'])->whereNumber('id')->middleware($perm.'Ver');
     Route::get('transferencia-lotes/{id}/acta', [OfiArchivoTransferenciaLoteController::class, 'acta'])->whereNumber('id')->middleware($perm.'Ver');
+    Route::get('transferencia-lotes/{id}/paquete', [OfiArchivoTransferenciaLoteController::class, 'paquete'])->whereNumber('id')->middleware($perm.'Ver');
 
     // Eliminaciones
     Route::get('eliminaciones', [OfiArchivoTransferenciaController::class, 'indexEliminaciones'])

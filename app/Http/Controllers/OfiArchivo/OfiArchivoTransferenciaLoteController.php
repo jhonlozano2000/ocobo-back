@@ -7,6 +7,7 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoTransferenciaLote;
 use App\Models\User;
+use App\Services\OfiArchivo\PaquetePreservacionService;
 use App\Services\OfiArchivo\TransferenciaLotesService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -166,6 +167,18 @@ class OfiArchivoTransferenciaLoteController extends Controller
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'inline; filename="Acta_Transferencia_'.$lote->codigo.'.pdf"')
             ->header('X-Codigo-Verificacion', $lote->codigo_verificacion);
+    }
+
+    /**
+     * B23: paquete de preservación (ZIP con manifiesto firmado) de una secundaria recibida.
+     */
+    public function paquete($id, PaquetePreservacionService $preservacion)
+    {
+        $lote = $this->visibles(Auth::user())->findOrFail($id);
+        $ruta = $preservacion->generar($lote, Auth::user(), $this->lotes);
+
+        return response()->download($ruta, 'Paquete_Preservacion_'.$lote->codigo.'.zip', ['Content-Type' => 'application/zip'])
+            ->deleteFileAfterSend();
     }
 
     /**
