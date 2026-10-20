@@ -156,4 +156,15 @@ return [
         '12345678',
         'qwerty',
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Administrador inicial (UsersSeeder)
+    |--------------------------------------------------------------------------
+    |
+    | Contraseña temporal del administrador que crea el seeder; se exige cambiarla en el
+    | primer login. Obligatoria con APP_ENV=production.
+    |
+    */
+    'admin_password' => env('ADMIN_PASSWORD'),
 ];
