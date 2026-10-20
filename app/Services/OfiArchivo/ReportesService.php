@@ -5,6 +5,7 @@ namespace App\Services\OfiArchivo;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoPrestamo;
 use App\Models\OfiArchivo\OfiArchivoTransferencia;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 
@@ -150,24 +151,37 @@ class ReportesService
     }
 
     /**
-     * Estadísticas generales del módulo de archivo.
-     * Incluye sparklines, charts y datos históricos para el dashboard.
+     * Estadísticas del dashboard de archivo para un usuario: los totales del módulo (agregados,
+     * sin nombres) más los últimos expedientes y la actividad reciente, que muestran números y
+     * solicitantes y por eso se limitan a los expedientes que el usuario puede ver.
      */
-    public function estadisticasGenerales(): array
+    public function estadisticasGenerales(User $user): array
     {
-        return Cache::remember('archivo_estadisticas_generales', now()->addMinutes(5), function () {
+        return $this->agregados() + [
+            'ultimos_expedientes' => $this->ultimosExpedientes($user),
+            'actividad_reciente' => $this->obtenerActividadReciente($user),
+        ];
+    }
+
+    /**
+     * Totales, sparklines y charts del módulo de archivo. Son conteos sin datos de expedientes
+     * concretos, así que se comparten entre usuarios en una caché de 5 minutos.
+     */
+    public function agregados(): array
+    {
+        return Cache::remember('archivo_estadisticas_agregadas', now()->addMinutes(5), function () {
             $meses = collect();
             for ($i = 5; $i >= 0; $i--) {
-                $fecha = now()->subMonths($i);
+                $fecha = now()->startOfMonth()->subMonths($i);
                 $meses->push([
-                    'label' => $fecha->format('M'),
+                    'label' => ucfirst(rtrim($fecha->locale('es')->isoFormat('MMM'), '.')),
                     'abiertos' => OfiArchivoExpediente::where('estado', 'abierto')
                         ->whereMonth('fecha_apertura', $fecha->month)
                         ->whereYear('fecha_apertura', $fecha->year)
                         ->count(),
                     'cerrados' => OfiArchivoExpediente::where('estado', 'cerrado')->where('fase', 'gestion')
-                        ->whereMonth('fecha_apertura', $fecha->month)
-                        ->whereYear('fecha_apertura', $fecha->year)
+                        ->whereMonth('fecha_cierre', $fecha->month)
+                        ->whereYear('fecha_cierre', $fecha->year)
                         ->count(),
                     'prestamos' => OfiArchivoPrestamo::whereMonth('fecha_prestamo', $fecha->month)
                         ->whereYear('fecha_prestamo', $fecha->year)
@@ -219,20 +233,6 @@ class ReportesService
                     'prestamos_por_mes' => $meses->pluck('prestamos_activos')->toArray(),
                     'prestamos_devueltos_por_mes' => $meses->pluck('prestamos_devueltos')->toArray(),
                 ],
-                'ultimos_expedientes' => OfiArchivoExpediente::with(['dependencia'])
-                    ->latest()
-                    ->limit(5)
-                    ->get()
-                    ->map(fn ($e) => [
-                        'id' => $e->id,
-                        'numero' => $e->numero_expediente,
-                        'nombre' => $e->nombre_expediente,
-                        'dependencia' => $e->dependencia->nom_organico ?? '—',
-                        'estado' => $e->estado,
-                        'fecha_apertura' => $e->fecha_apertura?->format('d/m/Y'),
-                        'total_folios' => $e->total_folios_elec,
-                    ])->toArray(),
-                'actividad_reciente' => $this->obtenerActividadReciente(),
             ];
         });
     }
@@ -246,11 +246,30 @@ class ReportesService
         return OfiArchivoExpediente::where('fase', '!=', 'gestion')->where('estado', '!=', 'eliminado');
     }
 
-    private function obtenerActividadReciente(): array
+    private function ultimosExpedientes(User $user): array
     {
-        $actividades = [];
+        return OfiArchivoExpediente::visiblesPara($user)
+            ->with(['dependencia'])
+            ->latest()
+            ->limit(5)
+            ->get()
+            ->map(fn ($e) => [
+                'id' => $e->id,
+                'numero' => $e->numero_expediente,
+                'nombre' => $e->nombre_expediente,
+                'dependencia' => $e->dependencia->nom_organico ?? '—',
+                'estado' => $e->estado,
+                'fecha_apertura' => $e->fecha_apertura?->format('d/m/Y'),
+                'total_folios' => $e->total_folios_elec,
+            ])->toArray();
+    }
+
+    private function obtenerActividadReciente(User $user): array
+    {
+        $visible = fn ($q) => $q->visiblesPara($user);
 
         $ultimosPrestamos = OfiArchivoPrestamo::with(['expediente', 'solicitante'])
+            ->whereHas('expediente', $visible)
             ->latest()
             ->limit(3)
             ->get()
@@ -258,12 +277,14 @@ class ReportesService
                 'tipo' => 'prestamo',
                 'descripcion' => 'Préstamo de expediente '.$p->expediente->numero_expediente,
                 'usuario' => trim(($p->solicitante->nombres ?? '').' '.($p->solicitante->apellidos ?? '')),
-                'fecha' => $p->created_at->diffForHumans(),
+                'creado' => $p->created_at,
+                'fecha' => $p->created_at->locale('es')->diffForHumans(),
                 'icono' => 'tabler-book',
                 'color' => $p->estado === 'prestado' ? 'primary' : 'success',
             ]);
 
         $ultimasTransferencias = OfiArchivoTransferencia::with(['expediente'])
+            ->whereHas('expediente', $visible)
             ->latest()
             ->limit(3)
             ->get()
@@ -271,14 +292,16 @@ class ReportesService
                 'tipo' => 'transferencia',
                 'descripcion' => 'Transferencia de expediente '.$t->expediente->numero_expediente,
                 'usuario' => $t->origen,
-                'fecha' => $t->created_at->diffForHumans(),
+                'creado' => $t->created_at,
+                'fecha' => $t->created_at->locale('es')->diffForHumans(),
                 'icono' => 'tabler-arrows-transfer',
                 'color' => $t->estado === 'completada' ? 'success' : 'warning',
             ]);
 
         return $ultimosPrestamos->concat($ultimasTransferencias)
-            ->sortByDesc('fecha')
+            ->sortByDesc('creado')
             ->take(6)
+            ->map(fn ($a) => collect($a)->except('creado')->all())
             ->values()
             ->toArray();
     }

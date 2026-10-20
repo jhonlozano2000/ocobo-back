@@ -51,7 +51,7 @@ class DashboardGlobalController extends Controller
 
     protected function aggregateAll(): array
     {
-        $archivo = $this->archivoReportes->estadisticasGenerales();
+        $archivo = $this->archivoReportes->agregados();
         $recibidos = rescue(fn () => $this->reciService->getStats(), ['total_radicados' => 0, 'pendientes' => 0, 'vencidos' => 0]);
         $enviados = rescue(fn () => $this->enviadosService->getStats(), ['total_enviados' => 0, 'total_pendientes' => 0]);
         $pqrs = rescue(fn () => $this->pqrsService->getEstadisticas(), ['total' => 0, 'pendientes' => 0, 'urgentes' => 0, 'vencidas' => 0]);

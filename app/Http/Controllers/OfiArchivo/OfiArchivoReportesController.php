@@ -123,7 +123,7 @@ class OfiArchivoReportesController extends Controller
     public function estadisticas()
     {
         try {
-            $stats = $this->reportesService->estadisticasGenerales();
+            $stats = $this->reportesService->estadisticasGenerales(auth()->user());
 
             return $this->successResponse($stats, 'Estadísticas obtenidas');
         } catch (\Exception $e) {

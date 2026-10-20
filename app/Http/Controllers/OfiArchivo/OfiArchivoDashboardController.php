@@ -5,7 +5,6 @@ namespace App\Http\Controllers\OfiArchivo;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Services\OfiArchivo\ReportesService;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -34,9 +33,8 @@ class OfiArchivoDashboardController extends Controller
     public function stats()
     {
         try {
-            $stats = Cache::remember('archivo_dashboard_stats', now()->addMinutes(5), function () {
-                return $this->reportesService->estadisticasGenerales();
-            });
+            // Los totales ya vienen cacheados del servicio; los listados dependen del usuario.
+            $stats = $this->reportesService->estadisticasGenerales(auth()->user());
 
             return $this->successResponse($stats, 'Estadísticas del dashboard obtenidas');
         } catch (\Exception $e) {
