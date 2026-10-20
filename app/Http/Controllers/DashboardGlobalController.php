@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\CalendarioHelper;
+use App\Http\Traits\ApiResponseTrait;
 use App\Models\OfiArchivo\OfiArchivoPrestamo;
 use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
@@ -10,6 +11,11 @@ use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\ControlAcceso\UserService;
+use App\Services\Dashboard\AcademyDashboardService;
+use App\Services\Dashboard\AnalyticsDashboardService;
+use App\Services\Dashboard\CrmDashboardService;
+use App\Services\Dashboard\EcommerceDashboardService;
+use App\Services\Dashboard\LogisticsDashboardService;
 use App\Services\OfiArchivo\ReportesService as ArchivoReportesService;
 use App\Services\VentanillaUnica\PqrsService;
 use App\Services\VentanillaUnica\RadicacionEnviadosService;
@@ -21,6 +27,8 @@ use Illuminate\Support\Str;
 
 class DashboardGlobalController extends Controller
 {
+    use ApiResponseTrait;
+
     public function __construct(
         protected ArchivoReportesService $archivoReportes,
         protected PqrsService $pqrsService,
@@ -204,6 +212,36 @@ class DashboardGlobalController extends Controller
                 ],
             ],
         ]);
+    }
+
+    /** Dashboard Analytics de la plantilla, alimentado con radicación, términos y PQRS del alcance del usuario. */
+    public function analytics(AnalyticsDashboardService $service): JsonResponse
+    {
+        return $this->successResponse($service->datos(auth()->user()), 'Dashboard de analítica cargado');
+    }
+
+    /** Dashboard CRM de la plantilla: flujo documental, dependencias, expedientes y actividad. */
+    public function crm(CrmDashboardService $service): JsonResponse
+    {
+        return $this->successResponse($service->datos(auth()->user()), 'Dashboard CRM cargado');
+    }
+
+    /** Dashboard Logistics de la plantilla: distribución de la correspondencia enviada. */
+    public function logistics(LogisticsDashboardService $service): JsonResponse
+    {
+        return $this->successResponse($service->datos(auth()->user()), 'Dashboard de correspondencia enviada cargado');
+    }
+
+    /** Dashboard Academy de la plantilla: gestión del funcionario y clasificación TRD. */
+    public function academy(AcademyDashboardService $service): JsonResponse
+    {
+        return $this->successResponse($service->datos(auth()->user()), 'Dashboard de gestión del funcionario cargado');
+    }
+
+    /** Dashboard eCommerce de la plantilla: gestión de archivo (expedientes, préstamos, transferencias). */
+    public function ecommerce(EcommerceDashboardService $service): JsonResponse
+    {
+        return $this->successResponse($service->datos(auth()->user()), 'Dashboard de archivo cargado');
     }
 
     private function formatSparkline($data, int $dias): array
