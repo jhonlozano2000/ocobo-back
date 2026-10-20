@@ -88,6 +88,7 @@ class EliminacionDocumentalService
                     'cod' => $trd->cod,
                     'nom' => $trd->nom,
                     'dependencia' => trim($primero->dependencia_cod.' '.$primero->dependencia_nom),
+                    'version_id' => $version?->id,
                     'version' => $version?->version,
                     'rusd_numero' => $version?->rusd_inscrita ? $version->rusd_numero : null,
                     'expedientes' => $expedientes->count(),

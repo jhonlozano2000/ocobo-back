@@ -131,7 +131,7 @@ class EliminacionDocumentalTest extends TestCase
         app(DisposicionFinalService::class)->marcarCumplidos();
 
         $pendiente = $this->actingAs($this->archivo)->getJson('/api/archivo/eliminaciones/lotes/pendientes')->assertOk()->json('data.0');
-        $this->assertSame([$serie, 1], [$pendiente['trd_id'], $pendiente['expedientes']]);
+        $this->assertSame([$serie, 1, $this->version], [$pendiente['trd_id'], $pendiente['expedientes'], $pendiente['version_id']]);
         $this->assertStringContainsString('no está inscrita en el RUSD', $pendiente['motivo']);
         $this->actingAs($this->archivo)->postJson('/api/archivo/eliminaciones/lotes', ['trd_id' => $serie])
             ->assertStatus(422)->assertJsonFragment(['trd_id' => ['La TRD versión 3 de Oficina B18 no está inscrita en el RUSD']]);
