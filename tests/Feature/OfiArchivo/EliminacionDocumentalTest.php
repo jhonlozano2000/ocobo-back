@@ -250,6 +250,7 @@ class EliminacionDocumentalTest extends TestCase
         $this->actingAs($this->comite)->postJson("/api/archivo/eliminaciones/lotes/{$id}/comite", $comite)->assertStatus(422);
         $this->actingAs($this->comite)->postJson("/api/archivo/eliminaciones/lotes/{$id}/comite", ['secretario_id' => $this->secretario->id] + $comite)
             ->assertOk()->assertJsonPath('data.estado', 'aprobado');
+        $this->assertTrue(Notificacion::where('user_id', $this->secretario->id)->where('title', 'Acta de eliminación por firmar')->exists());
 
         // Solo firman los designados, una vez cada uno
         $this->actingAs($this->ejecutor)->postJson("/api/archivo/eliminaciones/lotes/{$id}/firmar")->assertStatus(422);

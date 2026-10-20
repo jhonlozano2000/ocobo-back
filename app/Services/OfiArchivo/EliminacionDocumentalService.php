@@ -250,6 +250,15 @@ class EliminacionDocumentalService
                 'comite_at' => now(),
                 'estado' => OfiArchivoEliminacionLote::APROBADO,
             ]);
+            foreach (['presidente_id' => 'presidente', 'secretario_id' => 'secretario técnico'] as $campo => $rol) {
+                Notificacion::create([
+                    'user_id' => $datos[$campo],
+                    'type' => self::TIPO_NOTIFICACION,
+                    'title' => 'Acta de eliminación por firmar',
+                    'message' => "El comité aprobó la eliminación {$lote->codigo} (acta {$lote->acta_comite_numero}) y lo designó {$rol}: falta su firma.",
+                    'data' => ['tipo_entidad' => 'eliminacion_lote', 'lote_id' => $lote->id, 'codigo' => $lote->codigo, 'firmar' => true],
+                ]);
+            }
 
             return $lote;
         });
