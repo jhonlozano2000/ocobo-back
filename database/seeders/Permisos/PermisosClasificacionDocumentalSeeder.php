@@ -19,6 +19,8 @@ class PermisosClasificacionDocumentalSeeder extends Seeder
             'TRD -> Exportar',
             'TRD -> Importar',
             'TRD -> Versiones',
+            // M10-06: gestionar la TRD de cualquier dependencia, no solo la propia
+            'TRD -> Ver Todos',
         ];
 
         $permisosTVD = [
