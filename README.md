@@ -23,13 +23,13 @@ OCOBO-BACK es una aplicación web desarrollada en Laravel que gestiona procesos 
 - **Control de Acceso**: Usuarios, roles, permisos directos ("otros permisos"), cargos y sedes; optimización N+1 en árbol de cargos disponibles
 - **Configuración**: División política, sedes, listas maestras, numeración de radicados, semáforo, SMTP/IMAP (credencial cifrada)
 - **Clasificación Documental**: TRD versionada (TEMP → ACTIVO → HISTÓRICO) con aprobación del Jefe de Archivo, segregación (quien elabora no aprueba) e inmutabilidad de versiones aprobadas; importación desde Excel; TVD con aprobación por dependencia
-- **Ventanilla Única**: Radicación recibida, enviada, interna y PQRS con consecutivo atómico (`RadicadoConsecutivoService`), líneas de tiempo, acuses digitales, anulación con aprobación, relación enviados↔recibidos; `created_at` es la fecha oficial de radicación; los internos guardan `dependencia_origen_id` (dependencia del custodio principal, mostrada como «Dependencia / Oficina»); **inmutabilidad y conservación física en Recibidos (`SoftDeletes`)** bajo Ley 594/2000 y Acuerdo AGN 060/2001
+- **Ventanilla Única**: Radicación recibida, enviada, interna y PQRS con consecutivo atómico (`RadicadoConsecutivoService`), líneas de tiempo, acuses digitales, anulación con aprobación, relación enviados↔recibidos; `created_at` es la fecha oficial de radicación; los internos guardan `dependencia_origen_id` (dependencia del custodio principal, mostrada como «Dependencia / Oficina»); **inmutabilidad y conservación física en Recibidos (`SoftDeletes`)** bajo Ley 594/2000 y Acuerdo AGN 060/2001; **Flujo atómico de Pase y Transferencia de Custodia** (`PaseHistorialService` / `PaseHistorialInternoService`) con herencia estricta del custodio legal (`custodio = 1`), desvinculación atómica del usuario origen y registro en historial
 - **Gestión de Terceros y Habeas Data**: Cumplimiento de la Ley 1581/2012 y Decreto 1377/2013 con consentimiento explícito de tratamiento de datos (`autoriza_tratamiento_datos`, `fecha_autorizacion_datos`), validación estricta de unicidad de correo y teléfono, cálculo automático del Dígito de Verificación DIAN (Módulo 11) para NIT de personas jurídicas, y **Blind Index HMAC SHA-256 (`num_docu_nit_hash`)** para búsquedas exactas sin exposición de datos en claro
 - **PQRS**: Términos de la Ley 1755 por tipo en días hábiles, prioridad Tutela, prórroga única (no aplica a tutelas ni fallos judiciales), notificación por modo, reserva de identidad en denuncias y PQRS anónimas (`es_anonimo` + permiso `Radicar -> PQRSF -> Ver identidad reservada`)
 - **Firma Electrónica**: OTP ligado al firmante designado y al documento (hash, 5 min, 5 intentos, un solo uso); sello de texto en el PDF con FPDI, hash SHA-256 antes/después, estampa TSA RFC 3161 sobre canal seguro HTTPS nativo (`https://timestamp.digicert.com`) con verificación criptográfica (PKIStatus, firma CMS, cadena hasta raíz con EKU timeStamping, messageImprint y nonce); DOCX con estampa en grupos colaborativos; firma de PQRS atómica con hash del contenido; firmantes de internos marcados al firmar (sin doble firma)
 - **Bandeja de Correo**: Lectura del buzón IMAP en vivo, radicación manual de un correo como recibido/enviado, PDF del correo, rótulo PNG con código de barras y respuesta al remitente con el rótulo
-- **Gestión de Archivo**: Expedientes con foliado automático, índice electrónico con hash por folio, cierre sellado (`hash_indice`), préstamos, transferencias y eliminaciones con precondiciones TRD y aprobador distinto (AGN 003/2015)
-- **Mi Bandeja**: Grupos colaborativos (proyector, revisor, aprobador, firmante), plantillas DOCX con variables, check-in/check-out, notas en tiempo real, Mi Disco; listado de internos con dependencia de origen y `puede_firmar` por fila
+- **Gestión de Archivo (Acuerdo AGN 001/2024)**: expedientes clasificados en la TRD con soporte y nivel de acceso; folios tipificados; índice electrónico encadenado y firmado al cierre (XML + PDF, sello RFC 3161 opcional); historial de solo inserción con cadena de huellas; triggers que bloquean el expediente no abierto; hoja de control y tomos de los físicos; ubicación topográfica; transferencias por lote con FUID y acta firmados; préstamos con aprobación, folios y consulta electrónica trazada; verificación periódica de integridad; disposición final con selección y digitalización; eliminación documental publicada con RUSD, comité y acta; paquete de preservación de la transferencia secundaria
+- **Mi Bandeja — Grupos Colaborativos**: Gestión de 4 roles (proyector, revisor, aprobador, firmante) con validación secuencial; plantillas Word con inyección de variables; bloqueo check-out / check-in con versionamiento incremental y hash SHA-256; **firma electrónica con doble factor de autenticación** (código OTP enviado a email o contraseña de acceso); estampado de leyendas ISO 27001 y **Sello Electrónico de Entidad OCOBO SGDEA** al completar todas las firmas; notas del equipo en tiempo real vía WebSockets (Reverb) con conteo de no leídos; despacho formal de trámite (`enviarTramite`); Mi Disco; listado de internos con dependencia de origen, autorización contextual (`tieneAccesoUsuario`) y firma directa por fila
 - **Workflows**: Diseñador visual, instancias, tareas, checklists, tablero Kanban y reportes
 - **Uploads seguros**: `InspectorArchivos` (contenido real, extensiones y MIME peligrosos, zip-bomb) vía regla `ArchivoSeguro`, también en adjuntos IMAP; nombres de adjunto sin path traversal
 - **OCR**: Microservicio PaddleOCR 3 en entorno virtual propio (`start.bat` lo instala), autenticado por token y solo en loopback, con fallback a Tesseract; PDF con texto embebido y OCR solo en páginas escaneadas; búsqueda por contenido
@@ -282,9 +282,28 @@ Las violaciones de reglas de negocio (p. ej. aprobar lo que uno mismo elaboró) 
 ### Clasificación Documental
 - TRD (Tabla de Retención Documental)
 - Series, Subseries, Tipos documentales
-- Versiones TRD
+- Versiones TRD, con su inscripción en el RUSD (`PATCH trd-versiones/{id}/rusd`, permiso `TRD -> Versiones`), requisito para proponer eliminaciones
+- Permiso `TRD -> Ver Todos` para gestionar la TRD de cualquier dependencia
 - **Días de vencimiento configurables por elemento TRD** (herencia jerárquica)
 - Integración con CalendarioHelper para cálculo de vencimientos
+
+### Gestión de Archivo — Expedientes (Acuerdo AGN 001/2024)
+Diseño y seguimiento por brecha en `ocobo-documents/DISENO-EXPEDIENTES-OCOBO.md`.
+- **Apertura**: serie/subserie TRD, soporte (electrónico, físico, híbrido) y nivel de acceso con fundamento legal
+- **Folios**: tipo documental del catálogo TRD; incorporación de recibidos, enviados, internos y archivos de flujos de trabajo
+- **Índice electrónico** incremental y encadenado (`ofi_archivo_expediente_indice`); al cierre se congela en XML y PDF con firma interna HMAC y versión N+1 en cada reapertura
+- **Historial** de solo inserción (`ofi_archivo_expediente_eventos`) con cadena de huellas; `archivo:verificar-cadena`
+- **Cierre** con precondiciones (TRD, ubicación, préstamos, flujos en curso, folios íntegros) y **reapertura** con permiso propio y motivo; triggers MySQL impiden modificar lo cerrado
+- **Hoja de control y tomos** para físicos e híbridos (foliación continua, máximo de folios por tomo configurable, firma `HC-`)
+- **Ubicación topográfica** (`ofi_archivo_ubicaciones`): depósito → estante → entrepaño → caja, opcionalmente obligatoria
+- **Transferencias por lote** primarias y secundarias (`ofi_archivo_transferencia_lotes`) con FUID XLSX firmado, cotejo por quien recibe y acta de entrega; fase gestión → central → histórico
+- **Préstamos** (§3.10): solicitud por expediente o tomo en sala, físico o electrónico; aprobación con fundamento y versión pública para clasificados o reservados; folios contados en la entrega y la devolución; consulta electrónica en línea con traza de cada acceso (`ofi_archivo_prestamo_accesos`); `archivo:marcar-prestamos-vencidos` diario
+- **Integraciones**: botón *Expediente* en recibidos, enviados y PQRS con sugerencias; bandeja *Pendientes de archivar*; vínculo tercero–expediente y consulta *Todo lo del tercero*
+- **Integridad** (§8): `archivo:verificar-integridad` semanal recalcula el SHA-256 de una muestra de folios (`archivo_integridad_porcentaje_muestra`); alterado, faltante o sin huella abre un incidente que se resuelve con justificación; antes de enviar un lote se verifican todos sus folios. Permisos `Integridad -> Ver` y `Resolver`
+- **Disposición final** (§3.8): `archivo:marcar-disposicion` diario pasa a disposición los del central con la retención cumplida; lotes de selección con muestra propuesta (aleatoria, sistemática o cualitativa) y justificación al apartarse; digitalización con huella y certificado firmado e inmutable
+- **Eliminación documental** (B18): solo con la versión de TRD inscrita en el RUSD; lote por serie con inventario publicado 60 días hábiles en una página pública que recibe observaciones; concepto, acta del comité, firmas del presidente y del secretario técnico, y ejecución por alguien distinto de quien propuso; acta pública inmutable con código de verificación. `archivo:cerrar-publicaciones-eliminacion` diario
+- **Preservación** (B23): la transferencia secundaria exige formatos de preservación e índice y hoja de control firmados; `GET transferencia-lotes/{id}/paquete` entrega un ZIP con FUID, acta, índices, hoja de control, archivos y manifiesto firmado
+- Ajustes por entidad en Otras configuraciones → Archivo (`archivo_folios_por_tomo`, `archivo_meses_inactividad`, `archivo_indice_tsa`, `archivo_ubicacion_con_catalogo`, `archivo_prestamo_plazo_maximo_dias`)
 
 ### Ventanilla Única
 - Radicación recibida
@@ -553,6 +572,19 @@ Pendientes conocidos (ver auditoría): los datos personales de terceros **no** e
 ---
 
 ## 📋 Changelog
+
+### v2.8 (Octubre 2026) — Expedientes conforme al Acuerdo AGN 001/2024
+
+Rama `fix/auditoria-p1`. Detalle por brecha en `ocobo-documents/DISENO-EXPEDIENTES-OCOBO.md` §11.
+
+- ✅ **F0**: correcciones del módulo (incorporar, cerrar, filtros por estado, FormRequests y transacciones)
+- ✅ **F1**: historial encadenado, clasificación y soporte al abrir, folios tipificados, índice firmado, precondiciones de cierre, triggers de inmutabilidad, reapertura, internos y terceros, bandeja de pendientes
+- ✅ **F2**: sugerencia e incorporación desde recibidos, enviados y PQRS; verificación del archivo al responder la PQRS
+- ✅ **F3**: préstamos vencidos, fases del archivo, transferencias por lote con FUID y acta, hoja de control y tomos, ubicación topográfica, ajustes por entidad, préstamos con aprobación, folios y consulta electrónica trazada
+- ✅ **F4**: verificación periódica de integridad, selección documental y digitalización, eliminación documental por lote con RUSD, publicación, comité y acta
+- ✅ **F5**: paquete de preservación de la transferencia secundaria con manifiesto firmado
+- ✅ **Permisos**: se crea `TRD -> Ver Todos`, que el controlador de TRD ya consultaba; prueba de que marcar respondida una PQRS exige `Radicar -> PQRSF -> Editar`
+- ℹ️ **Despliegue**: correr `PermisosClasificacionDocumentalSeeder` y `php artisan permission:cache-reset`; el cron debe ejecutar `schedule:run` para los comandos de archivo (01:30, 01:45 y domingo 03:00)
 
 ### v2.7 (Octubre 2026) — Remediación de la auditoría integral
 
