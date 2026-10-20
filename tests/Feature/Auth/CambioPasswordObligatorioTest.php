@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use App\Services\ControlAcceso\UserService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Hash;
@@ -75,5 +76,32 @@ class CambioPasswordObligatorioTest extends TestCase
         $this->user->forceFill(['debe_cambiar_password' => false])->save();
 
         $this->actingAs($this->user, 'sanctum')->getJson('/api/2fa/setup')->assertOk();
+    }
+
+    public function test_la_contrasena_que_asigna_un_administrador_es_temporal(): void
+    {
+        $admin = User::factory()->create(['estado' => 1]);
+        $this->actingAs($admin);
+        $service = app(UserService::class);
+
+        $nuevo = $service->create([
+            'num_docu' => (string) random_int(10000000, 99999999),
+            'nombres' => 'Nuevo',
+            'apellidos' => 'Usuario',
+            'email' => 'nuevo-'.uniqid().'@example.com',
+            'password' => 'Asignada.123',
+            'estado' => 1,
+        ]);
+        $this->assertTrue($nuevo->fresh()->debe_cambiar_password);
+
+        $otro = User::factory()->create(['estado' => 1]);
+        $service->update((string) $otro->id, ['nombres' => 'Sin cambio de clave']);
+        $this->assertFalse($otro->fresh()->debe_cambiar_password);
+
+        $service->update((string) $otro->id, ['password' => 'Reasignada.123']);
+        $this->assertTrue($otro->fresh()->debe_cambiar_password);
+
+        $service->update((string) $admin->id, ['password' => 'Propia.12345']);
+        $this->assertFalse($admin->fresh()->debe_cambiar_password);
     }
 }

@@ -79,6 +79,9 @@ class UserService
 
         $user = User::create($data);
 
+        // La contraseña la puso un administrador: es temporal y se exige cambiarla al entrar (ISO 27001 A.9.2.4)
+        $user->forceFill(['debe_cambiar_password' => true])->save();
+
         if (! empty($data['roles'])) {
             $user->syncRoles($data['roles']);
         }
@@ -123,8 +126,10 @@ class UserService
             }
         }
 
+        // Contraseña asignada por un administrador a otro usuario: temporal hasta que el titular la cambie
         if (! empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);
+            $user->debe_cambiar_password = $user->id !== Auth::id();
         } else {
             unset($data['password']);
         }
