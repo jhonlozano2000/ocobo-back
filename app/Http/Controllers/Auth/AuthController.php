@@ -372,6 +372,7 @@ class AuthController extends Controller
                 $user->forceFill([
                     'password' => Hash::make($password),
                     'remember_token' => Str::random(60),
+                    'debe_cambiar_password' => false,
                 ])->save();
             }
         );

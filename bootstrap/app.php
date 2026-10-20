@@ -8,6 +8,7 @@ use App\Http\Middleware\CombinedSecurityMiddleware;
 use App\Http\Middleware\DataIntegrity;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\EnsureApiAuthenticated;
+use App\Http\Middleware\ExigirCambioPassword;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\PropioOPermiso;
 use App\Http\Middleware\PuedeAlguno;
@@ -78,6 +79,7 @@ return Application::configure(basePath: dirname(__DIR__))
             AddQueuedCookiesToResponse::class,
             SecurityHeadersMiddleware::class,
             AuditLogMiddleware::class,
+            ExigirCambioPassword::class,
             ValidateContentType::class,
             ValidateRequestSize::class,
             DataIntegrity::class,

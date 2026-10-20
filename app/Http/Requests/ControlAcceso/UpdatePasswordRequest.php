@@ -33,6 +33,7 @@ class UpdatePasswordRequest extends FormRequest
             'password' => [
                 'required',
                 'confirmed',
+                'different:current_password',
                 Password::min(8)
                     ->mixedCase()
                     ->numbers()
@@ -51,6 +52,7 @@ class UpdatePasswordRequest extends FormRequest
             'current_password.string' => 'La contraseña actual debe ser una cadena de texto.',
             'password.required' => 'Debes ingresar una nueva contraseña.',
             'password.confirmed' => 'La confirmación de la nueva contraseña no coincide.',
+            'password.different' => 'La nueva contraseña debe ser distinta de la actual.',
             'password.min' => 'La nueva contraseña debe tener al menos :min caracteres.',
             'password.password.mixed' => 'La nueva contraseña debe contener al menos una letra mayúscula y una minúscula.',
             'password.password.numbers' => 'La nueva contraseña debe contener al menos un número.',

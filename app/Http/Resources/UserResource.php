@@ -87,6 +87,7 @@ class UserResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'has_2fa_enabled' => $this->two_factor_confirmed_at !== null,
+            'debe_cambiar_password' => (bool) $this->debe_cambiar_password,
         ];
 
         return $this->sanitizeOutput($data);

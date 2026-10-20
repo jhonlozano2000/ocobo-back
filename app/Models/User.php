@@ -75,6 +75,7 @@ class User extends Authenticatable
         'password' => 'hashed',
         'two_factor_confirmed_at' => 'datetime',
         'two_factor_secret' => 'encrypted',
+        'debe_cambiar_password' => 'boolean',
     ];
 
     public function getAvatarUrlAttribute()

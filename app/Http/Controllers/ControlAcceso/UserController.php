@@ -244,7 +244,10 @@ class UserController extends Controller
                 ]);
             }
 
-            $user->forceFill(['password' => Hash::make($request->validated('password'))])->save();
+            $user->forceFill([
+                'password' => Hash::make($request->validated('password')),
+                'debe_cambiar_password' => false,
+            ])->save();
 
             // Regenerar sesión después de cambiar contraseña
             $request->session()->regenerate();
