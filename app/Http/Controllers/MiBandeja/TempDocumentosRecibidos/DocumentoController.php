@@ -57,18 +57,27 @@ class DocumentoController extends Controller
      *       "creador": {"id": 1, "name": "Juan Perez"}
      *     }
      *   ],
-     *   "current_page": 1,
-     *   "total": 50
+     *   "pagination": {"total": 50, "per_page": 20, "current_page": 1, "last_page": 3}
      * }
      */
     public function index(Request $request): JsonResponse
     {
+        $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+        $search = trim((string) $request->input('search'));
+
         $documentos = $this->misDocumentos($request)
+            ->when($search !== '', fn ($q) => $q->where(fn ($b) => $b->where('titulo', 'like', "%{$search}%")
+                ->orWhereHas('creador', fn ($u) => $u->whereRaw("CONCAT(nombres, ' ', apellidos) LIKE ?", ["%{$search}%"]))))
             ->with(['usuarios', 'contenido', 'creador'])
             ->orderBy('updated_at', 'desc')
-            ->paginate(20);
+            ->paginate($request->integer('per_page', 20))
+            // Paginador (no ResourceCollection) para que la respuesta incluya `pagination`
+            ->through(fn (Documento $documento) => new DocumentoResource($documento));
 
-        return $this->successResponse(DocumentoResource::collection($documentos), 'Documentos obtenidos exitosamente');
+        return $this->successResponse($documentos, 'Documentos obtenidos exitosamente');
     }
 
     /**
