@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Helpers\MailConfigHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\AuthLoginRequest;
 use App\Http\Requests\Auth\AuthRegisterRequest;
@@ -314,6 +315,7 @@ class AuthController extends Controller
 
             $resetUrl = url("/es/reset-password?token={$token}&email=".urlencode($request->email));
 
+            MailConfigHelper::configureFromConfigVarias();
             Mail::to($request->email)->send(new PasswordResetMail($resetUrl));
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {

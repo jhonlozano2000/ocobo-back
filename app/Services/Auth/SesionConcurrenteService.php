@@ -2,6 +2,7 @@
 
 namespace App\Services\Auth;
 
+use App\Helpers\MailConfigHelper;
 use App\Mail\NuevoInicioSesionMail;
 use App\Models\ControlAcceso\UserNotificationSetting;
 use App\Models\ControlAcceso\UsersSession;
@@ -61,6 +62,7 @@ class SesionConcurrenteService
         }
 
         if ($preferencias?->new_browser_login_email && $user->email) {
+            MailConfigHelper::configureFromConfigVarias();
             Mail::to($user->email)->send(new NuevoInicioSesionMail($user->nombres ?? '', $ip, substr((string) $userAgent, 0, 200), $fecha));
         }
     }

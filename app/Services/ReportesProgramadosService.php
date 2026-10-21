@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\MailConfigHelper;
 use App\Mail\ReporteProgramadoMailable;
 use App\Models\ReporteProgramado;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -41,6 +42,8 @@ class ReportesProgramadosService
         };
 
         try {
+            // El SMTP de la entidad se configura en la app (config_varias), no en .env
+            MailConfigHelper::configureFromConfigVarias();
             Mail::to($item->destinatarios)->send(new ReporteProgramadoMailable($path, $item->asunto));
         } finally {
             @unlink($path);
