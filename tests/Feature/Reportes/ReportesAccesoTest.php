@@ -125,4 +125,34 @@ class ReportesAccesoTest extends TestCase
         $this->user->revokePermissionTo(self::LISTAR);
         $this->actingAs($this->user->fresh())->postJson("/api/reportes/programados/{$id}/ejecutar")->assertForbidden();
     }
+
+    /** 14.10: el scheduler envía los vencidos con el alcance de su dueño y los reagenda. */
+    public function test_el_comando_envia_los_vencidos_y_los_reagenda(): void
+    {
+        if (! Schema::hasColumn('reportes_programados', 'user_id')) {
+            $this->markTestSkipped('Falta migrar 2026_10_12_120000_add_user_id_to_reportes_programados.');
+        }
+        Mail::fake();
+        $this->user->givePermissionTo(self::LISTAR);
+
+        $programado = fn (string $asunto, array $extra = []) => ReporteProgramado::create($extra + [
+            'user_id' => $this->user->id, 'modulo' => 'recibidas', 'filtros' => [], 'formato' => 'csv', 'periodicidad' => 'daily',
+            'asunto' => $asunto, 'destinatarios' => ['destino@example.com'], 'proxima_ejecucion' => now()->subMinute(), 'activo' => true,
+        ]);
+        $vencido = $programado('Vencido '.uniqid());
+        $sinPermiso = $programado('Sin permiso '.uniqid(), ['user_id' => $this->otro->id]);
+        $futuro = $programado('Futuro '.uniqid(), ['proxima_ejecucion' => now()->addDay()]);
+        $inactivo = $programado('Inactivo '.uniqid(), ['activo' => false]);
+
+        $this->artisan('reportes:generar-programados');
+
+        $enviados = fn (ReporteProgramado $r) => Mail::sent(ReporteProgramadoMailable::class, fn ($m) => $m->hasSubject($r->asunto))->count();
+        $this->assertSame(1, $enviados($vencido));
+        $this->assertTrue($vencido->fresh()->proxima_ejecucion->isFuture());
+        $this->assertNotNull($vencido->fresh()->ultima_ejecucion);
+        // Un dueño sin permiso falla solo, sin frenar a los demás, y queda pendiente
+        $this->assertSame(0, $enviados($sinPermiso));
+        $this->assertNull($sinPermiso->fresh()->ultima_ejecucion);
+        $this->assertSame(0, $enviados($futuro) + $enviados($inactivo));
+    }
 }
