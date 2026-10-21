@@ -114,4 +114,28 @@ class ExportarDocumentoTest extends TestCase
         $this->assertStringNotContainsString('onerror="', $html);
         $this->assertStringNotContainsString('<b>', $html);
     }
+
+    public function test_exporta_los_formatos_de_la_cinta_tipo_word(): void
+    {
+        $id = $this->documento(['type' => 'doc', 'content' => [
+            ['type' => 'paragraph', 'attrs' => ['textAlign' => 'center'], 'content' => [
+                self::texto('H'),
+                self::texto('2', [['type' => 'subscript']]),
+                self::texto('m'),
+                self::texto('3', [['type' => 'superscript']]),
+                self::texto('Título', [['type' => 'textStyle', 'attrs' => ['fontFamily' => "'Times New Roman', serif", 'fontSize' => '14pt']]]),
+            ]],
+            ['type' => 'pageBreak'],
+            ['type' => 'paragraph', 'attrs' => ['textAlign' => 'x;color:red'], 'content' => [
+                self::texto('raro', [['type' => 'textStyle', 'attrs' => ['fontFamily' => 'a;}body{display:none', 'fontSize' => '1;x', 'color' => 'red;x']]]),
+            ]],
+        ]]);
+
+        $html = $this->exportar($id, 'html');
+        $this->assertStringContainsString('<p style="text-align: center;">H<sub>2</sub>m<sup>3</sup>', $html);
+        $this->assertStringContainsString('<span style="font-family: &#039;Times New Roman&#039;, serif; font-size: 14pt;">Título</span>', $html);
+        $this->assertStringContainsString('<div style="page-break-after: always;"></div>', $html);
+        // Valores que no son CSS válido se descartan en vez de inyectarse en el style
+        $this->assertStringContainsString('<p>raro</p>', $html);
+    }
 }

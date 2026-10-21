@@ -257,11 +257,11 @@ HTML;
 
         switch ($node['type'] ?? null) {
             case 'paragraph':
-                return '<p>'.$this->renderInlineContent($node['content'] ?? []).'</p>';
+                return '<p'.$this->estiloBloque($node).'>'.$this->renderInlineContent($node['content'] ?? []).'</p>';
             case 'heading':
                 $level = min(max((int) ($node['attrs']['level'] ?? 1), 1), 6);
 
-                return "<h{$level}>".$this->renderInlineContent($node['content'] ?? [])."</h{$level}>";
+                return "<h{$level}".$this->estiloBloque($node).'>'.$this->renderInlineContent($node['content'] ?? [])."</h{$level}>";
             case 'bulletList':
                 return '<ul>'.$hijos().'</ul>';
             case 'orderedList':
@@ -280,6 +280,8 @@ HTML;
                 return '<pre><code>'.$this->renderInlineContent($node['content'] ?? []).'</code></pre>';
             case 'horizontalRule':
                 return '<hr>';
+            case 'pageBreak':
+                return '<div style="page-break-after: always;"></div>';
             case 'table':
                 return '<table border="1" cellpadding="5" cellspacing="0">'.$hijos().'</table>';
             case 'tableRow':
@@ -337,6 +339,12 @@ HTML;
                     case 'code':
                         $text = '<code>'.$text.'</code>';
                         break;
+                    case 'subscript':
+                        $text = '<sub>'.$text.'</sub>';
+                        break;
+                    case 'superscript':
+                        $text = '<sup>'.$text.'</sup>';
+                        break;
                     case 'highlight':
                         $color = $this->colorCss($mark['attrs']['color'] ?? null) ?? 'yellow';
                         $text = '<span style="background-color: '.$this->esc($color).';">'.$text.'</span>';
@@ -345,9 +353,14 @@ HTML;
                         $text = '<a href="'.$this->esc($this->hrefSeguro($mark['attrs']['href'] ?? '')).'">'.$text.'</a>';
                         break;
                     case 'textStyle':
-                        $color = $this->colorCss($mark['attrs']['color'] ?? null);
-                        if ($color) {
-                            $text = '<span style="color: '.$this->esc($color).';">'.$text.'</span>';
+                        $estilos = array_filter([
+                            'color' => $this->colorCss($mark['attrs']['color'] ?? null),
+                            'font-family' => $this->valorCss($mark['attrs']['fontFamily'] ?? null, '/^[\w\s,\'"-]+$/u'),
+                            'font-size' => $this->valorCss($mark['attrs']['fontSize'] ?? null, '/^\d+(\.\d+)?(pt|px|em|rem|%)$/'),
+                        ]);
+                        if ($estilos) {
+                            $css = implode(' ', array_map(fn ($prop, $valor) => "{$prop}: {$valor};", array_keys($estilos), $estilos));
+                            $text = '<span style="'.$this->esc($css).'">'.$text.'</span>';
                         }
                         break;
                 }
@@ -370,6 +383,22 @@ HTML;
         $href = trim((string) $href);
 
         return preg_match('#^(https?://|mailto:|\#|/(?!/))#i', $href) ? $href : '#';
+    }
+
+    /** Valor CSS que cumple el patrón dado, o null. */
+    private function valorCss(mixed $valor, string $patron): ?string
+    {
+        $valor = trim((string) $valor);
+
+        return $valor !== '' && preg_match($patron, $valor) ? $valor : null;
+    }
+
+    /** Alineación del párrafo o título (solo los valores de TipTap). */
+    private function estiloBloque(array $node): string
+    {
+        $alineacion = $node['attrs']['textAlign'] ?? null;
+
+        return in_array($alineacion, ['left', 'center', 'right', 'justify'], true) ? ' style="text-align: '.$alineacion.';"' : '';
     }
 
     /** Color CSS válido (hex, nombre, rgb/hsl) o null: impide inyectar otras reglas en el style. */
