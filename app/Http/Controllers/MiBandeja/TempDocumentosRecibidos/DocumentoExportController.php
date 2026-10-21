@@ -38,7 +38,8 @@ class DocumentoExportController extends Controller
 
         try {
             $rutaArchivo = $this->exportService->{$metodos[$formato]}($documento);
-            $nombreArchivo = $documento->titulo.'.'.$formato;
+            // Las barras no son válidas en el nombre de descarga (Symfony lanza excepción)
+            $nombreArchivo = str_replace(['/', '\\'], '-', $documento->titulo).'.'.$formato;
 
             return response()->download($rutaArchivo, $nombreArchivo, [
                 'Content-Type' => $this->getMimeType($formato),

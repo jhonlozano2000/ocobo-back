@@ -54,6 +54,7 @@ class DocumentoExportService
 
     private function wrapHtmlForPdf(string $titulo, string $contenido, array $config, string $autor): string
     {
+        $tituloHtml = $this->esc($titulo);
         $margenes = $config['margenes'] ?? ['superior' => 25.4, 'inferior' => 25.4, 'izquierdo' => 25.4, 'derecho' => 25.4];
         $mmToPt = 2.83465;
 
@@ -125,7 +126,7 @@ class DocumentoExportService
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>{$titulo}</title>
+    <title>{$tituloHtml}</title>
     <style>
         @page {
             margin-top: {$marginTop}pt;
@@ -180,7 +181,7 @@ HTML;
         $phpWord = new PhpWord;
 
         $section = $phpWord->addSection();
-        $this->agregarContenidoASection($section, $contenido->contenido_yjs ?? []);
+        $this->agregarContenidoASection($section, $this->bloques($contenido->contenido_yjs ?? []));
 
         $filename = 'documento_'.$documento->id.'_'.time().'.docx';
         $path = 'exports/'.$filename;
@@ -221,123 +222,106 @@ HTML;
         return Storage::disk('local')->path($path);
     }
 
-    private function contenidoToHtml(array $contenido): string
+    /**
+     * Bloques de primer nivel del documento. El editor guarda el JSON de TipTap
+     * ({type: doc, content: [...]}); se acepta también una lista de bloques suelta.
+     *
+     * @return array<int, array>
+     */
+    private function bloques(array $contenido): array
     {
-        if (empty($contenido)) {
-            return '<p></p>';
-        }
+        $bloques = ($contenido['type'] ?? null) === 'doc' ? ($contenido['content'] ?? []) : $contenido;
 
-        $html = '';
-
-        foreach ($contenido as $block) {
-            if (! isset($block['type'])) {
-                continue;
-            }
-
-            switch ($block['type']) {
-                case 'doc':
-                    $html .= $this->renderNode($block);
-                    break;
-                case 'paragraph':
-                    $html .= '<p>'.$this->renderInlineContent($block['content'] ?? []).'</p>';
-                    break;
-                case 'heading':
-                    $level = $block['attrs']['level'] ?? 1;
-                    $html .= "<h{$level}>".$this->renderInlineContent($block['content'] ?? [])."</h{$level}>";
-                    break;
-                case 'bulletList':
-                case 'orderedList':
-                    $tag = $block['type'] === 'bulletList' ? 'ul' : 'ol';
-                    $html .= "<{$tag}>";
-                    foreach ($block['content'] ?? [] as $item) {
-                        $html .= '<li>'.$this->renderNode($item).'</li>';
-                    }
-                    $html .= "</{$tag}>";
-                    break;
-                case 'taskList':
-                    $html .= '<ul>';
-                    foreach ($block['content'] ?? [] as $item) {
-                        $checked = $item['attrs']['checked'] ?? false ? 'checked' : '';
-                        $html .= '<li><input type="checkbox" '.$checked.' disabled> '.$this->renderNode($item).'</li>';
-                    }
-                    $html .= '</ul>';
-                    break;
-                case 'blockquote':
-                    $html .= '<blockquote>'.$this->renderInlineContent($block['content'] ?? []).'</blockquote>';
-                    break;
-                case 'codeBlock':
-                    $code = $this->renderInlineContent($block['content'] ?? []);
-                    $html .= '<pre><code>'.$code.'</code></pre>';
-                    break;
-                case 'horizontalRule':
-                    $html .= '<hr>';
-                    break;
-                case 'table':
-                    $html .= '<table border="1" cellpadding="5" cellspacing="0">';
-                    foreach ($block['content'] ?? [] as $row) {
-                        $isHeader = ($row['type'] ?? '') === 'tableRow' && isset($row['content'][0]['type']) && ($row['content'][0]['type'] ?? '') === 'tableHeader';
-                        $tag = $isHeader ? 'th' : 'td';
-                        $html .= '<tr>';
-                        foreach ($row['content'] ?? [] as $cell) {
-                            $html .= '<'.$tag.'>'.$this->renderNode($cell).'</'.$tag.'>';
-                        }
-                        $html .= '</tr>';
-                    }
-                    $html .= '</table>';
-                    break;
-                case 'image':
-                    $src = $block['attrs']['src'] ?? '';
-                    $alt = $block['attrs']['alt'] ?? '';
-                    $html .= '<img src="'.$src.'" alt="'.$alt.'" style="max-width: 100%;">';
-                    break;
-            }
-        }
-
-        return $html;
+        return array_values(array_filter($bloques, 'is_array'));
     }
 
-    private function renderNode($node): string
+    private function contenidoToHtml(array $contenido): string
     {
-        if (! isset($node['type'])) {
-            return '';
-        }
+        $html = $this->renderHijos($this->bloques($contenido));
 
-        switch ($node['type']) {
+        return $html !== '' ? $html : '<p></p>';
+    }
+
+    private function renderHijos(array $nodos): string
+    {
+        return implode('', array_map(fn ($nodo) => is_array($nodo) ? $this->renderNode($nodo) : '', $nodos));
+    }
+
+    /**
+     * Convierte un nodo de TipTap a HTML. Todo texto y atributo que viene del documento se escapa:
+     * el HTML exportado se abre en el navegador y el PDF lo interpreta dompdf.
+     */
+    private function renderNode(array $node): string
+    {
+        $hijos = fn () => $this->renderHijos($node['content'] ?? []);
+
+        switch ($node['type'] ?? null) {
             case 'paragraph':
                 return '<p>'.$this->renderInlineContent($node['content'] ?? []).'</p>';
             case 'heading':
-                $level = $node['attrs']['level'] ?? 1;
+                $level = min(max((int) ($node['attrs']['level'] ?? 1), 1), 6);
 
                 return "<h{$level}>".$this->renderInlineContent($node['content'] ?? [])."</h{$level}>";
+            case 'bulletList':
+                return '<ul>'.$hijos().'</ul>';
+            case 'orderedList':
+                return '<ol>'.$hijos().'</ol>';
+            case 'taskList':
+                return '<ul style="list-style: none;">'.$hijos().'</ul>';
             case 'listItem':
+                return '<li>'.$hijos().'</li>';
             case 'taskItem':
-                return $this->renderInlineContent($node['content'] ?? []);
-            case 'tableCell':
+                $checked = ! empty($node['attrs']['checked']) ? ' checked' : '';
+
+                return '<li><input type="checkbox"'.$checked.' disabled> '.$hijos().'</li>';
+            case 'blockquote':
+                return '<blockquote>'.$hijos().'</blockquote>';
+            case 'codeBlock':
+                return '<pre><code>'.$this->renderInlineContent($node['content'] ?? []).'</code></pre>';
+            case 'horizontalRule':
+                return '<hr>';
+            case 'table':
+                return '<table border="1" cellpadding="5" cellspacing="0">'.$hijos().'</table>';
+            case 'tableRow':
+                return '<tr>'.$hijos().'</tr>';
             case 'tableHeader':
-                return $this->renderInlineContent($node['content'] ?? []);
+                return '<th>'.$hijos().'</th>';
+            case 'tableCell':
+                return '<td>'.$hijos().'</td>';
+            case 'image':
+                $src = (string) ($node['attrs']['src'] ?? '');
+                if (! preg_match('#^(https?://|data:image/)#i', $src)) {
+                    return '';
+                }
+
+                return '<img src="'.$this->esc($src).'" alt="'.$this->esc($node['attrs']['alt'] ?? '').'" style="max-width: 100%;">';
+            case 'text':
+            case 'hardBreak':
+                return $this->renderInlineContent([$node]);
             default:
-                return $this->renderInlineContent($node['content'] ?? []);
+                return $hijos();
         }
     }
 
     private function renderInlineContent(array $content): string
     {
-        if (empty($content)) {
-            return '';
-        }
-
         $html = '';
 
         foreach ($content as $inline) {
-            if (! isset($inline['type'])) {
+            if (! is_array($inline) || ! isset($inline['type'])) {
                 continue;
             }
 
-            $text = $inline['text'] ?? '';
-            $marks = $inline['marks'] ?? [];
+            if ($inline['type'] === 'hardBreak') {
+                $html .= '<br>';
 
-            foreach ($marks as $mark) {
-                switch ($mark['type']) {
+                continue;
+            }
+
+            $text = $this->esc($inline['text'] ?? '');
+
+            foreach ($inline['marks'] ?? [] as $mark) {
+                switch ($mark['type'] ?? null) {
                     case 'bold':
                         $text = '<strong>'.$text.'</strong>';
                         break;
@@ -354,17 +338,16 @@ HTML;
                         $text = '<code>'.$text.'</code>';
                         break;
                     case 'highlight':
-                        $color = $mark['attrs']['color'] ?? 'yellow';
-                        $text = '<span style="background-color: '.$color.';">'.$text.'</span>';
+                        $color = $this->colorCss($mark['attrs']['color'] ?? null) ?? 'yellow';
+                        $text = '<span style="background-color: '.$this->esc($color).';">'.$text.'</span>';
                         break;
                     case 'link':
-                        $href = $mark['attrs']['href'] ?? '#';
-                        $text = '<a href="'.$href.'">'.$text.'</a>';
+                        $text = '<a href="'.$this->esc($this->hrefSeguro($mark['attrs']['href'] ?? '')).'">'.$text.'</a>';
                         break;
                     case 'textStyle':
-                        $color = $mark['attrs']['color'] ?? '';
+                        $color = $this->colorCss($mark['attrs']['color'] ?? null);
                         if ($color) {
-                            $text = '<span style="color: '.$color.';">'.$text.'</span>';
+                            $text = '<span style="color: '.$this->esc($color).';">'.$text.'</span>';
                         }
                         break;
                 }
@@ -376,11 +359,32 @@ HTML;
         return $html;
     }
 
+    private function esc(mixed $valor): string
+    {
+        return htmlspecialchars((string) $valor, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+
+    /** Solo enlaces web, de correo o internos: descarta javascript:, data:, etc. */
+    private function hrefSeguro(mixed $href): string
+    {
+        $href = trim((string) $href);
+
+        return preg_match('#^(https?://|mailto:|\#|/(?!/))#i', $href) ? $href : '#';
+    }
+
+    /** Color CSS válido (hex, nombre, rgb/hsl) o null: impide inyectar otras reglas en el style. */
+    private function colorCss(mixed $color): ?string
+    {
+        $color = trim((string) $color);
+
+        return preg_match('/^(#[0-9a-f]{3,8}|[a-z]{3,20}|(rgb|hsl)a?\([\d\s.,%]+\))$/i', $color) ? $color : null;
+    }
+
     private function contenidoToText(array $contenido): string
     {
         $text = '';
 
-        foreach ($contenido as $block) {
+        foreach ($this->bloques($contenido) as $block) {
             if (! isset($block['type'])) {
                 continue;
             }
@@ -392,8 +396,12 @@ HTML;
                 case 'paragraph':
                     $text .= $this->renderInlineText($block['content'] ?? [])."\n\n";
                     break;
+                case 'listItem':
+                case 'taskItem':
+                    $text .= $this->contenidoToText($block['content'] ?? []);
+                    break;
                 case 'heading':
-                    $text .= strtoupper($this->renderInlineText($block['content'] ?? []))."\n\n";
+                    $text .= mb_strtoupper($this->renderInlineText($block['content'] ?? []))."\n\n";
                     break;
                 case 'bulletList':
                     foreach ($block['content'] ?? [] as $item) {
@@ -428,7 +436,7 @@ HTML;
                 case 'table':
                     foreach ($block['content'] ?? [] as $row) {
                         foreach ($row['content'] ?? [] as $cell) {
-                            $text .= $this->renderInlineText($cell['content'] ?? [])."\t";
+                            $text .= $this->contenidoToText($cell['content'] ?? [])."\t";
                         }
                         $text .= "\n";
                     }
@@ -534,13 +542,15 @@ HTML;
 
     private function wrapHtmlDocument(string $titulo, string $contenido): string
     {
+        $tituloHtml = $this->esc($titulo);
+
         return <<<HTML
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{$titulo}</title>
+    <title>{$tituloHtml}</title>
     <style>
         body {
             font-family: 'Times New Roman', Times, serif;
@@ -601,7 +611,7 @@ HTML;
     </style>
 </head>
 <body>
-    <h1>{$titulo}</h1>
+    <h1>{$tituloHtml}</h1>
     {$contenido}
 </body>
 </html>
