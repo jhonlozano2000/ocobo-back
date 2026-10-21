@@ -65,6 +65,33 @@ class MetadataAccesoRadicadoTest extends TestCase
         $this->assertDatabaseHas('ventanilla_radica_reci_metadata', ['archivo_id' => $this->archivoId, 'descripcion' => 'original']);
     }
 
+    public function test_la_metadata_de_pqrs_exige_acceso_a_la_pqrs(): void
+    {
+        Permission::findOrCreate('Radicar -> PQRSF -> Mostrar', 'web');
+        $this->creador->givePermissionTo('Radicar -> PQRSF -> Mostrar');
+        $this->ajeno->givePermissionTo('Radicar -> PQRSF -> Mostrar');
+        $archivoId = $this->archivoId - 1;
+
+        Schema::disableForeignKeyConstraints();
+        $radicadoId = DB::table('ventanilla_radica_reci')->insertGetId([
+            'num_radicado' => 'M1705M-'.uniqid(), 'medio_recep_id' => 1, 'usuario_crea' => $this->creador->id,
+        ]);
+        $pqrsId = DB::table('ventanilla_pqrs')->insertGetId([
+            'ventanilla_radica_reci_id' => $radicadoId, 'tipo_pqrs_id' => 1, 'fecha_vencimiento' => '2026-12-31',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('ventanilla_pqrs_metadata')->insert([
+            'archivo_id' => $archivoId, 'pqrs_id' => $pqrsId, 'descripcion' => 'original',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        Schema::enableForeignKeyConstraints();
+
+        $this->actingAs($this->creador)->getJson("/api/ventanilla/metadata/archivos/{$archivoId}/pqrs")->assertOk()
+            ->assertJsonPath('data.metadata.descripcion', 'original');
+        $this->actingAs($this->ajeno)->getJson("/api/ventanilla/metadata/archivos/{$archivoId}/pqrs")->assertNotFound();
+        $this->actingAs($this->ajeno)->getJson("/api/ventanilla/metadata/historial/{$archivoId}/pqrs")->assertNotFound();
+    }
+
     public function test_el_centinela_cero_de_los_digitales_no_es_direccionable(): void
     {
         Schema::disableForeignKeyConstraints();

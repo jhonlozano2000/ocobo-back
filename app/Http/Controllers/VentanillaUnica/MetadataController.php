@@ -23,7 +23,7 @@ class MetadataController extends Controller
     public function show(int $archivoId, string $tipo = 'reci'): JsonResponse
     {
         $this->autorizarPorTipo($tipo, 'Mostrar');
-        $this->autorizarArchivo($archivoId, $tipo === 'pqrs' ? VentanillaRadicaReciMetadata::class : $this->resolverModelo($tipo));
+        $this->autorizarArchivo($archivoId, $this->resolverModelo($tipo));
 
         $resultado = FileMetadataHelper::obtenerMetadataConInfo($archivoId, $tipo);
 
@@ -37,7 +37,7 @@ class MetadataController extends Controller
     public function historial(int $archivoId, string $tipo = 'reci'): JsonResponse
     {
         $this->autorizarPorTipo($tipo, 'Mostrar');
-        $this->autorizarArchivo($archivoId, $tipo === 'pqrs' ? VentanillaRadicaReciMetadata::class : $this->resolverModelo($tipo));
+        $this->autorizarArchivo($archivoId, $this->resolverModelo($tipo));
 
         $historial = FileMetadataHelper::obtenerHistorialPorArchivo($archivoId, $tipo);
 
@@ -195,7 +195,7 @@ class MetadataController extends Controller
     /**
      * El permiso del módulo no basta: el archivo pertenece a un radicado y el usuario
      * debe tener acceso a ese radicado (ABAC). Se responde 404 para no revelar si existe.
-     * show/historial leen la metadata de recibidos cuando tipo=pqrs, de ahí el modelo explícito.
+     * Se valida contra la misma tabla que lee el helper: con tipo=pqrs es ventanilla_pqrs_metadata.
      */
     private function autorizarArchivo(int $archivoId, string $modelo): void
     {
