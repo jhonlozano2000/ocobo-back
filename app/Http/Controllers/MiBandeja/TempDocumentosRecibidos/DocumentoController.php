@@ -63,14 +63,43 @@ class DocumentoController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $documentos = Documento::whereHas('usuarios', function ($query) use ($request) {
-            $query->where('user_id', $request->user()->id);
-        })->orWhere('user_id', $request->user()->id)
+        $documentos = $this->misDocumentos($request)
             ->with(['usuarios', 'contenido', 'creador'])
             ->orderBy('updated_at', 'desc')
             ->paginate(20);
 
         return $this->successResponse(DocumentoResource::collection($documentos), 'Documentos obtenidos exitosamente');
+    }
+
+    /**
+     * Cuenta los documentos del usuario por estado para las tarjetas de Mis Documentos.
+     *
+     * El listado viene paginado, así que el front no puede contarlos por su cuenta.
+     *
+     * @response 200 {"data": {"total": 5, "borrador": 3, "en_revision": 1, "firmado": 1}}
+     */
+    public function estadisticas(Request $request): JsonResponse
+    {
+        $porEstado = $this->misDocumentos($request)
+            ->selectRaw('estado, COUNT(*) as cantidad')
+            ->groupBy('estado')
+            ->pluck('cantidad', 'estado');
+
+        return $this->successResponse([
+            'total' => (int) $porEstado->sum(),
+            'borrador' => (int) ($porEstado['borrador'] ?? 0),
+            'en_revision' => (int) ($porEstado['en_revision'] ?? 0),
+            'firmado' => (int) ($porEstado['firmado'] ?? 0),
+        ], 'Estadísticas obtenidas exitosamente');
+    }
+
+    /** Documentos que creó el usuario o en los que colabora. */
+    private function misDocumentos(Request $request)
+    {
+        $userId = $request->user()->id;
+
+        return Documento::where(fn ($q) => $q->where('user_id', $userId)
+            ->orWhereHas('usuarios', fn ($u) => $u->where('user_id', $userId)));
     }
 
     /**

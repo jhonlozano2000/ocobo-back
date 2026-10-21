@@ -14,6 +14,7 @@ Route::middleware(['auth:sanctum', 'throttle:documentos'])->prefix('comunicacion
     Route::post('/documentos/importar-html', [DocumentoImportController::class, 'importarHtml']);
 
     Route::get('/documentos', [DocumentoController::class, 'index']);
+    Route::get('/documentos/estadisticas', [DocumentoController::class, 'estadisticas']);
     Route::post('/documentos', [DocumentoController::class, 'store']);
 
     Route::middleware('can:ver,documento')->group(function () {
