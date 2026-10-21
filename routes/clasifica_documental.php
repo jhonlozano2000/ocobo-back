@@ -46,6 +46,7 @@ Route::middleware('throttle:config-operations')->group(function () {
             Route::get('/unidad/{unidadId}', [ClasificacionDocumentalTVDController::class, 'listarPorUnidad'])->name('por-unidad')->middleware('can:'.$pt.'Listar');
 
             Route::post('/import', [ClasificacionDocumentalTVDController::class, 'import'])->name('import')->middleware('can:'.$pt.'Importar');
+            Route::get('/plantilla', [ClasificacionDocumentalTVDController::class, 'plantilla'])->name('plantilla')->middleware('can:'.$pt.'Importar');
             Route::post('/validate', [ClasificacionDocumentalTVDController::class, 'validar'])->name('validate')->middleware('can:'.$pt.'Listar');
             Route::get('/export', [ClasificacionDocumentalTVDController::class, 'export'])->name('export')->middleware('can:'.$pt.'Exportar');
             Route::post('/aprobar/{periodoId}', [ClasificacionDocumentalTVDController::class, 'aprobar'])->name('aprobar')->middleware('can:'.$pt.'Versiones');

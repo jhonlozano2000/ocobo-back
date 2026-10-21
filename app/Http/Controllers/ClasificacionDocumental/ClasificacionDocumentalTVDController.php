@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -164,6 +166,40 @@ class ClasificacionDocumentalTVDController extends Controller
 
             return $this->errorResponse('Error al importar la TVD', $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Plantilla vacía con la estructura que lee TVDService::importFromExcel: B4 = código de la
+     * unidad del período, encabezados en la fila 6 y datos desde la fila 7. Se genera en vez de
+     * guardarse en storage para que no se desalinee del importador.
+     */
+    public function plantilla(): BinaryFileResponse
+    {
+        $libro = new Spreadsheet;
+        $hoja = $libro->getActiveSheet()->setTitle('TVD');
+
+        $hoja->setCellValue('A1', 'TABLA DE VALORACIÓN DOCUMENTAL');
+        $hoja->setCellValue('A2', 'Serie: A = unidad, B = código de la serie y C vacía. Subserie: A, B y C = código de la subserie (o las tres vacías, debajo de su serie).');
+        $hoja->setCellValue('A3', 'Gestión y Central (años) solo aplican a la serie. Los datos se leen desde la fila 7.');
+        $hoja->setCellValue('A4', 'Unidad administrativa');
+        $hoja->setCellValue('C4', '← Código de la unidad en el período elegido al importar');
+        $hoja->fromArray(['Unidad', 'Serie', 'Subserie', '', 'Nombre', '', '', 'Gestión', 'Central', 'Soporte', 'Disposición final'], null, 'A6');
+
+        $hoja->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $hoja->getStyle('A4')->getFont()->setBold(true);
+        $hoja->getStyle('B4')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FFF2CC');
+        $hoja->getStyle('A6:K6')->getFont()->setBold(true);
+        $hoja->getStyle('A6:K6')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('D9E1F2');
+        // Códigos como texto: "010" no debe llegar como 10
+        $hoja->getStyle('A4:C1000')->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
+        foreach (['A' => 12, 'B' => 14, 'C' => 14, 'D' => 4, 'E' => 45, 'F' => 4, 'G' => 4, 'H' => 10, 'I' => 10, 'J' => 14, 'K' => 18] as $col => $ancho) {
+            $hoja->getColumnDimension($col)->setWidth($ancho);
+        }
+
+        $ruta = tempnam(sys_get_temp_dir(), 'tvd_plantilla');
+        (new Xlsx($libro))->save($ruta);
+
+        return response()->download($ruta, 'Ocobo - Plantilla TVD.xlsx')->deleteFileAfterSend();
     }
 
     public function validar(Request $request): JsonResponse

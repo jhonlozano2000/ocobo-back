@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
@@ -126,6 +127,32 @@ class FondosAcumuladosTest extends TestCase
         (new Xlsx($libro))->save($ruta);
 
         return new UploadedFile($ruta, 'tvd.xlsx', null, null, true);
+    }
+
+    public function test_la_plantilla_descargable_se_importa_tal_cual(): void
+    {
+        $periodo = $this->periodo($this->fondo());
+        $unidad = $this->unidad($periodo, '010');
+
+        $respuesta = $this->actingAs($this->user)->get('/api/clasifica-documental/tvd/plantilla')->assertOk();
+        $ruta = tempnam(sys_get_temp_dir(), 'tvd').'.xlsx';
+        copy($respuesta->baseResponse->getFile()->getPathname(), $ruta);
+
+        // Se llena como lo haría el usuario: código en B4 y filas desde la 7
+        $libro = IOFactory::load($ruta);
+        $hoja = $libro->getActiveSheet();
+        $this->assertSame('Nombre', $hoja->getCell('E6')->getValue());
+        $hoja->setCellValue('B4', '010');
+        $hoja->fromArray([
+            ['010', 'S1', '', '', 'Actas', '', '', 2, 8, 'Papel', 'CT'],
+            ['010', 'S1', 'S1.1', '', 'Actas de junta', '', '', '', '', 'Papel', 'CT'],
+        ], null, 'A7');
+        (new Xlsx($libro))->save($ruta);
+
+        $this->actingAs($this->user)
+            ->post('/api/clasifica-documental/tvd/import', ['archivo' => new UploadedFile($ruta, 'tvd.xlsx', null, null, true), 'periodo_id' => $periodo])
+            ->assertOk()->assertJsonPath('data.inserted', 2);
+        $this->assertSame(2, DB::table('clasificacion_documental_tvd')->where('unidad_id', $unidad)->count());
     }
 
     public function test_importa_en_la_unidad_del_periodo_elegido(): void
