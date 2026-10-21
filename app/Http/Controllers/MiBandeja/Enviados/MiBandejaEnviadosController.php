@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados as VentanillaRadicaEnviado;
 use App\Services\MiBandeja\MiBandejaFiltroService;
+use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -114,9 +115,10 @@ class MiBandejaEnviadosController extends Controller
             }
 
             $total = (clone $baseQuery)->count();
-            $pendiente = (clone $baseQuery)->where('estado_trabajo', 'PENDIENTE')->count();
+            // Estados que asigna calcularEstadoTrabajo(); PENDIENTE no existe y FINALIZADO casi nunca llega
+            $pendiente = RadicadoEstadoTrabajoService::filtrarPendientes(clone $baseQuery)->count();
             $enProceso = (clone $baseQuery)->where('estado_trabajo', 'EN_PROCESO')->count();
-            $finalizado = (clone $baseQuery)->where('estado_trabajo', 'FINALIZADO')->count();
+            $finalizado = (clone $baseQuery)->whereIn('estado_trabajo', RadicadoEstadoTrabajoService::ESTADOS_TERMINADOS)->count();
 
             return $this->successResponse([
                 'total' => $total,

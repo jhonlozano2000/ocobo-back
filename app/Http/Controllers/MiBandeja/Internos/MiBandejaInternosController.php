@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Services\MiBandeja\MiBandejaFiltroService;
+use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -165,9 +166,10 @@ class MiBandejaInternosController extends Controller
             }
 
             $total = (clone $baseQuery)->count();
-            $borrador = (clone $baseQuery)->where('estado_trabajo', 'BORRADOR')->count();
+            // Estados que asigna calcularEstadoTrabajo(); BORRADOR no existe y FINALIZADO casi nunca llega
+            $borrador = RadicadoEstadoTrabajoService::filtrarPendientes(clone $baseQuery)->count();
             $enProceso = (clone $baseQuery)->where('estado_trabajo', 'EN_PROCESO')->count();
-            $finalizado = (clone $baseQuery)->where('estado_trabajo', 'FINALIZADO')->count();
+            $finalizado = (clone $baseQuery)->whereIn('estado_trabajo', RadicadoEstadoTrabajoService::ESTADOS_TERMINADOS)->count();
 
             return $this->successResponse([
                 'total' => $total,

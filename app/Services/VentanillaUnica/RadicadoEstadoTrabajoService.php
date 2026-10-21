@@ -30,6 +30,16 @@ class RadicadoEstadoTrabajoService
         self::ESTADO_TRAMITADO,
     ];
 
+    /** El cálculo automático deja TRAMITADO al finalizar el grupo; FINALIZADO solo llega a mano. */
+    public const ESTADOS_TERMINADOS = [self::ESTADO_TRAMITADO, self::ESTADO_FINALIZADO];
+
+    /** Sin grupo colaborativo ni cierre: RECIBIDO, null (sin vencimiento) o estados viejos. */
+    public static function filtrarPendientes($query)
+    {
+        return $query->where(fn ($q) => $q->whereNull('estado_trabajo')
+            ->orWhereNotIn('estado_trabajo', [self::ESTADO_EN_PROCESO, ...self::ESTADOS_TERMINADOS, 'ANULADO']));
+    }
+
     public const DIAS_PROXIMO_VENCER = 5;
 
     public function calcularEstadoAutomatico(VentanillaRadicaReci $radicado): string

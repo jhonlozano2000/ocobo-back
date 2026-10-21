@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\MiBandeja\MiBandejaFiltroService;
+use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -133,17 +134,20 @@ class MiBandejaRecibidosController extends Controller
             $total = (clone $baseQuery)->count();
             $recibido = (clone $baseQuery)->where('estado_trabajo', 'RECIBIDO')->count();
             $enProceso = (clone $baseQuery)->where('estado_trabajo', 'EN_PROCESO')->count();
-            $finalizado = (clone $baseQuery)->where('estado_trabajo', 'FINALIZADO')->count();
+            // Un radicado tramitado (grupo finalizado) ya no está vigente ni puede vencerse
+            $cerrados = [...RadicadoEstadoTrabajoService::ESTADOS_TERMINADOS, 'ANULADO'];
+            $finalizado = (clone $baseQuery)->whereIn('estado_trabajo', RadicadoEstadoTrabajoService::ESTADOS_TERMINADOS)->count();
+            $anulado = (clone $baseQuery)->where('estado_trabajo', 'ANULADO')->count();
             $vencido = (clone $baseQuery)->where('fec_venci', '<', CalendarioHelper::hoy()->toDateString())
-                ->whereNotIn('estado_trabajo', ['FINALIZADO', 'ANULADO'])->count();
+                ->whereNotIn('estado_trabajo', $cerrados)->count();
             $porVencer = (clone $baseQuery)->whereBetween('fec_venci', [CalendarioHelper::hoy()->toDateString(), CalendarioHelper::limiteProximoAVencer()->toDateString()])
-                ->whereNotIn('estado_trabajo', ['FINALIZADO', 'ANULADO'])->count();
+                ->whereNotIn('estado_trabajo', $cerrados)->count();
             $sinArchivoDigital = (clone $baseQuery)->whereNull('archivo_digital')
                 ->where('estado_trabajo', '!=', 'ANULADO')->count();
             $porFirmar = (clone $baseQuery)->where('estado_firma', '!=', 'firmado')
                 ->whereNotNull('estado_firma')
                 ->where('estado_trabajo', '!=', 'ANULADO')->count();
-            $vigentes = $total - $vencido - $porVencer - $finalizado;
+            $vigentes = $total - $vencido - $porVencer - $finalizado - $anulado;
 
             return $this->successResponse([
                 'total' => $total,
