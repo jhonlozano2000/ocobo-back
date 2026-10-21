@@ -52,6 +52,16 @@ class VentanillaRadicaReciDigitalController extends Controller
                 return $this->errorResponse('Radicación no encontrada', null, 404);
             }
 
+            $pqrs = null;
+            if ($request->input('tipo') === 'pqrs') {
+                $pqrs = VentanillaPqrs::pqrsDelRadicado($radicado->id, $request->input('pqrs_id'));
+                if (! $pqrs) {
+                    DB::rollBack();
+
+                    return $this->errorResponse('La PQRS no corresponde a esta radicación', null, 422);
+                }
+            }
+
             $archivo = $request->file('archivo_digital');
             $archivoActual = $radicado->archivo_digital;
 
@@ -95,14 +105,13 @@ class VentanillaRadicaReciDigitalController extends Controller
             $radicado->update(['ocr' => null, 'ocr_aplicado' => false]);
             AplicarOcrArchivoDigital::programar($radicado, self::DISK, $nuevoArchivo, respaldoLocal: true);
 
-            if ($request->input('tipo') === 'pqrs' && $request->input('pqrs_id')) {
-                $pqrs = VentanillaPqrs::find($request->input('pqrs_id'));
-                if ($pqrs) {
-                    FileMetadataHelper::crearMetadataArchivoPqrs(
-                        $pqrs, $nuevoArchivo, $hashSha256, $fileSize,
-                        $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
-                    );
-                }
+            if ($pqrs) {
+                // El digital no tiene fila en ventanilla_radica_reci_archivos: archivo_id queda null
+                FileMetadataHelper::crearMetadataArchivoPqrs(
+                    $pqrs, null, $hashSha256, $fileSize,
+                    $request->only(['descripcion', 'palabras_clave', 'clasificacion_id']),
+                    'digital'
+                );
             } else {
                 FileMetadataHelper::crearMetadataArchivoDigital(
                     $radicado, $nuevoArchivo, $hashSha256, $fileSize,

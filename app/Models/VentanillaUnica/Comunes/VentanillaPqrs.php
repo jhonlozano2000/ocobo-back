@@ -136,6 +136,16 @@ class VentanillaPqrs extends Model
         return static::withTrashed()->conPermisoJerarquico($user)->whereKey($id)->exists();
     }
 
+    /** PQRS cuyo radicado recibido es $radicadoId; null si el id no existe o es de otro radicado. */
+    public static function pqrsDelRadicado(int $radicadoId, mixed $pqrsId): ?self
+    {
+        if (! is_numeric($pqrsId)) {
+            return null;
+        }
+
+        return static::where('ventanilla_radica_reci_id', $radicadoId)->find((int) $pqrsId);
+    }
+
     protected $fillable = [
         'ventanilla_radica_reci_id',
         'gestion_tercero_id',

@@ -782,9 +782,24 @@ class FileMetadataHelper
     // ========== PQRS ==========
 
     /**
-     * Crea metadatos para un archivo asociado a un PQRS.
+     * Crea metadatos para un archivo asociado a un PQRS. Los archivos viven en el radicado recibido
+     * de la PQRS: el digital no tiene fila propia (archivo_id null) y los adjuntos sí.
      */
-    public static function crearMetadataArchivoPqrs(VentanillaPqrs $pqrs, int $archivoId, string $hash, int $archivoPeso, array $extra = []): ?VentanillaPqrsMetadata
+    public static function crearMetadataArchivoPqrs(VentanillaPqrs $pqrs, ?int $archivoId, string $hash, int $archivoPeso, array $extra = [], string $tipoArchivo = 'adjunto'): ?VentanillaPqrsMetadata
+    {
+        try {
+            return self::construirMetadataPqrs($pqrs, $archivoId, $hash, $tipoArchivo, $extra);
+        } catch (\Exception $e) {
+            Log::error('Error al crear metadata para archivo de PQRS', [
+                'pqrs_id' => $pqrs->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    private static function construirMetadataPqrs(VentanillaPqrs $pqrs, ?int $archivoId, string $hash, string $tipoArchivo, array $extra): VentanillaPqrsMetadata
     {
         $radicado = $pqrs->radicado;
 
@@ -804,7 +819,7 @@ class FileMetadataHelper
             'clasificacion_subserie' => $clasificacion?->nom ?? null,
             'clasificacion_tipo_doc' => $clasificacion?->tipo ?? null,
             'hash_sha256_archivo' => $hash,
-            'tipo_archivo' => 'adjunto',
+            'tipo_archivo' => $tipoArchivo,
             'num_radicado' => $radicado?->num_radicado,
             'asunto' => $radicado?->asunto,
             'fecha_creacion_documento' => now(),
@@ -812,9 +827,7 @@ class FileMetadataHelper
             'dueno_documento_id' => $radicado?->usuario_crea,
         ];
 
-        $metadata = VentanillaPqrsMetadata::create(array_merge($metadataData, $extra));
-
-        return $metadata;
+        return VentanillaPqrsMetadata::create(array_merge($metadataData, $extra));
     }
 
     /**

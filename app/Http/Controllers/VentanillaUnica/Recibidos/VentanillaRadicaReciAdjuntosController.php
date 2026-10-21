@@ -55,6 +55,14 @@ class VentanillaRadicaReciAdjuntosController extends Controller
                 return $this->errorResponse('No se encontraron archivos válidos', null, 400);
             }
 
+            $pqrs = null;
+            if ($request->input('tipo') === 'pqrs') {
+                $pqrs = VentanillaPqrs::pqrsDelRadicado($radicado->id, $request->input('pqrs_id'));
+                if (! $pqrs) {
+                    return $this->errorResponse('La PQRS no corresponde a esta radicación', null, 422);
+                }
+            }
+
             $archivosSubidos = [];
             $usuario = Auth::user();
             $storage = Storage::disk(self::DISK);
@@ -84,17 +92,14 @@ class VentanillaRadicaReciAdjuntosController extends Controller
                     'hash_sha256' => $hash,
                 ]);
 
-                if ($request->input('tipo') === 'pqrs' && $request->input('pqrs_id')) {
-                    $pqrs = VentanillaPqrs::find($request->input('pqrs_id'));
-                    if ($pqrs) {
-                        FileMetadataHelper::crearMetadataArchivoPqrs(
-                            $pqrs,
-                            $archivoAdicional->id,
-                            $hash,
-                            $archivoAdicional->archivo_peso,
-                            $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
-                        );
-                    }
+                if ($pqrs) {
+                    FileMetadataHelper::crearMetadataArchivoPqrs(
+                        $pqrs,
+                        $archivoAdicional->id,
+                        $hash,
+                        $archivoAdicional->archivo_peso,
+                        $request->only(['descripcion', 'palabras_clave', 'clasificacion_id'])
+                    );
                 } else {
                     FileMetadataHelper::crearMetadataArchivoAdjunto(
                         $archivoAdicional,
