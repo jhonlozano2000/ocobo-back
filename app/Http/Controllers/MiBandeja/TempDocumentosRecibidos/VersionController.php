@@ -21,7 +21,7 @@ class VersionController extends Controller
         }
 
         $versiones = Version::where('documento_id', $documento->id)
-            ->with('usuario:id,name,email')
+            ->with('usuario:id,nombres,apellidos,email')
             ->orderBy('numero_version', 'desc')
             ->paginate(20);
 
@@ -35,7 +35,7 @@ class VersionController extends Controller
         }
 
         $version = $documento->versiones()->where('id', $versionId)
-            ->with('usuario:id,name,email')
+            ->with('usuario:id,nombres,apellidos,email')
             ->first();
 
         if (! $version) {
@@ -91,14 +91,14 @@ class VersionController extends Controller
                 'numero_version' => $versionA->numero_version,
                 'descripcion' => $versionA->descripcion,
                 'created_at' => $versionA->created_at->toISOString(),
-                'usuario' => $versionA->usuario->name ?? 'Usuario',
+                'usuario' => trim(($versionA->usuario?->nombres ?? '').' '.($versionA->usuario?->apellidos ?? '')) ?: 'Usuario',
             ],
             'version_b' => [
                 'id' => $versionB->id,
                 'numero_version' => $versionB->numero_version,
                 'descripcion' => $versionB->descripcion,
                 'created_at' => $versionB->created_at->toISOString(),
-                'usuario' => $versionB->usuario->name ?? 'Usuario',
+                'usuario' => trim(($versionB->usuario?->nombres ?? '').' '.($versionB->usuario?->apellidos ?? '')) ?: 'Usuario',
             ],
             'diff' => $diff,
         ], 'Comparación de versiones realizada exitosamente');

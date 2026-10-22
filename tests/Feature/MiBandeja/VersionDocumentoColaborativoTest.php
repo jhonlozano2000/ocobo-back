@@ -31,4 +31,21 @@ class VersionDocumentoColaborativoTest extends TestCase
         $this->assertSame(1, Version::limitarVersiones($documento, 2));
         $this->assertSame(2, $documento->versiones()->count());
     }
+
+    /** El historial y las sugerencias pedían la columna users.name, que no existe: respondían 500. */
+    public function test_el_historial_y_las_sugerencias_traen_el_nombre_del_usuario(): void
+    {
+        $this->withoutMiddleware(ThrottleRequests::class);
+        $user = User::factory()->create(['estado' => 1, 'nombres' => 'Ana', 'apellidos' => 'Ruiz']);
+        $base = '/api/mi-bandeja/comunicaciones-recibidas/documentos';
+        $id = $this->actingAs($user)->postJson($base, ['titulo' => 'Historial'])->assertCreated()->json('data.id');
+        Version::crearVersion(Documento::findOrFail($id), ['type' => 'doc'], $user);
+
+        $this->actingAs($user)->getJson("{$base}/{$id}/versiones")
+            ->assertOk()
+            ->assertJsonPath('data.0.usuario.nombres', 'Ana')
+            ->assertJsonPath('data.0.usuario.apellidos', 'Ruiz');
+
+        $this->actingAs($user)->getJson("{$base}/{$id}/sugerencias")->assertOk();
+    }
 }

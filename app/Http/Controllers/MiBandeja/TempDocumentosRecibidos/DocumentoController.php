@@ -551,7 +551,7 @@ class DocumentoController extends Controller
     public function listarVersiones(Documento $documento): JsonResponse
     {
         $versiones = $documento->versiones()
-            ->with('usuario:id,name')
+            ->with('usuario:id,nombres,apellidos')
             ->orderBy('numero_version', 'desc')
             ->get();
 

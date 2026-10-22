@@ -24,7 +24,7 @@ class SugerenciaController extends Controller
         $estado = $request->query('estado');
         $tipo = $request->query('tipo');
 
-        $query = $documento->sugerencias()->with(['usuario:id,name', 'resueltoPor:id,name']);
+        $query = $documento->sugerencias()->with(['usuario:id,nombres,apellidos', 'resueltoPor:id,nombres,apellidos']);
 
         if ($estado) {
             $query->where('estado', $estado);
@@ -74,7 +74,7 @@ class SugerenciaController extends Controller
         ]);
 
         return $this->createdResponse([
-            'sugerencia' => $sugerencia->load('usuario:id,name'),
+            'sugerencia' => $sugerencia->load('usuario:id,nombres,apellidos'),
         ], 'Sugerencia creada correctamente');
     }
 
@@ -105,7 +105,7 @@ class SugerenciaController extends Controller
             }
 
             return $this->successResponse([
-                'sugerencia' => $sugerencia->load('resueltoPor:id,name'),
+                'sugerencia' => $sugerencia->load('resueltoPor:id,nombres,apellidos'),
             ], 'Sugerencia aceptada y aplicada al documento');
         });
     }
@@ -127,7 +127,7 @@ class SugerenciaController extends Controller
         $sugerencia->rechazar($request->user());
 
         return $this->successResponse([
-            'sugerencia' => $sugerencia->load('resueltoPor:id,name'),
+            'sugerencia' => $sugerencia->load('resueltoPor:id,nombres,apellidos'),
         ], 'Sugerencia rechazada');
     }
 

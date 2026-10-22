@@ -188,7 +188,7 @@ HTML;
     {
         $creador = $documento->creador;
 
-        return $creador ? (trim($creador->nombres.' '.$creador->apellidos) ?: (string) $creador->name) : '';
+        return $creador ? (trim($creador->nombres.' '.$creador->apellidos) ?: (string) $creador->email) : '';
     }
 
     public function exportarDocx(Documento $documento): string

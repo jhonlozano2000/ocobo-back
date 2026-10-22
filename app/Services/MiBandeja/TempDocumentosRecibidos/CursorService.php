@@ -35,7 +35,7 @@ class CursorService
     public function obtenerCursoresActivos(Documento $documento): array
     {
         return $documento->cursores()
-            ->with('usuario:id,name,nombres,apellidos')
+            ->with('usuario:id,nombres,apellidos')
             ->get()
             ->toArray();
     }
@@ -47,10 +47,7 @@ class CursorService
 
     private function getNombreCompleto(User $user): string
     {
-        if (! empty($user->nombres) && ! empty($user->apellidos)) {
-            return trim($user->nombres.' '.$user->apellidos);
-        }
-
-        return $user->name;
+        // users no tiene columna name: nombres y apellidos, o el correo si faltan
+        return trim($user->nombres.' '.$user->apellidos) ?: (string) $user->email;
     }
 }
