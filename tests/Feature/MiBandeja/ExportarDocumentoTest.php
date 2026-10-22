@@ -229,6 +229,36 @@ class ExportarDocumentoTest extends TestCase
         $this->assertMatchesRegularExpression('/<w:spacing[^>]*w:after="180"/', $documento);
     }
 
+    public function test_exporta_las_sangrias_de_la_regla(): void
+    {
+        $id = $this->documento(['type' => 'doc', 'content' => [
+            ['type' => 'paragraph', 'attrs' => [
+                'indent' => 0.75, 'sangriaPrimera' => -24, 'sangriaDerecha' => 30,
+            ], 'content' => [self::texto('Francesa')]],
+            ['type' => 'paragraph', 'attrs' => ['sangriaPrimera' => 20, 'sangriaDerecha' => 'x'], 'content' => [
+                self::texto('Primera línea'),
+            ]],
+        ]]);
+
+        $html = $this->exportar($id, 'html');
+        $this->assertStringContainsString(
+            '<p style="margin-left: 27pt; margin-right: 30px; text-indent: -24px;">Francesa</p>',
+            $html
+        );
+        $this->assertStringContainsString('<p style="text-indent: 20px;">Primera línea</p>', $html);
+
+        $archivo = tempnam(sys_get_temp_dir(), 'docx');
+        file_put_contents($archivo, $this->exportar($id, 'docx'));
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open($archivo) === true);
+        $documento = $zip->getFromName('word/document.xml');
+        $zip->close();
+        @unlink($archivo);
+
+        $this->assertMatchesRegularExpression('/<w:ind(?=[^>]*w:left="540")(?=[^>]*w:right="450")(?=[^>]*w:hanging="360")/', $documento);
+        $this->assertMatchesRegularExpression('/<w:ind(?=[^>]*w:firstLine="300")/', $documento);
+    }
+
     public function test_exporta_el_control_de_cambios_con_marcado(): void
     {
         $autor = ['autor' => 1, 'nombre' => 'Ana', 'fecha' => '2026-10-21T10:00'];

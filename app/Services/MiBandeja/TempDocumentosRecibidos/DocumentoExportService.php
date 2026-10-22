@@ -529,7 +529,9 @@ HTML;
         $formato = $this->formatoParrafo($node);
         $reglas = array_filter([
             'text-align' => $formato['alineacion'],
-            'margin-left' => $formato['sangria'] ? ($formato['sangria'] * self::SANGRIA_PT).'pt' : null,
+            'margin-left' => $formato['sangria'] ? round($formato['sangria'] * self::SANGRIA_PT, 2).'pt' : null,
+            'margin-right' => $formato['derecha'] ? $formato['derecha'].'px' : null,
+            'text-indent' => $formato['primera'] ? $formato['primera'].'px' : null,
             'line-height' => $formato['interlineado'],
             'margin-top' => $formato['antes'] !== null ? $formato['antes'].'px' : null,
             'margin-bottom' => $formato['despues'] !== null ? $formato['despues'].'px' : null,
@@ -546,7 +548,10 @@ HTML;
      * Formato de párrafo que guarda el editor (alineación, sangría, interlineado y espacio antes/después),
      * validado para que nada distinto a números o valores conocidos llegue al style ni al .docx.
      *
-     * @return array{alineacion: ?string, sangria: int, interlineado: ?string, antes: ?int, despues: ?int}
+     * La sangría izquierda va en niveles (puede quedar entre niveles si se puso con la regla); la de primera
+     * línea (negativa: francesa) y la derecha, en px.
+     *
+     * @return array{alineacion: ?string, sangria: float, primera: int, derecha: int, interlineado: ?string, antes: ?int, despues: ?int}
      */
     private function formatoParrafo(array $node): array
     {
@@ -558,7 +563,9 @@ HTML;
         return [
             'alineacion' => in_array($alineacion, ['left', 'center', 'right', 'justify'], true) ? $alineacion : null,
             // Niveles de sangría del editor: 0,5" cada uno, hasta 8
-            'sangria' => max(0, min((int) ($attrs['indent'] ?? 0), 8)),
+            'sangria' => is_numeric($attrs['indent'] ?? null) ? round(max(0, min((float) $attrs['indent'], 8)), 3) : 0,
+            'primera' => is_numeric($attrs['sangriaPrimera'] ?? null) ? (int) max(-384, min((float) $attrs['sangriaPrimera'], 384)) : 0,
+            'derecha' => is_numeric($attrs['sangriaDerecha'] ?? null) ? (int) max(0, min((float) $attrs['sangriaDerecha'], 384)) : 0,
             'interlineado' => preg_match('/^\d{1,2}(\.\d{1,2})?$/', $interlineado) ? $interlineado : null,
             'antes' => $espacio($attrs['spaceBefore'] ?? null),
             'despues' => $espacio($attrs['spaceAfter'] ?? null),
@@ -578,7 +585,12 @@ HTML;
                 'left' => 'start',
                 default => null,
             },
-            'indentation' => $formato['sangria'] ? ['left' => $formato['sangria'] * self::SANGRIA_PT * 20] : null,
+            'indentation' => array_filter([
+                'left' => $formato['sangria'] ? (int) round($formato['sangria'] * self::SANGRIA_PT * 20) : null,
+                'right' => $formato['derecha'] ? $formato['derecha'] * 15 : null,
+                'firstLine' => $formato['primera'] > 0 ? $formato['primera'] * 15 : null,
+                'hanging' => $formato['primera'] < 0 ? -$formato['primera'] * 15 : null,
+            ]) ?: null,
             'lineHeight' => $formato['interlineado'] !== null ? (float) $formato['interlineado'] : null,
             'spaceBefore' => $formato['antes'] !== null ? $formato['antes'] * 15 : null,
             'spaceAfter' => $formato['despues'] !== null ? $formato['despues'] * 15 : null,
