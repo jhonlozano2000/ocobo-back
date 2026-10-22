@@ -211,7 +211,10 @@ class DocumentoController extends Controller
     public function logoEntidad(LogoEntidadService $logos): Response
     {
         $logo = $logos->archivo();
-        abort_unless($logo, 404);
+        // Sin logo configurado no es un error: el encabezado simplemente no lo muestra
+        if (! $logo) {
+            return response()->noContent();
+        }
 
         return response($logo['bytes'], 200, [
             'Content-Type' => $logo['mime'],

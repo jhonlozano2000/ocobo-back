@@ -70,7 +70,7 @@ class LogoEncabezadoDocumentoTest extends TestCase
         $this->assertSame(Storage::disk('otros_archivos')->get('logo.png'), $respuesta->getContent());
 
         Storage::disk('otros_archivos')->put('logo.png', '<svg onload="alert(1)"></svg>');
-        $this->actingAs($this->yo)->get(self::URL.'/logo-entidad')->assertNotFound();
+        $this->actingAs($this->yo)->get(self::URL.'/logo-entidad')->assertNoContent();
     }
 
     public function test_el_encabezado_acepta_el_logo(): void
