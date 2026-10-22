@@ -408,18 +408,41 @@ HTML;
             case 'table':
                 return $this->renderTabla($node);
             case 'image':
-                $src = (string) ($node['attrs']['src'] ?? '');
-                if (! preg_match('#^(https?://|data:image/)#i', $src)) {
-                    return '';
-                }
-
-                return '<img src="'.$this->esc($src).'" alt="'.$this->esc($node['attrs']['alt'] ?? '').'" style="max-width: 100%;">';
+                return $this->renderImagen($node['attrs'] ?? []);
             case 'text':
             case 'hardBreak':
                 return $this->renderInlineContent([$node]);
             default:
                 return $hijos();
         }
+    }
+
+    /**
+     * Imagen con el tamaño, ajuste de texto (cuadrado = flotante), alineación y título del editor.
+     */
+    private function renderImagen(array $attrs): string
+    {
+        $src = (string) ($attrs['src'] ?? '');
+        if (! preg_match('#^(https?://|data:image/)#i', $src)) {
+            return '';
+        }
+        $ancho = is_numeric($attrs['width'] ?? null) ? min(max((int) $attrs['width'], 1), 2000) : null;
+        $css = match ($attrs['ajuste'] ?? null) {
+            'cuadrado_izquierda' => 'float: left; margin: 0.25em 1em 0.5em 0;',
+            'cuadrado_derecha' => 'float: right; margin: 0.25em 0 0.5em 1em;',
+            default => match ($attrs['alineacion'] ?? null) {
+                'centro' => 'margin: 0.5em auto; text-align: center;',
+                'derecha' => 'margin: 0.5em 0 0.5em auto; text-align: right;',
+                default => 'margin: 0.5em 0;',
+            },
+        };
+        $css .= $ancho ? " width: {$ancho}px; max-width: 100%;" : ' max-width: 100%;';
+        $titulo = trim((string) ($attrs['titulo'] ?? ''));
+
+        return '<div style="'.$css.'">'
+            .'<img src="'.$this->esc($src).'" alt="'.$this->esc($attrs['alt'] ?? '').'" style="'.($ancho ? 'width: 100%;' : 'max-width: 100%;').'">'
+            .($titulo !== '' ? '<div style="font-size: 0.85em; font-style: italic; color: #44546a; text-align: center; margin-top: 0.3em;">'.$this->esc($titulo).'</div>' : '')
+            .'</div>';
     }
 
     /** Bordes (color, con líneas verticales) y fondo del encabezado de cada estilo de tabla del editor. */
