@@ -69,10 +69,6 @@ Route::middleware(['auth:sanctum', 'throttle:documentos'])->prefix('comunicacion
         Route::get('/documentos/{documento}/grupo', [GrupoDocumentoController::class, 'show']);
     });
 
-    Route::middleware('can:gestionarUsuarios,documento')->group(function () {
-        Route::post('/documentos/{documento}/grupo', [GrupoDocumentoController::class, 'store']);
-    });
-
     Route::middleware('can:eliminar,documento')->group(function () {
         Route::delete('/documentos/{documento}', [DocumentoController::class, 'destroy']);
     });

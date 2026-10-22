@@ -9,6 +9,7 @@ use App\Http\Requests\MiBandeja\StoreMiBandejaTempRequest;
 use App\Http\Requests\MiBandeja\UpdateMiBandejaTempRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\MiBandejaTemp;
+use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
@@ -18,6 +19,7 @@ use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -249,8 +251,17 @@ class MiBandejaTempController extends Controller
      */
     public function store(StoreMiBandejaTempRequest $request)
     {
+        $validated = $request->validated();
+
+        // Grupo de un documento de Mis Documentos: solo su dueño lo crea y el documento tiene un solo grupo activo
+        if ($documento = Documento::find($validated['documento_id'] ?? null)) {
+            Gate::authorize('gestionarUsuarios', $documento);
+            if ($documento->grupoVigente()) {
+                return $this->errorResponse('El documento ya tiene un grupo colaborativo activo', null, 422);
+            }
+        }
+
         try {
-            $validated = $request->validated();
             $validated['usua_crea_id'] = Auth::id();
             $validated['estado'] = 'borrador';
             $validated['estado_grupo'] = 'activo';

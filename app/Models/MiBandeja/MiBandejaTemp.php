@@ -2,6 +2,7 @@
 
 namespace App\Models\MiBandeja;
 
+use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\OfiArchivo\OfiArchivoPlantillaDocumento;
 use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
@@ -34,6 +35,7 @@ class MiBandejaTemp extends Model
         'usua_crea_id',
         'usua_crea_plantilla_id',
         'plantilla_id',
+        'documento_id',
         'asunto',
         'con_copia',
         'anexos',
@@ -80,6 +82,14 @@ class MiBandejaTemp extends Model
     public function plantilla(): BelongsTo
     {
         return $this->belongsTo(OfiArchivoPlantillaDocumento::class, 'plantilla_id');
+    }
+
+    /**
+     * Documento de Mis Documentos (editor en línea) que el grupo trabaja, si lo hay.
+     */
+    public function documento(): BelongsTo
+    {
+        return $this->belongsTo(Documento::class, 'documento_id');
     }
 
     /**
