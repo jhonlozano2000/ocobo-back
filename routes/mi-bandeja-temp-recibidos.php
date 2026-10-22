@@ -15,6 +15,7 @@ Route::middleware(['auth:sanctum', 'throttle:documentos'])->prefix('comunicacion
 
     Route::get('/documentos', [DocumentoController::class, 'index']);
     Route::get('/documentos/estadisticas', [DocumentoController::class, 'estadisticas']);
+    Route::get('/logo-entidad', [DocumentoController::class, 'logoEntidad']);
     Route::post('/documentos', [DocumentoController::class, 'store']);
 
     Route::middleware('can:ver,documento')->group(function () {

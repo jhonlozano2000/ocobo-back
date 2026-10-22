@@ -6,13 +6,13 @@ use App\Models\Configuracion\ConfigDiviPoli;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Plantillas institucionales para Mis Documentos (oficio, acta, memorando y circular), como las plantillas de
  * Word con membrete.
  *
- * Arma el contenido inicial (JSON de TipTap) con el membrete de la entidad (logo, razón social y NIT), la ciudad
+ * Arma el contenido inicial (JSON de TipTap) con el membrete de la entidad (razón social y NIT; el logo va en el
+ * encabezado de página, que lo repite en cada hoja), la ciudad
  * y la fecha, y el nombre, cargo y dependencia de quien lo crea; lo que debe completar el usuario va en campos
  * por completar (nodo «campo»: se ven resaltados y Tab pasa de uno a otro). En los textos de este servicio se
  * escriben entre corchetes y enLinea() los convierte. También da la configuración de página: tamaño carta con los márgenes de la GTC 185 y un pie con los
@@ -28,8 +28,7 @@ class PlantillaDocumentoService
     /** Márgenes en mm según la GTC 185 (comunicaciones oficiales). */
     public const MARGENES = ['superior' => 30, 'inferior' => 25, 'izquierdo' => 30, 'derecho' => 20];
 
-    /** Logos más pesados no se incrustan: el contenido del documento viaja completo en cada guardado. */
-    private const LOGO_MAX_BYTES = 300 * 1024;
+    public function __construct(private LogoEntidadService $logos) {}
 
     /**
      * Configuración de página y contenido inicial de la plantilla.
@@ -60,6 +59,7 @@ class PlantillaDocumentoService
                 'tamano_papel' => 'carta',
                 'orientacion' => 'vertical',
                 'margenes' => self::MARGENES,
+                'configuracion_header' => $this->logos->archivo() ? ['habilitado' => true, 'elementos' => ['logo']] : null,
                 'configuracion_footer' => $this->pie($empresa),
             ],
             'contenido' => ['type' => 'doc', 'content' => [...$this->membrete($empresa), ...$cuerpo]],
@@ -161,13 +161,10 @@ class PlantillaDocumentoService
         ];
     }
 
-    /** Logo (si hay y no es muy pesado), razón social y NIT, centrados. */
+    /** Razón social y NIT, centrados. */
     private function membrete(array $empresa): array
     {
         $bloques = [];
-        if ($logo = $this->logo($empresa['logo_empresa'] ?? null)) {
-            $bloques[] = ['type' => 'image', 'attrs' => ['src' => $logo, 'alt' => (string) ($empresa['razon_social_empresa'] ?? '')]];
-        }
         if (! empty($empresa['razon_social_empresa'])) {
             $bloques[] = $this->parrafo([$this->texto(mb_strtoupper($empresa['razon_social_empresa']), true)], 'center');
         }
@@ -222,23 +219,6 @@ class PlantillaDocumentoService
     private function ciudad(mixed $diviPoliId): string
     {
         return $diviPoliId ? (string) (ConfigDiviPoli::find($diviPoliId)?->nombre ?? '') : '';
-    }
-
-    /** El logo como data URI: está en un disco privado que ni el navegador ni dompdf pueden pedir por URL. */
-    private function logo(?string $archivo): ?string
-    {
-        $disco = Storage::disk('otros_archivos');
-        if (! $archivo || ! $disco->exists($archivo) || $disco->size($archivo) > self::LOGO_MAX_BYTES) {
-            return null;
-        }
-        // Por el contenido, no por la extensión: un archivo que no es imagen no se incrusta
-        $bytes = $disco->get($archivo);
-        $info = @getimagesizefromstring($bytes);
-        if (! $info || ! in_array($info['mime'], ['image/png', 'image/jpeg', 'image/gif', 'image/webp'], true)) {
-            return null;
-        }
-
-        return 'data:'.$info['mime'].';base64,'.base64_encode($bytes);
     }
 
     private function texto(string $texto, bool $negrita = false): array

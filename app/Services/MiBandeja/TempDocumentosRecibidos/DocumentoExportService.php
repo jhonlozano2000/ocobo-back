@@ -17,6 +17,9 @@ class DocumentoExportService
     /** Un nivel de sangría del editor: 0,5" = 36 pt. */
     private const SANGRIA_PT = 36;
 
+    /** Alto máximo del logo del encabezado o pie, en pt; con márgenes estrechos, el 70 % del margen. */
+    private const LOGO_ALTO_PT = 54;
+
     /** Fondo de los campos por completar de las plantillas (el amarillo suave del editor). */
     private const COLOR_CAMPO = '#ffe9a8';
 
@@ -53,6 +56,8 @@ class DocumentoExportService
     private ?PhpWord $phpWord = null;
 
     private int $listasDocx = 0;
+
+    public function __construct(private LogoEntidadService $logos = new LogoEntidadService) {}
 
     public function exportarPdf(Documento $documento): string
     {
@@ -112,8 +117,8 @@ class DocumentoExportService
         $marginLeft = round($margenes['izquierdo'] * $mmToPt);
         $marginRight = round($margenes['derecho'] * $mmToPt);
 
-        $headerPartes = $this->partesFranja($config['header'] ?? null, $titulo, $autor, true);
-        $footerPartes = $this->partesFranja($config['footer'] ?? null, $titulo, $autor, true);
+        $headerPartes = $this->partesFranja($config['header'] ?? null, $titulo, $autor, true, $marginTop);
+        $footerPartes = $this->partesFranja($config['footer'] ?? null, $titulo, $autor, true, $marginBottom);
 
         $columns = $config['columnas'] ?? ['numero' => 1];
         $columnCss = '';
@@ -193,10 +198,12 @@ HTML;
      * contador CSS de dompdf y en el .docx los campos PAGE/NUMPAGES de Word.
      *
      * @param  array|null  $franja  {habilitado, elementos[], texto_libre}
-     * @param  bool  $html  true: texto escapado para el PDF; false: texto plano para PhpWord
+     * @param  bool  $html  true: texto escapado para el PDF; false: texto plano para PhpWord (sin el logo, que va
+     *                      como imagen aparte)
+     * @param  float  $altoPt  alto de la franja (el margen), para que el logo quepa
      * @return string[]
      */
-    private function partesFranja(?array $franja, string $titulo, string $autor, bool $html): array
+    private function partesFranja(?array $franja, string $titulo, string $autor, bool $html, float $altoPt = 0): array
     {
         if (empty($franja['habilitado'])) {
             return [];
@@ -213,6 +220,10 @@ HTML;
             };
             if ($elemento === 'pagina') {
                 $partes[] = $html ? '<span class="numero-pagina"></span>' : 'Página {PAGE} de {NUMPAGES}';
+            } elseif ($elemento === 'logo') {
+                if ($html && ($img = $this->imagenLogo($altoPt))) {
+                    $partes[] = $img;
+                }
             } elseif ($valor !== '') {
                 // En el .docx las llaves del texto se tomarían por campos de Word
                 $partes[] = $html ? $this->esc($valor) : str_replace(['{', '}'], ['(', ')'], $valor);
@@ -220,6 +231,27 @@ HTML;
         }
 
         return $partes;
+    }
+
+    /** Medidas del logo en pt para una franja de ese alto, o null si no hay logo. */
+    private function medidasLogo(float $altoPt): ?array
+    {
+        $logo = $this->logos->archivo();
+        if (! $logo || $logo['alto'] < 1) {
+            return null;
+        }
+        $alto = round(min(self::LOGO_ALTO_PT, max(12, $altoPt * 0.7)), 1);
+
+        return ['alto' => $alto, 'ancho' => round($alto * $logo['ancho'] / $logo['alto'], 1), 'bytes' => $logo['bytes']];
+    }
+
+    private function imagenLogo(float $altoPt): ?string
+    {
+        $medidas = $this->medidasLogo($altoPt);
+
+        return $medidas
+            ? '<img src="'.$this->logos->dataUri().'" alt="" style="width: '.$medidas['ancho'].'pt; height: '.$medidas['alto'].'pt; vertical-align: middle;">'
+            : null;
     }
 
     private function nombreCreador(Documento $documento): string
@@ -237,10 +269,21 @@ HTML;
         $this->phpWord = $phpWord;
 
         $section = $phpWord->addSection();
-        foreach (['header' => 'addHeader', 'footer' => 'addFooter'] as $clave => $metodo) {
-            $partes = $this->partesFranja($config[$clave] ?? null, (string) $documento->titulo, $this->nombreCreador($documento), false);
+        foreach (['header' => ['addHeader', 'superior'], 'footer' => ['addFooter', 'inferior']] as $clave => [$metodo, $margen]) {
+            $franja = $config[$clave] ?? null;
+            $partes = $this->partesFranja($franja, (string) $documento->titulo, $this->nombreCreador($documento), false);
+            $logo = ! empty($franja['habilitado']) && in_array('logo', $franja['elementos'] ?? [], true)
+                ? $this->medidasLogo((float) ($config['margenes'][$margen] ?? 25.4) * 2.83465)
+                : null;
+            if (! $partes && ! $logo) {
+                continue;
+            }
+            $hf = $section->{$metodo}();
+            if ($logo) {
+                $hf->addImage($logo['bytes'], ['width' => $logo['ancho'], 'height' => $logo['alto'], 'unit' => 'pt', 'alignment' => 'center']);
+            }
             if ($partes) {
-                $section->{$metodo}()->addPreserveText(implode('  |  ', $partes), ['size' => 9, 'color' => '666666'], ['alignment' => 'center']);
+                $hf->addPreserveText(implode('  |  ', $partes), ['size' => 9, 'color' => '666666'], ['alignment' => 'center']);
             }
         }
         $this->agregarContenidoASection($section, $this->bloques($contenido->contenido_yjs ?? []));

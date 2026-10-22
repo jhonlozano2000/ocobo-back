@@ -87,10 +87,11 @@ class PlantillasDocumentoTest extends TestCase
             'texto_libre' => 'Calle 1 # 2-3 · Tel. 6012345678 · contacto@prueba.gov.co',
         ], json_decode($documento->configuracion_footer, true));
 
+        // El logo va en el encabezado, que lo repite en cada hoja; no en el cuerpo
+        $this->assertEquals(['habilitado' => true, 'elementos' => ['logo']], json_decode($documento->configuracion_header, true));
         $contenido = $this->contenido($id);
         $this->assertSame('doc', $contenido['type']);
-        $this->assertSame('image', $contenido['content'][0]['type']);
-        $this->assertStringStartsWith('data:image/png;base64,', $contenido['content'][0]['attrs']['src']);
+        $this->assertNotContains('image', array_column($contenido['content'], 'type'));
 
         $texto = $this->textos($contenido);
         $this->assertStringContainsString('ALCALDÍA DE PRUEBA', $texto);
@@ -154,7 +155,7 @@ class PlantillasDocumentoTest extends TestCase
 
         $id = $this->crear(['plantilla' => 'memorando'])->assertCreated()->json('data.id');
 
-        $this->assertSame('paragraph', $this->contenido($id)['content'][0]['type']);
+        $this->assertNull(DB::table('mi_bandeja_temp_reci_documentos')->where('id', $id)->value('configuracion_header'));
     }
 
     public function test_sin_plantilla_el_documento_queda_en_blanco_y_rechaza_plantillas_desconocidas(): void

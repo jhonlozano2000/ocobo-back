@@ -14,9 +14,11 @@ use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\MiBandeja\TempDocumentosRecibidos\DocumentoUsuario;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Version;
 use App\Services\MiBandeja\TempDocumentosRecibidos\CursorService;
+use App\Services\MiBandeja\TempDocumentosRecibidos\LogoEntidadService;
 use App\Services\MiBandeja\TempDocumentosRecibidos\PlantillaDocumentoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -192,6 +194,22 @@ class DocumentoController extends Controller
      *   "message": "No tienes acceso a este documento"
      * }
      */
+    /**
+     * Logo de la entidad para el encabezado de los documentos (elemento «logo» del encabezado o pie).
+     * 404 si no hay logo configurado o no es una imagen válida.
+     */
+    public function logoEntidad(LogoEntidadService $logos): Response
+    {
+        $logo = $logos->archivo();
+        abort_unless($logo, 404);
+
+        return response($logo['bytes'], 200, [
+            'Content-Type' => $logo['mime'],
+            'Cache-Control' => 'private, max-age=3600',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     public function show(Request $request, Documento $documento): JsonResponse
     {
         if (! $documento->tieneAcceso($request->user())) {

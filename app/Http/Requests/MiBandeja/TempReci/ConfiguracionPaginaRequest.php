@@ -7,8 +7,8 @@ use Illuminate\Validation\Rule;
 
 class ConfiguracionPaginaRequest extends FormRequest
 {
-    /** Lo que puede mostrar el encabezado o el pie; pagina = «Página n de t». */
-    public const ELEMENTOS_FRANJA = ['titulo', 'autor', 'fecha', 'pagina', 'texto_libre'];
+    /** Lo que puede mostrar el encabezado o el pie; pagina = «Página n de t»; logo = el de la entidad. */
+    public const ELEMENTOS_FRANJA = ['logo', 'titulo', 'autor', 'fecha', 'pagina', 'texto_libre'];
 
     public function authorize(): bool
     {
@@ -49,8 +49,8 @@ class ConfiguracionPaginaRequest extends FormRequest
             'margenes.*.min' => 'Los márgenes deben ser mayores o iguales a 0mm.',
             'margenes.*.max' => 'Los márgenes no pueden exceder 100mm.',
             'configuracion_columnas.numero.max' => 'El documento puede tener máximo 4 columnas.',
-            'configuracion_header.elementos.*.in' => 'Los elementos del header deben ser: titulo, autor, fecha, pagina o texto_libre.',
-            'configuracion_footer.elementos.*.in' => 'Los elementos del footer deben ser: titulo, autor, fecha, pagina o texto_libre.',
+            'configuracion_header.elementos.*.in' => 'Los elementos del header deben ser: logo, titulo, autor, fecha, pagina o texto_libre.',
+            'configuracion_footer.elementos.*.in' => 'Los elementos del footer deben ser: logo, titulo, autor, fecha, pagina o texto_libre.',
         ];
     }
 }
