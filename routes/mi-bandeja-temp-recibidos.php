@@ -53,7 +53,8 @@ Route::middleware(['auth:sanctum', 'throttle:documentos'])->prefix('comunicacion
     });
 });
 
-Route::middleware('auth:sanctum')->prefix('comunicaciones-recibidas/comentarios')->group(function () {
+// Antes el prefijo repetía «comentarios» (…/comentarios/comentarios/{id}) y el editor recibía 404
+Route::middleware('auth:sanctum')->prefix('comunicaciones-recibidas')->group(function () {
     Route::delete('/comentarios/{comentario}', [ComentarioController::class, 'destroy']);
     Route::post('/comentarios/{comentario}/resolver', [ComentarioController::class, 'resolver']);
     Route::post('/comentarios/{comentario}/desresolver', [ComentarioController::class, 'desresolver']);

@@ -26,6 +26,7 @@ class ComentarioController extends Controller
      * Retorna comentarios principales (sin parent_id) con sus respuestas.
      * Ordenados por fecha descendente.
      *
+     * @param  Request  $request  Solicitud
      * @param  Documento  $documento  Documento
      * @return JsonResponse Lista de comentarios
      *
@@ -34,17 +35,24 @@ class ComentarioController extends Controller
      *     {
      *       "id": 1,
      *       "contenido": "Revisar este párrafo",
-     *       "usuario": {"id": 1, "name": "Juan Perez"},
+     *       "usuario": {"id": 1, "nombres": "Juan", "apellidos": "Perez"},
      *       "respuestas": []
      *     }
      *   ]
      * }
+     * @response 403 {
+     *   "message": "No tienes acceso"
+     * }
      */
-    public function index(Documento $documento): JsonResponse
+    public function index(Request $request, Documento $documento): JsonResponse
     {
+        if (! $documento->tieneAcceso($request->user())) {
+            return $this->forbiddenResponse('No tienes acceso');
+        }
+
         $comentarios = $documento->comentarios()
             ->whereNull('parent_id')
-            ->with(['usuario:id,name', 'respuestas.usuario:id,name'])
+            ->with(['usuario:id,nombres,apellidos', 'respuestas.usuario:id,nombres,apellidos'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -62,7 +70,8 @@ class ComentarioController extends Controller
      * @return JsonResponse Comentario creado
      *
      * @bodyParam contenido string required Texto del comentario (1-2000 caracteres). Example: "Revisar este párrafo"
-     * @bodyParam seleccion_texto object Selección de texto relacionada. Example: {"from": 0, "to": 10, "text": "texto"}
+     * @bodyParam seleccion_texto object Texto comentado: posiciones de ProseMirror y el texto. Solo en comentarios
+     *   principales. Example: {"from": 0, "to": 10, "text": "texto"}
      * @bodyParam parent_id integer ID del comentario padre (respuesta). Example: 1
      *
      * @response 201 {
@@ -84,6 +93,9 @@ class ComentarioController extends Controller
         $request->validate([
             'contenido' => 'required|string|min:1|max:2000',
             'seleccion_texto' => 'nullable|array',
+            'seleccion_texto.from' => 'required_with:seleccion_texto|integer|min:0',
+            'seleccion_texto.to' => 'required_with:seleccion_texto|integer|gte:seleccion_texto.from',
+            'seleccion_texto.text' => 'nullable|string|max:1000',
             'parent_id' => 'nullable|exists:mi_bandeja_temp_reci_comentarios,id',
         ]);
 
@@ -101,14 +113,19 @@ class ComentarioController extends Controller
         $comentario = $documento->comentarios()->create([
             'user_id' => $request->user()->id,
             'contenido' => OutputSanitizer::sanitize($request->input('contenido')),
-            'seleccion_texto' => $request->input('seleccion_texto')
-                ? OutputSanitizer::sanitize($request->input('seleccion_texto')['text'] ?? '')
+            // Ancla del comentario: el editor marca el texto en el documento; esto queda como respaldo y contexto
+            'seleccion_texto' => $request->filled('seleccion_texto') && ! $request->input('parent_id')
+                ? [
+                    'from' => (int) $request->input('seleccion_texto.from'),
+                    'to' => (int) $request->input('seleccion_texto.to'),
+                    'text' => OutputSanitizer::sanitize((string) $request->input('seleccion_texto.text', '')),
+                ]
                 : null,
             'parent_id' => $request->input('parent_id'),
         ]);
 
         return $this->createdResponse([
-            'comentario' => $comentario->load('usuario:id,name'),
+            'comentario' => $comentario->load('usuario:id,nombres,apellidos'),
         ], 'Comentario creado correctamente');
     }
 
