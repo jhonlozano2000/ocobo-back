@@ -206,6 +206,8 @@ class MisGruposActivosController extends Controller
                     'todos_cumplidos' => $grupo->todosTerminados(),
                     'plantilla_cargada' => (bool) $grupo->plantilla_cargada,
                     'plantilla_id' => $grupo->plantilla_id,
+                    // Documento del editor en línea (Mis Documentos): se abre en el editor, sin check-out
+                    'documento_id' => $grupo->documento_id,
                     'total_notas' => $totalNotas,
                     'notas_no_leidas' => $notasNoLeidas,
                     'ultima_version' => $versionData,

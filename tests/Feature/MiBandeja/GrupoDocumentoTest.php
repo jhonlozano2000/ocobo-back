@@ -114,6 +114,11 @@ class GrupoDocumentoTest extends TestCase
         $this->assertSame('firmante', $modelo->rolEnGrupo($this->firmante));
         $this->assertSame([$this->firmante->id, $this->creador->id], $modelo->firmantesRequeridos()->all());
 
+        // En Mis grupos activos el grupo trae su documento para abrirlo en el editor
+        $this->actingAs($this->revisor)->getJson(self::URL_GRUPOS.'/mis-grupos-activos')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $grupoId, 'documento_id' => $this->documento]);
+
         // Un solo grupo activo por documento
         $this->crearGrupo($this->creador)->assertUnprocessable();
     }
