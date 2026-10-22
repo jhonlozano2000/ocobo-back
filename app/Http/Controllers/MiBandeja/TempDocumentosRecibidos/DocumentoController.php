@@ -14,6 +14,7 @@ use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\MiBandeja\TempDocumentosRecibidos\DocumentoUsuario;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Version;
 use App\Models\OfiArchivo\OfiArchivoPlantillaGenerada;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\MiBandeja\TempDocumentosRecibidos\CursorService;
 use App\Services\MiBandeja\TempDocumentosRecibidos\EstilosDocumento;
 use App\Services\MiBandeja\TempDocumentosRecibidos\LogoEntidadService;
@@ -149,7 +150,11 @@ class DocumentoController extends Controller
     {
         $data = $request->validated();
         $plantilla = ! empty($data['plantilla_id'])
-            ? $plantillas->paraDocumento(OfiArchivoPlantillaGenerada::findOrFail($data['plantilla_id']), $request->user())
+            ? $plantillas->paraDocumento(
+                OfiArchivoPlantillaGenerada::findOrFail($data['plantilla_id']),
+                $request->user(),
+                ! empty($data['radica_reci_id']) ? VentanillaRadicaReci::find($data['radica_reci_id']) : null
+            )
             : null;
 
         $documentoData = [

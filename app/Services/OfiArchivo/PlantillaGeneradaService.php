@@ -6,6 +6,7 @@ use App\Models\MiBandeja\TempDocumentosRecibidos\Contenido;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\OfiArchivo\OfiArchivoPlantillaGenerada;
 use App\Models\User;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\MiBandeja\TempDocumentosRecibidos\LogoEntidadService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -177,13 +178,13 @@ class PlantillaGeneradaService
 
     /**
      * Página y contenido para un documento nuevo, con las variables llenas con los datos del usuario y de la
-     * entidad.
+     * entidad y, si el documento responde a un radicado, con los del radicado y su remitente.
      *
      * @return array{pagina: array, contenido: array}
      */
-    public function paraDocumento(OfiArchivoPlantillaGenerada $plantilla, User $user): array
+    public function paraDocumento(OfiArchivoPlantillaGenerada $plantilla, User $user, ?VentanillaRadicaReci $radicado = null): array
     {
-        $valores = $this->variables->valores($user);
+        $valores = $this->variables->valores($user, $radicado);
         $pagina = $this->paginaDe($plantilla);
 
         foreach (['configuracion_header', 'configuracion_footer'] as $franja) {

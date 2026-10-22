@@ -74,9 +74,7 @@ class PlantillaController extends Controller
             'generadas' => PlantillaGeneradaResource::collection($generadas)->resolve($request),
             'cargadas' => $cargadas,
             'tipos' => $tipos,
-            'variables' => collect(VariablesPlantillaService::VARIABLES)
-                ->map(fn ($etiqueta, $clave) => ['clave' => $clave, 'etiqueta' => $etiqueta])
-                ->values(),
+            'variables' => app(VariablesPlantillaService::class)->catalogo(),
         ], 'Plantillas obtenidas exitosamente');
     }
 
@@ -136,6 +134,32 @@ class PlantillaController extends Controller
         $plantilla = $this->plantillas->guardarDesdeDocumento($documento->load('contenido'), $request->user());
 
         return $this->successResponse(new PlantillaGeneradaResource($plantilla->load('tipo')), 'Plantilla guardada exitosamente');
+    }
+
+    /**
+     * Combinación de correspondencia: las variables con su valor para el documento (datos del usuario, de la
+     * entidad y del radicado recibido al que responde). El editor las muestra en la vista previa y, al
+     * finalizar, las cambia por el texto.
+     *
+     * @response 200 {"data": {"radicado": {"id": 7, "num_radicado": "2026-R-0001", "asunto": "Derecho de petición"},
+     *   "variables": [{"clave": "radicado_numero", "etiqueta": "Número de radicado", "grupo": "radicado", "valor": "2026-R-0001"}]}}
+     */
+    public function combinacion(Request $request, Documento $documento, VariablesPlantillaService $variables): JsonResponse
+    {
+        $radicado = $documento->radicado;
+        $valores = $variables->valores($request->user(), $radicado);
+
+        return $this->successResponse([
+            'radicado' => $radicado ? [
+                'id' => $radicado->id,
+                'num_radicado' => $radicado->num_radicado,
+                'asunto' => $radicado->asunto,
+            ] : null,
+            'variables' => array_map(
+                fn ($variable) => $variable + ['valor' => $valores[$variable['clave']] ?? ''],
+                $variables->catalogo()
+            ),
+        ], 'Datos de combinación obtenidos');
     }
 
     /** Descarga una plantilla cargada vigente. */

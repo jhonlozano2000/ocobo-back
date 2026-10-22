@@ -32,6 +32,7 @@ Route::middleware(['auth:sanctum', 'throttle:documentos'])->prefix('comunicacion
     Route::middleware('can:ver,documento')->group(function () {
         Route::get('/documentos/{documento}', [DocumentoController::class, 'show']);
         Route::get('/documentos/{documento}/contenido', [DocumentoController::class, 'obtenerContenido']);
+        Route::get('/documentos/{documento}/combinacion', [PlantillaController::class, 'combinacion']);
         Route::get('/documentos/{documento}/cursores', [CursorController::class, 'obtenerCursores']);
         Route::get('/documentos/{documento}/comentarios', [ComentarioController::class, 'index']);
         Route::get('/documentos/{documento}/versiones', [VersionController::class, 'index']);
