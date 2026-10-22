@@ -7,6 +7,9 @@ use Illuminate\Validation\Rule;
 
 class ConfiguracionPaginaRequest extends FormRequest
 {
+    /** Lo que puede mostrar el encabezado o el pie; pagina = «Página n de t». */
+    public const ELEMENTOS_FRANJA = ['titulo', 'autor', 'fecha', 'pagina', 'texto_libre'];
+
     public function authorize(): bool
     {
         return true;
@@ -28,12 +31,12 @@ class ConfiguracionPaginaRequest extends FormRequest
             'configuracion_header' => ['sometimes', 'array', 'nullable'],
             'configuracion_header.habilitado' => ['sometimes', 'boolean'],
             'configuracion_header.elementos' => ['sometimes', 'array'],
-            'configuracion_header.elementos.*' => ['string', Rule::in(['titulo', 'autor', 'fecha', 'texto_libre'])],
+            'configuracion_header.elementos.*' => ['string', Rule::in(self::ELEMENTOS_FRANJA)],
             'configuracion_header.texto_libre' => ['sometimes', 'string', 'max:500'],
             'configuracion_footer' => ['sometimes', 'array', 'nullable'],
             'configuracion_footer.habilitado' => ['sometimes', 'boolean'],
             'configuracion_footer.elementos' => ['sometimes', 'array'],
-            'configuracion_footer.elementos.*' => ['string', Rule::in(['titulo', 'autor', 'fecha', 'texto_libre'])],
+            'configuracion_footer.elementos.*' => ['string', Rule::in(self::ELEMENTOS_FRANJA)],
             'configuracion_footer.texto_libre' => ['sometimes', 'string', 'max:500'],
         ];
     }
@@ -46,8 +49,8 @@ class ConfiguracionPaginaRequest extends FormRequest
             'margenes.*.min' => 'Los márgenes deben ser mayores o iguales a 0mm.',
             'margenes.*.max' => 'Los márgenes no pueden exceder 100mm.',
             'configuracion_columnas.numero.max' => 'El documento puede tener máximo 4 columnas.',
-            'configuracion_header.elementos.*.in' => 'Los elementos del header deben ser: titulo, autor, fecha o texto_libre.',
-            'configuracion_footer.elementos.*.in' => 'Los elementos del footer deben ser: titulo, autor, fecha o texto_libre.',
+            'configuracion_header.elementos.*.in' => 'Los elementos del header deben ser: titulo, autor, fecha, pagina o texto_libre.',
+            'configuracion_footer.elementos.*.in' => 'Los elementos del footer deben ser: titulo, autor, fecha, pagina o texto_libre.',
         ];
     }
 }

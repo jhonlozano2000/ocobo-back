@@ -25,11 +25,11 @@ class ExportarDocumentoTest extends TestCase
         $this->yo = User::factory()->create(['estado' => 1]);
     }
 
-    private function documento(array $contenido, string $titulo = 'Acta'): int
+    private function documento(array $contenido, string $titulo = 'Acta', array $extra = []): int
     {
         $id = DB::table('mi_bandeja_temp_reci_documentos')->insertGetId([
             'user_id' => $this->yo->id, 'titulo' => $titulo, 'estado' => 'borrador',
-            'created_at' => now(), 'updated_at' => now(),
+            'created_at' => now(), 'updated_at' => now(), ...$extra,
         ]);
         DB::table('mi_bandeja_temp_reci_contenido')->insert([
             'documento_id' => $id, 'contenido_yjs' => json_encode($contenido),
@@ -137,5 +137,77 @@ class ExportarDocumentoTest extends TestCase
         $this->assertStringContainsString('<div style="page-break-after: always;"></div>', $html);
         // Valores que no son CSS válido se descartan en vez de inyectarse en el style
         $this->assertStringContainsString('<p>raro</p>', $html);
+    }
+
+    /** Encabezado con el título y pie con «Página n de t» y un texto libre. */
+    private function documentoConFranjas(): int
+    {
+        return $this->documento(['type' => 'doc', 'content' => [
+            self::parrafo(self::texto('Hoja uno')),
+            ['type' => 'pageBreak'],
+            self::parrafo(self::texto('Hoja dos')),
+        ]], 'Acta 12', [
+            'configuracion_header' => json_encode(['habilitado' => true, 'elementos' => ['titulo']]),
+            'configuracion_footer' => json_encode([
+                'habilitado' => true, 'elementos' => ['pagina', 'texto_libre'], 'texto_libre' => 'Confidencial {x}',
+            ]),
+        ]);
+    }
+
+    public function test_el_pdf_repite_encabezado_y_pie_en_cada_hoja_con_el_numero_de_pagina(): void
+    {
+        $id = $this->documentoConFranjas();
+        $pdf = $this->exportar($id, 'pdf');
+
+        $archivo = tempnam(sys_get_temp_dir(), 'pdf');
+        file_put_contents($archivo, $pdf);
+        $texto = shell_exec('pdftotext -enc UTF-8 -layout '.escapeshellarg($archivo).' - 2>&1');
+        @unlink($archivo);
+        if (! is_string($texto) || ! str_contains($texto, 'Hoja')) {
+            $this->markTestSkipped('pdftotext no está disponible para leer el PDF');
+        }
+
+        // pdftotext separa las hojas con un salto de página (form feed)
+        $hojas = array_values(array_filter(explode(chr(12), $texto), 'trim'));
+        $this->assertCount(2, $hojas);
+        foreach ($hojas as $i => $hoja) {
+            $this->assertStringContainsString('Acta 12', $hoja);
+            $this->assertStringContainsString('Página '.($i + 1).' de 2', $hoja);
+            $this->assertStringContainsString('Confidencial {x}', $hoja);
+        }
+    }
+
+    public function test_el_docx_lleva_encabezado_y_pie_con_los_campos_de_pagina_de_word(): void
+    {
+        $id = $this->documentoConFranjas();
+        $archivo = tempnam(sys_get_temp_dir(), 'docx');
+        file_put_contents($archivo, $this->exportar($id, 'docx'));
+
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open($archivo) === true);
+        $encabezado = $zip->getFromName('word/header1.xml');
+        $pie = $zip->getFromName('word/footer1.xml');
+        $zip->close();
+        @unlink($archivo);
+
+        $this->assertStringContainsString('Acta 12', $encabezado);
+        $this->assertStringContainsString('PAGE', $pie);
+        $this->assertStringContainsString('NUMPAGES', $pie);
+        // Las llaves del texto libre no se convierten en campos de Word
+        $this->assertStringContainsString('Confidencial (x)', $pie);
+    }
+
+    public function test_la_configuracion_acepta_el_numero_de_pagina_en_encabezado_y_pie(): void
+    {
+        $id = $this->documento(['type' => 'doc', 'content' => []]);
+        $url = "/api/mi-bandeja/comunicaciones-recibidas/documentos/{$id}/configuracion";
+
+        $this->actingAs($this->yo)->patchJson($url, [
+            'configuracion_footer' => ['habilitado' => true, 'elementos' => ['pagina', 'fecha']],
+        ])->assertOk()->assertJsonPath('data.configuracion.footer.elementos', ['pagina', 'fecha']);
+
+        $this->actingAs($this->yo)->patchJson($url, [
+            'configuracion_header' => ['habilitado' => true, 'elementos' => ['otro']],
+        ])->assertStatus(422);
     }
 }

@@ -10,12 +10,14 @@ use PhpOffice\PhpWord\PhpWord;
 
 class DocumentoExportService
 {
+    /** Marcador del total de hojas en el pie del PDF; se reemplaza tras contar las hojas. */
+    private const TOTAL_PAGINAS = '__TOTAL_PAGINAS__';
+
     public function exportarPdf(Documento $documento): string
     {
         $contenido = $documento->contenido;
         $configPagina = $documento->getConfiguracionPagina();
-        $creador = $documento->creador;
-        $creadorNombre = $creador ? trim($creador->nombres.' '.$creador->apellidos) ?: $creador->name : '';
+        $creadorNombre = $this->nombreCreador($documento);
 
         $html = $this->contenidoToHtml($contenido->contenido_yjs ?? []);
         $contenidoHtml = $this->wrapHtmlForPdf(
@@ -25,23 +27,13 @@ class DocumentoExportService
             $creadorNombre
         );
 
-        $pdf = Pdf::loadHTML($contenidoHtml);
-
-        $papel = match ($configPagina['tamano_papel']) {
-            'carta' => 'letter',
-            'legal' => 'legal',
-            'oficio' => [0, 0, 215.9, 330.2],
-            default => 'a4',
-        };
-
-        $orientacion = $configPagina['orientacion'] === 'horizontal' ? 'landscape' : 'portrait';
-        $pdf->setPaper($papel, $orientacion);
-
-        $margenes = $configPagina['margenes'];
-        $pdf->setOptions([
-            'dpi' => 96,
-            'defaultFont' => 'sans-serif',
-        ]);
+        $pdf = $this->renderizarPdf($contenidoHtml, $configPagina);
+        // dompdf no conoce el total de hojas al dibujar el pie: una primera pasada las cuenta
+        if (str_contains($contenidoHtml, self::TOTAL_PAGINAS)) {
+            $pdf->output();
+            $total = $pdf->getDomPDF()->getCanvas()->get_page_count();
+            $pdf = $this->renderizarPdf(str_replace(self::TOTAL_PAGINAS, (string) $total, $contenidoHtml), $configPagina);
+        }
 
         $filename = 'documento_'.$documento->id.'_'.time().'.pdf';
         $path = 'exports/'.$filename;
@@ -50,6 +42,22 @@ class DocumentoExportService
         Storage::disk('local')->put($path, $pdf->output());
 
         return Storage::disk('local')->path($path);
+    }
+
+    private function renderizarPdf(string $html, array $configPagina): \Barryvdh\DomPDF\PDF
+    {
+        $papel = match ($configPagina['tamano_papel']) {
+            'carta' => 'letter',
+            'legal' => 'legal',
+            // dompdf mide en puntos: 215,9 × 330,2 mm
+            'oficio' => [0, 0, 612, 936],
+            default => 'a4',
+        };
+        $orientacion = $configPagina['orientacion'] === 'horizontal' ? 'landscape' : 'portrait';
+
+        return Pdf::loadHTML($html)
+            ->setPaper($papel, $orientacion)
+            ->setOptions(['dpi' => 96, 'defaultFont' => 'sans-serif']);
     }
 
     private function wrapHtmlForPdf(string $titulo, string $contenido, array $config, string $autor): string
@@ -63,52 +71,8 @@ class DocumentoExportService
         $marginLeft = round($margenes['izquierdo'] * $mmToPt);
         $marginRight = round($margenes['derecho'] * $mmToPt);
 
-        $headerHtml = '';
-        $footerHtml = '';
-
-        if (! empty($config['header']['habilitado'])) {
-            $headerElementos = $config['header']['elementos'] ?? [];
-            $headerParts = [];
-
-            foreach ($headerElementos as $elem) {
-                $val = match ($elem) {
-                    'titulo' => htmlspecialchars($titulo),
-                    'autor' => htmlspecialchars($autor),
-                    'fecha' => date('d/m/Y'),
-                    'texto_libre' => htmlspecialchars($config['header']['texto_libre'] ?? ''),
-                    default => '',
-                };
-                if ($val) {
-                    $headerParts[] = $val;
-                }
-            }
-
-            if (! empty($headerParts)) {
-                $headerHtml = '<div style="text-align: center; font-size: 9pt; color: #666; border-bottom: 0.5px solid #ccc; padding-bottom: 8pt; margin-bottom: 8pt; width: 100%;">'.implode(' &nbsp;|&nbsp; ', $headerParts).'</div>';
-            }
-        }
-
-        if (! empty($config['footer']['habilitado'])) {
-            $footerElementos = $config['footer']['elementos'] ?? [];
-            $footerParts = [];
-
-            foreach ($footerElementos as $elem) {
-                $val = match ($elem) {
-                    'titulo' => htmlspecialchars($titulo),
-                    'autor' => htmlspecialchars($autor),
-                    'fecha' => date('d/m/Y'),
-                    'texto_libre' => htmlspecialchars($config['footer']['texto_libre'] ?? ''),
-                    default => '',
-                };
-                if ($val) {
-                    $footerParts[] = $val;
-                }
-            }
-
-            if (! empty($footerParts)) {
-                $footerHtml = '<div style="text-align: center; font-size: 9pt; color: #666; border-top: 0.5px solid #ccc; padding-top: 8pt; margin-top: 8pt; width: 100%;">'.implode(' &nbsp;|&nbsp; ', $footerParts).'</div>';
-            }
-        }
+        $headerPartes = $this->partesFranja($config['header'] ?? null, $titulo, $autor, true);
+        $footerPartes = $this->partesFranja($config['footer'] ?? null, $titulo, $autor, true);
 
         $columns = $config['columnas'] ?? ['numero' => 1];
         $columnCss = '';
@@ -118,8 +82,13 @@ class DocumentoExportService
             $columnCss = "-webkit-column-count: {$columnCount}; -moz-column-count: {$columnCount}; column-count: {$columnCount}; -webkit-column-rule: {$columnRule}; -moz-column-rule: {$columnRule}; column-rule: {$columnRule}; -webkit-column-gap: 32px; -moz-column-gap: 32px; column-gap: 32px;";
         }
 
-        $headerBlock = $headerHtml ? "<div style='margin-bottom: 16pt;'>{$headerHtml}</div>" : '';
-        $footerBlock = $footerHtml ? "<div style='margin-top: 16pt;'>{$footerHtml}</div>" : '';
+        // Encabezado y pie fijos: dompdf los repite en cada hoja, dentro de los márgenes superior e inferior
+        $headerBlock = $headerPartes
+            ? "<table class='franja' style='top: -{$marginTop}pt; height: {$marginTop}pt;'><tr><td>".implode(' &nbsp;|&nbsp; ', $headerPartes).'</td></tr></table>'
+            : '';
+        $footerBlock = $footerPartes
+            ? "<table class='franja' style='bottom: -{$marginBottom}pt; height: {$marginBottom}pt;'><tr><td>".implode(' &nbsp;|&nbsp; ', $footerPartes).'</td></tr></table>'
+            : '';
 
         return <<<HTML
 <!DOCTYPE html>
@@ -162,25 +131,76 @@ class DocumentoExportService
             {$columnCss}
         }
         mark { background-color: #ffeb3b; padding: 0 2pt; }
+        table.franja { position: fixed; left: 0; right: 0; width: 100%; margin: 0; border: none; }
+        table.franja td { border: none; padding: 0 0; text-align: center; vertical-align: middle; font-size: 9pt; color: #666; }
+        .numero-pagina:after { content: "Página " counter(page) " de __TOTAL_PAGINAS__"; }
     </style>
 </head>
 <body>
     {$headerBlock}
+    {$footerBlock}
     <div class="contenido-pagina">
         {$contenido}
     </div>
-    {$footerBlock}
 </body>
 </html>
 HTML;
     }
 
+    /**
+     * Textos del encabezado o pie en el orden elegido. El número de página va como marcador: en el PDF es un
+     * contador CSS de dompdf y en el .docx los campos PAGE/NUMPAGES de Word.
+     *
+     * @param  array|null  $franja  {habilitado, elementos[], texto_libre}
+     * @param  bool  $html  true: texto escapado para el PDF; false: texto plano para PhpWord
+     * @return string[]
+     */
+    private function partesFranja(?array $franja, string $titulo, string $autor, bool $html): array
+    {
+        if (empty($franja['habilitado'])) {
+            return [];
+        }
+
+        $partes = [];
+        foreach ($franja['elementos'] ?? [] as $elemento) {
+            $valor = match ($elemento) {
+                'titulo' => $titulo,
+                'autor' => $autor,
+                'fecha' => date('d/m/Y'),
+                'texto_libre' => $franja['texto_libre'] ?? '',
+                default => '',
+            };
+            if ($elemento === 'pagina') {
+                $partes[] = $html ? '<span class="numero-pagina"></span>' : 'Página {PAGE} de {NUMPAGES}';
+            } elseif ($valor !== '') {
+                // En el .docx las llaves del texto se tomarían por campos de Word
+                $partes[] = $html ? $this->esc($valor) : str_replace(['{', '}'], ['(', ')'], $valor);
+            }
+        }
+
+        return $partes;
+    }
+
+    private function nombreCreador(Documento $documento): string
+    {
+        $creador = $documento->creador;
+
+        return $creador ? (trim($creador->nombres.' '.$creador->apellidos) ?: (string) $creador->name) : '';
+    }
+
     public function exportarDocx(Documento $documento): string
     {
         $contenido = $documento->contenido;
+        $config = $documento->getConfiguracionPagina();
         $phpWord = new PhpWord;
 
         $section = $phpWord->addSection();
+        foreach (['header' => 'addHeader', 'footer' => 'addFooter'] as $clave => $metodo) {
+            $partes = $this->partesFranja($config[$clave] ?? null, (string) $documento->titulo, $this->nombreCreador($documento), false);
+            if ($partes) {
+                $section->{$metodo}()->addPreserveText(implode('  |  ', $partes), ['size' => 9, 'color' => '666666'], ['alignment' => 'center']);
+            }
+        }
         $this->agregarContenidoASection($section, $this->bloques($contenido->contenido_yjs ?? []));
 
         $filename = 'documento_'.$documento->id.'_'.time().'.docx';
