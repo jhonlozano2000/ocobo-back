@@ -257,6 +257,49 @@ class ExportarDocumentoTest extends TestCase
         $this->assertMatchesRegularExpression('/<w:u w:val="single"\/><\/w:rPr><w:t[^>]*>quince</', $documento);
     }
 
+    public function test_exporta_los_estilos_de_vinetas_numeracion_y_multinivel(): void
+    {
+        $item = fn (string $texto, array ...$anidadas) => [
+            'type' => 'listItem', 'content' => [self::parrafo(self::texto($texto)), ...$anidadas],
+        ];
+        $id = $this->documento(['type' => 'doc', 'content' => [
+            ['type' => 'bulletList', 'attrs' => ['estiloLista' => 'cuadrado'], 'content' => [$item('Cuadrado')]],
+            ['type' => 'bulletList', 'attrs' => ['estiloLista' => 'check'], 'content' => [$item('Hecho')]],
+            ['type' => 'orderedList', 'attrs' => ['estiloLista' => 'parentesis', 'start' => 3], 'content' => [$item('Tres')]],
+            ['type' => 'orderedList', 'attrs' => ['estiloLista' => 'multinivel'], 'content' => [
+                $item('Uno', ['type' => 'orderedList', 'content' => [$item('Uno uno'), $item('Uno dos')]]),
+                $item('Dos'),
+            ]],
+            // Un estilo inventado o de viñeta en una numeración se ignora
+            ['type' => 'orderedList', 'attrs' => ['estiloLista' => 'disco; color: red'], 'content' => [$item('Normal')]],
+        ]]);
+
+        $html = $this->exportar($id, 'html');
+        $this->assertStringContainsString('<ul style="list-style-type: square;"><li><p>Cuadrado</p></li></ul>', $html);
+        $this->assertStringContainsString('<p><span class="marcador-lista">✓</span> Hecho</p>', $html);
+        $this->assertStringContainsString('<p><span class="marcador-lista">3)</span> Tres</p>', $html);
+        $this->assertStringContainsString('<span class="marcador-lista">1.2.</span> Uno dos', $html);
+        $this->assertStringContainsString('<span class="marcador-lista">2.</span> Dos', $html);
+        $this->assertStringContainsString('<ol><li><p>Normal</p></li></ol>', $html);
+
+        $archivo = tempnam(sys_get_temp_dir(), 'docx');
+        file_put_contents($archivo, $this->exportar($id, 'docx'));
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open($archivo) === true);
+        $documento = $zip->getFromName('word/document.xml');
+        $numeracion = $zip->getFromName('word/numbering.xml');
+        $zip->close();
+        @unlink($archivo);
+
+        // El elemento anidado de la multinivel va en el nivel 1 de la misma numeración que su padre
+        $this->assertMatchesRegularExpression('/<w:ilvl w:val="1"\/>.*Uno uno/s', $documento);
+        $this->assertStringContainsString('<w:lvlText w:val="%1.%2."/>', $numeracion);
+        $this->assertStringContainsString('<w:lvlText w:val="%1)"/>', $numeracion);
+        $this->assertStringContainsString('<w:start w:val="3"/>', $numeracion);
+        $this->assertStringContainsString('<w:lvlText w:val="✓"/>', $numeracion);
+        $this->assertStringContainsString('<w:lvlText w:val="■"/>', $numeracion);
+    }
+
     public function test_la_configuracion_acepta_el_numero_de_pagina_en_encabezado_y_pie(): void
     {
         $id = $this->documento(['type' => 'doc', 'content' => []]);

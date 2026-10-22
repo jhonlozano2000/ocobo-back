@@ -16,6 +16,40 @@ class DocumentoExportService
     /** Un nivel de sangría del editor: 0,5" = 36 pt. */
     private const SANGRIA_PT = 36;
 
+    /**
+     * Estilos de lista del editor (EstiloLista): list-style-type del HTML (null: el marcador se escribe a mano
+     * porque dompdf no lo dibuja) y formato y texto del nivel en la numeración de Word.
+     */
+    private const ESTILOS_LISTA = [
+        'disco' => ['disc', 'bullet', '•'],
+        'circulo' => ['circle', 'bullet', '○'],
+        'cuadrado' => ['square', 'bullet', '■'],
+        'check' => [null, 'bullet', '✓'],
+        'flecha' => [null, 'bullet', '➢'],
+        'guion' => [null, 'bullet', '–'],
+        'decimal' => ['decimal', 'decimal', '%.'],
+        'parentesis' => [null, 'decimal', '%)'],
+        'letra-minuscula' => ['lower-alpha', 'lowerLetter', '%.'],
+        'letra-mayuscula' => ['upper-alpha', 'upperLetter', '%.'],
+        'romano-minuscula' => ['lower-roman', 'lowerRoman', '%.'],
+        'romano-mayuscula' => ['upper-roman', 'upperRoman', '%.'],
+        'multinivel' => [null, 'decimal', '%.'],
+    ];
+
+    /** Viñetas por nivel de una lista sin estilo, como las alterna el navegador. */
+    private const VINETAS_POR_NIVEL = ['disco', 'circulo', 'cuadrado'];
+
+    /** Numeración de los niveles exteriores mientras se escribe una lista multinivel en HTML. */
+    private ?array $prefijoMultinivel = null;
+
+    /** Marcador escrito a mano que lleva el primer párrafo del elemento de lista actual. */
+    private ?string $marcadorLista = null;
+
+    /** Documento de PhpWord en exportación (para registrar las numeraciones de las listas). */
+    private ?PhpWord $phpWord = null;
+
+    private int $listasDocx = 0;
+
     public function exportarPdf(Documento $documento): string
     {
         $contenido = $documento->contenido;
@@ -196,6 +230,7 @@ HTML;
         $contenido = $documento->contenido;
         $config = $documento->getConfiguracionPagina();
         $phpWord = new PhpWord;
+        $this->phpWord = $phpWord;
 
         $section = $phpWord->addSection();
         foreach (['header' => 'addHeader', 'footer' => 'addFooter'] as $clave => $metodo) {
@@ -280,15 +315,14 @@ HTML;
 
         switch ($node['type'] ?? null) {
             case 'paragraph':
-                return '<p'.$this->estiloBloque($node).'>'.$this->renderInlineContent($node['content'] ?? []).'</p>';
+                return '<p'.$this->estiloBloque($node).'>'.$this->tomarMarcador().$this->renderInlineContent($node['content'] ?? []).'</p>';
             case 'heading':
                 $level = min(max((int) ($node['attrs']['level'] ?? 1), 1), 6);
 
-                return "<h{$level}".$this->estiloBloque($node).'>'.$this->renderInlineContent($node['content'] ?? [])."</h{$level}>";
+                return "<h{$level}".$this->estiloBloque($node).'>'.$this->tomarMarcador().$this->renderInlineContent($node['content'] ?? [])."</h{$level}>";
             case 'bulletList':
-                return '<ul>'.$hijos().'</ul>';
             case 'orderedList':
-                return '<ol>'.$hijos().'</ol>';
+                return $this->renderLista($node);
             case 'taskList':
                 return '<ul style="list-style: none;">'.$hijos().'</ul>';
             case 'listItem':
@@ -326,6 +360,72 @@ HTML;
             default:
                 return $hijos();
         }
+    }
+
+    /**
+     * Lista con el estilo de la biblioteca de viñetas y numeración. Los marcadores que dompdf no sabe dibujar
+     * (✓, ➢, –, 1) y la multinivel 1.1.1) se escriben al inicio del primer párrafo de cada elemento.
+     */
+    private function renderLista(array $node): string
+    {
+        $etiqueta = $node['type'] === 'orderedList' ? 'ol' : 'ul';
+        $estilo = $this->estiloLista($node);
+        $multinivel = $etiqueta === 'ol' && ($estilo === 'multinivel' || ($estilo === null && $this->prefijoMultinivel !== null));
+        $previo = $this->prefijoMultinivel;
+
+        if (! $multinivel && ($estilo === null || self::ESTILOS_LISTA[$estilo][0] !== null)) {
+            // Las listas anidadas en esta no siguen la numeración multinivel de una exterior
+            $this->prefijoMultinivel = null;
+            $html = $this->renderHijos($node['content'] ?? []);
+            $this->prefijoMultinivel = $previo;
+            $style = $estilo ? ' style="list-style-type: '.self::ESTILOS_LISTA[$estilo][0].';"' : '';
+
+            return "<{$etiqueta}{$style}>{$html}</{$etiqueta}>";
+        }
+
+        $inicio = $this->inicioLista($node);
+        $html = '';
+        foreach (array_values(array_filter($node['content'] ?? [], 'is_array')) as $i => $item) {
+            $numero = $inicio + $i;
+            if ($multinivel) {
+                $this->prefijoMultinivel = [...($previo ?? []), $numero];
+                $this->marcadorLista = implode('.', $this->prefijoMultinivel).'.';
+            } else {
+                $this->marcadorLista = $estilo === 'parentesis' ? "{$numero})" : self::ESTILOS_LISTA[$estilo][2];
+            }
+            $html .= $this->renderNode($item);
+            $this->marcadorLista = null;
+        }
+        $this->prefijoMultinivel = $previo;
+
+        return "<{$etiqueta} style=\"list-style: none;\">{$html}</{$etiqueta}>";
+    }
+
+    private function tomarMarcador(): string
+    {
+        $marcador = $this->marcadorLista;
+        $this->marcadorLista = null;
+
+        return $marcador === null ? '' : '<span class="marcador-lista">'.$this->esc($marcador).'</span> ';
+    }
+
+    /** Estilo de la biblioteca guardado en la lista, o null si no hay o no es uno conocido. */
+    private function estiloLista(array $lista): ?string
+    {
+        $estilo = $lista['attrs']['estiloLista'] ?? null;
+        if (! is_string($estilo) || ! isset(self::ESTILOS_LISTA[$estilo])) {
+            return null;
+        }
+        $deNumeracion = self::ESTILOS_LISTA[$estilo][1] !== 'bullet';
+
+        return $deNumeracion === ($lista['type'] === 'orderedList') ? $estilo : null;
+    }
+
+    private function inicioLista(array $lista): int
+    {
+        $inicio = $lista['attrs']['start'] ?? 1;
+
+        return is_numeric($inicio) ? max(0, min((int) $inicio, 9999)) : 1;
     }
 
     private function renderInlineContent(array $content): string
@@ -595,14 +695,7 @@ HTML;
                     break;
                 case 'bulletList':
                 case 'orderedList':
-                    foreach ($block['content'] ?? [] as $item) {
-                        $text = $this->renderInlineText($item['content'][0]['content'] ?? []);
-                        if ($block['type'] === 'bulletList') {
-                            $section->addListItem($text);
-                        } else {
-                            $section->addListItem($text, 0, null, 'ordered');
-                        }
-                    }
+                    $this->agregarLista($section, $block);
                     break;
                 case 'blockquote':
                     $section->addText($this->renderInlineText($block['content'] ?? []), ['italic' => true]);
@@ -612,6 +705,66 @@ HTML;
                     break;
             }
         }
+    }
+
+    /**
+     * Lista con numeración de Word: cada lista tiene la suya (empieza en su número) y las anidadas van un
+     * nivel más adentro. Las listas anidadas sin estilo dentro de una multinivel comparten su numeración,
+     * cuyos niveles muestran los números exteriores (%1.%2.).
+     */
+    private function agregarLista($section, array $lista, int $nivel = 0, ?string $multinivel = null): void
+    {
+        $estilo = $this->estiloLista($lista);
+        $ordenada = $lista['type'] === 'orderedList';
+        if (! ($ordenada && $multinivel !== null && $estilo === null)) {
+            $multinivel = $ordenada && $estilo === 'multinivel' ? $this->registrarNumeracion($lista, $nivel) : null;
+        }
+        $numeracion = $multinivel ?? $this->registrarNumeracion($lista, $nivel);
+
+        foreach ($lista['content'] ?? [] as $item) {
+            $primero = true;
+            foreach ($item['content'] ?? [] as $hijo) {
+                $tipo = $hijo['type'] ?? null;
+                if ($tipo === 'bulletList' || $tipo === 'orderedList') {
+                    $this->agregarLista($section, $hijo, min($nivel + 1, 8), $multinivel);
+                } elseif ($primero && ($tipo === 'paragraph' || $tipo === 'heading')) {
+                    $run = $section->addListItemRun($nivel, $numeracion, $this->estiloParrafoDocx($hijo));
+                    $this->agregarTramos($run, $hijo['content'] ?? []);
+                } else {
+                    $this->agregarContenidoASection($section, [$hijo]);
+                }
+                $primero = false;
+            }
+        }
+    }
+
+    /** Registra la numeración de Word de una lista y devuelve su nombre. */
+    private function registrarNumeracion(array $lista, int $nivelLista): string
+    {
+        $estilo = $this->estiloLista($lista);
+        $ordenada = $lista['type'] === 'orderedList';
+        $niveles = [];
+        for ($nivel = 0; $nivel < 9; $nivel++) {
+            $clave = $estilo ?? ($ordenada ? 'decimal' : self::VINETAS_POR_NIVEL[$nivel % 3]);
+            [, $formato, $texto] = self::ESTILOS_LISTA[$clave];
+            if ($formato !== 'bullet') {
+                $texto = $estilo === 'multinivel'
+                    ? implode('.', array_map(fn ($n) => '%'.($n + 1), range(min($nivelLista, $nivel), $nivel))).'.'
+                    : str_replace('%', '%'.($nivel + 1), $texto);
+            }
+            $niveles[] = [
+                'format' => $formato,
+                'text' => $texto,
+                'start' => $nivel === $nivelLista ? $this->inicioLista($lista) : 1,
+                'left' => 720 * ($nivel + 1),
+                'hanging' => 360,
+                'tabPos' => 720 * ($nivel + 1),
+            ];
+        }
+        $nombre = 'ListaDocumento'.(++$this->listasDocx);
+        $this->phpWord->addNumberingStyle($nombre, ['type' => 'multilevel', 'levels' => $niveles]);
+
+        return $nombre;
     }
 
     /** Textos y saltos de línea de un párrafo, cada uno con el estilo de sus marcas. */
