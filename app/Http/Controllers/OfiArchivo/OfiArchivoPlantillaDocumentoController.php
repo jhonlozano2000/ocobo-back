@@ -24,7 +24,7 @@ class OfiArchivoPlantillaDocumentoController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            $query = OfiArchivoPlantillaDocumento::with(['creador', 'actualizador']);
+            $query = OfiArchivoPlantillaDocumento::with(['creador', 'actualizador', 'tipo:id,nombre']);
 
             if ($request->has('search') && $request->search !== '') {
                 $search = $request->search;
@@ -36,6 +36,10 @@ class OfiArchivoPlantillaDocumentoController extends Controller
 
             if ($request->has('extension') && $request->extension !== '') {
                 $query->where('extension', $request->extension);
+            }
+
+            if ($request->filled('categoria_id')) {
+                $query->where('categoria_id', (int) $request->categoria_id);
             }
 
             if ($request->has('activo') && $request->activo !== '') {

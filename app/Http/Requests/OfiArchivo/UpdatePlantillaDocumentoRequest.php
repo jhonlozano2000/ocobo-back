@@ -18,6 +18,8 @@ class UpdatePlantillaDocumentoRequest extends FormRequest
             'descripcion' => 'nullable|string|max:1000',
             'version' => 'nullable|string|max:10',
             'fecha_vencimiento' => 'nullable|date|after:today',
+            // Tipo de plantilla (lista TipPlanti de Configuración → Listas)
+            'categoria_id' => ['nullable', 'integer', PlantillaGeneradaRequest::reglaTipo()],
             'activo' => 'boolean',
             'archivo' => [
                 'nullable',
@@ -34,6 +36,7 @@ class UpdatePlantillaDocumentoRequest extends FormRequest
             'archivo.mimes' => 'Solo se permiten archivos: docx, doc, pdf, odt, dotx, ott, xlsx, xls, ppt, pptx, txt, rtf, csv.',
             'archivo.max' => 'El archivo no puede superar los 10 MB.',
             'fecha_vencimiento.after' => 'La fecha de vencimiento debe ser futura.',
+            'categoria_id.exists' => 'El tipo de plantilla no es válido.',
         ];
     }
 }

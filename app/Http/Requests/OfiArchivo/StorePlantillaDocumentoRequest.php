@@ -24,6 +24,8 @@ class StorePlantillaDocumentoRequest extends FormRequest
             'descripcion' => 'nullable|string|max:1000',
             'version' => 'nullable|string|max:10',
             'fecha_vencimiento' => 'nullable|date|after:today',
+            // Tipo de plantilla (lista TipPlanti de Configuración → Listas)
+            'categoria_id' => ['nullable', 'integer', PlantillaGeneradaRequest::reglaTipo()],
         ];
     }
 
@@ -35,6 +37,7 @@ class StorePlantillaDocumentoRequest extends FormRequest
             'archivo.max' => 'El archivo no puede superar los 10 MB.',
             'nombre.required' => 'El nombre de la plantilla es obligatorio.',
             'fecha_vencimiento.after' => 'La fecha de vencimiento debe ser futura.',
+            'categoria_id.exists' => 'El tipo de plantilla no es válido.',
         ];
     }
 }

@@ -9,6 +9,7 @@ use Database\Seeders\ClasificacionDocumental\TRDSeed;
 use Database\Seeders\Configuracion\DiviPoliSeed;
 use Database\Seeders\Configuracion\EmailLabelSeed;
 use Database\Seeders\Configuracion\ListaSeed;
+use Database\Seeders\Configuracion\PlantillasGeneradasBaseSeed;
 use Database\Seeders\Configuracion\SedesSeeder;
 use Database\Seeders\Configuracion\TiposPlantillaSeed;
 use Database\Seeders\ControlAcceso\RoleSeeder;
@@ -52,6 +53,7 @@ class DatabaseSeeder extends Seeder
         $this->call(OrganigramaSeed::class);
         $this->call(ListaSeed::class);
         $this->call(TiposPlantillaSeed::class);
+        $this->call(PlantillasGeneradasBaseSeed::class);
         $this->call(EmailLabelSeed::class);
         $this->call(TercerosSeed::class);
         $this->call(SedesSeeder::class);

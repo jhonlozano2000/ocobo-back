@@ -13,9 +13,10 @@ use App\Models\MiBandeja\TempDocumentosRecibidos\Contenido;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\MiBandeja\TempDocumentosRecibidos\DocumentoUsuario;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Version;
+use App\Models\OfiArchivo\OfiArchivoPlantillaGenerada;
 use App\Services\MiBandeja\TempDocumentosRecibidos\CursorService;
 use App\Services\MiBandeja\TempDocumentosRecibidos\LogoEntidadService;
-use App\Services\MiBandeja\TempDocumentosRecibidos\PlantillaDocumentoService;
+use App\Services\OfiArchivo\PlantillaGeneradaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -105,13 +106,14 @@ class DocumentoController extends Controller
         ], 'Estadísticas obtenidas exitosamente');
     }
 
-    /** Documentos que creó el usuario o en los que colabora. */
+    /** Documentos que creó el usuario o en los que colabora (sin los de trabajo de las plantillas). */
     private function misDocumentos(Request $request)
     {
         $userId = $request->user()->id;
 
-        return Documento::where(fn ($q) => $q->where('user_id', $userId)
-            ->orWhereHas('usuarios', fn ($u) => $u->where('user_id', $userId)));
+        return Documento::whereNull('plantilla_generada_id')
+            ->where(fn ($q) => $q->where('user_id', $userId)
+                ->orWhereHas('usuarios', fn ($u) => $u->where('user_id', $userId)));
     }
 
     /**
@@ -127,7 +129,8 @@ class DocumentoController extends Controller
      * @bodyParam titulo string required Título del documento (3-255 caracteres). Example: "Oficio de respuesta"
      * @bodyParam notas string Notas opcionales. Example: "Revision pendiente"
      * @bodyParam es_publico boolean Visibilidad para otros usuarios. Default: false
-     * @bodyParam plantilla string Plantilla institucional con membrete: oficio, acta, memorando o circular. Example: "oficio"
+     * @bodyParam plantilla_id integer Plantilla generada (institucional publicada o personal): da la página y el
+     *   contenido inicial, con la fecha, la ciudad y los datos del usuario y de la entidad ya llenos. Example: 3
      *
      * @response 201 {
      *   "data": {
@@ -141,10 +144,12 @@ class DocumentoController extends Controller
      *   "errors": {"titulo": ["El título es obligatorio"]}
      * }
      */
-    public function store(DocumentoRequest $request, PlantillaDocumentoService $plantillas): JsonResponse
+    public function store(DocumentoRequest $request, PlantillaGeneradaService $plantillas): JsonResponse
     {
         $data = $request->validated();
-        $plantilla = ! empty($data['plantilla']) ? $plantillas->construir($data['plantilla'], $request->user()) : null;
+        $plantilla = ! empty($data['plantilla_id'])
+            ? $plantillas->paraDocumento(OfiArchivoPlantillaGenerada::findOrFail($data['plantilla_id']), $request->user())
+            : null;
 
         $documentoData = [
             'titulo' => $data['titulo'],

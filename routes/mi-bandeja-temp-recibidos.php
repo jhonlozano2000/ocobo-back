@@ -5,6 +5,7 @@ use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\CursorController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoExportController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoImportController;
+use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\PlantillaController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\SugerenciaController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\VersionController;
 use Illuminate\Support\Facades\Route;
@@ -17,6 +18,16 @@ Route::middleware(['auth:sanctum', 'throttle:documentos'])->prefix('comunicacion
     Route::get('/documentos/estadisticas', [DocumentoController::class, 'estadisticas']);
     Route::get('/logo-entidad', [DocumentoController::class, 'logoEntidad']);
     Route::post('/documentos', [DocumentoController::class, 'store']);
+
+    // Plantillas para crear documentos: generadas (institucionales y personales) y cargadas en Gestión de Archivo
+    Route::get('/plantillas', [PlantillaController::class, 'index']);
+    Route::post('/plantillas', [PlantillaController::class, 'store']);
+    Route::patch('/plantillas/{plantilla}', [PlantillaController::class, 'update']);
+    Route::delete('/plantillas/{plantilla}', [PlantillaController::class, 'destroy']);
+    Route::post('/plantillas/{plantilla}/editar', [PlantillaController::class, 'editar']);
+    Route::post('/documentos/{documento}/guardar-plantilla', [PlantillaController::class, 'guardar']);
+    Route::get('/plantillas-cargadas/{cargada}/descargar', [PlantillaController::class, 'descargarCargada']);
+    Route::post('/plantillas-cargadas/{cargada}/usar', [PlantillaController::class, 'usarCargada']);
 
     Route::middleware('can:ver,documento')->group(function () {
         Route::get('/documentos/{documento}', [DocumentoController::class, 'show']);

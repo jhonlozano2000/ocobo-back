@@ -2,6 +2,7 @@
 
 namespace App\Models\OfiArchivo;
 
+use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -36,6 +37,12 @@ class OfiArchivoPlantillaDocumento extends Model
         'peso' => 'decimal:2',
         'fecha_vencimiento' => 'datetime',
     ];
+
+    /** Tipo de plantilla (lista TipPlanti de Configuración → Listas). */
+    public function tipo()
+    {
+        return $this->belongsTo(ConfigListaDetalle::class, 'categoria_id');
+    }
 
     public function creador()
     {

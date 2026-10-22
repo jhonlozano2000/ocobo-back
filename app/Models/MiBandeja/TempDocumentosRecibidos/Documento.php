@@ -2,6 +2,7 @@
 
 namespace App\Models\MiBandeja\TempDocumentosRecibidos;
 
+use App\Models\OfiArchivo\OfiArchivoPlantillaGenerada;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\MiBandeja\MiBandejaFiltroService;
@@ -42,6 +43,8 @@ class Documento extends Model
     /** @var array<string> Campos asignables en masa */
     protected $fillable = [
         'radica_reci_id',
+        // Documento de trabajo para editar una plantilla generada: no aparece en Mis Documentos
+        'plantilla_generada_id',
         'user_id',
         'titulo',
         'estado',
@@ -109,6 +112,12 @@ class Documento extends Model
         'izquierdo' => 25.4,
         'derecho' => 25.4,
     ];
+
+    /** Plantilla generada que se edita con este documento (si es un documento de trabajo). */
+    public function plantillaGenerada(): BelongsTo
+    {
+        return $this->belongsTo(OfiArchivoPlantillaGenerada::class, 'plantilla_generada_id');
+    }
 
     /**
      * Relación con el radicado origen.

@@ -3,7 +3,6 @@
 namespace App\Http\Requests\MiBandeja\TempReci;
 
 use App\Rules\RadicadoAccesible;
-use App\Services\MiBandeja\TempDocumentosRecibidos\PlantillaDocumentoService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -56,10 +55,14 @@ class DocumentoRequest extends FormRequest
                 'sometimes',
                 'boolean',
             ],
-            // Solo al crear: plantilla institucional con membrete para el contenido inicial
-            'plantilla' => [
+            // Solo al crear: plantilla generada (institucional publicada o personal) para el contenido inicial
+            'plantilla_id' => [
                 'nullable',
-                Rule::in(PlantillaDocumentoService::PLANTILLAS),
+                'integer',
+                Rule::exists('ofi_archivo_plantillas_generadas', 'id')
+                    ->whereNull('deleted_at')
+                    ->where(fn ($q) => $q->where(fn ($i) => $i->where('institucional', true)->where('activo', true))
+                        ->orWhere(fn ($p) => $p->where('institucional', false)->where('user_id', $this->user()?->id))),
             ],
         ];
     }
@@ -75,7 +78,7 @@ class DocumentoRequest extends FormRequest
             'radica_reci_id.required' => 'Debe seleccionar un radicado.',
             'radica_reci_id.exists' => 'El radicado seleccionado no existe.',
             'titulo.required' => 'El título es obligatorio.',
-            'plantilla.in' => 'La plantilla no es válida.',
+            'plantilla_id.exists' => 'La plantilla no es válida.',
             'titulo.min' => 'El título debe tener al menos 3 caracteres.',
             'titulo.max' => 'El título no puede exceder 255 caracteres.',
             'estado.in' => 'El estado debe ser: borrador, en_revision o firmado.',

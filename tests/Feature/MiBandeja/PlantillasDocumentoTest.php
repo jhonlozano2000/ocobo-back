@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\MiBandeja;
 
+use App\Models\OfiArchivo\OfiArchivoPlantillaGenerada;
 use App\Models\User;
+use Database\Seeders\Configuracion\PlantillasGeneradasBaseSeed;
+use Database\Seeders\Configuracion\TiposPlantillaSeed;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Middleware\ThrottleRequests;
@@ -11,8 +14,9 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * Plantillas institucionales de Mis Documentos: al crear un documento como oficio, acta, memorando o circular
- * empieza con el membrete de la entidad, en carta con los márgenes de la GTC 185 y el pie de contacto.
+ * Plantillas institucionales de base (PlantillasGeneradasBaseSeed): al crear un documento como oficio, acta,
+ * memorando o circular empieza con el membrete de la entidad y los datos de quien lo crea (variables ya
+ * llenas), en carta con los márgenes de la GTC 185 y el pie de contacto.
  */
 class PlantillasDocumentoTest extends TestCase
 {
@@ -43,11 +47,22 @@ class PlantillasDocumentoTest extends TestCase
         ] as $clave => $valor) {
             DB::table('config_varias')->updateOrInsert(['clave' => $clave], ['valor' => $valor]);
         }
+
+        $this->seed(TiposPlantillaSeed::class);
+        $this->seed(PlantillasGeneradasBaseSeed::class);
     }
 
     private function crear(array $datos)
     {
         return $this->actingAs($this->yo)->postJson(self::URL, ['titulo' => 'Documento de prueba', ...$datos]);
+    }
+
+    /** Documento creado desde la plantilla base de ese nombre. */
+    private function desde(string $nombre)
+    {
+        $plantilla = OfiArchivoPlantillaGenerada::where('institucional', true)->whereNull('user_id')->where('nombre', $nombre)->firstOrFail();
+
+        return $this->crear(['plantilla_id' => $plantilla->id]);
     }
 
     private function contenido(int $id): array
@@ -76,7 +91,7 @@ class PlantillasDocumentoTest extends TestCase
 
     public function test_un_oficio_empieza_con_membrete_firma_y_pagina_institucional(): void
     {
-        $id = $this->crear(['plantilla' => 'oficio'])->assertCreated()->json('data.id');
+        $id = $this->desde('Oficio')->assertCreated()->json('data.id');
 
         $documento = DB::table('mi_bandeja_temp_reci_documentos')->find($id);
         $this->assertSame('carta', $documento->tamano_papel);
@@ -95,14 +110,14 @@ class PlantillasDocumentoTest extends TestCase
 
         $texto = $this->textos($contenido);
         $this->assertStringContainsString('ALCALDÍA DE PRUEBA', $texto);
-        $this->assertStringContainsString('NIT 800.000.001-1', $texto);
+        $this->assertMatchesRegularExpression('/NIT\s+800\.000\.001-1/u', $texto);
         $this->assertStringContainsString('Asunto:', $texto);
         $this->assertStringContainsString('ANA RUIZ', $texto);
     }
 
     public function test_el_acta_trae_asistentes_orden_del_dia_y_compromisos(): void
     {
-        $id = $this->crear(['plantilla' => 'acta'])->assertCreated()->json('data.id');
+        $id = $this->desde('Acta')->assertCreated()->json('data.id');
 
         $contenido = $this->contenido($id);
         $tipos = array_column($contenido['content'], 'type');
@@ -118,44 +133,60 @@ class PlantillasDocumentoTest extends TestCase
 
     public function test_memorando_y_circular_identifican_al_remitente(): void
     {
-        foreach (['memorando' => 'MEMORANDO', 'circular' => 'CIRCULAR No.'] as $plantilla => $titulo) {
-            $id = $this->crear(['plantilla' => $plantilla])->assertCreated()->json('data.id');
+        foreach (['Memorando' => 'MEMORANDO', 'Circular' => 'CIRCULAR No.'] as $plantilla => $titulo) {
+            $id = $this->desde($plantilla)->assertCreated()->json('data.id');
             $texto = $this->textos($this->contenido($id));
 
             $this->assertStringContainsString($titulo, $texto);
             $this->assertStringContainsString('PARA:', $texto);
             $this->assertStringContainsString('ASUNTO:', $texto);
         }
+        $this->assertMatchesRegularExpression('/DE:\s+Ana Ruiz/u', $this->textos($this->contenido($this->desde('Memorando')->json('data.id'))));
+    }
+
+    public function test_las_plantillas_base_quedan_publicadas_y_clasificadas_y_el_seeder_es_idempotente(): void
+    {
+        $this->seed(PlantillasGeneradasBaseSeed::class);
+
+        $base = OfiArchivoPlantillaGenerada::where('institucional', true)->whereNull('user_id')->with('tipo')->get();
+        $this->assertSame(4, $base->count());
+        $this->assertTrue($base->every->activo);
+        $this->assertEqualsCanonicalizing(['Acta', 'Circular', 'Memorando', 'Oficio'], $base->pluck('tipo.nombre')->all());
     }
 
     public function test_lo_que_falta_por_completar_va_en_campos_y_no_en_corchetes(): void
     {
-        $id = $this->crear(['plantilla' => 'oficio'])->assertCreated()->json('data.id');
+        $id = $this->desde('Oficio')->assertCreated()->json('data.id');
         $corchetes = [];
         $campos = $this->campos($this->contenido($id), $corchetes);
 
-        // La ciudad de la entidad y el cargo de quien firma no están configurados: también quedan por completar
+        // La ciudad de la entidad y el cargo y la dependencia de quien firma no están configurados: también
+        // quedan por completar
         $this->assertSame([
             'Ciudad', 'Nombre del destinatario', 'Cargo', 'Entidad', 'Dirección', 'Ciudad', 'Asunto',
-            'Escriba aquí el texto del oficio.', 'Cargo',
+            'Escriba aquí el texto del oficio.', 'Cargo del usuario', 'Dependencia del usuario',
         ], $campos);
         $this->assertSame([], $corchetes);
 
-        foreach (['acta', 'memorando', 'circular'] as $plantilla) {
+        foreach (['Acta', 'Memorando', 'Circular'] as $plantilla) {
             $corchetes = [];
-            $id = $this->crear(['plantilla' => $plantilla])->assertCreated()->json('data.id');
+            $id = $this->desde($plantilla)->assertCreated()->json('data.id');
             $this->assertNotEmpty($this->campos($this->contenido($id), $corchetes));
             $this->assertSame([], $corchetes, $plantilla);
         }
     }
 
-    public function test_un_logo_que_no_es_imagen_no_se_incrusta(): void
+    public function test_sin_logo_ni_datos_de_contacto_el_encabezado_y_el_pie_no_quedan_vacios(): void
     {
         Storage::disk('otros_archivos')->put('logo.png', 'no soy una imagen');
+        DB::table('config_varias')->whereIn('clave', ['direccion_empresa', 'telefono_empresa', 'correo_electronico_empresa'])
+            ->update(['valor' => null]);
 
-        $id = $this->crear(['plantilla' => 'memorando'])->assertCreated()->json('data.id');
+        $id = $this->desde('Memorando')->assertCreated()->json('data.id');
 
-        $this->assertNull(DB::table('mi_bandeja_temp_reci_documentos')->where('id', $id)->value('configuracion_header'));
+        $documento = DB::table('mi_bandeja_temp_reci_documentos')->find($id);
+        $this->assertEquals(['habilitado' => false, 'elementos' => []], json_decode($documento->configuracion_header, true));
+        $this->assertEquals(['habilitado' => true, 'elementos' => ['pagina'], 'texto_libre' => ''], json_decode($documento->configuracion_footer, true));
     }
 
     public function test_sin_plantilla_el_documento_queda_en_blanco_y_rechaza_plantillas_desconocidas(): void
@@ -163,8 +194,8 @@ class PlantillasDocumentoTest extends TestCase
         $id = $this->crear([])->assertCreated()->json('data.id');
         $this->assertSame([], $this->contenido($id));
 
-        $this->crear(['plantilla' => 'resolucion'])
+        $this->crear(['plantilla_id' => 999999])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['plantilla']);
+            ->assertJsonValidationErrors(['plantilla_id']);
     }
 }

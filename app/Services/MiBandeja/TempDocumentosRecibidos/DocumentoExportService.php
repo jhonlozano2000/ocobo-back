@@ -3,6 +3,7 @@
 namespace App\Services\MiBandeja\TempDocumentosRecibidos;
 
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
+use App\Services\OfiArchivo\VariablesPlantillaService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\IOFactory;
@@ -496,7 +497,7 @@ HTML;
                 continue;
             }
 
-            $text = $inline['type'] === 'campo'
+            $text = in_array($inline['type'], ['campo', 'variable'], true)
                 ? '<span style="background-color: '.self::COLOR_CAMPO.';">'.$this->esc($this->textoCampo($inline)).'</span>'
                 : $this->esc($inline['text'] ?? '');
 
@@ -557,9 +558,16 @@ HTML;
         return $html;
     }
 
-    /** Campo por completar de las plantillas: su etiqueta entre corchetes, como se ve en el editor. */
+    /**
+     * Campo por completar de las plantillas: su etiqueta entre corchetes, como se ve en el editor. Las variables
+     * de una plantilla generada (solo en su documento de trabajo) van entre llaves: «{Fecha}».
+     */
     private function textoCampo(array $campo): string
     {
+        if (($campo['type'] ?? null) === 'variable') {
+            return '{'.(VariablesPlantillaService::VARIABLES[$campo['attrs']['clave'] ?? ''] ?? 'Variable').'}';
+        }
+
         return '['.mb_substr(trim((string) ($campo['attrs']['etiqueta'] ?? '')), 0, 120).']';
     }
 
@@ -739,7 +747,7 @@ HTML;
         $text = '';
 
         foreach ($content as $inline) {
-            if (($inline['type'] ?? null) === 'campo') {
+            if (in_array($inline['type'] ?? null, ['campo', 'variable'], true)) {
                 $text .= $this->textoCampo($inline);
             } elseif (isset($inline['text'])) {
                 $text .= $inline['text'];
@@ -848,7 +856,7 @@ HTML;
         foreach ($contenido as $inline) {
             if (($inline['type'] ?? null) === 'hardBreak') {
                 $run->addTextBreak();
-            } elseif (($inline['type'] ?? null) === 'campo') {
+            } elseif (in_array($inline['type'] ?? null, ['campo', 'variable'], true)) {
                 // Resaltado, para que en Word se vea qué falta por completar
                 $run->addText($this->textoCampo($inline), ['fgColor' => 'yellow'] + $this->getTextStyle($inline['marks'] ?? []));
             } elseif (isset($inline['text']) && $inline['text'] !== '') {

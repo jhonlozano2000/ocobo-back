@@ -1,75 +1,75 @@
 <?php
 
-namespace App\Services\MiBandeja\TempDocumentosRecibidos;
-
-use App\Models\Configuracion\ConfigDiviPoli;
-use App\Models\Configuracion\ConfigVarias;
-use App\Models\User;
-use Carbon\Carbon;
+namespace App\Services\OfiArchivo;
 
 /**
- * Plantillas institucionales para Mis Documentos (oficio, acta, memorando y circular), como las plantillas de
- * Word con membrete.
+ * Plantillas institucionales de base para el Generador de plantillas (oficio, acta, memorando y circular), como
+ * las plantillas de Word con membrete. Las siembra PlantillasGeneradasBaseSeed; desde ahí se editan en el
+ * Generador como cualquier otra.
  *
- * Arma el contenido inicial (JSON de TipTap) con el membrete de la entidad (razón social y NIT; el logo va en el
- * encabezado de página, que lo repite en cada hoja), la ciudad
- * y la fecha, y el nombre, cargo y dependencia de quien lo crea; lo que debe completar el usuario va en campos
- * por completar (nodo «campo»: se ven resaltados y Tab pasa de uno a otro). En los textos de este servicio se
- * escriben entre corchetes y enLinea() los convierte. También da la configuración de página: tamaño carta con los márgenes de la GTC 185 y un pie con los
- * datos de contacto de la entidad y el número de página.
+ * El membrete (razón social y NIT; el logo va en el encabezado de página), la ciudad, la fecha y los datos de
+ * quien crea el documento son variables (nodo «variable») que se llenan al crear cada documento; lo que debe
+ * completar el usuario va en campos por completar (nodo «campo»: se ven resaltados y Tab pasa de uno a otro).
+ * En los textos de este servicio, «[Asunto]» es un campo, «{fecha}» una variable y «{usuario_nombre|mayus}» una
+ * variable en mayúsculas; enLinea() los convierte. La página es carta con los márgenes de la GTC 185 y un pie
+ * con los datos de contacto de la entidad y el número de página.
  */
-class PlantillaDocumentoService
+class PlantillasBaseService
 {
-    public const PLANTILLAS = ['oficio', 'acta', 'memorando', 'circular'];
+    /** clave => [nombre, código del tipo en la lista TipPlanti, descripción] */
+    public const PLANTILLAS = [
+        'oficio' => ['Oficio', 'OFICIO', 'Comunicación oficial externa con membrete, destinatario y firma.'],
+        'memorando' => ['Memorando', 'MEMORANDO', 'Comunicación interna entre dependencias.'],
+        'circular' => ['Circular', 'CIRCULAR', 'Comunicación general a varios destinatarios.'],
+        'acta' => ['Acta', 'ACTA', 'Acta de reunión o comité con asistentes, orden del día y compromisos.'],
+    ];
 
-    /** Lo que va entre corchetes en los textos de las plantillas es un campo por completar. */
-    private const PATRON_CAMPO = '/\[([^\]]+)\]/u';
+    /** «[campo]», «{variable}» o «{variable|mayus}». */
+    private const PATRON = '/(\[[^\]]+\]|\{[a-z_]+(?:\|mayus)?\})/u';
 
     /** Márgenes en mm según la GTC 185 (comunicaciones oficiales). */
     public const MARGENES = ['superior' => 30, 'inferior' => 25, 'izquierdo' => 30, 'derecho' => 20];
 
-    public function __construct(private LogoEntidadService $logos) {}
+    /** Datos de contacto del pie; los que no estén configurados se quitan al crear el documento. */
+    public const TEXTO_PIE = '{entidad_direccion} · Tel. {entidad_telefono} · {entidad_correo} · {entidad_web}';
 
     /**
-     * Configuración de página y contenido inicial de la plantilla.
-     *
-     * @return array{pagina: array, contenido: array}
+     * @return array{nombre: string, tipo: string, descripcion: string, contenido: array, configuracion: array}
      */
-    public function construir(string $plantilla, User $user): array
+    public function construir(string $plantilla): array
     {
-        $empresa = ConfigVarias::getInformacionEmpresa();
-        $datos = [
-            'empresa' => $empresa,
-            'ciudad' => $this->ciudad($empresa['divi_poli_id_empresa'] ?? null),
-            'fecha' => Carbon::now()->locale('es')->translatedFormat('j \d\e F \d\e Y'),
-            'nombre' => trim(($user->nombres ?? '').' '.($user->apellidos ?? '')),
-            'cargo' => (string) ($user->cargo?->nombre ?? ''),
-            'dependencia' => (string) ($user->cargo?->dependencia?->nombre ?? ''),
-        ];
+        [$nombre, $tipo, $descripcion] = self::PLANTILLAS[$plantilla];
 
         $cuerpo = match ($plantilla) {
-            'oficio' => $this->oficio($datos),
-            'acta' => $this->acta($datos),
-            'memorando' => $this->memorando($datos),
-            'circular' => $this->circular($datos),
+            'oficio' => $this->oficio(),
+            'acta' => $this->acta(),
+            'memorando' => $this->memorando(),
+            'circular' => $this->circular(),
         };
 
         return [
-            'pagina' => [
+            'nombre' => $nombre,
+            'tipo' => $tipo,
+            'descripcion' => $descripcion,
+            'contenido' => ['type' => 'doc', 'content' => [...$this->membrete(), ...$cuerpo]],
+            'configuracion' => [
                 'tamano_papel' => 'carta',
                 'orientacion' => 'vertical',
                 'margenes' => self::MARGENES,
-                'configuracion_header' => $this->logos->archivo() ? ['habilitado' => true, 'elementos' => ['logo']] : null,
-                'configuracion_footer' => $this->pie($empresa),
+                'configuracion_header' => ['habilitado' => true, 'elementos' => ['logo']],
+                'configuracion_footer' => [
+                    'habilitado' => true,
+                    'elementos' => ['texto_libre', 'pagina'],
+                    'texto_libre' => self::TEXTO_PIE,
+                ],
             ],
-            'contenido' => ['type' => 'doc', 'content' => [...$this->membrete($empresa), ...$cuerpo]],
         ];
     }
 
-    private function oficio(array $d): array
+    private function oficio(): array
     {
         return [
-            $this->parrafo($this->ciudadFecha($d)),
+            $this->parrafo('{ciudad}, {fecha}'),
             $this->vacio(),
             $this->parrafo('Señor(a)'),
             $this->parrafo($this->enLinea('[Nombre del destinatario]', true)),
@@ -85,56 +85,56 @@ class PlantillaDocumentoService
             $this->parrafo('[Escriba aquí el texto del oficio.]', 'justify'),
             $this->vacio(),
             $this->parrafo('Atentamente,'),
-            ...$this->firma($d),
+            ...$this->firma(),
         ];
     }
 
-    private function memorando(array $d): array
+    private function memorando(): array
     {
         return [
             $this->titulo('MEMORANDO'),
-            $this->parrafo($this->ciudadFecha($d)),
+            $this->parrafo('{ciudad}, {fecha}'),
             $this->vacio(),
             $this->campo('PARA', '[Nombre y cargo del destinatario]'),
-            $this->campo('DE', $this->remitente($d)),
+            $this->campo('DE', '{usuario_nombre}, {usuario_cargo}'),
             $this->campo('ASUNTO', '[Asunto]'),
             $this->vacio(),
             $this->parrafo('[Escriba aquí el texto del memorando.]', 'justify'),
             $this->vacio(),
             $this->parrafo('Cordialmente,'),
-            ...$this->firma($d),
+            ...$this->firma(),
         ];
     }
 
-    private function circular(array $d): array
+    private function circular(): array
     {
         return [
             $this->titulo('CIRCULAR No. [número]'),
-            $this->parrafo($this->ciudadFecha($d)),
+            $this->parrafo('{ciudad}, {fecha}'),
             $this->vacio(),
             $this->campo('PARA', '[Destinatarios]'),
-            $this->campo('DE', $d['dependencia'] ?: $this->remitente($d)),
+            $this->campo('DE', '{usuario_dependencia}'),
             $this->campo('ASUNTO', '[Asunto]'),
             $this->vacio(),
             $this->parrafo('[Escriba aquí el texto de la circular.]', 'justify'),
             $this->vacio(),
             $this->parrafo('Cordialmente,'),
-            ...$this->firma($d),
+            ...$this->firma(),
         ];
     }
 
-    private function acta(array $d): array
+    private function acta(): array
     {
         return [
             $this->titulo('ACTA No. [número]'),
             $this->parrafo($this->enLinea('[Nombre del comité o reunión]', true), 'center'),
             $this->vacio(),
-            $this->campo('Fecha', $d['fecha']),
+            $this->campo('Fecha', '{fecha}'),
             $this->campo('Hora', '[hh:mm]'),
             $this->campo('Lugar', '[Lugar]'),
             $this->subtitulo('Asistentes'),
             $this->tabla(['Nombre', 'Cargo', 'Dependencia'], [
-                [$d['nombre'], $d['cargo'], $d['dependencia']],
+                ['{usuario_nombre}', '{usuario_cargo}', '{usuario_dependencia}'],
                 ['', '', ''],
             ]),
             $this->subtitulo('Orden del día'),
@@ -162,63 +162,24 @@ class PlantillaDocumentoService
     }
 
     /** Razón social y NIT, centrados. */
-    private function membrete(array $empresa): array
+    private function membrete(): array
     {
-        $bloques = [];
-        if (! empty($empresa['razon_social_empresa'])) {
-            $bloques[] = $this->parrafo([$this->texto(mb_strtoupper($empresa['razon_social_empresa']), true)], 'center');
-        }
-        if (! empty($empresa['nit_empresa'])) {
-            $bloques[] = $this->parrafo('NIT '.$empresa['nit_empresa'], 'center');
-        }
-        if ($bloques) {
-            $bloques[] = ['type' => 'horizontalRule'];
-        }
-
-        return $bloques;
-    }
-
-    /** Pie de cada página con los datos de contacto de la entidad. */
-    private function pie(array $empresa): array
-    {
-        $contacto = array_filter([
-            $empresa['direccion_empresa'] ?? null,
-            ! empty($empresa['telefono_empresa']) ? 'Tel. '.$empresa['telefono_empresa'] : null,
-            $empresa['correo_electronico_empresa'] ?? null,
-            $empresa['web_empresa'] ?? null,
-        ]);
-
         return [
-            'habilitado' => true,
-            'elementos' => $contacto ? ['texto_libre', 'pagina'] : ['pagina'],
-            'texto_libre' => implode(' · ', $contacto),
+            $this->parrafo($this->enLinea('{entidad_nombre|mayus}', true), 'center'),
+            $this->parrafo('NIT {entidad_nit}', 'center'),
+            ['type' => 'horizontalRule'],
         ];
     }
 
-    private function firma(array $d): array
+    private function firma(): array
     {
         return [
             $this->vacio(),
             $this->vacio(),
-            $this->parrafo($this->enLinea($d['nombre'] ? mb_strtoupper($d['nombre']) : '[Nombre]', true)),
-            $this->parrafo($d['cargo'] ?: '[Cargo]'),
-            ...($d['dependencia'] ? [$this->parrafo($d['dependencia'])] : []),
+            $this->parrafo($this->enLinea('{usuario_nombre|mayus}', true)),
+            $this->parrafo('{usuario_cargo}'),
+            $this->parrafo('{usuario_dependencia}'),
         ];
-    }
-
-    private function remitente(array $d): string
-    {
-        return implode(', ', array_filter([$d['nombre'], $d['cargo']])) ?: '[Remitente]';
-    }
-
-    private function ciudadFecha(array $d): string
-    {
-        return ($d['ciudad'] ?: '[Ciudad]').', '.$d['fecha'];
-    }
-
-    private function ciudad(mixed $diviPoliId): string
-    {
-        return $diviPoliId ? (string) (ConfigDiviPoli::find($diviPoliId)?->nombre ?? '') : '';
     }
 
     private function texto(string $texto, bool $negrita = false): array
@@ -229,18 +190,21 @@ class PlantillaDocumentoService
     }
 
     /**
-     * Nodos en línea de un texto: lo que va entre corchetes pasa a ser un campo por completar.
+     * Nodos en línea de un texto: «[...]» pasa a ser un campo por completar y «{...}» una variable.
      *
      * @return list<array>
      */
     private function enLinea(string $texto, bool $negrita = false): array
     {
         $nodos = [];
-        foreach (preg_split(self::PATRON_CAMPO, $texto, -1, PREG_SPLIT_DELIM_CAPTURE) as $i => $parte) {
-            if ($parte === '') {
-                continue;
+        foreach (preg_split(self::PATRON, $texto, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY) as $parte) {
+            if (preg_match('/^\[(.+)\]$/u', $parte, $m)) {
+                $nodo = ['type' => 'campo', 'attrs' => ['etiqueta' => trim($m[1])]];
+            } elseif (preg_match('/^\{([a-z_]+)(\|mayus)?\}$/u', $parte, $m)) {
+                $nodo = ['type' => 'variable', 'attrs' => ['clave' => $m[1], 'mayusculas' => isset($m[2])]];
+            } else {
+                $nodo = $this->texto($parte);
             }
-            $nodo = $i % 2 ? ['type' => 'campo', 'attrs' => ['etiqueta' => trim($parte)]] : $this->texto($parte);
             $nodos[] = $negrita ? $nodo + ['marks' => [['type' => 'bold']]] : $nodo;
         }
 

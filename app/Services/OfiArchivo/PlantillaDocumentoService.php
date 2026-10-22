@@ -39,6 +39,7 @@ class PlantillaDocumentoService
                 'version' => $data['version'] ?? '1.0',
                 'descripcion' => $data['descripcion'] ?? null,
                 'fecha_vencimiento' => $data['fecha_vencimiento'] ?? null,
+                'categoria_id' => $data['categoria_id'] ?? null,
                 'user_crea_id' => auth()->id(),
             ]);
 
@@ -71,6 +72,10 @@ class PlantillaDocumentoService
                     : $plantilla->fecha_vencimiento,
                 'user_actualiza_id' => auth()->id(),
             ];
+
+            if (array_key_exists('categoria_id', $data)) {
+                $updateData['categoria_id'] = $data['categoria_id'];
+            }
 
             if (isset($data['activo'])) {
                 $updateData['activo'] = $data['activo'];

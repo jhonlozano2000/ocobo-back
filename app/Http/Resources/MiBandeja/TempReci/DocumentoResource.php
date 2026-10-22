@@ -26,6 +26,12 @@ class DocumentoResource extends JsonResource
             'notas' => $this->notas,
             'es_publico' => $this->es_publico,
             'configuracion_pagina' => $this->getConfiguracionPagina(),
+            // Documento de trabajo de una plantilla generada: el editor la edita en «modo plantilla»
+            'plantilla_generada' => $this->plantilla_generada_id ? [
+                'id' => $this->plantillaGenerada?->id,
+                'nombre' => $this->plantillaGenerada?->nombre,
+                'institucional' => (bool) $this->plantillaGenerada?->institucional,
+            ] : null,
             'estadisticas' => [
                 'versiones' => $this->when($this->relationLoaded('versiones') || $request->routeIs('*.show'), function () {
                     return $this->versiones()->count();
