@@ -84,8 +84,8 @@ class ExportarDocumentoTest extends TestCase
         $this->assertStringContainsString('<h2>Considerandos</h2>', $html);
         $this->assertStringContainsString('<p>Primero <strong>negrita</strong></p>', $html);
         $this->assertStringContainsString('<li><p>Punto uno</p></li>', $html);
-        $this->assertStringContainsString('<th><p>Nombre</p></th>', $html);
-        $this->assertStringContainsString('<td><p>Ana</p></td>', $html);
+        $this->assertMatchesRegularExpression('#<th style="[^"]*"><p>Nombre</p></th>#', $html);
+        $this->assertMatchesRegularExpression('#<td style="[^"]*"><p>Ana</p></td>#', $html);
 
         $txt = $this->exportar($id, 'txt');
         $this->assertStringContainsString('CONSIDERANDOS', $txt);

@@ -406,13 +406,7 @@ HTML;
             case 'tablaContenido':
                 return $this->renderTablaContenido($node);
             case 'table':
-                return '<table border="1" cellpadding="5" cellspacing="0">'.$hijos().'</table>';
-            case 'tableRow':
-                return '<tr>'.$hijos().'</tr>';
-            case 'tableHeader':
-                return '<th>'.$hijos().'</th>';
-            case 'tableCell':
-                return '<td>'.$hijos().'</td>';
+                return $this->renderTabla($node);
             case 'image':
                 $src = (string) ($node['attrs']['src'] ?? '');
                 if (! preg_match('#^(https?://|data:image/)#i', $src)) {
@@ -426,6 +420,62 @@ HTML;
             default:
                 return $hijos();
         }
+    }
+
+    /** Bordes (color, con líneas verticales) y fondo del encabezado de cada estilo de tabla del editor. */
+    private const ESTILOS_TABLA = [
+        'cuadricula' => ['#bfbfbf', true, '#f5f5f5', null],
+        'sin_bordes' => [null, false, null, null],
+        'horizontal' => ['#bfbfbf', false, null, null],
+        'encabezado' => ['#8eaadb', true, '#2f5496', '#ffffff'],
+        'bandas' => ['#b4c6e7', true, '#d9e2f3', null],
+    ];
+
+    /**
+     * Tabla con el estilo del editor (bordes y fondos), celdas combinadas, sombreado, alineación vertical y
+     * anchos de columna. Todo en línea: dompdf no aplica bien selectores como nth-child.
+     */
+    private function renderTabla(array $node): string
+    {
+        $estilo = $node['attrs']['estilo'] ?? null;
+        [$borde, $verticales, $fondoEncabezado, $colorEncabezado] = self::ESTILOS_TABLA[$estilo] ?? self::ESTILOS_TABLA['cuadricula'];
+        $linea = $borde ? "1px solid {$borde}" : 'none';
+
+        $filas = '';
+        foreach (array_values(array_filter($node['content'] ?? [], fn ($fila) => ($fila['type'] ?? null) === 'tableRow')) as $indice => $fila) {
+            $celdas = '';
+            foreach ($fila['content'] ?? [] as $celda) {
+                $tipo = $celda['type'] ?? null;
+                if ($tipo !== 'tableCell' && $tipo !== 'tableHeader') {
+                    continue;
+                }
+                $attrs = $celda['attrs'] ?? [];
+                $encabezado = $tipo === 'tableHeader';
+                $fondo = $this->colorCss($attrs['backgroundColor'] ?? null)
+                    ?? ($encabezado ? $fondoEncabezado : ($estilo === 'bandas' && $indice % 2 === 1 ? '#f2f2f2' : null));
+                $alineacion = in_array($attrs['verticalAlign'] ?? null, ['middle', 'bottom'], true) ? $attrs['verticalAlign'] : 'top';
+                $ancho = array_sum(array_map('intval', array_filter((array) ($attrs['colwidth'] ?? []), 'is_numeric')));
+
+                $css = "border-top: {$linea}; border-bottom: ".($estilo === 'horizontal' && $encabezado ? '2px solid #404040' : $linea).'; '
+                    .'border-left: '.($verticales ? $linea : 'none').'; border-right: '.($verticales ? $linea : 'none').'; '
+                    ."padding: 5px; vertical-align: {$alineacion};"
+                    .($fondo ? " background-color: {$fondo};" : '')
+                    .($encabezado && $colorEncabezado ? " color: {$colorEncabezado};" : '')
+                    .($ancho > 0 ? " width: {$ancho}px;" : '');
+                $span = '';
+                foreach (['colspan', 'rowspan'] as $atributo) {
+                    $valor = (int) ($attrs[$atributo] ?? 1);
+                    if ($valor > 1) {
+                        $span .= " {$atributo}=\"".min($valor, 100).'"';
+                    }
+                }
+                $etiqueta = $encabezado ? 'th' : 'td';
+                $celdas .= "<{$etiqueta}{$span} style=\"{$css}\">".$this->renderHijos($celda['content'] ?? [])."</{$etiqueta}>";
+            }
+            $filas .= '<tr>'.$celdas.'</tr>';
+        }
+
+        return '<table style="width: 100%; border-collapse: collapse; margin-bottom: 1em;">'.$filas.'</table>';
     }
 
     /**
