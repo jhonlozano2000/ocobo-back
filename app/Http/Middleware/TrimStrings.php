@@ -15,5 +15,8 @@ class TrimStrings extends Middleware
         'current_password',
         'password',
         'password_confirmation',
+        // Contenido del editor (JSON de TipTap): los espacios al borde de cada tramo de texto son parte del
+        // documento («Hola » + «mundo» en negrita); recortarlos los pegaba al guardar y al exportar
+        'contenido.*',
     ];
 }
