@@ -24,6 +24,7 @@ class PlantillaGeneradaService
         'configuracion_columnas',
         'configuracion_header',
         'configuracion_footer',
+        'configuracion_formato',
     ];
 
     /** Lo que vuelve a tomar el documento de trabajo si la plantilla no lo define (valores de la tabla). */
@@ -34,6 +35,7 @@ class PlantillaGeneradaService
         'configuracion_columnas' => null,
         'configuracion_header' => null,
         'configuracion_footer' => null,
+        'configuracion_formato' => null,
     ];
 
     public const PERMISO = 'Gestion de Archivo -> Plantillas -> ';

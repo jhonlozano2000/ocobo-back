@@ -56,6 +56,9 @@ class DocumentoExportService
     /** Documento de PhpWord en exportación (para registrar las numeraciones de las listas). */
     private ?PhpWord $phpWord = null;
 
+    /** Estilos modificados del documento en exportación (formato.estilos). */
+    private ?array $estilos = null;
+
     private int $listasDocx = 0;
 
     public function __construct(private LogoEntidadService $logos = new LogoEntidadService) {}
@@ -117,6 +120,9 @@ class DocumentoExportService
         $marginBottom = round($margenes['inferior'] * $mmToPt);
         $marginLeft = round($margenes['izquierdo'] * $mmToPt);
         $marginRight = round($margenes['derecho'] * $mmToPt);
+
+        // Estilos modificados del documento, encima de los por defecto
+        $estilos = EstilosDocumento::css($config['formato']['estilos'] ?? null);
 
         $headerPartes = $this->partesFranja($config['header'] ?? null, $titulo, $autor, true, $marginTop);
         $footerPartes = $this->partesFranja($config['footer'] ?? null, $titulo, $autor, true, $marginBottom);
@@ -181,6 +187,7 @@ class DocumentoExportService
         table.franja { position: fixed; left: 0; right: 0; width: 100%; margin: 0; border: none; }
         table.franja td { border: none; padding: 0 0; text-align: center; vertical-align: middle; font-size: 9pt; color: #666; }
         .numero-pagina:after { content: "Página " counter(page) " de __TOTAL_PAGINAS__"; }
+        {$estilos}
     </style>
 </head>
 <body>
@@ -268,6 +275,8 @@ HTML;
         $config = $documento->getConfiguracionPagina();
         $phpWord = new PhpWord;
         $this->phpWord = $phpWord;
+        $this->estilos = $config['formato']['estilos'] ?? null;
+        EstilosDocumento::aplicarDocx($phpWord, $this->estilos);
 
         $section = $phpWord->addSection();
         foreach (['header' => ['addHeader', 'superior'], 'footer' => ['addFooter', 'inferior']] as $clave => [$metodo, $margen]) {
@@ -781,7 +790,11 @@ HTML;
                     $this->agregarLista($section, $block);
                     break;
                 case 'blockquote':
-                    $section->addText($this->renderInlineText($block['content'] ?? []), ['italic' => true]);
+                    $section->addText(
+                        $this->renderInlineText($block['content'] ?? []),
+                        EstilosDocumento::citaDocx($this->estilos),
+                        EstilosDocumento::parrafoCitaDocx($this->estilos) ?: null
+                    );
                     break;
                 case 'horizontalRule':
                     $section->addHorizontalRule();

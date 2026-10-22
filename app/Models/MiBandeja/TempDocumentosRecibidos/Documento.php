@@ -56,6 +56,7 @@ class Documento extends Model
         'configuracion_columnas',
         'configuracion_header',
         'configuracion_footer',
+        'configuracion_formato',
         'nombre_archivo_original',
         'archivo_path',
     ];
@@ -68,6 +69,7 @@ class Documento extends Model
         'configuracion_columnas' => 'array',
         'configuracion_header' => 'array',
         'configuracion_footer' => 'array',
+        'configuracion_formato' => 'array',
     ];
 
     /**
@@ -291,6 +293,7 @@ class Documento extends Model
             'columnas' => $this->configuracion_columnas ?? ['numero' => 1],
             'header' => $this->configuracion_header ?? null,
             'footer' => $this->configuracion_footer ?? null,
+            'formato' => $this->configuracion_formato ?? null,
         ];
     }
 }

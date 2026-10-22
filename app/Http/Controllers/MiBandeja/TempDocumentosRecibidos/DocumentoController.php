@@ -15,6 +15,7 @@ use App\Models\MiBandeja\TempDocumentosRecibidos\DocumentoUsuario;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Version;
 use App\Models\OfiArchivo\OfiArchivoPlantillaGenerada;
 use App\Services\MiBandeja\TempDocumentosRecibidos\CursorService;
+use App\Services\MiBandeja\TempDocumentosRecibidos\EstilosDocumento;
 use App\Services\MiBandeja\TempDocumentosRecibidos\LogoEntidadService;
 use App\Services\OfiArchivo\PlantillaGeneradaService;
 use Illuminate\Http\JsonResponse;
@@ -702,6 +703,14 @@ class DocumentoController extends Controller
 
         if (array_key_exists('configuracion_footer', $validated)) {
             $updateData['configuracion_footer'] = $validated['configuracion_footer'];
+        }
+
+        if (array_key_exists('configuracion_formato', $validated)) {
+            $formato = $validated['configuracion_formato'];
+            if (is_array($formato) && array_key_exists('estilos', $formato)) {
+                $formato['estilos'] = EstilosDocumento::limpiar($formato['estilos']) ?: null;
+            }
+            $updateData['configuracion_formato'] = $formato ? array_filter($formato, fn ($valor) => $valor !== null) ?: null : null;
         }
 
         $documento->update($updateData);
