@@ -62,6 +62,9 @@ class DocumentoExportService
 
     private int $listasDocx = 0;
 
+    /** Textos de las notas al pie en orden, mientras se recorre el documento (HTML y TXT las ponen al final). */
+    private array $notas = [];
+
     public function __construct(private LogoEntidadService $logos = new LogoEntidadService) {}
 
     public function exportarPdf(Documento $documento): string
@@ -334,7 +337,14 @@ HTML;
     public function exportarTxt(Documento $documento): string
     {
         $contenido = $documento->contenido;
+        $this->notas = [];
         $texto = $this->contenidoToText($contenido->contenido_yjs ?? []);
+        if ($this->notas !== []) {
+            $texto .= "\n\n__________\n";
+            foreach ($this->notas as $indice => $nota) {
+                $texto .= '['.($indice + 1).'] '.$nota."\n";
+            }
+        }
 
         $filename = 'documento_'.$documento->id.'_'.time().'.txt';
         $path = 'exports/'.$filename;
@@ -359,9 +369,33 @@ HTML;
 
     private function contenidoToHtml(array $contenido): string
     {
+        $this->notas = [];
         $html = $this->renderHijos($this->bloques($contenido));
 
-        return $html !== '' ? $html : '<p></p>';
+        return ($html !== '' ? $html : '<p></p>').$this->renderNotas();
+    }
+
+    /** Notas al pie al final del documento, como en el lienzo del editor. */
+    private function renderNotas(): string
+    {
+        if ($this->notas === []) {
+            return '';
+        }
+        $items = '';
+        foreach ($this->notas as $indice => $nota) {
+            $items .= '<li><sup>'.($indice + 1).'</sup> '.$this->esc($nota).'</li>';
+        }
+
+        return '<hr style="width: 30%; margin: 2em 0 0.5em 0; border: none; border-top: 1px solid #9e9e9e; text-align: left;">'
+            .'<ol class="notas-pie" style="list-style: none; padding: 0; margin: 0; font-size: 0.85em;">'.$items.'</ol>';
+    }
+
+    /** Texto de una nota al pie (se guarda para el final) y su número. */
+    private function tomarNota(array $nota): int
+    {
+        $this->notas[] = mb_substr((string) ($nota['attrs']['texto'] ?? ''), 0, 1000);
+
+        return count($this->notas);
     }
 
     private function renderHijos(array $nodos): string
@@ -617,6 +651,11 @@ HTML;
 
             if ($inline['type'] === 'hardBreak') {
                 $html .= '<br>';
+
+                continue;
+            }
+            if ($inline['type'] === 'notaAlPie') {
+                $html .= '<sup>'.$this->tomarNota($inline).'</sup>';
 
                 continue;
             }
@@ -881,6 +920,8 @@ HTML;
         foreach ($content as $inline) {
             if (in_array($inline['type'] ?? null, ['campo', 'variable'], true)) {
                 $text .= $this->textoCampo($inline);
+            } elseif (($inline['type'] ?? null) === 'notaAlPie') {
+                $text .= '['.$this->tomarNota($inline).']';
             } elseif (isset($inline['text'])) {
                 $text .= $inline['text'];
             }
@@ -997,6 +1038,8 @@ HTML;
         foreach ($contenido as $inline) {
             if (($inline['type'] ?? null) === 'hardBreak') {
                 $run->addTextBreak();
+            } elseif (($inline['type'] ?? null) === 'notaAlPie') {
+                $run->addFootnote()->addText(mb_substr((string) ($inline['attrs']['texto'] ?? ''), 0, 1000));
             } elseif (in_array($inline['type'] ?? null, ['campo', 'variable'], true)) {
                 // Resaltado, para que en Word se vea qué falta por completar
                 $run->addText($this->textoCampo($inline), ['fgColor' => 'yellow'] + $this->getTextStyle($inline['marks'] ?? []));
