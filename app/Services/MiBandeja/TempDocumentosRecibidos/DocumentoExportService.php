@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\Settings;
+use PhpOffice\PhpWord\Style\TOC;
 
 class DocumentoExportService
 {
@@ -402,6 +403,8 @@ HTML;
                 return '<hr>';
             case 'pageBreak':
                 return '<div style="page-break-after: always;"></div>';
+            case 'tablaContenido':
+                return $this->renderTablaContenido($node);
             case 'table':
                 return '<table border="1" cellpadding="5" cellspacing="0">'.$hijos().'</table>';
             case 'tableRow':
@@ -423,6 +426,45 @@ HTML;
             default:
                 return $hijos();
         }
+    }
+
+    /**
+     * Tabla de contenido tal como quedó en el editor (títulos 1 a 3 con su hoja), con puntos guía hasta el
+     * número de hoja como en Word.
+     */
+    private function renderTablaContenido(array $node): string
+    {
+        $filas = '';
+        foreach ($this->entradasTablaContenido($node) as $entrada) {
+            $sangria = ($entrada['nivel'] - 1) * 11;
+            $filas .= '<tr><td style="padding: 1pt 0 1pt '.$sangria.'pt; border-bottom: 1px dotted #9e9e9e;">'
+                .$this->esc($entrada['texto']).'</td><td style="padding: 1pt 0 1pt 6pt; text-align: right; width: 30pt;">'
+                .$this->esc($entrada['pagina'] ?? '').'</td></tr>';
+        }
+
+        return '<div class="tabla-contenido"><p style="font-size: 16pt; font-weight: bold; color: #2f5496;">'
+            .$this->esc($this->tituloTablaContenido($node)).'</p>'
+            .($filas !== '' ? '<table style="width: 100%; border-collapse: collapse;">'.$filas.'</table>' : '')
+            .'</div>';
+    }
+
+    /** @return array<int, array{nivel: int, texto: string, pagina: ?int}> */
+    private function entradasTablaContenido(array $node): array
+    {
+        $entradas = $node['attrs']['entradas'] ?? [];
+
+        return array_values(array_map(fn ($entrada) => [
+            'nivel' => min(max((int) ($entrada['nivel'] ?? 1), 1), 3),
+            'texto' => (string) ($entrada['texto'] ?? ''),
+            'pagina' => isset($entrada['pagina']) && is_numeric($entrada['pagina']) ? (int) $entrada['pagina'] : null,
+        ], array_filter(is_array($entradas) ? $entradas : [], 'is_array')));
+    }
+
+    private function tituloTablaContenido(array $node): string
+    {
+        $titulo = $node['attrs']['titulo'] ?? null;
+
+        return is_string($titulo) && $titulo !== '' ? $titulo : 'Contenido';
     }
 
     /**
@@ -736,6 +778,14 @@ HTML;
                 case 'horizontalRule':
                     $text .= "---\n\n";
                     break;
+                case 'tablaContenido':
+                    $text .= mb_strtoupper($this->tituloTablaContenido($block))."\n";
+                    foreach ($this->entradasTablaContenido($block) as $entrada) {
+                        $text .= str_repeat('  ', $entrada['nivel'] - 1).$entrada['texto']
+                            .($entrada['pagina'] !== null ? ' ..... '.$entrada['pagina'] : '')."\n";
+                    }
+                    $text .= "\n";
+                    break;
                 case 'table':
                     foreach ($block['content'] ?? [] as $row) {
                         foreach ($row['content'] ?? [] as $cell) {
@@ -798,6 +848,11 @@ HTML;
                     break;
                 case 'horizontalRule':
                     $section->addHorizontalRule();
+                    break;
+                case 'tablaContenido':
+                    $section->addText($this->tituloTablaContenido($block), ['bold' => true, 'size' => 16, 'color' => '2F5496']);
+                    $section->addTOC(['size' => 11], ['tabLeader' => TOC::TAB_LEADER_DOT], 1, 3);
+                    $this->phpWord?->getSettings()->setUpdateFields(true);
                     break;
             }
         }
