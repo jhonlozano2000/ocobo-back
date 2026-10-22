@@ -3,6 +3,7 @@
 namespace App\Models\MiBandeja\TempDocumentosRecibidos;
 
 use App\Models\OfiArchivo\OfiArchivoPlantillaGenerada;
+use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\MiBandeja\MiBandejaFiltroService;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Collection;
 
 /**
  * Documento colaborativo para Comunicaciones Recibidas en Mi Bandeja.
@@ -48,6 +51,8 @@ class Documento extends Model
         'user_id',
         'titulo',
         'estado',
+        'firmas_retiradas_en',
+        'firmas_retiradas_por',
         'notas',
         'es_publico',
         'tamano_papel',
@@ -65,6 +70,7 @@ class Documento extends Model
     protected $casts = [
         'es_publico' => 'boolean',
         'estado' => 'string',
+        'firmas_retiradas_en' => 'datetime',
         'margenes' => 'array',
         'configuracion_columnas' => 'array',
         'configuracion_header' => 'array',
@@ -235,6 +241,11 @@ class Documento extends Model
      */
     public function puedeEditar(User $user): bool
     {
+        // Firmado = protegido: nadie lo edita hasta retirar las firmas (cualquier cambio invalidaría la firma)
+        if ($this->estaProtegido()) {
+            return false;
+        }
+
         $rol = $this->usuarios()->where('user_id', $user->id)->first();
 
         if (! $rol) {
@@ -245,16 +256,52 @@ class Documento extends Model
     }
 
     /**
-     * Verifica si un usuario puede firmar el documento.
+     * Verifica si un usuario puede firmar el documento: un firmante designado o, si no hay, el creador.
      *
      * @param  User  $user  Usuario a verificar
      * @return bool true si puede firmar
      */
     public function puedeFirmar(User $user): bool
     {
-        $rol = $this->usuarios()->where('user_id', $user->id)->first();
+        return $this->firmantesRequeridos()->contains($user->id);
+    }
 
-        return $rol && $rol->rol === 'firmante';
+    /**
+     * Quienes deben firmar: los firmantes designados o, si no hay ninguno, el creador.
+     *
+     * @return Collection<int, int> ids de usuario
+     */
+    public function firmantesRequeridos(): Collection
+    {
+        $firmantes = $this->usuarios()->where('rol', 'firmante')->pluck('user_id');
+
+        return $firmantes->isNotEmpty() ? $firmantes->values() : collect([$this->user_id]);
+    }
+
+    /** Firmado con OTP: el contenido queda protegido (solo lectura) hasta que se retiren las firmas. */
+    public function estaProtegido(): bool
+    {
+        return $this->estado === 'firmado';
+    }
+
+    /** Eventos de firma electrónica del documento (inmutables), vigentes o no. */
+    public function firmas(): MorphMany
+    {
+        return $this->morphMany(FirmaEvento::class, 'documentable');
+    }
+
+    /**
+     * Firmas vigentes: las del contenido actual, posteriores al último retiro de firmas.
+     *
+     * @return MorphMany<FirmaEvento>
+     */
+    public function firmasVigentes(): MorphMany
+    {
+        $hash = $this->contenido?->hash_contenido;
+
+        return $this->firmas()
+            ->where('hash_original', $hash ?? '')
+            ->when($this->firmas_retiradas_en, fn ($q, $desde) => $q->where('fecha_firma', '>', $desde));
     }
 
     public function getMargenesFinales(): array

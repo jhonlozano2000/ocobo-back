@@ -44,7 +44,8 @@ class DocumentoRequest extends FormRequest
             'estado' => [
                 'sometimes',
                 'string',
-                Rule::in(['borrador', 'en_revision', 'firmado']),
+                // «firmado» solo con la firma OTP (documentos/{id}/firmas), que además protege el contenido
+                Rule::in(['borrador', 'en_revision']),
             ],
             'notas' => [
                 'nullable',
@@ -81,7 +82,7 @@ class DocumentoRequest extends FormRequest
             'plantilla_id.exists' => 'La plantilla no es válida.',
             'titulo.min' => 'El título debe tener al menos 3 caracteres.',
             'titulo.max' => 'El título no puede exceder 255 caracteres.',
-            'estado.in' => 'El estado debe ser: borrador, en_revision o firmado.',
+            'estado.in' => 'El estado debe ser: borrador o en_revision. Para firmar use la firma con código OTP.',
             'notas.max' => 'Las notas no pueden exceder 5000 caracteres.',
         ];
     }

@@ -5,6 +5,7 @@ use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\CursorController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoExportController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoImportController;
+use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\FirmaDocumentoController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\PlantillaController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\SugerenciaController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\VersionController;
@@ -55,6 +56,14 @@ Route::middleware(['auth:sanctum', 'throttle:documentos'])->prefix('comunicacion
         Route::post('/documentos/{documento}/sugerencias/{sugerencia}/aceptar', [SugerenciaController::class, 'aceptar']);
         Route::post('/documentos/{documento}/sugerencias/{sugerencia}/rechazar', [SugerenciaController::class, 'rechazar']);
         Route::delete('/documentos/{documento}/sugerencias/{sugerencia}', [SugerenciaController::class, 'destroy']);
+    });
+
+    // Firma con OTP: protege el documento; quién firma o retira las firmas lo decide el controlador
+    Route::middleware('can:ver,documento')->group(function () {
+        Route::get('/documentos/{documento}/firmas', [FirmaDocumentoController::class, 'index']);
+        Route::post('/documentos/{documento}/firmas/solicitar-otp', [FirmaDocumentoController::class, 'solicitarOtp'])->middleware('throttle:firma-otp');
+        Route::post('/documentos/{documento}/firmas', [FirmaDocumentoController::class, 'firmar'])->middleware('throttle:firma');
+        Route::delete('/documentos/{documento}/firmas', [FirmaDocumentoController::class, 'retirar']);
     });
 
     Route::middleware('can:gestionarUsuarios,documento')->group(function () {
