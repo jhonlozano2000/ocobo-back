@@ -30,15 +30,17 @@ class MisGruposActivosController extends Controller
             $user = Auth::user();
 
             $grupos = MiBandejaTemp::with([
-                'ultimaVersion.bloqueadoPor:id,nombres,apellidos',
-                'revisores.user:id,nombres,apellidos',
-                'firmantes.user:id,nombres,apellidos',
-                'proyectores.user:id,nombres,apellidos',
-                'aprobadores.user:id,nombres,apellidos',
+                'ultimaVersion.bloqueadoPor:id,nombres,apellidos,email',
+                'revisores.user:id,nombres,apellidos,email',
+                'firmantes.user:id,nombres,apellidos,email',
+                'proyectores.user:id,nombres,apellidos,email',
+                'aprobadores.user:id,nombres,apellidos,email',
                 'radicadoRecibido.tercero',
                 'radicadoEnviado.tercero',
                 'radicadoInterno',
                 'plantilla:id,nombre_original',
+                'notas:id,grupo_id,user_id,created_at',
+                'lecturasNotas' => fn ($q) => $q->where('user_id', $user->id),
             ])
                 ->where('estado_grupo', 'activo')
                 ->where(function ($q) use ($user) {
@@ -57,22 +59,24 @@ class MisGruposActivosController extends Controller
                 $miembroP = $grupo->proyectores->firstWhere('user_id', $user->id);
                 $miembroAp = $grupo->aprobadores->firstWhere('user_id', $user->id);
 
-                if ($miembroRv) {
-                    $miRol = 'revisor';
-                    $ordenFirma = null;
-                    $miEstadoTarea = $miembroRv->estado_tarea ?? 'pendiente';
-                } elseif ($miembroF) {
+                if ($miembroF) {
                     $miRol = 'firmante';
                     $ordenFirma = $miembroF->orden_firma;
-                    $miEstadoTarea = $miembroF->estado_tarea ?? 'pendiente';
-                } elseif ($miembroP) {
-                    $miRol = 'proyector';
-                    $ordenFirma = null;
-                    $miEstadoTarea = $miembroP->estado_tarea ?? 'pendiente';
+                    $miEstadoTarea = ($miembroF->estado_tarea === 'cumplido' && $miembroF->fechor_firmado !== null)
+                        ? 'cumplido'
+                        : 'pendiente';
                 } elseif ($miembroAp) {
                     $miRol = 'aprobador';
                     $ordenFirma = null;
                     $miEstadoTarea = $miembroAp->estado_tarea ?? 'pendiente';
+                } elseif ($miembroRv) {
+                    $miRol = 'revisor';
+                    $ordenFirma = null;
+                    $miEstadoTarea = $miembroRv->estado_tarea ?? 'pendiente';
+                } elseif ($miembroP) {
+                    $miRol = 'proyector';
+                    $ordenFirma = null;
+                    $miEstadoTarea = $miembroP->estado_tarea ?? 'pendiente';
                 } else {
                     $miRol = 'creador';
                     $ordenFirma = null;
@@ -131,6 +135,7 @@ class MisGruposActivosController extends Controller
                         'id' => $r->user?->id,
                         'nombres' => $r->user?->nombres,
                         'apellidos' => $r->user?->apellidos,
+                        'email' => $r->user?->email,
                     ],
                     'estado_tarea' => $r->estado_tarea ?? 'pendiente',
                     'descargo_plantilla' => (bool) $r->descargo_plantilla,
@@ -143,10 +148,12 @@ class MisGruposActivosController extends Controller
                         'id' => $f->user?->id,
                         'nombres' => $f->user?->nombres,
                         'apellidos' => $f->user?->apellidos,
+                        'email' => $f->user?->email,
                     ],
                     'estado_tarea' => $f->estado_tarea ?? 'pendiente',
                     'descargo_plantilla' => (bool) $f->descargo_plantilla,
                     'orden_firma' => $f->orden_firma,
+                    'fechor_firmado' => $f->fechor_firmado?->toISOString(),
                 ])->values();
 
                 $proyectores = $grupo->proyectores->map(fn ($p) => [
@@ -156,6 +163,7 @@ class MisGruposActivosController extends Controller
                         'id' => $p->user?->id,
                         'nombres' => $p->user?->nombres,
                         'apellidos' => $p->user?->apellidos,
+                        'email' => $p->user?->email,
                     ],
                     'estado_tarea' => $p->estado_tarea ?? 'pendiente',
                     'descargo_plantilla' => (bool) $p->descargo_plantilla,
@@ -168,10 +176,20 @@ class MisGruposActivosController extends Controller
                         'id' => $a->user?->id,
                         'nombres' => $a->user?->nombres,
                         'apellidos' => $a->user?->apellidos,
+                        'email' => $a->user?->email,
                     ],
                     'estado_tarea' => $a->estado_tarea ?? 'pendiente',
                     'descargo_plantilla' => (bool) $a->descargo_plantilla,
                 ])->values();
+
+                $totalNotas = $grupo->notas->count();
+                $ultimaLectura = $grupo->lecturasNotas->first()?->ultima_lectura_at;
+                $notasNoLeidas = $grupo->notas
+                    ->where('user_id', '!=', $user->id)
+                    ->filter(function ($n) use ($ultimaLectura) {
+                        return ! $ultimaLectura || $n->created_at->gt($ultimaLectura);
+                    })
+                    ->count();
 
                 return [
                     'id' => $grupo->id,
@@ -180,11 +198,16 @@ class MisGruposActivosController extends Controller
                     'asunto' => $grupo->asunto,
                     'estado' => $grupo->estado,
                     'mi_rol' => $miRol,
+                    'mi_user_id' => $user->id,
+                    'es_firmante' => $miembroF !== null,
+                    'firmo' => $miembroF ? ($miembroF->estado_tarea === 'cumplido' && $miembroF->fechor_firmado !== null) : false,
                     'orden_firma' => $ordenFirma,
                     'mi_estado_tarea' => $miEstadoTarea,
                     'todos_cumplidos' => $grupo->todosTerminados(),
                     'plantilla_cargada' => (bool) $grupo->plantilla_cargada,
                     'plantilla_id' => $grupo->plantilla_id,
+                    'total_notas' => $totalNotas,
+                    'notas_no_leidas' => $notasNoLeidas,
                     'ultima_version' => $versionData,
                     'radicado' => $radicado,
                     'revisores' => $revisores,

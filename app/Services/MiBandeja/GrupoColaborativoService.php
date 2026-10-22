@@ -503,7 +503,6 @@ class GrupoColaborativoService
             }
 
             $data = [
-                'estado_grupo' => 'finalizado',
                 'estado' => 'finalizado',
             ];
 

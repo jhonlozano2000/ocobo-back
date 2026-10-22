@@ -65,6 +65,8 @@ class MiBandejaTempController extends Controller
                 'aprobadores.user.cargo',
                 'adjuntos',
                 'plantilla',
+                'notas:id,grupo_id,user_id,created_at',
+                'lecturasNotas' => fn ($q) => $q->where('user_id', $userId),
             ])
             // Visibilidad: creador O cualquier miembro. Agrupado para que los
             // orWhere no rompan los filtros de búsqueda/estado.
@@ -96,7 +98,21 @@ class MiBandejaTempController extends Controller
                 $query->where('estado_grupo', $estadoGrupo);
             }
 
-            $grupos = $query->limit(50)->get();
+            $grupos = $query->limit(50)->get()->map(function ($grupo) use ($userId) {
+                $totalNotas = $grupo->notas->count();
+                $ultimaLectura = $grupo->lecturasNotas->first()?->ultima_lectura_at;
+                $notasNoLeidas = $grupo->notas
+                    ->where('user_id', '!=', $userId)
+                    ->filter(function ($n) use ($ultimaLectura) {
+                        return ! $ultimaLectura || $n->created_at->gt($ultimaLectura);
+                    })
+                    ->count();
+
+                $grupo->total_notas = $totalNotas;
+                $grupo->notas_no_leidas = $notasNoLeidas;
+
+                return $grupo;
+            });
 
             return $this->successResponse($grupos, 'Grupos colaborativos obtenidos');
         } catch (\Exception $e) {
@@ -288,9 +304,23 @@ class MiBandejaTempController extends Controller
                 'proyectores.user.cargo',
                 'aprobadores.user.cargo',
                 'adjuntos',
-                'creadoPor',
+                'creadoPor.cargo',
                 'plantilla',
+                'versiones.subidoPor',
+                'firmaEventos.user',
             ]);
+
+            if ($grupo->radicado_id && $grupo->radicado_tipo) {
+                if ($grupo->radicado_tipo === 'recibido') {
+                    $grupo->load(['radicadoRecibido.tercero', 'radicadoRecibido.medioRecepcion']);
+                } elseif ($grupo->radicado_tipo === 'interno') {
+                    $grupo->load(['radicadoInterno.dependenciaOrigen', 'radicadoInterno.destinatarios']);
+                } elseif ($grupo->radicado_tipo === 'enviado') {
+                    $grupo->load('radicadoEnviado.destinatarios');
+                }
+            }
+
+            $grupo->append('radicado');
 
             return $this->successResponse($grupo, 'Detalle del grupo');
         } catch (\Exception $e) {

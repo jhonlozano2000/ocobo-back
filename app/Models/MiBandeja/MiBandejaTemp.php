@@ -164,6 +164,14 @@ class MiBandejaTemp extends Model
     }
 
     /**
+     * Registro de lecturas de notas por usuario.
+     */
+    public function lecturasNotas(): HasMany
+    {
+        return $this->hasMany(MiBandejaTempNotaLectura::class, 'grupo_id');
+    }
+
+    /**
      * Eventos de firma electrónica asociados al grupo colaborativo temporal (ISO 27001).
      */
     public function firmaEventos()

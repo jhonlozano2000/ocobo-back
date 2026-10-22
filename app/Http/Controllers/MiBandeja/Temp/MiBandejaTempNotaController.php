@@ -9,6 +9,7 @@ use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
 use App\Http\Requests\MiBandeja\StoreNotaRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\MiBandejaTempNota;
+use App\Models\MiBandeja\MiBandejaTempNotaLectura;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -27,6 +28,14 @@ class MiBandejaTempNotaController extends Controller
 
             if (! $grupo) {
                 return $this->errorResponse('Grupo no encontrado', null, 404);
+            }
+
+            // Marcar lectura para el usuario autenticado
+            if ($userId = Auth::id()) {
+                MiBandejaTempNotaLectura::updateOrCreate(
+                    ['grupo_id' => $grupoId, 'user_id' => $userId],
+                    ['ultima_lectura_at' => now()]
+                );
             }
 
             $notas = $grupo->notas()->with('user')->orderBy('created_at', 'asc')->get();
