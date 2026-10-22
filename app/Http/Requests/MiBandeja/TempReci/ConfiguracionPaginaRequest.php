@@ -40,7 +40,12 @@ class ConfiguracionPaginaRequest extends FormRequest
             'configuracion_footer.elementos.*' => ['string', Rule::in(self::ELEMENTOS_FRANJA)],
             'configuracion_footer.texto_libre' => ['sometimes', 'string', 'max:500'],
             // Estilos modificados (Normal, Título 1-3 y Cita): solo lo que cambió; null vuelve al valor por defecto
-            'configuracion_formato' => ['sometimes', 'nullable', 'array:estilos'],
+            'configuracion_formato' => ['sometimes', 'nullable', 'array:estilos,marca_agua,color_pagina'],
+            // Diseño de Word: marca de agua de texto y color de página
+            'configuracion_formato.marca_agua' => ['sometimes', 'nullable', 'array:texto,diagonal'],
+            'configuracion_formato.marca_agua.texto' => ['required_with:configuracion_formato.marca_agua', 'string', 'max:60'],
+            'configuracion_formato.marca_agua.diagonal' => ['sometimes', 'boolean'],
+            'configuracion_formato.color_pagina' => ['sometimes', 'nullable', 'string', 'regex:'.EstilosDocumento::PATRON_COLOR],
             'configuracion_formato.estilos' => ['sometimes', 'nullable', 'array:'.implode(',', EstilosDocumento::ESTILOS)],
             'configuracion_formato.estilos.*' => ['array:'.implode(',', EstilosDocumento::PROPIEDADES)],
             'configuracion_formato.estilos.*.fuente' => ['nullable', 'string', 'regex:'.EstilosDocumento::PATRON_FUENTE],

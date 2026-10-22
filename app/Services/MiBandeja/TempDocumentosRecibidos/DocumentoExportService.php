@@ -146,6 +146,7 @@ class DocumentoExportService
         $footerBlock = $footerPartes
             ? "<table class='franja' style='bottom: -{$marginBottom}pt; height: {$marginBottom}pt;'><tr><td>".implode(' &nbsp;|&nbsp; ', $footerPartes).'</td></tr></table>'
             : '';
+        $disenoBlock = $this->disenoPagina($config['formato'] ?? null, [$marginTop, $marginRight, $marginBottom, $marginLeft]);
 
         return <<<HTML
 <!DOCTYPE html>
@@ -195,6 +196,7 @@ class DocumentoExportService
     </style>
 </head>
 <body>
+    {$disenoBlock}
     {$headerBlock}
     {$footerBlock}
     <div class="contenido-pagina">
@@ -203,6 +205,32 @@ class DocumentoExportService
 </body>
 </html>
 HTML;
+    }
+
+    /**
+     * Color de página y marca de agua (Diseño de Word): capas fijas que dompdf repite en cada hoja, detrás del
+     * texto. El color cubre la hoja entera, márgenes incluidos.
+     *
+     * @param  array|null  $formato  configuracion_formato: {color_pagina, marca_agua: {texto, diagonal}}
+     * @param  array  $margenes  [superior, derecho, inferior, izquierdo] en pt
+     */
+    private function disenoPagina(?array $formato, array $margenes): string
+    {
+        [$arriba, $derecha, $abajo, $izquierda] = $margenes;
+        $html = '';
+        $color = $formato['color_pagina'] ?? null;
+        if (is_string($color) && preg_match(EstilosDocumento::PATRON_COLOR, $color)) {
+            $html .= "<div style='position: fixed; top: -{$arriba}pt; right: -{$derecha}pt; bottom: -{$abajo}pt; "
+                ."left: -{$izquierda}pt; background-color: {$color};'></div>";
+        }
+        $texto = trim((string) ($formato['marca_agua']['texto'] ?? ''));
+        if ($texto !== '') {
+            $giro = ($formato['marca_agua']['diagonal'] ?? true) ? ' transform: rotate(-45deg);' : '';
+            $html .= "<div class='marca-agua' style='position: fixed; top: 40%; left: 0; right: 0; text-align: center; "
+                ."font-size: 64pt; font-weight: bold; color: #d9d9d9;{$giro}'>".$this->esc(mb_substr($texto, 0, 60)).'</div>';
+        }
+
+        return $html;
     }
 
     /**
