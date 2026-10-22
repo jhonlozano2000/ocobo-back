@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\MiBandeja;
 
+use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Routing\Middleware\ThrottleRequests;
@@ -10,7 +11,7 @@ use Tests\TestCase;
 
 /**
  * Grupo colaborativo de un documento de Mis Documentos: el creador arma el grupo con el formulario de Grupos
- * colaborativos; queda en mi_bandeja_temp vinculado al documento y los miembros pueden editarlo.
+ * colaborativos; queda en mi_bandeja_temp vinculado al documento y el acceso de los miembros sale de esa membresía.
  */
 class GrupoDocumentoTest extends TestCase
 {
@@ -72,12 +73,16 @@ class GrupoDocumentoTest extends TestCase
         $this->assertSame(2, DB::table('mi_bandeja_temp_grupo_firmantes')->where('grupo_id', $grupo->id)
             ->where('user_id', $this->creador->id)->value('orden_firma'));
 
-        // Los miembros editan el documento con el rol equivalente; el creador no se agrega
-        $this->assertSame(
-            [$this->revisor->id => 'responsable', $this->firmante->id => 'firmante'],
-            DB::table('mi_bandeja_temp_reci_usuarios')->where('documento_id', $this->documento)
-                ->pluck('rol', 'user_id')->all()
-        );
+        // Una sola lógica: el acceso sale de la membresía del grupo, sin copiar colaboradores al documento
+        $this->assertSame(0, DB::table('mi_bandeja_temp_reci_usuarios')->where('documento_id', $this->documento)->count());
+        $this->actingAs($this->revisor)->getJson(self::URL.'/'.$this->documento)->assertOk();
+        $this->actingAs($this->firmante)->getJson(self::URL)
+            ->assertOk()
+            ->assertJsonFragment(['id' => $this->documento]);
+        $modelo = Documento::find($this->documento);
+        $this->assertTrue($modelo->puedeEditar($this->revisor));
+        $this->assertSame('firmante', $modelo->rolEnGrupo($this->firmante));
+        $this->assertSame([$this->firmante->id, $this->creador->id], $modelo->firmantesRequeridos()->all());
         $this->actingAs($this->revisor)->getJson($this->url())
             ->assertOk()
             ->assertJsonPath('data.puede_gestionar', false)

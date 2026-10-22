@@ -114,7 +114,8 @@ class DocumentoController extends Controller
 
         return Documento::whereNull('plantilla_generada_id')
             ->where(fn ($q) => $q->where('user_id', $userId)
-                ->orWhereHas('usuarios', fn ($u) => $u->where('user_id', $userId)));
+                ->orWhereHas('usuarios', fn ($u) => $u->where('user_id', $userId))
+                ->orMiembroDeGrupo($userId));
     }
 
     /**

@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\ColaboradoresDocumentoController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\ComentarioController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\CursorController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoController;
@@ -66,16 +65,12 @@ Route::middleware(['auth:sanctum', 'throttle:documentos'])->prefix('comunicacion
         Route::post('/documentos/{documento}/firmas/solicitar-otp', [FirmaDocumentoController::class, 'solicitarOtp'])->middleware('throttle:firma-otp');
         Route::post('/documentos/{documento}/firmas', [FirmaDocumentoController::class, 'firmar'])->middleware('throttle:firma');
         Route::delete('/documentos/{documento}/firmas', [FirmaDocumentoController::class, 'retirar']);
-        // Compartir: quién tiene acceso (lo ve cualquier colaborador)
-        Route::get('/documentos/{documento}/usuarios', [ColaboradoresDocumentoController::class, 'index']);
+        // Grupo colaborativo del documento (lo ve cualquier miembro)
         Route::get('/documentos/{documento}/grupo', [GrupoDocumentoController::class, 'show']);
     });
 
     Route::middleware('can:gestionarUsuarios,documento')->group(function () {
-        Route::post('/documentos/{documento}/usuarios', [ColaboradoresDocumentoController::class, 'store']);
         Route::post('/documentos/{documento}/grupo', [GrupoDocumentoController::class, 'store']);
-        Route::delete('/documentos/{documento}/usuarios/{usuario}', [ColaboradoresDocumentoController::class, 'destroy'])
-            ->whereNumber('usuario');
     });
 
     Route::middleware('can:eliminar,documento')->group(function () {

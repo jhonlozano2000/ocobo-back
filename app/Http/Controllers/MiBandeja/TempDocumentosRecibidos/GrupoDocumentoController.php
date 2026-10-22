@@ -10,7 +10,6 @@ use App\Models\MiBandeja\MiBandejaTempGrupoFirmante;
 use App\Models\MiBandeja\MiBandejaTempGrupoProyector;
 use App\Models\MiBandeja\MiBandejaTempGrupoRevisor;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
-use App\Models\MiBandeja\TempDocumentosRecibidos\DocumentoUsuario;
 use App\Models\Notificacion;
 use App\Models\User;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
@@ -23,22 +22,19 @@ use Illuminate\Validation\Rule;
  * Grupo colaborativo de un documento de Mis Documentos: el mismo formulario de Grupos colaborativos (asunto,
  * descripción, radicado vinculado y proyectores, revisores, aprobadores y firmantes), pero el documento base es el
  * del editor en línea. El grupo queda en `mi_bandeja_temp` (aparece en Grupos colaborativos y en Mis grupos
- * activos) y sus miembros reciben acceso al documento con el rol equivalente.
+ * activos) y el acceso de sus miembros al documento sale de esa membresía (Documento::rolEnGrupo).
  */
 class GrupoDocumentoController extends Controller
 {
     use ApiResponseTrait;
 
-    /** Rol del grupo → tabla de miembros, rol en el documento y tipo de notificación. */
+    /** Rol del grupo → tabla de miembros y tipo de notificación (el acceso al documento sale de la membresía). */
     private const ROLES = [
-        'proyectores' => [MiBandejaTempGrupoProyector::class, 'proyector', 'asignacion_proyector', 'proyector'],
-        'revisores' => [MiBandejaTempGrupoRevisor::class, 'responsable', 'asignacion_responsable', 'revisor'],
-        'aprobadores' => [MiBandejaTempGrupoAprobador::class, 'responsable', 'asignacion_responsable', 'aprobador'],
-        'firmantes' => [MiBandejaTempGrupoFirmante::class, 'firmante', 'asignacion_firmante', 'firmante'],
+        'proyectores' => [MiBandejaTempGrupoProyector::class, 'asignacion_proyector', 'proyector'],
+        'revisores' => [MiBandejaTempGrupoRevisor::class, 'asignacion_responsable', 'revisor'],
+        'aprobadores' => [MiBandejaTempGrupoAprobador::class, 'asignacion_responsable', 'aprobador'],
+        'firmantes' => [MiBandejaTempGrupoFirmante::class, 'asignacion_firmante', 'firmante'],
     ];
-
-    /** Si alguien tiene varios roles en el grupo, en el documento queda con el de más alcance. */
-    private const PRIORIDAD_ROL_DOCUMENTO = ['proyector' => 1, 'responsable' => 2, 'firmante' => 3];
 
     private const TABLAS_RADICADO = [
         'recibido' => 'ventanilla_radica_reci',
@@ -53,7 +49,7 @@ class GrupoDocumentoController extends Controller
     {
         return $this->successResponse([
             'puede_gestionar' => $request->user()->can('gestionarUsuarios', $documento),
-            'grupo' => ($grupo = $this->grupoVigente($documento)) ? $this->resumen($grupo) : null,
+            'grupo' => ($grupo = $documento->grupoVigente()) ? $this->resumen($grupo) : null,
         ]);
     }
 
@@ -95,7 +91,7 @@ class GrupoDocumentoController extends Controller
             '*.*.exists' => 'El funcionario no existe o está inactivo.',
         ]);
 
-        if ($this->grupoVigente($documento)) {
+        if ($documento->grupoVigente()) {
             return $this->errorResponse('El documento ya tiene un grupo colaborativo activo', null, 422);
         }
 
@@ -132,9 +128,8 @@ class GrupoDocumentoController extends Controller
             ->whereIn('id', collect(array_keys(self::ROLES))->flatMap(fn ($rol) => $datos[$rol] ?? [])->unique())
             ->get()
             ->mapWithKeys(fn (User $u) => [$u->id => $u->cargo?->id]);
-        $rolesDocumento = [];
 
-        foreach (self::ROLES as $rol => [$modelo, $rolDocumento, $tipoNotificacion, $etiqueta]) {
+        foreach (self::ROLES as $rol => [$modelo, $tipoNotificacion, $etiqueta]) {
             foreach (array_values($datos[$rol] ?? []) as $indice => $userId) {
                 $modelo::create([
                     'grupo_id' => $grupo->id,
@@ -157,32 +152,8 @@ class GrupoDocumentoController extends Controller
                         'asignado_por' => $grupo->usua_crea_id,
                     ],
                 ]);
-
-                $actual = $rolesDocumento[$userId] ?? null;
-                if (! $actual || self::PRIORIDAD_ROL_DOCUMENTO[$rolDocumento] > self::PRIORIDAD_ROL_DOCUMENTO[$actual]) {
-                    $rolesDocumento[$userId] = $rolDocumento;
-                }
             }
         }
-
-        // Los miembros editan el documento en línea; el creador ya es su dueño
-        foreach ($rolesDocumento as $userId => $rolDocumento) {
-            if ((int) $userId === (int) $documento->user_id) {
-                continue;
-            }
-            DocumentoUsuario::updateOrCreate(
-                ['documento_id' => $documento->id, 'user_id' => $userId],
-                ['rol' => $rolDocumento]
-            );
-        }
-    }
-
-    private function grupoVigente(Documento $documento): ?MiBandejaTemp
-    {
-        return MiBandejaTemp::where('documento_id', $documento->id)
-            ->where('estado_grupo', 'activo')
-            ->latest('id')
-            ->first();
     }
 
     private function resumen(MiBandejaTemp $grupo): array

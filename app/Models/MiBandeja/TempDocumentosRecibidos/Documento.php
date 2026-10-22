@@ -2,12 +2,14 @@
 
 namespace App\Models\MiBandeja\TempDocumentosRecibidos;
 
+use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\OfiArchivo\OfiArchivoPlantillaGenerada;
 use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\MiBandeja\MiBandejaFiltroService;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -40,6 +42,14 @@ use Illuminate\Support\Collection;
  */
 class Documento extends Model
 {
+    /** Miembros del grupo colaborativo → rol equivalente en el documento (de menor a mayor alcance). */
+    public const ROLES_GRUPO = [
+        'proyectores' => 'proyector',
+        'revisores' => 'responsable',
+        'aprobadores' => 'responsable',
+        'firmantes' => 'firmante',
+    ];
+
     /** @var string Nombre de la tabla */
     protected $table = 'mi_bandeja_temp_reci_documentos';
 
@@ -158,6 +168,66 @@ class Documento extends Model
     }
 
     /**
+     * Grupos colaborativos (mi_bandeja_temp) que trabajan el documento.
+     *
+     * @return HasMany<MiBandejaTemp>
+     */
+    public function grupos(): HasMany
+    {
+        return $this->hasMany(MiBandejaTemp::class, 'documento_id');
+    }
+
+    /** El grupo colaborativo vigente del documento (el último activo). */
+    public function grupoVigente(): ?MiBandejaTemp
+    {
+        return $this->grupos()->where('estado_grupo', 'activo')->latest('id')->first();
+    }
+
+    /**
+     * Rol del usuario en el documento según su grupo colaborativo vigente: proyector, responsable (revisores y
+     * aprobadores) o firmante; si tiene varios, el de más alcance.
+     */
+    public function rolEnGrupo(User $user): ?string
+    {
+        $grupo = $this->grupoVigente();
+        $rol = null;
+
+        foreach ($grupo ? self::ROLES_GRUPO : [] as $relacion => $rolDocumento) {
+            if ($grupo->{$relacion}()->where('user_id', $user->id)->exists()) {
+                $rol = $rolDocumento;
+            }
+        }
+
+        return $rol;
+    }
+
+    /**
+     * Agrega (con OR) los documentos donde el usuario es miembro de un grupo colaborativo no anulado.
+     *
+     * @param  Builder<Documento>  $query
+     */
+    public function scopeOrMiembroDeGrupo($query, int $userId)
+    {
+        return $query->orWhereHas('grupos', fn ($g) => self::filtrarMiembro($g, $userId));
+    }
+
+    /** El usuario es miembro de algún grupo colaborativo (no anulado) del documento. */
+    public function esMiembroDeGrupo(User $user): bool
+    {
+        return self::filtrarMiembro($this->grupos(), $user->id)->exists();
+    }
+
+    private static function filtrarMiembro($grupos, int $userId)
+    {
+        return $grupos->where('estado_grupo', '!=', 'anulado')
+            ->where(function ($m) use ($userId) {
+                foreach (array_keys(self::ROLES_GRUPO) as $relacion) {
+                    $m->orWhereHas($relacion, fn ($u) => $u->where('user_id', $userId));
+                }
+            });
+    }
+
+    /**
      * Relación con el contenido Yjs del documento.
      *
      * @return HasOne<Contenido>
@@ -223,6 +293,10 @@ class Documento extends Model
             return true;
         }
 
+        if ($this->esMiembroDeGrupo($user)) {
+            return true;
+        }
+
         if ($this->es_publico) {
             $depCreador = MiBandejaFiltroService::getDependenciaDelUsuario($this->user_id);
             $depUsuario = MiBandejaFiltroService::getDependenciaDelUsuario($user->id);
@@ -246,13 +320,13 @@ class Documento extends Model
             return false;
         }
 
-        $rol = $this->usuarios()->where('user_id', $user->id)->first();
-
-        if (! $rol) {
-            return $this->user_id === $user->id;
+        if ($this->user_id === $user->id) {
+            return true;
         }
 
-        return in_array($rol->rol, ['firmante', 'responsable', 'proyector']);
+        $rol = $this->rolEnGrupo($user) ?? $this->usuarios()->where('user_id', $user->id)->value('rol');
+
+        return in_array($rol, ['firmante', 'responsable', 'proyector'], true);
     }
 
     /**
@@ -267,13 +341,21 @@ class Documento extends Model
     }
 
     /**
-     * Quienes deben firmar: los firmantes designados o, si no hay ninguno, el creador.
+     * Quienes deben firmar: los firmantes del grupo colaborativo vigente (en su orden), los designados en el
+     * documento o, si no hay ninguno, el creador.
      *
      * @return Collection<int, int> ids de usuario
      */
     public function firmantesRequeridos(): Collection
     {
-        $firmantes = $this->usuarios()->where('rol', 'firmante')->pluck('user_id');
+        $grupo = $this->grupoVigente();
+        $firmantes = $grupo
+            ? $grupo->firmantes()->orderBy('orden_firma')->pluck('user_id')
+            : collect();
+
+        if ($firmantes->isEmpty()) {
+            $firmantes = $this->usuarios()->where('rol', 'firmante')->pluck('user_id');
+        }
 
         return $firmantes->isNotEmpty() ? $firmantes->values() : collect([$this->user_id]);
     }
