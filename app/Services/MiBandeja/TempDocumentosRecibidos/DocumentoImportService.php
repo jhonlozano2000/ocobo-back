@@ -26,8 +26,6 @@ class DocumentoImportService
             'radica_reci_id' => $radicaReciId,
             'titulo' => pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME),
             'estado' => 'borrador',
-            'nombre_archivo_original' => $archivo->getClientOriginalName(),
-            'archivo_path' => $archivo->store('imports'),
         ]);
 
         Contenido::create([
