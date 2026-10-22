@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Documento colaborativo para Comunicaciones Recibidas en Mi Bandeja.
@@ -364,6 +366,44 @@ class Documento extends Model
     public function estaProtegido(): bool
     {
         return $this->estado === 'firmado';
+    }
+
+    /**
+     * Firma electrónica del usuario sobre el contenido guardado: sella su hash (quién y cuándo) y protege el
+     * documento. La usan la firma del editor y el cumplido del firmante de su grupo colaborativo.
+     *
+     * @param  string  $verificacion  OTP usado (se guarda enmascarado) o el método, ej. PASSWORD
+     *
+     * @throws ValidationException si el documento está vacío
+     */
+    public function firmarContenido(User $user, string $verificacion, ?string $ip = null, ?string $userAgent = null): FirmaEvento
+    {
+        return DB::transaction(function () use ($user, $verificacion, $ip, $userAgent) {
+            // Bloquea el contenido: lo que se firma es exactamente lo guardado en este momento
+            $contenido = Contenido::where('documento_id', $this->id)->lockForUpdate()->first();
+
+            if (! $contenido?->hash_contenido) {
+                throw ValidationException::withMessages(['documento' => 'El documento está vacío: no hay contenido para firmar.']);
+            }
+
+            $fecha = now();
+            $firma = FirmaEvento::create([
+                'documentable_id' => $this->id,
+                'documentable_type' => $this->getMorphClass(),
+                'user_id' => $user->id,
+                'hash_original' => $contenido->hash_contenido,
+                // Sello: el contenido firmado, por quién y cuándo
+                'hash_firmado' => hash('sha256', $contenido->hash_contenido.'|'.$user->id.'|'.$fecha->toIso8601String()),
+                'otp_utilizado' => ctype_digit($verificacion) ? '***'.substr($verificacion, -3) : $verificacion,
+                'ip_address' => $ip,
+                'user_agent' => $userAgent !== null ? substr($userAgent, 0, 255) : null,
+                'fecha_firma' => $fecha,
+            ]);
+
+            $this->update(['estado' => 'firmado']);
+
+            return $firma;
+        });
     }
 
     /** Eventos de firma electrónica del documento (inmutables), vigentes o no. */

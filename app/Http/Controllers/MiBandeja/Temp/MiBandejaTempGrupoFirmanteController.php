@@ -16,6 +16,7 @@ use App\Services\Firma\FirmaService;
 use App\Services\MiBandeja\GrupoColaborativoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -373,29 +374,16 @@ class MiBandejaTempGrupoFirmanteController extends Controller
                 return $this->errorResponse('Debe seleccionar un método de verificación (Código OTP o Contraseña) para firmar el documento.', null, 422);
             }
 
-            $firmante->update([
-                'fechor_firmado' => now(),
-                'estado_tarea' => 'cumplido',
-                'fechor_terminado' => now(),
-                'descargo_plantilla' => true,
-            ]);
-
-            // Estampar imagen de firma registrada y leyenda ISO 27001 en el documento
-            try {
-                $this->grupoService->estamparFirmaFirmante($grupo, $user, $firmante, $otpUtilizado);
-            } catch (\Throwable $e) {
-                \Log::warning("No se pudo estampar firma en el documento físico del grupo {$grupoId}: ".$e->getMessage());
-            }
-
-            // Si todos los firmantes ya suscribieron, estampar la Firma y Sello Electrónico del Sistema (ISO 27001)
-            $grupo->refresh();
-            if ($grupo->todosFirmantesHanFirmado()) {
-                try {
-                    $this->grupoService->estamparFirmaSistema($grupo);
-                } catch (\Throwable $e) {
-                    \Log::warning("No se pudo estampar firma del sistema en el grupo {$grupoId}: ".$e->getMessage());
-                }
-            }
+            // Firma en el documento del editor o estampada en el .docx (y la del sistema al firmar todos)
+            DB::transaction(function () use ($firmante, $grupo, $user, $otpUtilizado) {
+                $firmante->update([
+                    'fechor_firmado' => now(),
+                    'estado_tarea' => 'cumplido',
+                    'fechor_terminado' => now(),
+                    'descargo_plantilla' => true,
+                ]);
+                $this->grupoService->registrarFirma($grupo, $user, $firmante, $otpUtilizado);
+            });
 
             // Actualizar estado del grupo si todos los miembros cumplieron su labor
             $grupo->refresh();

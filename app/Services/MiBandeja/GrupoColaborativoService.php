@@ -33,6 +33,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Servicio para la gestión de ciclo de vida, versionado y colaboración de grupos de trabajo temporales.
@@ -425,20 +426,7 @@ class GrupoColaborativoService
                 $completarEntrada($firmante, 'firmante');
                 if (! $firmante->fechor_firmado) {
                     $firmante->update(['fechor_firmado' => now()]);
-                    try {
-                        $this->estamparFirmaFirmante($grupo, $user, $firmante, $otpUtilizado);
-                    } catch (\Throwable $e) {
-                        Log::warning('No se pudo estampar firma al marcar cumplido: '.$e->getMessage());
-                    }
-
-                    $grupo->refresh();
-                    if ($grupo->todosFirmantesHanFirmado()) {
-                        try {
-                            $this->estamparFirmaSistema($grupo);
-                        } catch (\Throwable $e) {
-                            Log::warning('No se pudo estampar firma del sistema al marcar cumplido: '.$e->getMessage());
-                        }
-                    }
+                    $this->registrarFirma($grupo, $user, $firmante, $otpUtilizado);
                 }
             }
 
@@ -1267,6 +1255,37 @@ class GrupoColaborativoService
 
         if ($miembro && ! $miembro->descargo_plantilla) {
             $miembro->update(['descargo_plantilla' => true]);
+        }
+    }
+
+    /**
+     * Firma del firmante ya verificado (OTP o contraseña). Si el grupo es de un documento del editor, sella su
+     * contenido (la misma firma del editor) y el documento queda protegido; si no, estampa la firma en el último
+     * .docx y, cuando ya firmaron todos, la del sistema.
+     *
+     * @throws ValidationException si el documento del editor está vacío
+     */
+    public function registrarFirma(MiBandejaTemp $grupo, User $user, MiBandejaTempGrupoFirmante $firmante, string $verificacion): void
+    {
+        if ($grupo->documento) {
+            $grupo->documento->firmarContenido($user, $verificacion, request()->ip(), (string) request()->userAgent());
+
+            return;
+        }
+
+        try {
+            $this->estamparFirmaFirmante($grupo, $user, $firmante, $verificacion);
+        } catch (\Throwable $e) {
+            Log::warning("No se pudo estampar firma en el documento físico del grupo {$grupo->id}: ".$e->getMessage());
+        }
+
+        $grupo->refresh();
+        if ($grupo->todosFirmantesHanFirmado()) {
+            try {
+                $this->estamparFirmaSistema($grupo);
+            } catch (\Throwable $e) {
+                Log::warning("No se pudo estampar firma del sistema en el grupo {$grupo->id}: ".$e->getMessage());
+            }
         }
     }
 

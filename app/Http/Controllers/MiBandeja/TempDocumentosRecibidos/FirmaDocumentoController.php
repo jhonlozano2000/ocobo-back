@@ -4,7 +4,6 @@ namespace App\Http\Controllers\MiBandeja\TempDocumentosRecibidos;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
-use App\Models\MiBandeja\TempDocumentosRecibidos\Contenido;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
@@ -27,6 +26,9 @@ class FirmaDocumentoController extends Controller
     /** Tipo con que se guarda el OTP del documento en FirmaService (independiente de los radicados). */
     private const TIPO_OTP = 'documento_colaborativo';
 
+    /** Con grupo colaborativo, el firmante firma al marcar cumplido su tarea: una sola firma por documento. */
+    private const FIRMA_EN_GRUPO = 'Este documento tiene un grupo colaborativo: se firma marcando cumplida su tarea en Mis grupos activos.';
+
     public function __construct(private FirmaService $firmaService) {}
 
     /**
@@ -46,6 +48,10 @@ class FirmaDocumentoController extends Controller
 
         if (! $documento->puedeFirmar($user)) {
             return $this->forbiddenResponse('No es firmante de este documento.');
+        }
+
+        if ($documento->grupoVigente()) {
+            return $this->errorResponse(self::FIRMA_EN_GRUPO, null, 422);
         }
 
         if ($this->firmoVigente($documento, $user)) {
@@ -82,6 +88,10 @@ class FirmaDocumentoController extends Controller
             return $this->forbiddenResponse('No es firmante de este documento.');
         }
 
+        if ($documento->grupoVigente()) {
+            return $this->errorResponse(self::FIRMA_EN_GRUPO, null, 422);
+        }
+
         if ($this->firmoVigente($documento, $user)) {
             return $this->warningResponse('Ya firmó este documento.');
         }
@@ -90,30 +100,7 @@ class FirmaDocumentoController extends Controller
             throw ValidationException::withMessages(['otp' => 'Código OTP inválido o expirado.']);
         }
 
-        DB::transaction(function () use ($documento, $user, $request) {
-            // Bloquea el contenido: lo que se firma es exactamente lo guardado en este momento
-            $contenido = Contenido::where('documento_id', $documento->id)->lockForUpdate()->first();
-
-            if (! $contenido?->hash_contenido) {
-                throw ValidationException::withMessages(['documento' => 'El documento está vacío: no hay contenido para firmar.']);
-            }
-
-            $fecha = now();
-            FirmaEvento::create([
-                'documentable_id' => $documento->id,
-                'documentable_type' => $documento->getMorphClass(),
-                'user_id' => $user->id,
-                'hash_original' => $contenido->hash_contenido,
-                // Sello: el contenido firmado, por quién y cuándo
-                'hash_firmado' => hash('sha256', $contenido->hash_contenido.'|'.$user->id.'|'.$fecha->toIso8601String()),
-                'otp_utilizado' => '***'.substr($request->otp, -3),
-                'ip_address' => $request->ip(),
-                'user_agent' => substr((string) $request->userAgent(), 0, 255),
-                'fecha_firma' => $fecha,
-            ]);
-
-            $documento->update(['estado' => 'firmado']);
-        });
+        $documento->firmarContenido($user, $request->otp, $request->ip(), (string) $request->userAgent());
 
         return $this->successResponse(
             $this->estado($documento->fresh(), $user),
@@ -136,11 +123,26 @@ class FirmaDocumentoController extends Controller
             return $this->forbiddenResponse('Solo el creador o un firmante pueden retirar las firmas.');
         }
 
-        $documento->update([
-            'estado' => 'borrador',
-            'firmas_retiradas_en' => now(),
-            'firmas_retiradas_por' => $user->id,
-        ]);
+        $grupo = $documento->grupoVigente();
+        if ($grupo?->estado === 'finalizado') {
+            return $this->errorResponse('El grupo colaborativo del documento ya finalizó: sus firmas no se pueden retirar.', null, 422);
+        }
+
+        DB::transaction(function () use ($documento, $user, $grupo) {
+            $documento->update([
+                'estado' => 'borrador',
+                'firmas_retiradas_en' => now(),
+                'firmas_retiradas_por' => $user->id,
+            ]);
+
+            // En el grupo, los firmantes vuelven a quedar pendientes de firmar
+            if ($grupo) {
+                $grupo->firmantes()->update(['estado_tarea' => 'pendiente', 'fechor_firmado' => null, 'fechor_terminado' => null]);
+                if ($grupo->estado === 'listo_envio') {
+                    $grupo->update(['estado' => 'borrador']);
+                }
+            }
+        });
 
         Log::info('Firmas retiradas de documento colaborativo', ['documento_id' => $documento->id, 'user_id' => $user->id]);
 
@@ -157,7 +159,8 @@ class FirmaDocumentoController extends Controller
         return [
             'estado' => $documento->estado,
             'protegido' => $protegido,
-            'puede_firmar' => $documento->puedeFirmar($user) && ! $firmaron->contains($user->id),
+            'firma_en_grupo' => $enGrupo = (bool) $documento->grupoVigente(),
+            'puede_firmar' => ! $enGrupo && $documento->puedeFirmar($user) && ! $firmaron->contains($user->id),
             'puede_retirar' => $protegido && ($documento->user_id === $user->id || $documento->puedeFirmar($user)),
             'firmas' => $vigentes->map(fn (FirmaEvento $firma) => [
                 'id' => $firma->id,
