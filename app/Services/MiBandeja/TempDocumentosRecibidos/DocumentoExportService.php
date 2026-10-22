@@ -7,6 +7,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
+use PhpOffice\PhpWord\Settings;
 
 class DocumentoExportService
 {
@@ -15,6 +16,9 @@ class DocumentoExportService
 
     /** Un nivel de sangría del editor: 0,5" = 36 pt. */
     private const SANGRIA_PT = 36;
+
+    /** Fondo de los campos por completar de las plantillas (el amarillo suave del editor). */
+    private const COLOR_CAMPO = '#ffe9a8';
 
     /**
      * Estilos de lista del editor (EstiloLista): list-style-type del HTML (null: el marcador se escribe a mano
@@ -246,8 +250,14 @@ HTML;
 
         Storage::disk('local')->makeDirectory('exports');
 
-        $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
-        $objWriter->save(Storage::disk('local')->path($path));
+        // Sin esto PhpWord escribe el texto tal cual y un «<» o un «&» del documento dañan el .docx
+        $escapar = Settings::isOutputEscapingEnabled();
+        Settings::setOutputEscapingEnabled(true);
+        try {
+            IOFactory::createWriter($phpWord, 'Word2007')->save(Storage::disk('local')->path($path));
+        } finally {
+            Settings::setOutputEscapingEnabled($escapar);
+        }
 
         return Storage::disk('local')->path($path);
     }
@@ -443,7 +453,9 @@ HTML;
                 continue;
             }
 
-            $text = $this->esc($inline['text'] ?? '');
+            $text = $inline['type'] === 'campo'
+                ? '<span style="background-color: '.self::COLOR_CAMPO.';">'.$this->esc($this->textoCampo($inline)).'</span>'
+                : $this->esc($inline['text'] ?? '');
 
             foreach ($inline['marks'] ?? [] as $mark) {
                 switch ($mark['type'] ?? null) {
@@ -500,6 +512,12 @@ HTML;
         }
 
         return $html;
+    }
+
+    /** Campo por completar de las plantillas: su etiqueta entre corchetes, como se ve en el editor. */
+    private function textoCampo(array $campo): string
+    {
+        return '['.mb_substr(trim((string) ($campo['attrs']['etiqueta'] ?? '')), 0, 120).']';
     }
 
     private function esc(mixed $valor): string
@@ -678,7 +696,9 @@ HTML;
         $text = '';
 
         foreach ($content as $inline) {
-            if (isset($inline['text'])) {
+            if (($inline['type'] ?? null) === 'campo') {
+                $text .= $this->textoCampo($inline);
+            } elseif (isset($inline['text'])) {
                 $text .= $inline['text'];
             }
         }
@@ -785,6 +805,9 @@ HTML;
         foreach ($contenido as $inline) {
             if (($inline['type'] ?? null) === 'hardBreak') {
                 $run->addTextBreak();
+            } elseif (($inline['type'] ?? null) === 'campo') {
+                // Resaltado, para que en Word se vea qué falta por completar
+                $run->addText($this->textoCampo($inline), ['fgColor' => 'yellow'] + $this->getTextStyle($inline['marks'] ?? []));
             } elseif (isset($inline['text']) && $inline['text'] !== '') {
                 $run->addText($inline['text'], $this->getTextStyle($inline['marks'] ?? []));
             }

@@ -259,6 +259,30 @@ class ExportarDocumentoTest extends TestCase
         $this->assertMatchesRegularExpression('/<w:ind(?=[^>]*w:firstLine="300")/', $documento);
     }
 
+    public function test_exporta_los_campos_por_completar_resaltados(): void
+    {
+        $campo = ['type' => 'campo', 'attrs' => ['etiqueta' => 'Asunto <b>'], 'marks' => [['type' => 'bold']]];
+        $id = $this->documento(['type' => 'doc', 'content' => [
+            ['type' => 'paragraph', 'content' => [self::texto('Asunto: '), $campo]],
+        ]]);
+
+        $this->assertStringContainsString(
+            '<p>Asunto: <strong><span style="background-color: #ffe9a8;">[Asunto &lt;b&gt;]</span></strong></p>',
+            $this->exportar($id, 'html')
+        );
+        $this->assertStringContainsString('Asunto: [Asunto <b>]', $this->exportar($id, 'txt'));
+
+        $archivo = tempnam(sys_get_temp_dir(), 'docx');
+        file_put_contents($archivo, $this->exportar($id, 'docx'));
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open($archivo) === true);
+        $documento = $zip->getFromName('word/document.xml');
+        $zip->close();
+        @unlink($archivo);
+
+        $this->assertMatchesRegularExpression('/<w:rPr>(?=(?:(?!<\/w:rPr>).)*<w:b(?: w:val="1")?\/>)(?=(?:(?!<\/w:rPr>).)*<w:highlight w:val="yellow"\/>).*?<w:t[^>]*>\[Asunto &lt;b&gt;\]<\/w:t>/s', $documento);
+    }
+
     public function test_exporta_el_control_de_cambios_con_marcado(): void
     {
         $autor = ['autor' => 1, 'nombre' => 'Ana', 'fecha' => '2026-10-21T10:00'];

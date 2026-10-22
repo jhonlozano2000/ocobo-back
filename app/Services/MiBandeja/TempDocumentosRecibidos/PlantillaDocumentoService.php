@@ -13,13 +13,17 @@ use Illuminate\Support\Facades\Storage;
  * Word con membrete.
  *
  * Arma el contenido inicial (JSON de TipTap) con el membrete de la entidad (logo, razón social y NIT), la ciudad
- * y la fecha, y el nombre, cargo y dependencia de quien lo crea; lo que debe completar el usuario va entre
- * corchetes. También da la configuración de página: tamaño carta con los márgenes de la GTC 185 y un pie con los
+ * y la fecha, y el nombre, cargo y dependencia de quien lo crea; lo que debe completar el usuario va en campos
+ * por completar (nodo «campo»: se ven resaltados y Tab pasa de uno a otro). En los textos de este servicio se
+ * escriben entre corchetes y enLinea() los convierte. También da la configuración de página: tamaño carta con los márgenes de la GTC 185 y un pie con los
  * datos de contacto de la entidad y el número de página.
  */
 class PlantillaDocumentoService
 {
     public const PLANTILLAS = ['oficio', 'acta', 'memorando', 'circular'];
+
+    /** Lo que va entre corchetes en los textos de las plantillas es un campo por completar. */
+    private const PATRON_CAMPO = '/\[([^\]]+)\]/u';
 
     /** Márgenes en mm según la GTC 185 (comunicaciones oficiales). */
     public const MARGENES = ['superior' => 30, 'inferior' => 25, 'izquierdo' => 30, 'derecho' => 20];
@@ -68,13 +72,13 @@ class PlantillaDocumentoService
             $this->parrafo($this->ciudadFecha($d)),
             $this->vacio(),
             $this->parrafo('Señor(a)'),
-            $this->parrafo([$this->texto('[Nombre del destinatario]', true)]),
+            $this->parrafo($this->enLinea('[Nombre del destinatario]', true)),
             $this->parrafo('[Cargo]'),
             $this->parrafo('[Entidad]'),
             $this->parrafo('[Dirección]'),
             $this->parrafo('[Ciudad]'),
             $this->vacio(),
-            $this->parrafo([$this->texto('Asunto: ', true), $this->texto('[Asunto]')]),
+            $this->parrafo([$this->texto('Asunto: ', true), ...$this->enLinea('[Asunto]')]),
             $this->vacio(),
             $this->parrafo('Respetado(a) señor(a):'),
             $this->vacio(),
@@ -123,7 +127,7 @@ class PlantillaDocumentoService
     {
         return [
             $this->titulo('ACTA No. [número]'),
-            $this->parrafo([$this->texto('[Nombre del comité o reunión]', true)], 'center'),
+            $this->parrafo($this->enLinea('[Nombre del comité o reunión]', true), 'center'),
             $this->vacio(),
             $this->campo('Fecha', $d['fecha']),
             $this->campo('Hora', '[hh:mm]'),
@@ -199,7 +203,7 @@ class PlantillaDocumentoService
         return [
             $this->vacio(),
             $this->vacio(),
-            $this->parrafo([$this->texto(mb_strtoupper($d['nombre'] ?: '[Nombre]'), true)]),
+            $this->parrafo($this->enLinea($d['nombre'] ? mb_strtoupper($d['nombre']) : '[Nombre]', true)),
             $this->parrafo($d['cargo'] ?: '[Cargo]'),
             ...($d['dependencia'] ? [$this->parrafo($d['dependencia'])] : []),
         ];
@@ -244,9 +248,28 @@ class PlantillaDocumentoService
         return $negrita ? $nodo + ['marks' => [['type' => 'bold']]] : $nodo;
     }
 
+    /**
+     * Nodos en línea de un texto: lo que va entre corchetes pasa a ser un campo por completar.
+     *
+     * @return list<array>
+     */
+    private function enLinea(string $texto, bool $negrita = false): array
+    {
+        $nodos = [];
+        foreach (preg_split(self::PATRON_CAMPO, $texto, -1, PREG_SPLIT_DELIM_CAPTURE) as $i => $parte) {
+            if ($parte === '') {
+                continue;
+            }
+            $nodo = $i % 2 ? ['type' => 'campo', 'attrs' => ['etiqueta' => trim($parte)]] : $this->texto($parte);
+            $nodos[] = $negrita ? $nodo + ['marks' => [['type' => 'bold']]] : $nodo;
+        }
+
+        return $nodos;
+    }
+
     private function parrafo(string|array $contenido, ?string $alineacion = null): array
     {
-        $nodo = ['type' => 'paragraph', 'content' => is_string($contenido) ? [$this->texto($contenido)] : $contenido];
+        $nodo = ['type' => 'paragraph', 'content' => is_string($contenido) ? $this->enLinea($contenido) : $contenido];
 
         return $alineacion ? $nodo + ['attrs' => ['textAlign' => $alineacion]] : $nodo;
     }
@@ -258,12 +281,12 @@ class PlantillaDocumentoService
 
     private function campo(string $etiqueta, string $valor): array
     {
-        return $this->parrafo([$this->texto($etiqueta.': ', true), $this->texto($valor)]);
+        return $this->parrafo([$this->texto($etiqueta.': ', true), ...$this->enLinea($valor)]);
     }
 
     private function titulo(string $texto): array
     {
-        return ['type' => 'heading', 'attrs' => ['level' => 2, 'textAlign' => 'center'], 'content' => [$this->texto($texto)]];
+        return ['type' => 'heading', 'attrs' => ['level' => 2, 'textAlign' => 'center'], 'content' => $this->enLinea($texto)];
     }
 
     private function subtitulo(string $texto): array

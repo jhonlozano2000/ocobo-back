@@ -61,6 +61,19 @@ class PlantillasDocumentoTest extends TestCase
         return ($nodo['text'] ?? '').' '.implode(' ', array_map(fn ($hijo) => $this->textos($hijo), $nodo['content'] ?? []));
     }
 
+    /** Campos por completar del contenido y textos sueltos que aún tengan corchetes. */
+    private function campos(array $nodo, array &$corchetes = []): array
+    {
+        if (($nodo['type'] ?? null) === 'campo') {
+            return [$nodo['attrs']['etiqueta']];
+        }
+        if (str_contains($nodo['text'] ?? '', '[')) {
+            $corchetes[] = $nodo['text'];
+        }
+
+        return array_merge([], ...array_map(fn ($hijo) => $this->campos($hijo, $corchetes), $nodo['content'] ?? []));
+    }
+
     public function test_un_oficio_empieza_con_membrete_firma_y_pagina_institucional(): void
     {
         $id = $this->crear(['plantilla' => 'oficio'])->assertCreated()->json('data.id');
@@ -96,7 +109,8 @@ class PlantillasDocumentoTest extends TestCase
         $this->assertContains('orderedList', $tipos);
 
         $texto = $this->textos($contenido);
-        $this->assertStringContainsString('ACTA No. [número]', $texto);
+        $this->assertStringContainsString('ACTA No.', $texto);
+        $this->assertContains('número', $this->campos($contenido));
         $this->assertStringContainsString('Orden del día', $texto);
         $this->assertStringContainsString('Compromisos', $texto);
     }
@@ -110,6 +124,27 @@ class PlantillasDocumentoTest extends TestCase
             $this->assertStringContainsString($titulo, $texto);
             $this->assertStringContainsString('PARA:', $texto);
             $this->assertStringContainsString('ASUNTO:', $texto);
+        }
+    }
+
+    public function test_lo_que_falta_por_completar_va_en_campos_y_no_en_corchetes(): void
+    {
+        $id = $this->crear(['plantilla' => 'oficio'])->assertCreated()->json('data.id');
+        $corchetes = [];
+        $campos = $this->campos($this->contenido($id), $corchetes);
+
+        // La ciudad de la entidad y el cargo de quien firma no están configurados: también quedan por completar
+        $this->assertSame([
+            'Ciudad', 'Nombre del destinatario', 'Cargo', 'Entidad', 'Dirección', 'Ciudad', 'Asunto',
+            'Escriba aquí el texto del oficio.', 'Cargo',
+        ], $campos);
+        $this->assertSame([], $corchetes);
+
+        foreach (['acta', 'memorando', 'circular'] as $plantilla) {
+            $corchetes = [];
+            $id = $this->crear(['plantilla' => $plantilla])->assertCreated()->json('data.id');
+            $this->assertNotEmpty($this->campos($this->contenido($id), $corchetes));
+            $this->assertSame([], $corchetes, $plantilla);
         }
     }
 
