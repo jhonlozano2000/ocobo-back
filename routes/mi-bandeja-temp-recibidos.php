@@ -7,6 +7,7 @@ use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoExportController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoImportController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\FirmaDocumentoController;
+use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\GrupoDocumentoController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\PlantillaController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\SugerenciaController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\VersionController;
@@ -67,10 +68,12 @@ Route::middleware(['auth:sanctum', 'throttle:documentos'])->prefix('comunicacion
         Route::delete('/documentos/{documento}/firmas', [FirmaDocumentoController::class, 'retirar']);
         // Compartir: quién tiene acceso (lo ve cualquier colaborador)
         Route::get('/documentos/{documento}/usuarios', [ColaboradoresDocumentoController::class, 'index']);
+        Route::get('/documentos/{documento}/grupo', [GrupoDocumentoController::class, 'show']);
     });
 
     Route::middleware('can:gestionarUsuarios,documento')->group(function () {
         Route::post('/documentos/{documento}/usuarios', [ColaboradoresDocumentoController::class, 'store']);
+        Route::post('/documentos/{documento}/grupo', [GrupoDocumentoController::class, 'store']);
         Route::delete('/documentos/{documento}/usuarios/{usuario}', [ColaboradoresDocumentoController::class, 'destroy'])
             ->whereNumber('usuario');
     });
