@@ -197,6 +197,38 @@ class ExportarDocumentoTest extends TestCase
         $this->assertStringContainsString('Confidencial (x)', $pie);
     }
 
+    public function test_exporta_sangria_interlineado_y_espaciado_de_parrafo(): void
+    {
+        $id = $this->documento(['type' => 'doc', 'content' => [
+            ['type' => 'paragraph', 'attrs' => [
+                'textAlign' => 'justify', 'indent' => 2, 'lineHeight' => '1.5', 'spaceAfter' => 12,
+            ], 'content' => [self::texto('Con formato')]],
+            // Un valor manipulado no debe colarse en el style
+            ['type' => 'paragraph', 'attrs' => ['lineHeight' => '1; color: red', 'indent' => 'x'], 'content' => [
+                self::texto('Sin formato'),
+            ]],
+        ]]);
+
+        $html = $this->exportar($id, 'html');
+        $this->assertStringContainsString(
+            '<p style="text-align: justify; margin-left: 72pt; line-height: 1.5; margin-bottom: 12px;">Con formato</p>',
+            $html
+        );
+        $this->assertStringContainsString('<p>Sin formato</p>', $html);
+
+        $archivo = tempnam(sys_get_temp_dir(), 'docx');
+        file_put_contents($archivo, $this->exportar($id, 'docx'));
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open($archivo) === true);
+        $documento = $zip->getFromName('word/document.xml');
+        $zip->close();
+        @unlink($archivo);
+
+        $this->assertMatchesRegularExpression('/<w:jc w:val="both"\/>/', $documento);
+        $this->assertMatchesRegularExpression('/<w:ind w:left="1440"/', $documento);
+        $this->assertMatchesRegularExpression('/<w:spacing[^>]*w:after="180"/', $documento);
+    }
+
     public function test_la_configuracion_acepta_el_numero_de_pagina_en_encabezado_y_pie(): void
     {
         $id = $this->documento(['type' => 'doc', 'content' => []]);

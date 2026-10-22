@@ -13,6 +13,9 @@ class DocumentoExportService
     /** Marcador del total de hojas en el pie del PDF; se reemplaza tras contar las hojas. */
     private const TOTAL_PAGINAS = '__TOTAL_PAGINAS__';
 
+    /** Un nivel de sangría del editor: 0,5" = 36 pt. */
+    private const SANGRIA_PT = 36;
+
     public function exportarPdf(Documento $documento): string
     {
         $contenido = $documento->contenido;
@@ -416,9 +419,63 @@ HTML;
     /** Alineación del párrafo o título (solo los valores de TipTap). */
     private function estiloBloque(array $node): string
     {
-        $alineacion = $node['attrs']['textAlign'] ?? null;
+        $formato = $this->formatoParrafo($node);
+        $reglas = array_filter([
+            'text-align' => $formato['alineacion'],
+            'margin-left' => $formato['sangria'] ? ($formato['sangria'] * self::SANGRIA_PT).'pt' : null,
+            'line-height' => $formato['interlineado'],
+            'margin-top' => $formato['antes'] !== null ? $formato['antes'].'px' : null,
+            'margin-bottom' => $formato['despues'] !== null ? $formato['despues'].'px' : null,
+        ], fn ($valor) => $valor !== null);
 
-        return in_array($alineacion, ['left', 'center', 'right', 'justify'], true) ? ' style="text-align: '.$alineacion.';"' : '';
+        if ($reglas === []) {
+            return '';
+        }
+
+        return ' style="'.implode(' ', array_map(fn ($regla, $valor) => "{$regla}: {$valor};", array_keys($reglas), $reglas)).'"';
+    }
+
+    /**
+     * Formato de párrafo que guarda el editor (alineación, sangría, interlineado y espacio antes/después),
+     * validado para que nada distinto a números o valores conocidos llegue al style ni al .docx.
+     *
+     * @return array{alineacion: ?string, sangria: int, interlineado: ?string, antes: ?int, despues: ?int}
+     */
+    private function formatoParrafo(array $node): array
+    {
+        $attrs = $node['attrs'] ?? [];
+        $alineacion = $attrs['textAlign'] ?? null;
+        $interlineado = (string) ($attrs['lineHeight'] ?? '');
+        $espacio = fn ($valor) => is_numeric($valor) ? max(0, min((int) $valor, 200)) : null;
+
+        return [
+            'alineacion' => in_array($alineacion, ['left', 'center', 'right', 'justify'], true) ? $alineacion : null,
+            // Niveles de sangría del editor: 0,5" cada uno, hasta 8
+            'sangria' => max(0, min((int) ($attrs['indent'] ?? 0), 8)),
+            'interlineado' => preg_match('/^\d{1,2}(\.\d{1,2})?$/', $interlineado) ? $interlineado : null,
+            'antes' => $espacio($attrs['spaceBefore'] ?? null),
+            'despues' => $espacio($attrs['spaceAfter'] ?? null),
+        ];
+    }
+
+    /** El mismo formato de párrafo en el estilo de PhpWord (twips: 1 pt = 20; 1 px = 15). */
+    private function estiloParrafoDocx(array $node): array
+    {
+        $formato = $this->formatoParrafo($node);
+
+        return array_filter([
+            'alignment' => match ($formato['alineacion']) {
+                'center' => 'center',
+                'right' => 'end',
+                'justify' => 'both',
+                'left' => 'start',
+                default => null,
+            },
+            'indentation' => $formato['sangria'] ? ['left' => $formato['sangria'] * self::SANGRIA_PT * 20] : null,
+            'lineHeight' => $formato['interlineado'] !== null ? (float) $formato['interlineado'] : null,
+            'spaceBefore' => $formato['antes'] !== null ? $formato['antes'] * 15 : null,
+            'spaceAfter' => $formato['despues'] !== null ? $formato['despues'] * 15 : null,
+        ], fn ($valor) => $valor !== null);
     }
 
     /** Color CSS válido (hex, nombre, rgb/hsl) o null: impide inyectar otras reglas en el style. */
@@ -524,7 +581,8 @@ HTML;
                 case 'paragraph':
                     $section->addText(
                         $this->renderInlineText($block['content'] ?? []),
-                        $this->getTextStyle($block['marks'] ?? [])
+                        $this->getTextStyle($block['marks'] ?? []),
+                        $this->estiloParrafoDocx($block)
                     );
                     break;
                 case 'heading':
