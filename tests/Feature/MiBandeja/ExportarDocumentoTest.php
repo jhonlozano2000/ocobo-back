@@ -229,6 +229,34 @@ class ExportarDocumentoTest extends TestCase
         $this->assertMatchesRegularExpression('/<w:spacing[^>]*w:after="180"/', $documento);
     }
 
+    public function test_exporta_el_control_de_cambios_con_marcado(): void
+    {
+        $autor = ['autor' => 1, 'nombre' => 'Ana', 'fecha' => '2026-10-21T10:00'];
+        $id = $this->documento(['type' => 'doc', 'content' => [
+            ['type' => 'paragraph', 'content' => [
+                self::texto('Plazo de '),
+                ['type' => 'text', 'text' => 'diez', 'marks' => [['type' => 'eliminacion', 'attrs' => $autor]]],
+                ['type' => 'text', 'text' => 'quince', 'marks' => [['type' => 'insercion', 'attrs' => $autor]]],
+                self::texto(' días'),
+            ]],
+        ]]);
+
+        $html = $this->exportar($id, 'html');
+        $this->assertStringContainsString('<del style="color: #c62828; text-decoration: line-through;">diez</del>', $html);
+        $this->assertStringContainsString('<ins style="color: #2e7d32; text-decoration: underline;">quince</ins>', $html);
+
+        $archivo = tempnam(sys_get_temp_dir(), 'docx');
+        file_put_contents($archivo, $this->exportar($id, 'docx'));
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open($archivo) === true);
+        $documento = $zip->getFromName('word/document.xml');
+        $zip->close();
+        @unlink($archivo);
+
+        $this->assertMatchesRegularExpression('/<w:strike w:val="1"\/><\/w:rPr><w:t[^>]*>diez</', $documento);
+        $this->assertMatchesRegularExpression('/<w:u w:val="single"\/><\/w:rPr><w:t[^>]*>quince</', $documento);
+    }
+
     public function test_la_configuracion_acepta_el_numero_de_pagina_en_encabezado_y_pie(): void
     {
         $id = $this->documento(['type' => 'doc', 'content' => []]);

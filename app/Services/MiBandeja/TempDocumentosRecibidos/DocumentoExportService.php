@@ -372,6 +372,13 @@ HTML;
                         $color = $this->colorCss($mark['attrs']['color'] ?? null) ?? 'yellow';
                         $text = '<span style="background-color: '.$this->esc($color).';">'.$text.'</span>';
                         break;
+                    case 'insercion':
+                        // Control de cambios pendiente: se exporta con marcado, como lo imprime Word
+                        $text = '<ins style="color: #2e7d32; text-decoration: underline;">'.$text.'</ins>';
+                        break;
+                    case 'eliminacion':
+                        $text = '<del style="color: #c62828; text-decoration: line-through;">'.$text.'</del>';
+                        break;
                     case 'link':
                         $text = '<a href="'.$this->esc($this->hrefSeguro($mark['attrs']['href'] ?? '')).'">'.$text.'</a>';
                         break;
@@ -579,11 +586,8 @@ HTML;
                     $this->agregarContenidoASection($section, $block['content'] ?? []);
                     break;
                 case 'paragraph':
-                    $section->addText(
-                        $this->renderInlineText($block['content'] ?? []),
-                        $this->getTextStyle($block['marks'] ?? []),
-                        $this->estiloParrafoDocx($block)
-                    );
+                    // Un tramo por texto para conservar su formato (antes el párrafo iba como texto plano)
+                    $this->agregarTramos($section->addTextRun($this->estiloParrafoDocx($block)), $block['content'] ?? []);
                     break;
                 case 'heading':
                     $level = $block['attrs']['level'] ?? 1;
@@ -610,6 +614,18 @@ HTML;
         }
     }
 
+    /** Textos y saltos de línea de un párrafo, cada uno con el estilo de sus marcas. */
+    private function agregarTramos($run, array $contenido): void
+    {
+        foreach ($contenido as $inline) {
+            if (($inline['type'] ?? null) === 'hardBreak') {
+                $run->addTextBreak();
+            } elseif (isset($inline['text']) && $inline['text'] !== '') {
+                $run->addText($inline['text'], $this->getTextStyle($inline['marks'] ?? []));
+            }
+        }
+    }
+
     private function getTextStyle(array $marks): array
     {
         $style = [];
@@ -623,7 +639,7 @@ HTML;
                     $style['italic'] = true;
                     break;
                 case 'underline':
-                    $style['underline'] = true;
+                    $style['underline'] = 'single';
                     break;
                 case 'strike':
                     $style['strikethrough'] = true;
@@ -632,13 +648,21 @@ HTML;
                     $style['code'] = true;
                     break;
                 case 'highlight':
-                    $color = $mark['attrs']['color'] ?? 'yellow';
-                    $style['highlight'] = $color;
+                    // Word solo admite sus colores de resaltado con nombre
+                    $style['fgColor'] = 'yellow';
+                    break;
+                case 'insercion':
+                    $style['underline'] = 'single';
+                    $style['color'] = '2E7D32';
+                    break;
+                case 'eliminacion':
+                    $style['strikethrough'] = true;
+                    $style['color'] = 'C62828';
                     break;
                 case 'textStyle':
-                    $color = $mark['attrs']['color'] ?? '';
-                    if ($color) {
-                        $style['color'] = $color;
+                    $color = ltrim((string) ($mark['attrs']['color'] ?? ''), '#');
+                    if (preg_match('/^[0-9a-f]{6}$/i', $color)) {
+                        $style['color'] = strtoupper($color);
                     }
                     break;
             }
