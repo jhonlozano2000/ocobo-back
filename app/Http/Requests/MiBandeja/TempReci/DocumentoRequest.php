@@ -3,6 +3,7 @@
 namespace App\Http\Requests\MiBandeja\TempReci;
 
 use App\Rules\RadicadoAccesible;
+use App\Services\MiBandeja\TempDocumentosRecibidos\PlantillaDocumentoService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -55,6 +56,11 @@ class DocumentoRequest extends FormRequest
                 'sometimes',
                 'boolean',
             ],
+            // Solo al crear: plantilla institucional con membrete para el contenido inicial
+            'plantilla' => [
+                'nullable',
+                Rule::in(PlantillaDocumentoService::PLANTILLAS),
+            ],
         ];
     }
 
@@ -69,6 +75,7 @@ class DocumentoRequest extends FormRequest
             'radica_reci_id.required' => 'Debe seleccionar un radicado.',
             'radica_reci_id.exists' => 'El radicado seleccionado no existe.',
             'titulo.required' => 'El título es obligatorio.',
+            'plantilla.in' => 'La plantilla no es válida.',
             'titulo.min' => 'El título debe tener al menos 3 caracteres.',
             'titulo.max' => 'El título no puede exceder 255 caracteres.',
             'estado.in' => 'El estado debe ser: borrador, en_revision o firmado.',

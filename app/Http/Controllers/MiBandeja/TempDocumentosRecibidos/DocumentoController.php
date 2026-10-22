@@ -14,6 +14,7 @@ use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\MiBandeja\TempDocumentosRecibidos\DocumentoUsuario;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Version;
 use App\Services\MiBandeja\TempDocumentosRecibidos\CursorService;
+use App\Services\MiBandeja\TempDocumentosRecibidos\PlantillaDocumentoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -124,6 +125,7 @@ class DocumentoController extends Controller
      * @bodyParam titulo string required Título del documento (3-255 caracteres). Example: "Oficio de respuesta"
      * @bodyParam notas string Notas opcionales. Example: "Revision pendiente"
      * @bodyParam es_publico boolean Visibilidad para otros usuarios. Default: false
+     * @bodyParam plantilla string Plantilla institucional con membrete: oficio, acta, memorando o circular. Example: "oficio"
      *
      * @response 201 {
      *   "data": {
@@ -137,9 +139,10 @@ class DocumentoController extends Controller
      *   "errors": {"titulo": ["El título es obligatorio"]}
      * }
      */
-    public function store(DocumentoRequest $request): JsonResponse
+    public function store(DocumentoRequest $request, PlantillaDocumentoService $plantillas): JsonResponse
     {
         $data = $request->validated();
+        $plantilla = ! empty($data['plantilla']) ? $plantillas->construir($data['plantilla'], $request->user()) : null;
 
         $documentoData = [
             'titulo' => $data['titulo'],
@@ -153,11 +156,11 @@ class DocumentoController extends Controller
             $documentoData['radica_reci_id'] = $data['radica_reci_id'];
         }
 
-        $documento = Documento::create($documentoData);
+        $documento = Documento::create($documentoData + ($plantilla['pagina'] ?? []));
 
         Contenido::create([
             'documento_id' => $documento->id,
-            'contenido_yjs' => [],
+            'contenido_yjs' => $plantilla['contenido'] ?? [],
             'hash_contenido' => '',
         ]);
 

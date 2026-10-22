@@ -1,0 +1,134 @@
+<?php
+
+namespace Tests\Feature\MiBandeja;
+
+use App\Models\User;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
+
+/**
+ * Plantillas institucionales de Mis Documentos: al crear un documento como oficio, acta, memorando o circular
+ * empieza con el membrete de la entidad, en carta con los márgenes de la GTC 185 y el pie de contacto.
+ */
+class PlantillasDocumentoTest extends TestCase
+{
+    use DatabaseTransactions;
+
+    private const URL = '/api/mi-bandeja/comunicaciones-recibidas/documentos';
+
+    private User $yo;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutMiddleware(ThrottleRequests::class);
+        $this->yo = User::factory()->create(['estado' => 1, 'nombres' => 'Ana', 'apellidos' => 'Ruiz']);
+
+        Storage::fake('otros_archivos');
+        Storage::disk('otros_archivos')->put('logo.png', UploadedFile::fake()->image('logo.png', 20, 20)->get());
+
+        foreach ([
+            'razon_social_empresa' => 'Alcaldía de Prueba',
+            'nit_empresa' => '800.000.001-1',
+            'direccion_empresa' => 'Calle 1 # 2-3',
+            'telefono_empresa' => '6012345678',
+            'correo_electronico_empresa' => 'contacto@prueba.gov.co',
+            'web_empresa' => null,
+            'divi_poli_id_empresa' => null,
+            'logo_empresa' => 'logo.png',
+        ] as $clave => $valor) {
+            DB::table('config_varias')->updateOrInsert(['clave' => $clave], ['valor' => $valor]);
+        }
+    }
+
+    private function crear(array $datos)
+    {
+        return $this->actingAs($this->yo)->postJson(self::URL, ['titulo' => 'Documento de prueba', ...$datos]);
+    }
+
+    private function contenido(int $id): array
+    {
+        return json_decode(DB::table('mi_bandeja_temp_reci_contenido')->where('documento_id', $id)->value('contenido_yjs'), true);
+    }
+
+    /** Texto plano de los nodos del contenido, para buscar frases sin depender de la estructura. */
+    private function textos(array $nodo): string
+    {
+        return ($nodo['text'] ?? '').' '.implode(' ', array_map(fn ($hijo) => $this->textos($hijo), $nodo['content'] ?? []));
+    }
+
+    public function test_un_oficio_empieza_con_membrete_firma_y_pagina_institucional(): void
+    {
+        $id = $this->crear(['plantilla' => 'oficio'])->assertCreated()->json('data.id');
+
+        $documento = DB::table('mi_bandeja_temp_reci_documentos')->find($id);
+        $this->assertSame('carta', $documento->tamano_papel);
+        $this->assertEquals(['superior' => 30, 'inferior' => 25, 'izquierdo' => 30, 'derecho' => 20], json_decode($documento->margenes, true));
+        $this->assertEquals([
+            'habilitado' => true,
+            'elementos' => ['texto_libre', 'pagina'],
+            'texto_libre' => 'Calle 1 # 2-3 · Tel. 6012345678 · contacto@prueba.gov.co',
+        ], json_decode($documento->configuracion_footer, true));
+
+        $contenido = $this->contenido($id);
+        $this->assertSame('doc', $contenido['type']);
+        $this->assertSame('image', $contenido['content'][0]['type']);
+        $this->assertStringStartsWith('data:image/png;base64,', $contenido['content'][0]['attrs']['src']);
+
+        $texto = $this->textos($contenido);
+        $this->assertStringContainsString('ALCALDÍA DE PRUEBA', $texto);
+        $this->assertStringContainsString('NIT 800.000.001-1', $texto);
+        $this->assertStringContainsString('Asunto:', $texto);
+        $this->assertStringContainsString('ANA RUIZ', $texto);
+    }
+
+    public function test_el_acta_trae_asistentes_orden_del_dia_y_compromisos(): void
+    {
+        $id = $this->crear(['plantilla' => 'acta'])->assertCreated()->json('data.id');
+
+        $contenido = $this->contenido($id);
+        $tipos = array_column($contenido['content'], 'type');
+        $this->assertSame(3, count(array_keys($tipos, 'table')));
+        $this->assertContains('orderedList', $tipos);
+
+        $texto = $this->textos($contenido);
+        $this->assertStringContainsString('ACTA No. [número]', $texto);
+        $this->assertStringContainsString('Orden del día', $texto);
+        $this->assertStringContainsString('Compromisos', $texto);
+    }
+
+    public function test_memorando_y_circular_identifican_al_remitente(): void
+    {
+        foreach (['memorando' => 'MEMORANDO', 'circular' => 'CIRCULAR No.'] as $plantilla => $titulo) {
+            $id = $this->crear(['plantilla' => $plantilla])->assertCreated()->json('data.id');
+            $texto = $this->textos($this->contenido($id));
+
+            $this->assertStringContainsString($titulo, $texto);
+            $this->assertStringContainsString('PARA:', $texto);
+            $this->assertStringContainsString('ASUNTO:', $texto);
+        }
+    }
+
+    public function test_un_logo_que_no_es_imagen_no_se_incrusta(): void
+    {
+        Storage::disk('otros_archivos')->put('logo.png', 'no soy una imagen');
+
+        $id = $this->crear(['plantilla' => 'memorando'])->assertCreated()->json('data.id');
+
+        $this->assertSame('paragraph', $this->contenido($id)['content'][0]['type']);
+    }
+
+    public function test_sin_plantilla_el_documento_queda_en_blanco_y_rechaza_plantillas_desconocidas(): void
+    {
+        $id = $this->crear([])->assertCreated()->json('data.id');
+        $this->assertSame([], $this->contenido($id));
+
+        $this->crear(['plantilla' => 'resolucion'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['plantilla']);
+    }
+}
