@@ -11,7 +11,6 @@ use App\Http\Resources\MiBandeja\TempReci\DocumentoResource;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Contenido;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
-use App\Models\MiBandeja\TempDocumentosRecibidos\DocumentoUsuario;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Version;
 use App\Models\OfiArchivo\OfiArchivoPlantillaGenerada;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
@@ -628,51 +627,6 @@ class DocumentoController extends Controller
             return $this->successResponse([
                 'contenido' => $contenido,
             ], 'Versión restaurada correctamente');
-        });
-    }
-
-    /**
-     * Asigna usuarios a un documento con roles.
-     *
-     * Roles disponibles: firmante, responsable, proyector.
-     *
-     * @param  Request  $request  Solicitud con usuarios
-     * @param  Documento  $documento  Documento
-     * @return JsonResponse Confirmación
-     *
-     * @bodyParam usuarios array required Lista de usuarios
-     * @bodyParam usuarios[].user_id integer ID del usuario. Example: 1
-     * @bodyParam usuarios[].rol string Rol: firmante|responsable|proyector. Example: "firmante"
-     *
-     * @response 200 {
-     *   "message": "Usuarios asignados correctamente"
-     * }
-     * @response 403 {
-     *   "message": "Solo el creador puede asignar usuarios"
-     * }
-     */
-    public function asignarUsuarios(Request $request, Documento $documento): JsonResponse
-    {
-        if ($documento->user_id !== $request->user()->id) {
-            return $this->forbiddenResponse('Solo el creador puede asignar usuarios');
-        }
-
-        $usuarios = $request->input('usuarios', []);
-
-        return DB::transaction(function () use ($documento, $usuarios) {
-            foreach ($usuarios as $usuario) {
-                DocumentoUsuario::updateOrCreate(
-                    [
-                        'documento_id' => $documento->id,
-                        'user_id' => $usuario['user_id'],
-                    ],
-                    [
-                        'rol' => $usuario['rol'],
-                    ]
-                );
-            }
-
-            return $this->successResponse(null, 'Usuarios asignados correctamente');
         });
     }
 
