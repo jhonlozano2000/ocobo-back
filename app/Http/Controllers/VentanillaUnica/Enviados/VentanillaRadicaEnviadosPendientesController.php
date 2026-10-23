@@ -8,6 +8,7 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempArchivoVersion;
 use App\Models\MiBandeja\MiBandejaTempGrupoArchiAdjunto;
+use App\Services\MiBandeja\TempDocumentosRecibidos\DocumentoExportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -34,7 +35,10 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
     {
         try {
             $query = MiBandejaTemp::query()
-                ->where('plantilla_cargada', true)
+                // Plantilla Word, o documento del editor (se radica su PDF con la constancia de firmas)
+                ->where(function ($q) {
+                    $q->where('plantilla_cargada', true)->orWhereNotNull('documento_id');
+                })
                 ->where(function ($q) {
                     $q->whereNull('respuesta_final')
                         ->orWhere('respuesta_final', '!=', 'radicado');
@@ -231,6 +235,11 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
                     'codigo_completo' => method_exists($clasificacion, 'getCodigoCompleto') ? $clasificacion->getCodigoCompleto() : $clasificacion->cod,
                     'nombre_completo' => method_exists($clasificacion, 'getNombreCompleto') ? $clasificacion->getNombreCompleto() : $clasificacion->nom,
                 ] : null,
+                // Documento del editor: se radica su PDF con la constancia de firmas
+                'documento_editor' => $grupo->documento_id ? [
+                    'id' => $grupo->documento_id,
+                    'titulo' => $grupo->documento?->titulo,
+                ] : null,
                 'documento_version' => $ultimaVersion ? [
                     'id' => $ultimaVersion->id,
                     'version' => $ultimaVersion->version,
@@ -295,6 +304,13 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
     public function descargarDocumento(int $id, ?int $versionId = null): BinaryFileResponse|JsonResponse
     {
         try {
+            $grupo = MiBandejaTemp::find($id);
+            if ($grupo?->documento_id && ! $versionId) {
+                $ruta = app(DocumentoExportService::class)->exportarPdf($grupo->documento, true);
+
+                return response()->download($ruta, ($grupo->documento->titulo ?: 'Documento').'.pdf')->deleteFileAfterSend(true);
+            }
+
             $query = MiBandejaTempArchivoVersion::where('grupo_id', $id);
 
             if ($versionId) {

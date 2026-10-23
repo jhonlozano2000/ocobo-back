@@ -67,13 +67,23 @@ class DocumentoExportService
 
     public function __construct(private LogoEntidadService $logos = new LogoEntidadService) {}
 
-    public function exportarPdf(Documento $documento): string
+    /**
+     * PDF del documento en un archivo temporal (quien lo pide lo borra).
+     *
+     * @param  bool  $conConstanciaFirmas  agrega al final la hoja de constancia de las firmas electrónicas vigentes
+     *                                     (la versión que se radica)
+     * @return string ruta absoluta del PDF
+     */
+    public function exportarPdf(Documento $documento, bool $conConstanciaFirmas = false): string
     {
         $contenido = $documento->contenido;
         $configPagina = $documento->getConfiguracionPagina();
         $creadorNombre = $this->nombreCreador($documento);
 
         $html = $this->contenidoToHtml($contenido->contenido_yjs ?? []);
+        if ($conConstanciaFirmas) {
+            $html .= $this->constanciaFirmas($documento);
+        }
         $contenidoHtml = $this->wrapHtmlForPdf(
             $documento->titulo,
             $html,
@@ -292,6 +302,49 @@ HTML;
         return $medidas
             ? '<img src="'.$this->logos->dataUri().'" alt="" style="width: '.$medidas['ancho'].'pt; height: '.$medidas['alto'].'pt; vertical-align: middle;">'
             : null;
+    }
+
+    /**
+     * Hoja final con la evidencia de cada firma electrónica vigente (Ley 527 de 1999): firmante, cargo, fecha,
+     * método de verificación, hash del contenido firmado y sello. No altera el contenido del documento.
+     */
+    private function constanciaFirmas(Documento $documento): string
+    {
+        $grupo = $documento->grupoVigente();
+        $cargos = $grupo
+            ? $grupo->firmantes()->with('cargo')->get()->mapWithKeys(fn ($f) => [$f->user_id => $f->cargo?->nombre])
+            : collect();
+
+        $filas = $documento->firmasVigentes()->with('user')->orderBy('fecha_firma')->get()->map(function ($firma) use ($cargos) {
+            $user = $firma->user;
+            $nombre = $user ? trim("{$user->nombres} {$user->apellidos}") : '';
+            $cargo = $cargos[$firma->user_id] ?? $user?->cargo?->nombre ?? '';
+            $metodo = $firma->otp_utilizado === 'PASSWORD'
+                ? 'Re-autenticación con contraseña'
+                : 'Código OTP al correo institucional ('.$firma->otp_utilizado.')';
+            $celda = 'border:1px solid #999;padding:4pt;vertical-align:top;';
+
+            return '<tr>'
+                ."<td style=\"{$celda}\"><strong>{$this->esc($nombre)}</strong><br>{$this->esc($cargo)}</td>"
+                ."<td style=\"{$celda}\">{$this->esc($firma->fecha_firma?->format('Y-m-d H:i:s'))}<br>{$this->esc($metodo)}</td>"
+                ."<td style=\"{$celda}font-family:monospace;font-size:7pt;word-break:break-all;\">"
+                ."Hash: {$this->esc($firma->hash_original)}<br>Sello: {$this->esc($firma->hash_firmado)}</td>"
+                .'</tr>';
+        })->implode('');
+
+        if ($filas === '') {
+            return '';
+        }
+
+        return '<div style="page-break-before:always;font-size:9pt;">'
+            .'<h2 style="font-size:13pt;">Constancia de firmas electrónicas</h2>'
+            .'<p>Este documento fue firmado electrónicamente conforme a la Ley 527 de 1999. Cada firma sella el hash '
+            .'SHA-256 del contenido firmado; cualquier cambio posterior del contenido invalida las firmas.</p>'
+            .'<table style="width:100%;border-collapse:collapse;">'
+            .'<thead><tr><th style="border:1px solid #999;padding:4pt;text-align:left;">Firmante</th>'
+            .'<th style="border:1px solid #999;padding:4pt;text-align:left;">Fecha y verificación</th>'
+            .'<th style="border:1px solid #999;padding:4pt;text-align:left;">Evidencia</th></tr></thead>'
+            ."<tbody>{$filas}</tbody></table></div>";
     }
 
     private function nombreCreador(Documento $documento): string

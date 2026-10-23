@@ -15,6 +15,7 @@ use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosHistorialClasificacionDocumental;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosRespuestas;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\MiBandeja\RadicacionGrupoDocumentoService;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
 use App\Services\ReportesExportService;
 use App\Services\VentanillaUnica\RadicadoConsecutivoService;
@@ -233,6 +234,12 @@ class VentanillaRadicaEnviadosController extends Controller
             $grupoId = $validatedData['grupo_id'] ?? null;
             unset($validatedData['grupo_id']);
 
+            // Un documento del editor solo se radica cuando todos cumplieron y los firmantes firmaron
+            $grupoDocumento = $grupoId ? MiBandejaTemp::whereKey($grupoId)->whereNotNull('documento_id')->first() : null;
+            if ($grupoDocumento && ($motivo = app(RadicacionGrupoDocumentoService::class)->pendiente($grupoDocumento))) {
+                throw ValidationException::withMessages(['grupo_id' => $motivo]);
+            }
+
             $radicado = new VentanillaRadicaEnviados($validatedData);
             $radicado->num_radicado = $numRadicado;
             $radicado->usuario_crea = auth()->id();
@@ -243,7 +250,22 @@ class VentanillaRadicaEnviadosController extends Controller
                 $grupo = MiBandejaTemp::with(['ultimaVersion', 'radicadoRecibido'])->find($grupoId);
                 if ($grupo) {
                     $version = $grupo->ultimaVersion;
-                    if ($version) {
+                    if ($grupo->documento_id) {
+                        // PDF del editor con la hoja de constancia de firmas
+                        $pdf = app(RadicacionGrupoDocumentoService::class)->guardarPdf($grupo, 'radicados_enviados', $numRadicado);
+                        $radicado->update([
+                            'archivo_digital' => $pdf['archivo'],
+                            'nom_origi' => $pdf['nom_origi'],
+                            'hash_sha256' => $pdf['hash_sha256'],
+                            'archivo_tipo' => $pdf['archivo_tipo'],
+                            'archivo_peso' => $pdf['archivo_peso'],
+                            'subido_por' => $radicado->usuario_crea,
+                        ]);
+                        FileMetadataHelper::crearMetadataArchivoDigitalEnviados($radicado, $pdf['archivo'], $pdf['hash_sha256'], $pdf['archivo_peso'], [
+                            'descripcion' => 'Documento firmado procedente del grupo colaborativo '.$grupo->nombre,
+                            'palabras_clave' => 'grupo_colaborativo, '.$numRadicado,
+                        ]);
+                    } elseif ($version) {
                         $discoOrigen = 'plantillas_grupos';
                         $discoDestino = 'radicados_enviados';
 

@@ -478,6 +478,10 @@ class GrupoColaborativoService
     public function enviarTramite(MiBandejaTemp $grupo, ?string $respuestaFinal = null): MiBandejaTemp
     {
         return DB::transaction(function () use ($grupo, $respuestaFinal) {
+            if ($grupo->documento_id) {
+                throw new \RuntimeException('El grupo es de un documento del editor: se radica como enviado o interno con «Radicar».');
+            }
+
             if ($grupo->firmantes()->count() === 0) {
                 throw new \RuntimeException('El grupo colaborativo debe tener al menos un firmante asignado para enviar la respuesta');
             }

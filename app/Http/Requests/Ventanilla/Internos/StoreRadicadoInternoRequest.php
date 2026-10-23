@@ -37,6 +37,8 @@ class StoreRadicadoInternoRequest extends FormRequest
             'firmantes.*' => 'integer|exists:users,id',
             'originadores' => 'nullable|array',
             'originadores.*' => 'integer|exists:users,id',
+            // Grupo colaborativo de un documento del editor: su PDF firmado es el archivo digital
+            'grupo_id' => 'nullable|integer|exists:mi_bandeja_temp,id',
         ];
     }
 

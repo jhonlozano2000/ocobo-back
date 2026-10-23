@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\VentanillaUnica\Internos;
 
 use App\Helpers\ArchivoHelper;
+use App\Helpers\FileMetadataHelper;
 use App\Helpers\MailConfigHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Internos\StoreRadicadoInternoRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Jobs\AplicarOcrArchivoDigital;
 use App\Models\ControlAcceso\UserCargo;
+use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\Notificacion;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoHistorialNotificacion;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoResponsable;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternosHistorialClasificacionDocumental;
+use App\Services\MiBandeja\RadicacionGrupoDocumentoService;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
 use App\Services\VentanillaUnica\RadicadoConsecutivoService;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
@@ -221,6 +225,13 @@ class VentanillaRadicaInternoController extends Controller
 
     public function store(StoreRadicadoInternoRequest $request)
     {
+        // Un documento del editor se radica cuando su grupo terminó, por su creador o un firmante
+        $radicacion = app(RadicacionGrupoDocumentoService::class);
+        $grupo = $request->filled('grupo_id') ? MiBandejaTemp::find($request->integer('grupo_id')) : null;
+        if ($grupo && ($motivo = $radicacion->impedimento($grupo, $request->user()))) {
+            throw ValidationException::withMessages(['grupo_id' => $motivo]);
+        }
+
         try {
             DB::beginTransaction();
 
@@ -339,8 +350,28 @@ class VentanillaRadicaInternoController extends Controller
                 }
             }
 
+            // 6. Documento del editor: su PDF con la constancia de firmas es el archivo digital
+            if ($grupo) {
+                $pdf = $radicacion->guardarPdf($grupo, 'radicados_internos', $radicado->num_radicado);
+                $radicado->update([
+                    'archivo_digital' => $pdf['archivo'],
+                    'nom_origi' => $pdf['nom_origi'],
+                    'hash_sha256' => $pdf['hash_sha256'],
+                    'archivo_tipo' => $pdf['archivo_tipo'],
+                    'archivo_peso' => $pdf['archivo_peso'],
+                    'subido_por' => auth()->id(),
+                ]);
+                FileMetadataHelper::crearMetadataArchivoDigitalInterno($radicado, $pdf['archivo'], $pdf['hash_sha256'], $pdf['archivo_peso'], [
+                    'descripcion' => 'Documento firmado procedente del grupo colaborativo '.$grupo->nombre,
+                ]);
+                $radicacion->finalizar($grupo);
+            }
+
             DB::commit();
             $this->auditVentanilla($radicado, 'created', $radicado->num_radicado);
+            if ($grupo) {
+                AplicarOcrArchivoDigital::programar($radicado, 'radicados_internos', $radicado->archivo_digital);
+            }
 
             return $this->successResponse($radicado, 'Radicación interna completada exitosamente', 201);
 
