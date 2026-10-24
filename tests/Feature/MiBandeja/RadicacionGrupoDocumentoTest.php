@@ -149,6 +149,33 @@ class RadicacionGrupoDocumentoTest extends TestCase
         $this->assertSame('radicado', $this->grupo()->respuesta_final);
     }
 
+    public function test_pendientes_no_lista_grupos_del_editor_que_no_se_pueden_radicar(): void
+    {
+        $ventanilla = User::factory()->create(['estado' => 1]);
+        $ventanilla->givePermissionTo(Permission::findOrCreate('Radicar -> Cores. Enviada -> Listar', 'web'));
+        $pendientes = fn () => array_column($this->actingAs($ventanilla)
+            ->getJson('/api/ventanilla/radica-enviada/pendientes-radicar?per_page=100')->assertOk()->json('data'), 'id');
+
+        // Terminado y luego anulado: ya no se puede radicar
+        $this->terminarGrupo();
+        $this->assertContains($this->grupo, $pendientes());
+        $this->creador->givePermissionTo(Permission::findOrCreate('Mi Bandeja - Grupos Colaborativos -> Eliminar', 'web'));
+        $this->actingAs($this->creador)->postJson(self::URL_GRUPOS."/{$this->grupo}/anular")->assertOk();
+        $this->assertNotContains($this->grupo, $pendientes());
+
+        // Sin firmantes, aunque todos sus miembros cumplieron
+        $documento = DB::table('mi_bandeja_temp_reci_documentos')->insertGetId([
+            'user_id' => $this->creador->id, 'titulo' => 'Sin firmantes', 'estado' => 'borrador',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $sinFirmantes = $this->actingAs($this->creador)->postJson(self::URL_GRUPOS, [
+            'nombre' => 'Sin firmantes', 'asunto' => 'Respuesta', 'documento_id' => $documento,
+        ])->assertCreated()->json('data.id');
+        $this->postJson(self::URL_GRUPOS."/{$sinFirmantes}/revisores", ['user_id' => $this->revisor->id])->assertCreated();
+        $this->actingAs($this->revisor)->postJson(self::URL_GRUPOS."/{$sinFirmantes}/marcar-terminado")->assertOk();
+        $this->assertNotContains($sinFirmantes, $pendientes());
+    }
+
     public function test_un_documento_sin_terminar_no_se_radica_desde_ventanilla(): void
     {
         $ventanilla = User::factory()->create(['estado' => 1]);

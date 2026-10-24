@@ -39,6 +39,12 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
                 ->where(function ($q) {
                     $q->where('plantilla_cargada', true)->orWhereNotNull('documento_id');
                 })
+                // El del editor, solo si se puede radicar (mismas reglas que RadicacionGrupoDocumentoService::pendiente)
+                ->where(function ($q) {
+                    $q->whereNull('documento_id')->orWhere(function ($d) {
+                        $d->where('estado_grupo', 'activo')->where('estado', '!=', 'finalizado')->has('firmantes');
+                    });
+                })
                 ->where(function ($q) {
                     $q->whereNull('respuesta_final')
                         ->orWhere('respuesta_final', '!=', 'radicado');
