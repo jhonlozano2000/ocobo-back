@@ -99,13 +99,4 @@ class AccesoRadicadosEnviadosTest extends TestCase
         $this->user->givePermissionTo(Permission::findOrCreate(self::PERM.'Ver Todos', 'web'));
         $this->assertNotSame(404, $this->actingAs($this->user)->getJson("/api/ventanilla/radica-enviada/{$ajeno}/linea-tiempo")->status());
     }
-
-    public function test_eliminacion_masiva_ignora_enviados_ajenos(): void
-    {
-        $ajeno = $this->enviado($this->otro->id);
-
-        $this->actingAs($this->user)->deleteJson('/api/ventanilla/radica-enviada', ['ids' => [$ajeno]]);
-
-        $this->assertTrue(DB::table('ventanilla_radica_enviados')->where('id', $ajeno)->exists());
-    }
 }

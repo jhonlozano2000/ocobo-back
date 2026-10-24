@@ -95,39 +95,15 @@ class BorradoArchivosRadicadoTest extends TestCase
         }
     }
 
-    public function test_borrado_masivo_revierte_solo_el_radicado_que_falla(): void
+    public function test_no_hay_borrado_en_lote_de_radicados(): void
     {
-        $ok = $this->recibido();
-        $falla = $this->recibido();
-        [$archivosOk, $archivosFalla] = [$this->archivosDe($ok), $this->archivosDe($falla)];
-        $this->fallarAlBorrar($falla);
+        // Los radicados se borran de a uno (el último) o se anulan, para no dejar huecos en el consecutivo
+        $id = $this->recibido();
 
-        $this->actingAs($this->user)->deleteJson('/api/ventanilla/radica-recibida', ['ids' => [$ok, $falla]])
-            ->assertOk()->assertJsonPath('data.eliminados', 1)->assertJsonPath('data.fallidos', 1);
+        $this->actingAs($this->user)->deleteJson('/api/ventanilla/radica-recibida', ['ids' => [$id]])->assertStatus(405);
+        $this->actingAs($this->user)->deleteJson('/api/ventanilla/radica-enviada', ['ids' => [$id]])->assertStatus(405);
 
-        $this->assertSoftDeleted('ventanilla_radica_reci', ['id' => $ok]);
-        // El radicado que falló queda completo: registro, adjunto y archivos
-        $this->assertDatabaseHas('ventanilla_radica_reci', ['id' => $falla]);
-        $this->assertDatabaseHas('ventanilla_radica_reci_archivos', ['radicado_id' => $falla]);
-        foreach ($archivosOk as $archivo) {
-            Storage::disk('radicados_recibidos')->assertMissing($archivo);
-        }
-        foreach ($archivosFalla as $archivo) {
-            Storage::disk('radicados_recibidos')->assertExists($archivo);
-        }
-    }
-
-    public function test_borrado_masivo_respeta_el_alcance_del_usuario(): void
-    {
-        $this->user->revokePermissionTo('Radicar -> Cores. Recibida -> Ver Todos');
-        $otro = User::factory()->create(['estado' => 1]);
-        $ajeno = $this->recibido();
-        DB::table('ventanilla_radica_reci')->where('id', $ajeno)->update(['usuario_crea' => $otro->id]);
-
-        $this->actingAs($this->user->fresh())->deleteJson('/api/ventanilla/radica-recibida', ['ids' => [$ajeno]])
-            ->assertOk()->assertJsonPath('data.eliminados', 0);
-
-        $this->assertDatabaseHas('ventanilla_radica_reci', ['id' => $ajeno]);
+        $this->assertDatabaseHas('ventanilla_radica_reci', ['id' => $id, 'deleted_at' => null]);
     }
 
     public function test_borrar_enviado_elimina_tambien_los_adjuntos_del_disco(): void

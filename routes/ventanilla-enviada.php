@@ -75,7 +75,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/radica-enviada/{radica_enviado_id}/recibidos', [VentanillaRadicaEnviadosRespuestasController::class, 'store'])->name('radica-enviada.recibidos.asignar')->middleware('can:'.$permEnvi.'Editar')->middleware('acceso_radicado:enviado,radica_enviado_id');
     Route::delete('/radica-enviada/{radica_enviado_id}/recibidos/{recibidoId}', [VentanillaRadicaEnviadosRespuestasController::class, 'destroy'])->name('radica-enviada.recibidos.desasociar')->middleware('can:'.$permEnvi.'Editar')->middleware('acceso_radicado:enviado,radica_enviado_id');
 
-    Route::delete('/radica-enviada', [VentanillaRadicaEnviadosController::class, 'bulkDestroy'])->name('radica-enviada.bulk-destroy')->middleware('can:'.$permEnvi.'Eliminar')->middleware('throttle:radicacion');
     Route::post('/radica-enviada/{id}/notificacion-tercero', [VentanillaRadicaEnviadosController::class, 'enviarNotificacionTercero'])->name('radica-enviada.notificacion-tercero')->middleware('can:'.$permEnvi.'Notificar Email')->middleware('acceso_radicado:enviado')->middleware('throttle:radicacion');
 
     // Las rutas /metadata/* son compartidas y se registran en ventanilla-recibida.php.

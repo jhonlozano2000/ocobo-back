@@ -39,7 +39,6 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
         Route::post('/radica-recibida', [VentanillaRadicaReciController::class, 'store'])->name('radica-recibida.store')->middleware('can:'.$permReci.'Crear');
         Route::put('/radica-recibida/{id}', [VentanillaRadicaReciController::class, 'update'])->name('radica-recibida.update')->middleware('can:'.$permReci.'Editar')->middleware('acceso_radicado:recibido,id');
         Route::delete('/radica-recibida/{id}', [VentanillaRadicaReciController::class, 'destroy'])->name('radica-recibida.destroy')->middleware('can:'.$permReci.'Eliminar')->middleware('acceso_radicado:recibido,id');
-        Route::delete('/radica-recibida', [VentanillaRadicaReciController::class, 'bulkDestroy'])->name('radica-recibida.bulk-destroy')->middleware('can:'.$permReci.'Eliminar');
 
         Route::post('/radica-recibida/{radicadoId}/respuestas', [RadicadoRespuestasController::class, 'store'])->name('radica-recibida.respuestas.store')->middleware('can:'.$permReci.'Crear')->middleware('acceso_radicado:recibido,radicadoId');
         Route::put('/radica-recibida/respuestas/{id}', [RadicadoRespuestasController::class, 'update'])->name('radica-recibida.respuestas.update')->middleware('can:'.$permReci.'Editar');
