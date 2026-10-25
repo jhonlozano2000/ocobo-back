@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Events\NotificationPushed;
+use App\Jobs\EnviarCorreoNotificacion;
 use App\Models\ControlAcceso\UserNotificationSetting;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,15 @@ class Notificacion extends Model
         'radicado_asignado', 'asignacion',
     ];
 
+    /** Radicado o PQRS próximo a vencer (alertas:vencimiento): preferencia «Vencimientos». */
+    public const TIPO_VENCIMIENTO = 'vencimiento_proximo';
+
+    /**
+     * Categorías cuyo canal de correo envía el correo genérico de la notificación. Vencimientos y nuevo
+     * inicio de sesión tienen su propio correo (alertas:vencimiento y SesionConcurrenteService).
+     */
+    public const CATEGORIAS_CORREO_GENERICO = ['new_for_you'];
+
     /** Alertas de control de archivo: llegan siempre, sin importar las preferencias. */
     public const TIPOS_OBLIGATORIOS = [
         'integridad_archivo', 'eliminacion_documental', 'disposicion_archivo', 'retencion_trd',
@@ -27,23 +37,37 @@ class Notificacion extends Model
     /**
      * M18-01: toda notificación creada se emite por WebSocket (NotificationPushed) cuando se
      * confirma la transacción, para que la campana se actualice sin esperar el polling.
-     * Un fallo del broadcaster no debe tumbar la operación que la generó.
+     * Un fallo del broadcaster o del correo no debe tumbar la operación que la generó.
      */
     protected static function booted(): void
     {
         // Si el usuario apagó la categoría en sus preferencias (canal app), no se crea ni se emite
         static::creating(fn (self $notificacion) => $notificacion->user_id === null
-            || self::permitidaPara((int) $notificacion->user_id, (string) $notificacion->type));
+            || $notificacion->canalActivo('app', UserNotificationSetting::forUser((int) $notificacion->user_id)));
 
         static::created(function (self $notificacion) {
             DB::afterCommit(function () use ($notificacion) {
+                $settings = UserNotificationSetting::forUser((int) $notificacion->user_id);
+
                 try {
-                    event(new NotificationPushed($notificacion));
+                    event(new NotificationPushed($notificacion, $notificacion->canalActivo('browser', $settings)));
                 } catch (\Throwable $e) {
                     Log::warning('No se pudo emitir la notificación en tiempo real', [
                         'notification_id' => $notificacion->id,
                         'error' => $e->getMessage(),
                     ]);
+                }
+
+                if (in_array(self::preferenciaDe((string) $notificacion->type), self::CATEGORIAS_CORREO_GENERICO, true)
+                    && $notificacion->canalActivo('email', $settings)) {
+                    try {
+                        EnviarCorreoNotificacion::programar($notificacion->id);
+                    } catch (\Throwable $e) {
+                        Log::warning('No se pudo enviar el correo de la notificación', [
+                            'notification_id' => $notificacion->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                 }
             });
         });
@@ -75,24 +99,39 @@ class Notificacion extends Model
         return match (true) {
             in_array($tipo, self::TIPOS_OBLIGATORIOS, true) => null,
             str_starts_with($tipo, 'seguridad.') => 'new_browser_login',
+            $tipo === self::TIPO_VENCIMIENTO => 'vencimientos',
             in_array($tipo, self::TIPOS_NUEVAS_PARA_TI, true) => 'new_for_you',
             default => 'account_activity',
         };
     }
 
     /**
-     * Sin preferencias guardadas, todo está habilitado.
+     * Las alertas obligatorias siempre van a la campana y al aviso emergente, nunca al correo genérico.
      */
-    public static function permitidaPara(int $userId, string $tipo): bool
+    public function canalActivo(string $canal, ?UserNotificationSetting $settings): bool
     {
-        $preferencia = self::preferenciaDe($tipo);
-        if ($preferencia === null) {
-            return true;
-        }
+        $categoria = self::preferenciaDe((string) $this->type);
 
-        $settings = UserNotificationSetting::forUser($userId);
+        return $categoria === null
+            ? $canal !== 'email'
+            : UserNotificationSetting::canalActivo($settings, $categoria, $canal);
+    }
 
-        return ! $settings || $settings->isEnabled($preferencia);
+    /**
+     * Ruta del front que abre la notificación (misma lógica que NotificationsDropdown).
+     */
+    public function rutaFront(): string
+    {
+        $data = $this->data ?? [];
+
+        return match (true) {
+            isset($data['url']) => $data['url'],
+            isset($data['radica_reci_id']) => '/ventanilla-unica/radicar-correspondencia-recibida?detail='.$data['radica_reci_id'],
+            isset($data['radica_enviado_id']) => '/ventanilla-unica/radicar-correspondencia-enviada?detail='.$data['radica_enviado_id'],
+            isset($data['radica_interno_id']) => '/ventanilla-unica/radicar-correspondencia-interna?detail='.$data['radica_interno_id'],
+            str_starts_with((string) $this->type, 'tarea.') => '/mi-bandeja/tareas',
+            default => '/notificaciones',
+        };
     }
 
     public function user()

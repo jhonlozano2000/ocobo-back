@@ -5,471 +5,97 @@ namespace App\Http\Controllers\ControlAcceso;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ControlAcceso\UpdateNotificationSettingRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\ControlAcceso\UserNotificationSetting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
+/**
+ * Preferencias de notificación por categoría y canal (UserNotificationSetting::CATEGORIAS):
+ * app = campana, email = correo, browser = aviso emergente en tiempo real.
+ */
 class NotificationSettingsController extends Controller
 {
     use ApiResponseTrait;
 
     /**
-     * Obtiene la configuración de notificaciones del usuario autenticado.
-     *
-     * Este método retorna la configuración de notificaciones del usuario autenticado.
-     * Si no existe una configuración, se crea una con valores por defecto.
-     * Es útil para que los usuarios puedan revisar y modificar sus preferencias
-     * de notificaciones.
-     *
-     * @return JsonResponse Respuesta JSON con la configuración
+     * Preferencias del usuario autenticado. Si no tiene, se crean con los valores por defecto.
      *
      * @response 200 {
      *   "status": true,
      *   "message": "Configuración de notificaciones obtenida exitosamente",
      *   "data": {
-     *     "id": 1,
-     *     "user_id": 1,
-     *     "new_for_you": true,
-     *     "account_activity": true,
-     *     "new_browser_login": true,
-     *     "created_at": "2024-01-01T00:00:00.000000Z",
-     *     "updated_at": "2024-01-01T00:00:00.000000Z"
+     *     "new_for_you": {"app": true, "email": false, "browser": true},
+     *     "vencimientos": {"app": true, "email": true, "browser": true},
+     *     "account_activity": {"app": true, "browser": true},
+     *     "new_browser_login": {"app": true, "email": false, "browser": false}
      *   }
      * }
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al obtener la configuración",
-     *   "error": "Error message"
-     * }
      */
-    public function show()
+    public function show(): JsonResponse
     {
-        try {
-            $user = Auth::user();
-
-            $settings = $user->notificationSettings()->firstOrCreate(
-                [],
-                [
-                    'new_for_you' => true,
-                    'account_activity' => true,
-                    'new_browser_login' => true,
-                    'new_device_linked' => false,
-                    'email_notifications' => true,
-                ]
-            );
-
-            $formattedSettings = [
-                'new_for_you' => [
-                    'app' => $settings->new_for_you,
-                    'email' => $settings->new_for_you_email ?? $settings->new_for_you,
-                    'browser' => $settings->new_for_you_browser ?? $settings->new_for_you,
-                ],
-                'account_activity' => [
-                    'app' => $settings->account_activity,
-                    'email' => $settings->account_activity_email ?? $settings->account_activity,
-                    'browser' => $settings->account_activity_browser ?? $settings->account_activity,
-                ],
-                'new_browser_login' => [
-                    'app' => $settings->new_browser_login,
-                    'email' => $settings->new_browser_login_email ?? false,
-                    'browser' => $settings->new_browser_login_browser ?? false,
-                ],
-                'new_device_linked' => [
-                    'app' => $settings->new_device_linked ?? false,
-                    'email' => $settings->new_device_linked_email ?? false,
-                    'browser' => $settings->new_device_linked_browser ?? false,
-                ],
-                'email_notifications' => [
-                    'app' => $settings->email_notifications ?? true,
-                    'email' => true,
-                    'browser' => true,
-                ],
-            ];
-
-            return $this->successResponse($formattedSettings, 'Configuración de notificaciones obtenida exitosamente');
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-
-            return $this->serverErrorResponse('Error al obtener la configuración', $e->getMessage());
-        }
+        return $this->respuesta(Auth::user(), 'Configuración de notificaciones obtenida exitosamente');
     }
 
     /**
-     * Actualiza la configuración de notificaciones del usuario autenticado.
+     * Actualiza las preferencias del usuario autenticado. Solo se guardan las categorías y canales enviados.
      *
-     * Este método permite al usuario modificar sus preferencias de notificaciones,
-     * habilitando o deshabilitando diferentes tipos de notificaciones según
-     * sus preferencias.
-     *
-     * @param  UpdateNotificationSettingRequest  $request  La solicitud HTTP validada
-     * @return JsonResponse Respuesta JSON con la configuración actualizada
-     *
-     * @bodyParam new_for_you boolean required Habilitar notificaciones nuevas. Example: true
-     * @bodyParam account_activity boolean required Habilitar notificaciones de actividad de cuenta. Example: true
-     * @bodyParam new_browser_login boolean required Habilitar notificaciones de nuevos inicios de sesión. Example: false
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Configuración actualizada exitosamente",
-     *   "data": {
-     *     "id": 1,
-     *     "user_id": 1,
-     *     "new_for_you": true,
-     *     "account_activity": true,
-     *     "new_browser_login": false,
-     *     "created_at": "2024-01-01T00:00:00.000000Z",
-     *     "updated_at": "2024-01-01T00:00:00.000000Z"
-     *   }
-     * }
-     * @response 422 {
-     *   "status": false,
-     *   "message": "Datos de validación incorrectos",
-     *   "error": {
-     *     "new_for_you": ["La configuración de notificaciones nuevas es obligatoria."]
-     *   }
-     * }
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al actualizar la configuración",
-     *   "error": "Error message"
-     * }
+     * @bodyParam new_for_you object Canales de «Nuevas para ti». Example: {"app": true, "email": false, "browser": true}
+     * @bodyParam vencimientos object Canales de «Vencimientos próximos». Example: {"app": true, "email": true, "browser": true}
+     * @bodyParam account_activity object Canales de «Actividad de cuenta». Example: {"app": true, "browser": false}
+     * @bodyParam new_browser_login object Canales de «Nuevo inicio de sesión». Example: {"app": true, "email": true, "browser": false}
      */
-    public function update(UpdateNotificationSettingRequest $request)
+    public function update(UpdateNotificationSettingRequest $request): JsonResponse
     {
-        try {
-            DB::beginTransaction();
-
-            $user = Auth::user();
-            $validatedData = $request->validated();
-
-            $settingsData = [];
-
-            if (isset($validatedData['new_for_you'])) {
-                $settingsData['new_for_you'] = is_array($validatedData['new_for_you'])
-                    ? ($validatedData['new_for_you']['app'] ?? true)
-                    : $validatedData['new_for_you'];
-                $settingsData['new_for_you_email'] = is_array($validatedData['new_for_you'])
-                    ? ($validatedData['new_for_you']['email'] ?? true)
-                    : $validatedData['new_for_you'];
-                $settingsData['new_for_you_browser'] = is_array($validatedData['new_for_you'])
-                    ? ($validatedData['new_for_you']['browser'] ?? true)
-                    : $validatedData['new_for_you'];
-            }
-
-            if (isset($validatedData['account_activity'])) {
-                $settingsData['account_activity'] = is_array($validatedData['account_activity'])
-                    ? ($validatedData['account_activity']['app'] ?? true)
-                    : $validatedData['account_activity'];
-                $settingsData['account_activity_email'] = is_array($validatedData['account_activity'])
-                    ? ($validatedData['account_activity']['email'] ?? true)
-                    : $validatedData['account_activity'];
-                $settingsData['account_activity_browser'] = is_array($validatedData['account_activity'])
-                    ? ($validatedData['account_activity']['browser'] ?? true)
-                    : $validatedData['account_activity'];
-            }
-
-            if (isset($validatedData['new_browser_login'])) {
-                $settingsData['new_browser_login'] = is_array($validatedData['new_browser_login'])
-                    ? ($validatedData['new_browser_login']['app'] ?? false)
-                    : $validatedData['new_browser_login'];
-                $settingsData['new_browser_login_email'] = is_array($validatedData['new_browser_login'])
-                    ? ($validatedData['new_browser_login']['email'] ?? false)
-                    : $validatedData['new_browser_login'];
-                $settingsData['new_browser_login_browser'] = is_array($validatedData['new_browser_login'])
-                    ? ($validatedData['new_browser_login']['browser'] ?? false)
-                    : $validatedData['new_browser_login'];
-            }
-
-            if (isset($validatedData['new_device_linked'])) {
-                $settingsData['new_device_linked'] = is_array($validatedData['new_device_linked'])
-                    ? ($validatedData['new_device_linked']['app'] ?? false)
-                    : $validatedData['new_device_linked'];
-                $settingsData['new_device_linked_email'] = is_array($validatedData['new_device_linked'])
-                    ? ($validatedData['new_device_linked']['email'] ?? false)
-                    : $validatedData['new_device_linked'];
-                $settingsData['new_device_linked_browser'] = is_array($validatedData['new_device_linked'])
-                    ? ($validatedData['new_device_linked']['browser'] ?? false)
-                    : $validatedData['new_device_linked'];
-            }
-
-            if (isset($validatedData['email_notifications'])) {
-                $settingsData['email_notifications'] = is_array($validatedData['email_notifications'])
-                    ? ($validatedData['email_notifications']['app'] ?? true)
-                    : $validatedData['email_notifications'];
-            }
-
-            // Legacy format support
-            if (isset($validatedData['new_for_you_boolean'])) {
-                $settingsData['new_for_you'] = $validatedData['new_for_you_boolean'];
-                $settingsData['new_for_you_email'] = $validatedData['new_for_you_boolean'];
-                $settingsData['new_for_you_browser'] = $validatedData['new_for_you_boolean'];
-            }
-            if (isset($validatedData['account_activity_boolean'])) {
-                $settingsData['account_activity'] = $validatedData['account_activity_boolean'];
-                $settingsData['account_activity_email'] = $validatedData['account_activity_boolean'];
-                $settingsData['account_activity_browser'] = $validatedData['account_activity_boolean'];
-            }
-
-            $settings = $user->notificationSettings()->firstOrCreate(
-                [],
-                [
-                    'new_for_you' => true,
-                    'account_activity' => true,
-                    'new_browser_login' => true,
-                ]
-            );
-
-            $settings->update($settingsData);
-
-            DB::commit();
-
-            return $this->successResponse($settings->fresh(), 'Configuración actualizada exitosamente');
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-            DB::rollBack();
-
-            return $this->serverErrorResponse('Error al actualizar la configuración', $e->getMessage());
-        }
+        return $this->guardar(Auth::user(), $request->validated());
     }
 
     /**
-     * Obtiene la configuración de notificaciones de un usuario específico (para administradores).
-     *
-     * Este método permite a los administradores obtener la configuración de
-     * notificaciones de cualquier usuario del sistema.
-     *
-     * @param  int  $userId  El ID del usuario
-     * @return JsonResponse Respuesta JSON con la configuración
+     * Preferencias de otro usuario (administración).
      *
      * @urlParam userId integer required El ID del usuario. Example: 1
      *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Configuración de notificaciones obtenida exitosamente",
-     *   "data": {
-     *     "id": 1,
-     *     "user_id": 1,
-     *     "new_for_you": true,
-     *     "account_activity": true,
-     *     "new_browser_login": true
-     *   }
-     * }
-     * @response 404 {
-     *   "status": false,
-     *   "message": "Usuario no encontrado"
-     * }
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al obtener la configuración",
-     *   "error": "Error message"
-     * }
+     * @response 404 {"status": false, "message": "Usuario no encontrado"}
      */
-    public function getUserSettings(int $userId)
+    public function getUserSettings(int $userId): JsonResponse
     {
-        try {
-            $user = User::find($userId);
+        $user = User::find($userId);
 
-            if (! $user) {
-                return $this->notFoundResponse('Usuario no encontrado');
-            }
-
-            $settings = $user->notificationSettings()->firstOrCreate(
-                [],
-                [
-                    'new_for_you' => true,
-                    'account_activity' => true,
-                    'new_browser_login' => true,
-                    'new_device_linked' => false,
-                    'email_notifications' => true,
-                ]
-            );
-
-            $formattedSettings = [
-                'new_for_you' => [
-                    'app' => $settings->new_for_you,
-                    'email' => $settings->new_for_you_email ?? $settings->new_for_you,
-                    'browser' => $settings->new_for_you_browser ?? $settings->new_for_you,
-                ],
-                'account_activity' => [
-                    'app' => $settings->account_activity,
-                    'email' => $settings->account_activity_email ?? $settings->account_activity,
-                    'browser' => $settings->account_activity_browser ?? $settings->account_activity,
-                ],
-                'new_browser_login' => [
-                    'app' => $settings->new_browser_login,
-                    'email' => $settings->new_browser_login_email ?? false,
-                    'browser' => $settings->new_browser_login_browser ?? false,
-                ],
-                'new_device_linked' => [
-                    'app' => $settings->new_device_linked ?? false,
-                    'email' => $settings->new_device_linked_email ?? false,
-                    'browser' => $settings->new_device_linked_browser ?? false,
-                ],
-                'email_notifications' => [
-                    'app' => $settings->email_notifications ?? true,
-                    'email' => true,
-                    'browser' => true,
-                ],
-            ];
-
-            return $this->successResponse($formattedSettings, 'Configuración de notificaciones obtenida exitosamente');
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-
-            return $this->serverErrorResponse('Error al obtener la configuración', $e->getMessage());
-        }
+        return $user
+            ? $this->respuesta($user, 'Configuración de notificaciones obtenida exitosamente')
+            : $this->notFoundResponse('Usuario no encontrado');
     }
 
     /**
-     * Actualiza la configuración de notificaciones de un usuario específico (para administradores).
-     *
-     * Este método permite a los administradores modificar la configuración de
-     * notificaciones de cualquier usuario del sistema.
-     *
-     * @param  UpdateNotificationSettingRequest  $request  La solicitud HTTP validada
-     * @param  int  $userId  El ID del usuario
-     * @return JsonResponse Respuesta JSON con la configuración actualizada
+     * Actualiza las preferencias de otro usuario (administración).
      *
      * @urlParam userId integer required El ID del usuario. Example: 1
      *
-     * @bodyParam new_for_you boolean required Habilitar notificaciones nuevas. Example: true
-     * @bodyParam account_activity boolean required Habilitar notificaciones de actividad de cuenta. Example: true
-     * @bodyParam new_browser_login boolean required Habilitar notificaciones de nuevos inicios de sesión. Example: false
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Configuración actualizada exitosamente",
-     *   "data": {
-     *     "id": 1,
-     *     "user_id": 1,
-     *     "new_for_you": true,
-     *     "account_activity": true,
-     *     "new_browser_login": false
-     *   }
-     * }
-     * @response 404 {
-     *   "status": false,
-     *   "message": "Usuario no encontrado"
-     * }
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al actualizar la configuración",
-     *   "error": "Error message"
-     * }
+     * @response 404 {"status": false, "message": "Usuario no encontrado"}
      */
-    public function updateUserSettings(UpdateNotificationSettingRequest $request, int $userId)
+    public function updateUserSettings(UpdateNotificationSettingRequest $request, int $userId): JsonResponse
     {
-        try {
-            DB::beginTransaction();
+        $user = User::find($userId);
 
-            $user = User::find($userId);
+        return $user ? $this->guardar($user, $request->validated()) : $this->notFoundResponse('Usuario no encontrado');
+    }
 
-            if (! $user) {
-                return $this->notFoundResponse('Usuario no encontrado');
-            }
+    private function preferencias(User $user): UserNotificationSetting
+    {
+        // Sin atributos: la fila toma los valores por defecto de la tabla
+        return $user->notificationSettings()->firstOrCreate([])->refresh();
+    }
 
-            $validatedData = $request->validated();
+    private function respuesta(User $user, string $mensaje): JsonResponse
+    {
+        return $this->successResponse($this->preferencias($user)->formulario(), $mensaje);
+    }
 
-            $settingsData = [];
+    private function guardar(User $user, array $formulario): JsonResponse
+    {
+        $preferencias = $this->preferencias($user);
+        $preferencias->update(UserNotificationSetting::columnasDesde($formulario));
 
-            if (isset($validatedData['new_for_you'])) {
-                $settingsData['new_for_you'] = is_array($validatedData['new_for_you'])
-                    ? ($validatedData['new_for_you']['app'] ?? true)
-                    : $validatedData['new_for_you'];
-                $settingsData['new_for_you_email'] = is_array($validatedData['new_for_you'])
-                    ? ($validatedData['new_for_you']['email'] ?? true)
-                    : $validatedData['new_for_you'];
-                $settingsData['new_for_you_browser'] = is_array($validatedData['new_for_you'])
-                    ? ($validatedData['new_for_you']['browser'] ?? true)
-                    : $validatedData['new_for_you'];
-            }
-
-            if (isset($validatedData['account_activity'])) {
-                $settingsData['account_activity'] = is_array($validatedData['account_activity'])
-                    ? ($validatedData['account_activity']['app'] ?? true)
-                    : $validatedData['account_activity'];
-                $settingsData['account_activity_email'] = is_array($validatedData['account_activity'])
-                    ? ($validatedData['account_activity']['email'] ?? true)
-                    : $validatedData['account_activity'];
-                $settingsData['account_activity_browser'] = is_array($validatedData['account_activity'])
-                    ? ($validatedData['account_activity']['browser'] ?? true)
-                    : $validatedData['account_activity'];
-            }
-
-            if (isset($validatedData['new_browser_login'])) {
-                $settingsData['new_browser_login'] = is_array($validatedData['new_browser_login'])
-                    ? ($validatedData['new_browser_login']['app'] ?? false)
-                    : $validatedData['new_browser_login'];
-                $settingsData['new_browser_login_email'] = is_array($validatedData['new_browser_login'])
-                    ? ($validatedData['new_browser_login']['email'] ?? false)
-                    : $validatedData['new_browser_login'];
-                $settingsData['new_browser_login_browser'] = is_array($validatedData['new_browser_login'])
-                    ? ($validatedData['new_browser_login']['browser'] ?? false)
-                    : $validatedData['new_browser_login'];
-            }
-
-            if (isset($validatedData['new_device_linked'])) {
-                $settingsData['new_device_linked'] = is_array($validatedData['new_device_linked'])
-                    ? ($validatedData['new_device_linked']['app'] ?? false)
-                    : $validatedData['new_device_linked'];
-                $settingsData['new_device_linked_email'] = is_array($validatedData['new_device_linked'])
-                    ? ($validatedData['new_device_linked']['email'] ?? false)
-                    : $validatedData['new_device_linked'];
-                $settingsData['new_device_linked_browser'] = is_array($validatedData['new_device_linked'])
-                    ? ($validatedData['new_device_linked']['browser'] ?? false)
-                    : $validatedData['new_device_linked'];
-            }
-
-            if (isset($validatedData['email_notifications'])) {
-                $settingsData['email_notifications'] = is_array($validatedData['email_notifications'])
-                    ? ($validatedData['email_notifications']['app'] ?? true)
-                    : $validatedData['email_notifications'];
-            }
-
-            $settings = $user->notificationSettings()->firstOrCreate(
-                [],
-                [
-                    'new_for_you' => true,
-                    'account_activity' => true,
-                    'new_browser_login' => true,
-                    'new_device_linked' => false,
-                    'email_notifications' => true,
-                ]
-            );
-
-            $settings->update($settingsData);
-
-            DB::commit();
-
-            return $this->successResponse($settings->fresh(), 'Configuración actualizada exitosamente');
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-            DB::rollBack();
-
-            return $this->serverErrorResponse('Error al actualizar la configuración', $e->getMessage());
-        }
+        return $this->successResponse($preferencias->formulario(), 'Configuración actualizada exitosamente');
     }
 }

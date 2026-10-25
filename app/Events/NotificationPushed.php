@@ -14,7 +14,10 @@ class NotificationPushed implements ShouldBroadcast
 
     public Notificacion $notification;
 
-    public function __construct(Notificacion $notification)
+    /**
+     * @param  bool  $emergente  el usuario tiene activo el aviso emergente (canal browser) de la categoría
+     */
+    public function __construct(Notificacion $notification, public bool $emergente = false)
     {
         $this->notification = $notification->loadMissing('user');
     }
@@ -39,6 +42,7 @@ class NotificationPushed implements ShouldBroadcast
             'data' => $this->notification->data,
             'created_at' => $this->notification->created_at->toISOString(),
             'read_at' => null,
+            'emergente' => $this->emergente,
         ];
     }
 }

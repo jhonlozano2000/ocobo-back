@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\ControlAcceso;
 
+use App\Models\ControlAcceso\UserNotificationSetting;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -9,77 +10,37 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 
 class UpdateNotificationSettingRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     *
-     * @return bool
-     */
-    public function authorize()
+    public function authorize(): bool
     {
         return true;
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * Una entrada por categoría con sus canales: {"new_for_you": {"app": true, "email": false, ...}, ...}
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
-        return [
-            'new_for_you' => 'nullable|array',
-            'new_for_you.app' => 'nullable|boolean',
-            'new_for_you.email' => 'nullable|boolean',
-            'new_for_you.browser' => 'nullable|boolean',
+        $reglas = [];
+        foreach (UserNotificationSetting::CATEGORIAS as $categoria => $canales) {
+            $reglas[$categoria] = 'nullable|array';
+            foreach (array_keys($canales) as $canal) {
+                $reglas["{$categoria}.{$canal}"] = 'nullable|boolean';
+            }
+        }
 
-            'account_activity' => 'nullable|array',
-            'account_activity.app' => 'nullable|boolean',
-            'account_activity.email' => 'nullable|boolean',
-            'account_activity.browser' => 'nullable|boolean',
-
-            'new_browser_login' => 'nullable|array',
-            'new_browser_login.app' => 'nullable|boolean',
-            'new_browser_login.email' => 'nullable|boolean',
-            'new_browser_login.browser' => 'nullable|boolean',
-
-            'new_device_linked' => 'nullable|array',
-            'new_device_linked.app' => 'nullable|boolean',
-            'new_device_linked.email' => 'nullable|boolean',
-            'new_device_linked.browser' => 'nullable|boolean',
-
-            'email_notifications' => 'nullable|array',
-            'email_notifications.app' => 'nullable|boolean',
-            'email_notifications.email' => 'nullable|boolean',
-            'email_notifications.browser' => 'nullable|boolean',
-
-            // Legacy format support
-            'new_for_you_boolean' => 'nullable|boolean',
-            'account_activity_boolean' => 'nullable|boolean',
-            'new_browser_login_boolean' => 'nullable|boolean',
-            'new_device_linked_boolean' => 'nullable|boolean',
-            'email_notifications_boolean' => 'nullable|boolean',
-        ];
+        return $reglas;
     }
 
-    /**
-     * Get custom messages for validator errors.
-     */
     public function messages(): array
     {
         return [
-            'new_for_you.array' => 'El formato de notificaciones nuevas es inválido.',
-            'new_for_you.*.boolean' => 'Los valores deben ser verdadero o falso.',
-            'account_activity.array' => 'El formato de actividad de cuenta es inválido.',
-            'new_browser_login.array' => 'El formato de nuevos inicios de sesión es inválido.',
-            'new_device_linked.array' => 'El formato de nuevos dispositivos es inválido.',
+            '*.array' => 'El formato de la preferencia es inválido.',
+            '*.*.boolean' => 'Los valores deben ser verdadero o falso.',
         ];
     }
 
-    /**
-     * Handle a failed validation attempt.
-     *
-     * @throws HttpResponseException
-     */
     protected function failedValidation(Validator $validator)
     {
         throw new HttpResponseException(response()->json([
