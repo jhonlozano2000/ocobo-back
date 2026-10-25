@@ -10,6 +10,7 @@ use App\Services\OfiArchivo\VariablesPlantillaService;
 use Database\Seeders\Configuracion\TiposPlantillaSeed;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\IOFactory;
@@ -93,6 +94,15 @@ class PlantillasGeneradasTest extends TestCase
         return ['type' => 'text', 'text' => $texto] + ($marcas ? ['marks' => $marcas] : []);
     }
 
+    /**
+     * Plantillas generadas que ve el usuario autenticado, por id. La BD puede traer las institucionales de base
+     * (PlantillasGeneradasBaseSeed), así que las pruebas miran solo las que crean.
+     */
+    private function generadasVisibles(): Collection
+    {
+        return collect($this->getJson(self::MIS.'/plantillas')->assertOk()->json('data.generadas'))->keyBy('id');
+    }
+
     private function contenidoDe(int $documentoId): array
     {
         return json_decode(DB::table('mi_bandeja_temp_reci_contenido')->where('documento_id', $documentoId)->value('contenido_yjs'), true);
@@ -142,16 +152,17 @@ class PlantillasGeneradasTest extends TestCase
         ], $plantilla->contenido['content'][0]['content']);
 
         // Sin publicar no la ve nadie al crear documentos; publicada, sí
-        $this->actingAs($this->yo)->getJson(self::MIS.'/plantillas')->assertOk()->assertJsonCount(0, 'data.generadas');
+        $this->assertArrayNotHasKey($id, $this->actingAs($this->yo)->generadasVisibles()->all());
         $this->actingAs($this->admin)->patchJson(self::GENERADOR."/{$id}", ['activo' => true])->assertOk();
-        $this->actingAs($this->yo)->getJson(self::MIS.'/plantillas')->assertOk()
-            ->assertJsonPath('data.generadas.0.nombre', 'Resolución general')
-            ->assertJsonPath('data.generadas.0.institucional', true)
-            ->assertJsonPath('data.generadas.0.propia', false);
+        $publicada = $this->actingAs($this->yo)->generadasVisibles()[$id];
+        $this->assertSame('Resolución general', $publicada['nombre']);
+        $this->assertTrue($publicada['institucional']);
+        $this->assertFalse($publicada['propia']);
 
         $this->actingAs($this->admin)->getJson(self::GENERADOR.'?tipo_id='.$this->tipos['RESOLUCION'])->assertOk()
             ->assertJsonPath('pagination.total', 1);
-        $this->getJson(self::GENERADOR.'?tipo_id='.$this->tipos['ACTA'])->assertOk()->assertJsonPath('pagination.total', 0);
+        // Un tipo que no traen las plantillas de base (oficio, memorando, circular y acta)
+        $this->getJson(self::GENERADOR.'?tipo_id='.$this->tipos['CERTIFICADO'])->assertOk()->assertJsonPath('pagination.total', 0);
     }
 
     public function test_al_abrir_otra_vez_el_documento_de_trabajo_se_pone_al_dia_si_la_plantilla_cambio(): void
@@ -212,10 +223,10 @@ class PlantillasGeneradasTest extends TestCase
             [$this->texto('Conservar'), $this->texto(' sugerido')],
             OfiArchivoPlantillaGenerada::find($id)->contenido['content'][0]['content']
         );
-        $this->getJson(self::MIS.'/plantillas')->assertJsonPath('data.generadas.0.id', $id);
+        $this->assertArrayHasKey($id, $this->generadasVisibles()->all());
 
         // Los demás no la ven ni la pueden usar, editar o borrar
-        $this->actingAs($this->otro)->getJson(self::MIS.'/plantillas')->assertJsonCount(0, 'data.generadas');
+        $this->assertArrayNotHasKey($id, $this->actingAs($this->otro)->generadasVisibles()->all());
         $this->postJson(self::MIS.'/documentos', ['titulo' => 'Copia', 'plantilla_id' => $id])
             ->assertUnprocessable()->assertJsonValidationErrors(['plantilla_id']);
         $this->patchJson(self::MIS."/plantillas/{$id}", ['nombre' => 'Robada'])->assertNotFound();
