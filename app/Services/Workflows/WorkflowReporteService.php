@@ -6,142 +6,121 @@ namespace App\Services\Workflows;
 
 use App\Models\Workflows\Tarea;
 use App\Models\Workflows\WorkflowInstancia;
-use App\Models\Workflows\WorkFlowTarea;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * KPI de un workflow. Desde M19-17 todas las tareas reales son Tarea: las que nacen de un nodo
+ * (tienen instancia) y las manuales asociadas al flujo (sin instancia). WorkFlowTarea es solo la
+ * plantilla de diseño del nodo, por eso no entra en los conteos.
+ */
 class WorkflowReporteService
 {
+    private const ESTADOS_TAREA = ['pendiente', 'en_curso', 'completada', 'vencida', 'cancelada'];
+
+    private const ESTADOS_INSTANCIA = ['en_curso', 'completada', 'detenida', 'cancelada'];
+
+    public const MAX_MESES = 24;
+
     public function resumen(int $workflowId): array
     {
-        $tareasModulo = Tarea::where('workflow_id', $workflowId);
-        $tareasNodo = WorkFlowTarea::whereHas('nodo', fn ($q) => $q->where('workflow_id', $workflowId));
+        $manuales = fn () => Tarea::where('workflow_id', $workflowId)->whereNull('instancia_id');
+        $deNodo = fn () => Tarea::where('workflow_id', $workflowId)->whereNotNull('instancia_id');
+
+        $instancias = $this->conteoPorEstado(WorkflowInstancia::where('workflow_id', $workflowId), self::ESTADOS_INSTANCIA);
 
         return [
-            'tareas_modulo' => [
-                'total' => (clone $tareasModulo)->count(),
-                'pendiente' => (clone $tareasModulo)->where('estado', 'pendiente')->count(),
-                'en_curso' => (clone $tareasModulo)->where('estado', 'en_curso')->count(),
-                'completada' => (clone $tareasModulo)->where('estado', 'completada')->count(),
-                'vencida' => (clone $tareasModulo)->where('estado', 'vencida')->count(),
-                'cancelada' => (clone $tareasModulo)->where('estado', 'cancelada')->count(),
-                'tasa_completitud' => $this->tasaCompletitud($tareasModulo),
-            ],
-            'tareas_nodo' => [
-                'total' => (clone $tareasNodo)->count(),
-                'pendiente' => (clone $tareasNodo)->where('estado', 'pendiente')->count(),
-                'en_curso' => (clone $tareasNodo)->where('estado', 'en_curso')->count(),
-                'completada' => (clone $tareasNodo)->where('estado', 'completada')->count(),
-                'vencida' => (clone $tareasNodo)->where('estado', 'vencida')->count(),
-                'cancelada' => (clone $tareasNodo)->where('estado', 'cancelada')->count(),
-                'tasa_completitud' => $this->tasaCompletitud($tareasNodo),
-            ],
-            'instancias' => [
-                'total' => WorkflowInstancia::where('workflow_id', $workflowId)->count(),
-                'en_curso' => WorkflowInstancia::where('workflow_id', $workflowId)->where('estado', 'en_curso')->count(),
-                'completada' => WorkflowInstancia::where('workflow_id', $workflowId)->where('estado', 'completada')->count(),
-                'detenida' => WorkflowInstancia::where('workflow_id', $workflowId)->where('estado', 'detenida')->count(),
-                'cancelada' => WorkflowInstancia::where('workflow_id', $workflowId)->where('estado', 'cancelada')->count(),
-            ],
+            'tareas_modulo' => $this->resumenTareas($manuales()),
+            'tareas_nodo' => $this->resumenTareas($deNodo()),
+            'instancias' => ['total' => array_sum($instancias)] + $instancias,
             'tiempos_promedio' => [
-                'tareas_modulo_horas' => $this->tiempoPromedioTareasModulo($workflowId),
-                'tareas_nodo_horas' => $this->tiempoPromedioTareasNodo($workflowId),
-                'instancias_horas' => $this->tiempoPromedioInstancias($workflowId),
+                'tareas_modulo_horas' => $this->horasPromedio($manuales()->whereNotNull('completada_at'), 'created_at', 'completada_at'),
+                'tareas_nodo_horas' => $this->horasPromedio($deNodo()->whereNotNull('completada_at'), 'created_at', 'completada_at'),
+                'instancias_horas' => $this->horasPromedio(
+                    WorkflowInstancia::where('workflow_id', $workflowId)->whereNotNull('fecha_fin'), 'fecha_inicio', 'fecha_fin'
+                ),
             ],
         ];
     }
 
+    /**
+     * Responsables con tareas vencidas del flujo, de más a menos.
+     *
+     * @return list<array{id: int, name: string, total: int}>
+     */
     public function tareasVencidasPorUsuario(int $workflowId): array
     {
-        // users no tiene columna `name`: usar nombres + apellidos
-        $moduloVencidas = DB::table('workflow_tareas')
+        return DB::table('workflow_tareas')
             ->join('tarea_responsables', 'workflow_tareas.id', '=', 'tarea_responsables.tarea_id')
             ->join('users', 'tarea_responsables.user_id', '=', 'users.id')
             ->where('workflow_tareas.workflow_id', $workflowId)
             ->where('workflow_tareas.estado', 'vencida')
-            ->select('users.id', 'users.nombres', 'users.apellidos', DB::raw('COUNT(*) as total'))
             ->groupBy('users.id', 'users.nombres', 'users.apellidos')
-            ->get();
-
-        // La tabla real de nodos es workflow_nodos (no work_flow_nodos)
-        $nodoVencidas = DB::table('work_flow_tareas')
-            ->join('workflow_nodos', 'work_flow_tareas.nodo_id', '=', 'workflow_nodos.id')
-            ->join('users', 'work_flow_tareas.responsable_usuario_id', '=', 'users.id')
-            ->where('workflow_nodos.workflow_id', $workflowId)
-            ->where('work_flow_tareas.estado', 'vencida')
-            ->select('users.id', 'users.nombres', 'users.apellidos', DB::raw('COUNT(*) as total'))
-            ->groupBy('users.id', 'users.nombres', 'users.apellidos')
-            ->get();
-
-        $porUsuario = collect($moduloVencidas)->concat($nodoVencidas)
-            ->groupBy('id')
-            ->map(function ($items) {
-                $primero = $items->first();
-
-                return (object) [
-                    'id' => $primero->id,
-                    'name' => trim($primero->nombres.' '.$primero->apellidos),
-                    'total' => $items->sum('total'),
-                ];
-            })
-            ->sortByDesc('total')
-            ->values()
-            ->toArray();
-
-        return $porUsuario;
+            ->orderByDesc('total')
+            ->orderBy('users.id')
+            ->get(['users.id', 'users.nombres', 'users.apellidos', DB::raw('COUNT(DISTINCT workflow_tareas.id) as total')])
+            ->map(fn ($fila) => [
+                'id' => (int) $fila->id,
+                'name' => trim($fila->nombres.' '.$fila->apellidos),
+                'total' => (int) $fila->total,
+            ])
+            ->all();
     }
 
+    /**
+     * Instancias completadas por mes en los últimos $meses meses (incluido el actual), con los meses
+     * sin completadas en cero para que la gráfica no se salte meses.
+     *
+     * @return list<array{mes: string, total: int}>
+     */
     public function tendenciaMensual(int $workflowId, int $meses = 6): array
     {
-        $instancias = WorkflowInstancia::where('workflow_id', $workflowId)
-            ->whereNotNull('fecha_fin')
-            ->where('fecha_fin', '>=', now()->subMonths($meses))
+        $meses = max(1, min(self::MAX_MESES, $meses));
+        $desde = now()->startOfMonth()->subMonths($meses - 1);
+
+        $porMes = WorkflowInstancia::where('workflow_id', $workflowId)
+            ->where('fecha_fin', '>=', $desde)
             ->selectRaw("DATE_FORMAT(fecha_fin, '%Y-%m') as mes, COUNT(*) as total")
             ->groupBy('mes')
-            ->orderBy('mes')
-            ->get();
+            ->pluck('total', 'mes');
 
-        return $instancias->toArray();
+        return collect(range(0, $meses - 1))
+            ->map(function (int $i) use ($desde, $porMes) {
+                $mes = $desde->copy()->addMonths($i)->format('Y-m');
+
+                return ['mes' => $mes, 'total' => (int) ($porMes[$mes] ?? 0)];
+            })
+            ->all();
     }
 
-    private function tasaCompletitud($query): float
+    /**
+     * @return array<string, int|float>
+     */
+    private function resumenTareas(Builder $query): array
     {
-        $total = (clone $query)->count();
-        if ($total === 0) {
-            return 0.0;
-        }
-        $completadas = (clone $query)->where('estado', 'completada')->count();
+        $porEstado = $this->conteoPorEstado($query, self::ESTADOS_TAREA);
+        $total = array_sum($porEstado);
 
-        return round(($completadas / $total) * 100, 1);
+        return ['total' => $total] + $porEstado + [
+            'tasa_completitud' => $total ? round($porEstado['completada'] / $total * 100, 1) : 0.0,
+        ];
     }
 
-    private function tiempoPromedioTareasModulo(int $workflowId): ?float
+    /**
+     * @param  list<string>  $estados
+     * @return array<string, int>
+     */
+    private function conteoPorEstado(Builder $query, array $estados): array
     {
-        $avg = Tarea::where('workflow_id', $workflowId)
-            ->whereNotNull('completada_at')
-            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, completada_at)) as promedio')
-            ->value('promedio');
+        $conteos = $query->toBase()->selectRaw('estado, COUNT(*) as total')->groupBy('estado')->pluck('total', 'estado');
 
-        return $avg ? round((float) $avg, 1) : null;
+        return collect($estados)->mapWithKeys(fn ($estado) => [$estado => (int) ($conteos[$estado] ?? 0)])->all();
     }
 
-    private function tiempoPromedioTareasNodo(int $workflowId): ?float
+    private function horasPromedio(Builder $query, string $inicio, string $fin): ?float
     {
-        $avg = WorkFlowTarea::whereHas('nodo', fn ($q) => $q->where('workflow_id', $workflowId))
-            ->where('estado', 'completada')
-            ->whereNotNull('updated_at')
-            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, updated_at)) as promedio')
-            ->value('promedio');
+        $promedio = $query->toBase()->selectRaw("AVG(TIMESTAMPDIFF(HOUR, {$inicio}, {$fin})) as promedio")->value('promedio');
 
-        return $avg ? round((float) $avg, 1) : null;
-    }
-
-    private function tiempoPromedioInstancias(int $workflowId): ?float
-    {
-        $avg = WorkflowInstancia::where('workflow_id', $workflowId)
-            ->whereNotNull('fecha_fin')
-            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, fecha_inicio, fecha_fin)) as promedio')
-            ->value('promedio');
-
-        return $avg ? round((float) $avg, 1) : null;
+        return $promedio === null ? null : round((float) $promedio, 1);
     }
 }
