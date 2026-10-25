@@ -51,15 +51,14 @@ class SesionConcurrenteService
         $preferencias = UserNotificationSetting::forUser($user->id);
         $fecha = now();
 
-        if (! $preferencias || $preferencias->new_browser_login) {
-            Notificacion::create([
-                'user_id' => $user->id,
-                'type' => 'seguridad.sesion_concurrente',
-                'title' => 'Nuevo inicio de sesión',
-                'message' => "Se inició sesión en tu cuenta desde la IP {$ip} mientras tenías otra sesión activa. Si no fuiste tú, cierra las demás sesiones y cambia tu contraseña.",
-                'data' => ['url' => '/control-acceso/usuarios/mi-perfil', 'ip' => $ip],
-            ]);
-        }
+        // El modelo omite la notificación si el usuario apagó «Nuevo inicio de sesión»
+        Notificacion::create([
+            'user_id' => $user->id,
+            'type' => 'seguridad.sesion_concurrente',
+            'title' => 'Nuevo inicio de sesión',
+            'message' => "Se inició sesión en tu cuenta desde la IP {$ip} mientras tenías otra sesión activa. Si no fuiste tú, cierra las demás sesiones y cambia tu contraseña.",
+            'data' => ['url' => '/control-acceso/usuarios/mi-perfil', 'ip' => $ip],
+        ]);
 
         if ($preferencias?->new_browser_login_email && $user->email) {
             MailConfigHelper::configureFromConfigVarias();

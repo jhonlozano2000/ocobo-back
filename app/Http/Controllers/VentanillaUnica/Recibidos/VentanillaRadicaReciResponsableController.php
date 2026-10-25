@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Generales\ListResponsablesRequest;
 use App\Http\Requests\Ventanilla\Recibidos\StoreResponsableReciboRequest;
 use App\Http\Traits\ApiResponseTrait;
-use App\Http\Traits\NotificationPreferenceTrait;
 use App\Models\ControlAcceso\UserCargo;
+use App\Models\Notificacion;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -18,7 +18,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class VentanillaRadicaReciResponsableController extends Controller
 {
-    use ApiResponseTrait, NotificationPreferenceTrait;
+    use ApiResponseTrait;
 
     private const PERM = 'Radicar -> Cores. Recibida -> ';
 
@@ -97,7 +97,7 @@ class VentanillaRadicaReciResponsableController extends Controller
                         ? 'Se le ha asignado el radicado '.$radicado->num_radicado.' como responsable.'
                         : 'Se le ha asignado un nuevo radicado como responsable.';
 
-                    $this->createNotificationIfAllowed([
+                    Notificacion::create([
                         'user_id' => $userCargo->user_id,
                         'type' => 'asignacion_responsable',
                         'title' => $titulo,
@@ -319,7 +319,7 @@ class VentanillaRadicaReciResponsableController extends Controller
                         ? 'Se le ha asignado el radicado '.$radicado->num_radicado.' como responsable.'
                         : 'Se le ha asignado un nuevo radicado como responsable.';
 
-                    $this->createNotificationIfAllowed([
+                    Notificacion::create([
                         'user_id' => $userCargo->user_id,
                         'type' => 'asignacion_responsable',
                         'title' => $titulo,
