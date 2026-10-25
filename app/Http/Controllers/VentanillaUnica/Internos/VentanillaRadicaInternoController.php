@@ -225,15 +225,19 @@ class VentanillaRadicaInternoController extends Controller
 
     public function store(StoreRadicadoInternoRequest $request)
     {
-        // Un documento del editor se radica cuando su grupo terminó, por su creador o un firmante
         $radicacion = app(RadicacionGrupoDocumentoService::class);
-        $grupo = $request->filled('grupo_id') ? MiBandejaTemp::find($request->integer('grupo_id')) : null;
-        if ($grupo && ($motivo = $radicacion->impedimento($grupo, $request->user()))) {
-            throw ValidationException::withMessages(['grupo_id' => $motivo]);
-        }
 
         try {
             DB::beginTransaction();
+
+            // Un documento del editor se radica cuando su grupo terminó, por su creador o un firmante. El grupo
+            // queda bloqueado hasta el commit: dos radicaciones simultáneas del mismo grupo no pasan ambas
+            $grupo = $request->filled('grupo_id')
+                ? MiBandejaTemp::whereKey($request->integer('grupo_id'))->lockForUpdate()->first()
+                : null;
+            if ($grupo && ($motivo = $radicacion->impedimento($grupo, $request->user()))) {
+                throw ValidationException::withMessages(['grupo_id' => $motivo]);
+            }
 
             $radicado = new VentanillaRadicaInterno($request->only([
                 'asunto', 'clasifica_documen_id', 'num_folios', 'num_anexos', 'descrip_anexos', 'fec_venci',
@@ -376,13 +380,13 @@ class VentanillaRadicaInternoController extends Controller
             return $this->successResponse($radicado, 'Radicación interna completada exitosamente', 201);
 
         } catch (\Exception $e) {
+            DB::rollBack();
             if ($e instanceof ValidationException) {
                 throw $e;
             }
             if ($e instanceof HttpExceptionInterface) {
                 throw $e;
             }
-            DB::rollBack();
 
             return $this->errorResponse('Error al procesar la radicación interna', $e->getMessage(), 500);
         }

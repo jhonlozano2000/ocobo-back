@@ -229,16 +229,21 @@ class VentanillaRadicaEnviadosController extends Controller
             DB::beginTransaction();
 
             $validatedData = $request->validated();
-            $numRadicado = $this->generarNumeroRadicado();
 
             $grupoId = $validatedData['grupo_id'] ?? null;
             unset($validatedData['grupo_id']);
 
+            // El grupo queda bloqueado hasta el commit: dos radicaciones simultáneas del mismo grupo no pasan ambas
+            $grupoBloqueado = $grupoId ? MiBandejaTemp::whereKey($grupoId)->lockForUpdate()->first() : null;
+            if ($grupoBloqueado?->respuesta_final === 'radicado') {
+                throw ValidationException::withMessages(['grupo_id' => 'El grupo ya fue radicado.']);
+            }
             // Un documento del editor solo se radica cuando todos cumplieron y los firmantes firmaron
-            $grupoDocumento = $grupoId ? MiBandejaTemp::whereKey($grupoId)->whereNotNull('documento_id')->first() : null;
-            if ($grupoDocumento && ($motivo = app(RadicacionGrupoDocumentoService::class)->pendiente($grupoDocumento))) {
+            if ($grupoBloqueado?->documento_id && ($motivo = app(RadicacionGrupoDocumentoService::class)->pendiente($grupoBloqueado))) {
                 throw ValidationException::withMessages(['grupo_id' => $motivo]);
             }
+
+            $numRadicado = $this->generarNumeroRadicado();
 
             $radicado = new VentanillaRadicaEnviados($validatedData);
             $radicado->num_radicado = $numRadicado;

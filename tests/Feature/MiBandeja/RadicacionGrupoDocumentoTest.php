@@ -189,6 +189,26 @@ class RadicacionGrupoDocumentoTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('grupo_id');
     }
 
+    public function test_un_grupo_ya_radicado_no_se_radica_otra_vez_desde_ventanilla(): void
+    {
+        $ventanilla = User::factory()->create(['estado' => 1]);
+        $ventanilla->givePermissionTo(Permission::findOrCreate('Radicar -> Cores. Enviada -> Crear', 'web'));
+        [$trd, $detalle, $tercero] = $this->catalogos($ventanilla);
+        // Grupo con plantilla que ya se radicó (el de documento lo impide pendiente())
+        DB::table('mi_bandeja_temp')->where('id', $this->grupo)->update(['documento_id' => null, 'respuesta_final' => 'radicado']);
+        $antes = DB::table('ventanilla_radica_enviados')->count();
+        $nivel = DB::transactionLevel();
+
+        $this->actingAs($ventanilla)->postJson('/api/ventanilla/radica-enviada', [
+            'clasifica_documen_id' => $trd, 'tercero_id' => $tercero, 'medio_enviado_id' => $detalle,
+            'tipo_respuesta_id' => $detalle, 'num_folios' => 1, 'num_anexos' => 0, 'descrip_anexos' => 'N/A',
+            'asunto' => 'Respuesta', 'grupo_id' => $this->grupo,
+        ])->assertUnprocessable()->assertJsonValidationErrors('grupo_id');
+
+        $this->assertSame($antes, DB::table('ventanilla_radica_enviados')->count());
+        $this->assertSame($nivel, DB::transactionLevel());
+    }
+
     public function test_el_firmante_lo_radica_como_interno_con_el_pdf_firmado(): void
     {
         if (! Schema::hasTable('ventanilla_radica_internos_responsa')) {
@@ -204,9 +224,11 @@ class RadicacionGrupoDocumentoTest extends TestCase
             'grupo_id' => $this->grupo,
         ];
 
-        // Sin terminar el grupo no se radica
+        // Sin terminar el grupo no se radica, y el rechazo no deja la transacción abierta
+        $nivel = DB::transactionLevel();
         $this->actingAs($this->firmante)->postJson('/api/ventanilla/radica-interno', $datos)
             ->assertUnprocessable()->assertJsonValidationErrors('grupo_id');
+        $this->assertSame($nivel, DB::transactionLevel());
 
         $this->terminarGrupo();
         $id = $this->actingAs($this->firmante)->postJson('/api/ventanilla/radica-interno', $datos)->assertCreated()->json('data.id');
@@ -216,5 +238,9 @@ class RadicacionGrupoDocumentoTest extends TestCase
         $this->assertStringStartsWith('%PDF', Storage::disk('radicados_internos')->get($radicado->archivo_digital));
         $this->assertSame('finalizado', $this->grupo()->estado);
         $this->assertSame('inactivo', $this->grupo()->estado_grupo);
+
+        // Ya radicado: un segundo intento se rechaza
+        $this->actingAs($this->firmante)->postJson('/api/ventanilla/radica-interno', $datos)
+            ->assertUnprocessable()->assertJsonValidationErrors('grupo_id');
     }
 }
