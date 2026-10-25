@@ -3,6 +3,7 @@
 namespace App\Http\Requests\MiBandeja;
 
 use App\Rules\ArchivoLegible;
+use App\Rules\ArchivoSeguro;
 use App\Rules\MagicMime;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -13,10 +14,12 @@ class CheckInRequest extends FormRequest
         return true;
     }
 
+    public const EXTENSIONES = ['docx', 'doc', 'pdf', 'odt', 'dotx', 'xlsx', 'xls', 'pptx', 'ppt', 'txt', 'csv', 'jpeg', 'jpg', 'png', 'gif'];
+
     public function rules(): array
     {
         return [
-            'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'mimes:docx,doc,pdf,odt,dotx,xlsx,xls,pptx,ppt,txt,csv,jpeg,jpg,png,gif', 'max:51200', new MagicMime],
+            'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'max:51200', new ArchivoSeguro(self::EXTENSIONES), 'mimes:'.implode(',', self::EXTENSIONES), new MagicMime],
             'comentario' => 'nullable|string|max:1000',
         ];
     }

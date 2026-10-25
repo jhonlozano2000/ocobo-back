@@ -4,6 +4,7 @@ namespace App\Http\Requests\Ventanilla\Recibidos;
 
 use App\Models\Configuracion\ConfigVarias;
 use App\Rules\ArchivoLegible;
+use App\Rules\ArchivoSeguro;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -56,6 +57,7 @@ class UploadArchivoRecibidoRequest extends FormRequest
                 'file',
                 new ArchivoLegible,
                 'max:'.$config['maxSize'],
+                new ArchivoSeguro(array_map('strtolower', $allowedExtensions)),
                 'mimes:'.implode(',', $allowedExtensions),
             ],
             'descripcion' => ['nullable', 'string', 'max:500'],

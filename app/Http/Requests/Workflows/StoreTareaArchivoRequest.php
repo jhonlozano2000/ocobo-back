@@ -4,6 +4,7 @@ namespace App\Http\Requests\Workflows;
 
 use App\Http\Requests\SanitizedFormRequest;
 use App\Rules\ArchivoLegible;
+use App\Rules\ArchivoSeguro;
 
 /**
  * M19-35: evidencia adjunta a una Tarea (Mis tareas).
@@ -15,10 +16,12 @@ class StoreTareaArchivoRequest extends SanitizedFormRequest
         return true;
     }
 
+    public const EXTENSIONES = ['pdf', 'jpeg', 'png', 'gif', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar'];
+
     public function rules(): array
     {
         return [
-            'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'max:51200', 'mimes:pdf,jpeg,png,gif,doc,docx,xls,xlsx,ppt,pptx,zip,rar'],
+            'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'max:51200', new ArchivoSeguro(self::EXTENSIONES), 'mimes:'.implode(',', self::EXTENSIONES)],
             'categoria' => 'nullable|in:adjunto,evidencia,resultado',
         ];
     }

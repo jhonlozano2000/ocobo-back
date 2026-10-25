@@ -3,6 +3,7 @@
 namespace App\Http\Requests\OfiArchivo;
 
 use App\Rules\ArchivoLegible;
+use App\Rules\ArchivoSeguro;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdatePlantillaDocumentoRequest extends FormRequest
@@ -11,6 +12,8 @@ class UpdatePlantillaDocumentoRequest extends FormRequest
     {
         return true;
     }
+
+    public const EXTENSIONES = ['docx', 'doc', 'pdf', 'odt', 'dotx', 'ott', 'xlsx', 'xls', 'ppt', 'pptx', 'txt', 'rtf', 'csv'];
 
     public function rules(): array
     {
@@ -27,8 +30,9 @@ class UpdatePlantillaDocumentoRequest extends FormRequest
                 'nullable',
                 'file',
                 new ArchivoLegible,
-                'mimes:docx,doc,pdf,odt,dotx,ott,xlsx,xls,ppt,pptx,txt,rtf,csv',
                 'max:10240',
+                new ArchivoSeguro(self::EXTENSIONES),
+                'mimes:'.implode(',', self::EXTENSIONES),
             ],
         ];
     }

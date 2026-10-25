@@ -11,6 +11,7 @@ use App\Models\ClasificacionDocumental\ClasificacionDocumentalTVD;
 use App\Models\ClasificacionDocumental\FondoAcumuladoPeriodo;
 use App\Models\ClasificacionDocumental\FondoAcumuladoUnidad;
 use App\Rules\ArchivoLegible;
+use App\Rules\ArchivoSeguro;
 use App\Services\ClasificacionDocumental\TVDService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -141,7 +142,7 @@ class ClasificacionDocumentalTVDController extends Controller
     private static function reglasImportacion(): array
     {
         return [
-            'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'mimes:xlsx,xls,csv', 'max:2048'],
+            'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'max:2048', new ArchivoSeguro(['xlsx', 'xls', 'csv']), 'mimes:xlsx,xls,csv'],
             'periodo_id' => 'required|integer|exists:fondo_acumulado_periodos,id',
         ];
     }

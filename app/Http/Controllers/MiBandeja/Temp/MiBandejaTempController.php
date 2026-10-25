@@ -14,6 +14,7 @@ use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Rules\ArchivoLegible;
+use App\Rules\ArchivoSeguro;
 use App\Rules\MagicMime;
 use App\Services\MiBandeja\GrupoColaborativoService;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
@@ -518,7 +519,7 @@ class MiBandejaTempController extends Controller
     {
         try {
             $request->validate([
-                'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'mimes:docx,doc,pdf,odt,dotx,xlsx,xls,pptx,ppt,txt,csv,jpeg,jpg,png,gif', 'max:51200', new MagicMime],
+                'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'max:51200', new ArchivoSeguro(CheckInRequest::EXTENSIONES), 'mimes:'.implode(',', CheckInRequest::EXTENSIONES), new MagicMime],
             ]);
 
             $grupo = $this->autorizarGrupo($id);

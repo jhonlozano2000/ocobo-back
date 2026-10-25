@@ -7,6 +7,7 @@ use App\Models\Workflows\Workflow;
 use App\Models\Workflows\WorkflowInstancia;
 use App\Models\Workflows\WorkflowNodo;
 use App\Rules\ArchivoLegible;
+use App\Rules\ArchivoSeguro;
 
 class StoreWorkFlowArchivoRequest extends SanitizedFormRequest
 {
@@ -22,10 +23,12 @@ class StoreWorkFlowArchivoRequest extends SanitizedFormRequest
         return auth()->user()->hasPermissionTo('Workflows -> Archivos -> Subir');
     }
 
+    public const EXTENSIONES = ['pdf', 'jpeg', 'png', 'gif', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar'];
+
     public function rules(): array
     {
         return [
-            'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'max:51200', 'mimes:pdf,jpeg,png,gif,doc,docx,xls,xlsx,ppt,pptx,zip,rar'],
+            'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'max:51200', new ArchivoSeguro(self::EXTENSIONES), 'mimes:'.implode(',', self::EXTENSIONES)],
             'archivable_type' => 'required|string|in:'.implode(',', array_keys(self::TIPOS)),
             'archivable_id' => 'required|integer',
             'categoria' => 'nullable|in:adjunto,evidencia,instruccion,resultado',

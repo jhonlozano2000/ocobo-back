@@ -3,6 +3,7 @@
 namespace App\Http\Requests\ClasificacionDocumental;
 
 use App\Rules\ArchivoLegible;
+use App\Rules\ArchivoSeguro;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -24,7 +25,7 @@ class ImportarTRDRequest extends FormRequest
     public function rules()
     {
         return [
-            'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'mimes:xlsx,xls', 'max:2048'],
+            'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'max:2048', new ArchivoSeguro(['xlsx', 'xls']), 'mimes:xlsx,xls'],
         ];
     }
 

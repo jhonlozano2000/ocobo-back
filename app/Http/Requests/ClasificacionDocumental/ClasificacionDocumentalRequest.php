@@ -3,6 +3,7 @@
 namespace App\Http\Requests\ClasificacionDocumental;
 
 use App\Rules\ArchivoLegible;
+use App\Rules\ArchivoSeguro;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -24,7 +25,7 @@ class ClasificacionDocumentalRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'file' => ['bail', 'required', 'file', new ArchivoLegible, 'mimes:xlsx', 'max:2048'],
+            'file' => ['bail', 'required', 'file', new ArchivoLegible, 'max:2048', new ArchivoSeguro(['xlsx']), 'mimes:xlsx'],
             'dependencia_id' => 'required|exists:calidad_organigrama,id',
         ];
     }

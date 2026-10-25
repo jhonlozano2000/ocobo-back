@@ -107,6 +107,6 @@ class ArchivoLegibleTest extends TestCase
         $this->assertSame(ArchivoLegible::MENSAJE, $validador->errors()->first('archivo'));
 
         $fuente = file_get_contents(app_path('Http/Controllers/MiBandeja/Temp/MiBandejaTempController.php'));
-        $this->assertStringContainsString("'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'mimes:", $fuente);
+        $this->assertStringContainsString("'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'max:51200',", $fuente);
     }
 }
