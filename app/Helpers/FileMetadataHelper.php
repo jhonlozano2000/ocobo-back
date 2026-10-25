@@ -128,6 +128,8 @@ class FileMetadataHelper
         $subserie = count($jerarquia) > 1 ? $jerarquia[1]['nom'] : null;
         $tipoDocumento = count($jerarquia) > 2 ? $jerarquia[2]['nom'] : null;
 
+        $extra = self::normalizarExtra($extra);
+
         $metadataData = [
             'archivo_id' => $archivoIdFinal,
             'radicado_id' => $radicado->id,
@@ -210,6 +212,51 @@ class FileMetadataHelper
     /**
      * Determina el nivel de clasificación según la TRD o por defecto.
      */
+    /**
+     * 17.3/17.4: lo que el usuario escribe al subir llega como texto plano del formulario; la
+     * columna palabras_clave es un arreglo (cast array, y así la edita PUT /metadata) y
+     * clasificacion_id debe ser un elemento de la TRD.
+     *
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    private static function normalizarExtra(array $extra): array
+    {
+        if (array_key_exists('descripcion', $extra)) {
+            $descripcion = is_string($extra['descripcion']) ? trim($extra['descripcion']) : '';
+            if ($descripcion === '') {
+                unset($extra['descripcion']);
+            } else {
+                $extra['descripcion'] = mb_substr($descripcion, 0, 1000);
+            }
+        }
+
+        if (array_key_exists('palabras_clave', $extra)) {
+            $palabras = is_array($extra['palabras_clave'])
+                ? $extra['palabras_clave']
+                : explode(',', (string) $extra['palabras_clave']);
+            $palabras = collect($palabras)
+                ->filter(fn ($p) => is_string($p))
+                ->map(fn (string $p) => mb_substr(trim($p), 0, 100))
+                ->filter(fn (string $p) => $p !== '')
+                ->unique()
+                ->values()
+                ->all();
+            $extra['palabras_clave'] = $palabras ?: null;
+        }
+
+        if (array_key_exists('clasificacion_id', $extra)) {
+            $id = filter_var($extra['clasificacion_id'], FILTER_VALIDATE_INT);
+            if ($id && ClasificacionDocumentalTRD::whereKey($id)->exists()) {
+                $extra['clasificacion_id'] = $id;
+            } else {
+                unset($extra['clasificacion_id']);
+            }
+        }
+
+        return $extra;
+    }
+
     private static function determinarNivelClasificacion($clasificacion): string
     {
         if (! $clasificacion) {
@@ -419,6 +466,8 @@ class FileMetadataHelper
         $subserie = count($jerarquia) > 1 ? $jerarquia[1]['nom'] : null;
         $tipoDocumento = count($jerarquia) > 2 ? $jerarquia[2]['nom'] : null;
 
+        $extra = self::normalizarExtra($extra);
+
         $metadataData = [
             'archivo_id' => $archivoIdFinal,
             'radicado_id' => $radicado->id,
@@ -562,6 +611,8 @@ class FileMetadataHelper
         $serie = count($jerarquia) > 0 ? $jerarquia[0]['nom'] : null;
         $subserie = count($jerarquia) > 1 ? $jerarquia[1]['nom'] : null;
         $tipoDocumento = count($jerarquia) > 2 ? $jerarquia[2]['nom'] : null;
+
+        $extra = self::normalizarExtra($extra);
 
         $metadataData = [
             'archivo_id' => $archivoIdFinal,
@@ -804,6 +855,8 @@ class FileMetadataHelper
         $radicado = $pqrs->radicado;
 
         $clasificacion = $radicado?->clasificacionDocumental;
+
+        $extra = self::normalizarExtra($extra);
 
         $metadataData = [
             'archivo_id' => $archivoId,
