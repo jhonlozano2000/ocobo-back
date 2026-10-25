@@ -94,7 +94,7 @@ class FirmaElectronicaController extends Controller
             return $this->errorResponse('No es firmante designado de este documento.', null, 403);
         }
 
-        // M03-19: un firmante de interno no firma dos veces el mismo documento
+        // M03-19: un firmante no firma dos veces el mismo documento
         if ($this->firmaService->yaFirmo($request->documentable_type, (int) $request->documentable_id, $user->id)) {
             return $this->warningResponse('Ya firmó este documento.');
         }
@@ -166,16 +166,20 @@ class FirmaElectronicaController extends Controller
 
             $this->firmaService->marcarFirmante($request->documentable_type, $documento->id, $user->id, $request->otp);
 
-            // 4. Actualizar el documento principal con el nuevo hash
+            // 4. Actualizar el documento con el nuevo hash; queda firmado cuando firma el último firmante
+            $completa = $this->firmaService->todosFirmaron($request->documentable_type, $documento->id);
             $documento->update([
                 'hash_sha256' => $resultadoFirma['nuevo_hash'],
-                'estado_firma' => 'firmado',
-                'fecha_firma' => now(),
+                'estado_firma' => $completa ? 'firmado' : 'pendiente',
+                'fecha_firma' => $completa ? now() : null,
             ]);
 
             DB::commit();
 
-            return $this->successResponse($evento, 'Documento firmado electrónicamente con éxito');
+            return $this->successResponse(
+                $evento->toArray() + ['firma_completa' => $completa],
+                $completa ? 'Documento firmado electrónicamente con éxito' : 'Firma registrada; faltan otros firmantes'
+            );
 
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {

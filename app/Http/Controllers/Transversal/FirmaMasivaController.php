@@ -134,7 +134,7 @@ class FirmaMasivaController extends Controller
                 ];
             }
 
-            // M03-19: un firmante de interno no firma dos veces el mismo documento
+            // M03-19: un firmante no firma dos veces el mismo documento
             if ($this->firmaService->yaFirmo($documentableType, (int) $documentableId, $user->id)) {
                 return [
                     'documentable_id' => $documentableId,
@@ -208,11 +208,12 @@ class FirmaMasivaController extends Controller
 
             $this->firmaService->marcarFirmante($documentableType, $documento->id, $user->id, $otp);
 
-            // 4. Actualizar documento
+            // 4. Actualizar documento; queda firmado cuando firma el último firmante
+            $completa = $this->firmaService->todosFirmaron($documentableType, $documento->id);
             $documento->update([
                 'hash_sha256' => $resultadoFirma['nuevo_hash'],
-                'estado_firma' => 'firmado',
-                'fecha_firma' => now(),
+                'estado_firma' => $completa ? 'firmado' : 'pendiente',
+                'fecha_firma' => $completa ? now() : null,
             ]);
 
             DB::commit();
@@ -222,6 +223,7 @@ class FirmaMasivaController extends Controller
                 'documentable_type' => $documentableType,
                 'success' => true,
                 'hash' => $resultadoFirma['nuevo_hash'],
+                'firma_completa' => $completa,
             ];
 
         } catch (\Exception $e) {

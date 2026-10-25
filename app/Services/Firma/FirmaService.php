@@ -67,16 +67,47 @@ class FirmaService
     }
 
     /**
-     * M03-19: el firmante de un radicado interno ya firmó ese documento.
+     * M03-19: el firmante ya firmó ese documento. Internos: su fila de firmante;
+     * enviados (sin estado por firmante): su evento de firma sobre el documento.
      */
     public function yaFirmo(string $documentableType, int $documentableId, int $userId): bool
     {
-        return $documentableType === 'radicado_interno'
-            && DB::table('ventanilla_radica_internos_firmantes')
+        return match ($documentableType) {
+            'radicado_interno' => DB::table('ventanilla_radica_internos_firmantes')
                 ->where('radica_interno_id', $documentableId)
                 ->where('users_id', $userId)
                 ->where('firmado', 1)
-                ->exists();
+                ->exists(),
+            'radicado_enviado' => DB::table('firmas_eventos')
+                ->where('documentable_type', VentanillaRadicaEnviados::class)
+                ->where('documentable_id', $documentableId)
+                ->where('user_id', $userId)
+                ->exists(),
+            default => false,
+        };
+    }
+
+    /**
+     * Con varios firmantes el documento queda pendiente hasta que firma el último.
+     * Sin firmantes designados (lo firma un responsable) basta una firma.
+     */
+    public function todosFirmaron(string $documentableType, int $documentableId): bool
+    {
+        return match ($documentableType) {
+            'radicado_interno' => ! DB::table('ventanilla_radica_internos_firmantes')
+                ->where('radica_interno_id', $documentableId)
+                ->where('firmado', 0)
+                ->exists(),
+            'radicado_enviado' => ! DB::table('ventanilla_radica_enviados_firmas as f')
+                ->join('users_cargos as uc', 'uc.id', '=', 'f.users_cargos_id')
+                ->where('f.radica_enviado_id', $documentableId)
+                ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('firmas_eventos as e')
+                    ->whereColumn('e.user_id', 'uc.user_id')
+                    ->where('e.documentable_type', VentanillaRadicaEnviados::class)
+                    ->where('e.documentable_id', $documentableId))
+                ->exists(),
+            default => true,
+        };
     }
 
     /**
@@ -143,7 +174,7 @@ class FirmaService
 
     /**
      * M06-13: documentos que el usuario tiene pendientes de firmar (los que la UI permite firmar):
-     * enviados donde es firmante y aún no están firmados, e internos donde su firma sigue pendiente.
+     * enviados donde es firmante y aún no firmó, e internos donde su firma sigue pendiente.
      * Solo los que tienen PDF, porque sin él no hay qué estampar.
      */
     public function pendientesDe(int $userId): array
@@ -154,6 +185,11 @@ class FirmaService
             ->where('uc.user_id', $userId)
             ->whereNotNull('r.archivo_digital')
             ->where(fn ($q) => $q->whereNull('r.estado_firma')->orWhere('r.estado_firma', '!=', 'firmado'))
+            // Con varios firmantes, quien ya firmó no lo sigue viendo mientras faltan los demás
+            ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('firmas_eventos as e')
+                ->where('e.documentable_type', VentanillaRadicaEnviados::class)
+                ->whereColumn('e.documentable_id', 'r.id')
+                ->where('e.user_id', $userId))
             ->distinct()
             ->get(['r.id', 'r.num_radicado', 'r.asunto', 'r.created_at'])
             ->map(fn ($r) => $this->filaPendiente('radicado_enviado', $r));
