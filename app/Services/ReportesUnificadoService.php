@@ -17,6 +17,9 @@ class ReportesUnificadoService
     /** Límite de filas de una exportación (la vista paginada sigue en 100 por página). */
     public const MAX_EXPORT = 5000;
 
+    /** Etiqueta con la que se muestra un radicado sin estado de trabajo; también sirve como filtro. */
+    public const SIN_ESTADO = 'Pendiente';
+
     /**
      * REP-002: permiso de listado que exige cada módulo; el reporte no puede ver más que el listado.
      */
@@ -48,7 +51,7 @@ class ReportesUnificadoService
                         'Creado por' => $item->usuarioCreaRadicado?->name ?? 'N/A',
                         'Fecha' => $item->created_at?->format('Y-m-d'),
                         'Asunto' => $item->asunto,
-                        'Estado' => $item->estado_trabajo ?? 'Pendiente',
+                        'Estado' => $item->estado_trabajo ?? self::SIN_ESTADO,
                     ];
                 },
             ],
@@ -63,7 +66,7 @@ class ReportesUnificadoService
                         'Creado por' => $item->usuarioCreaRadicado?->name ?? 'N/A',
                         'Fecha' => $item->created_at?->format('Y-m-d'),
                         'Asunto' => $item->asunto,
-                        'Estado' => $item->estado_trabajo ?? 'Pendiente',
+                        'Estado' => $item->estado_trabajo ?? self::SIN_ESTADO,
                     ];
                 },
             ],
@@ -78,7 +81,7 @@ class ReportesUnificadoService
                         'Creado por' => $item->usuarioCrea?->name ?? 'N/A',
                         'Fecha' => $item->created_at?->format('Y-m-d'),
                         'Asunto' => $item->asunto,
-                        'Estado' => $item->estado_trabajo ?? 'Pendiente',
+                        'Estado' => $item->estado_trabajo ?? self::SIN_ESTADO,
                     ];
                 },
             ],
@@ -236,18 +239,19 @@ class ReportesUnificadoService
 
     protected function aplicarFiltros($query, string $modulo, array $filtros): void
     {
+        // Un préstamo solicitado aún no tiene fecha_prestamo: se ubica por la fecha de la solicitud
         $fechaCol = match ($modulo) {
             'expedientes' => 'fecha_apertura',
-            'prestamos' => 'fecha_prestamo',
+            'prestamos' => 'COALESCE(fecha_prestamo, created_at)',
             'transferencias' => 'fecha_transferencia',
             default => 'created_at',
         };
 
         if (! empty($filtros['desde'])) {
-            $query->whereDate($fechaCol, '>=', $filtros['desde']);
+            $query->whereRaw("DATE({$fechaCol}) >= ?", [$filtros['desde']]);
         }
         if (! empty($filtros['hasta'])) {
-            $query->whereDate($fechaCol, '<=', $filtros['hasta']);
+            $query->whereRaw("DATE({$fechaCol}) <= ?", [$filtros['hasta']]);
         }
 
         $estadoCol = match ($modulo) {
@@ -256,9 +260,18 @@ class ReportesUnificadoService
             default => 'estado',
         };
 
-        if (! empty($filtros['estado'])) {
-            $query->where($estadoCol, $filtros['estado']);
+        if (empty($filtros['estado'])) {
+            return;
         }
+
+        // El reporte muestra «Pendiente» en los radicados sin estado de trabajo; filtrar por esa etiqueta los incluye
+        if ($estadoCol === 'estado_trabajo' && strcasecmp($filtros['estado'], self::SIN_ESTADO) === 0) {
+            $query->where(fn ($q) => $q->whereNull('estado_trabajo')->orWhere('estado_trabajo', self::SIN_ESTADO));
+
+            return;
+        }
+
+        $query->where($estadoCol, $filtros['estado']);
     }
 
     protected function getRelations(string $modulo): array
