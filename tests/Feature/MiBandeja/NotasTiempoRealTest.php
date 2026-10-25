@@ -96,6 +96,12 @@ class NotasTiempoRealTest extends TestCase
         $this->autorizar($this->ajeno, "private-user.{$this->creador->id}")->assertForbidden();
     }
 
+    public function test_el_canal_huerfano_de_respuestas_ya_no_autoriza_a_cualquiera(): void
+    {
+        // respuesta.{id} devolvía true a todo usuario y ningún evento ni pantalla lo usaba
+        $this->autorizar($this->creador, 'private-respuesta.1')->assertForbidden();
+    }
+
     public function test_typing_lo_emite_un_miembro_y_no_un_ajeno(): void
     {
         Event::fake([NotaTyping::class]);
