@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -131,7 +132,8 @@ class FirmaElectronicaController extends Controller
             $cargo = $user->cargos()->first();
             $nombreCargo = $cargo ? $cargo->nom_organico : 'Funcionario';
 
-            $hashOriginal = $documento->hash_sha256;
+            // Radicados antiguos sin hash registrado: se toma el del archivo actual (firmas_eventos lo exige)
+            $hashOriginal = $documento->hash_sha256 ?: hash('sha256', Storage::disk($disk)->get($documento->archivo_digital));
 
             // 2. Estampar firma en el PDF (Helper)
             $datosFirma = [
