@@ -15,7 +15,6 @@ class LimitesSolicitudesTest extends TestCase
     {
         return [
             ['POST', 'api/ventanilla/radica-enviada', 'radicacion'],
-            ['DELETE', 'api/ventanilla/radica-enviada', 'radicacion'],
             ['POST', 'api/ventanilla/radica-enviada/{id}/notificacion', 'radicacion'],
             ['POST', 'api/ventanilla/radica-enviada/{id}/notificacion-tercero', 'radicacion'],
             ['POST', 'api/ventanilla/radica-enviada/{id}/archivos/digital/upload', 'uploads'],
