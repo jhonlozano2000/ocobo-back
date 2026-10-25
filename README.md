@@ -3,7 +3,7 @@
 Aplicación gestora del proceso de gestión documental desarrollada en Laravel.
 
 ![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=flat-square&logo=laravel)
-![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?style=flat-square&logo=php)
+![PHP](https://img.shields.io/badge/PHP-8.3+-777BB4?style=flat-square&logo=php)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 ![Version](https://img.shields.io/badge/Version-2.7-blue?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Producci%C3%B3n-green?style=flat-square)
@@ -181,10 +181,44 @@ routes/
 ## 📦 Instalación
 
 ### Requisitos Previos
-- PHP 8.2+ (Laravel 12)
+- PHP 8.3+ para las versiones bloqueadas actuales, incluida Intervention Image 4
 - Composer
 - MySQL/MariaDB
 - Node.js y NPM
+
+### Validación de dependencias antes del despliegue
+
+Actualización: 2026-10-24. La corrección de la validación estricta de Composer
+acota las versiones de Dompdf, Illuminate Console, Sanctum, FPDF y FPDI mediante
+rangos compatibles con las versiones de `composer.lock`. Ignition se declara una
+sola vez en `require`. Este cambio conserva las versiones, referencias de código
+y relaciones de los 135 paquetes de producción y 34 paquetes de desarrollo.
+
+El archivo de bloqueo se refrescó con Composer 2.10.3 mediante `update --lock
+--no-install`, con scripts y plugins deshabilitados. Además del hash del
+manifiesto, Composer actualizó las URLs de `vlucas/phpdotenv` al repositorio
+`phpdotenv/phpdotenv`, conservando su referencia de código. No se aplican
+migraciones ni cambios al modelo de datos en esta corrección.
+
+Antes de instalar dependencias en el servidor, ejecutar bajo una cuenta sin root:
+
+```bash
+composer --no-plugins --no-scripts --no-interaction validate --strict --check-lock --no-check-publish
+composer --no-plugins --no-scripts --no-interaction check-platform-reqs --lock --no-dev
+composer --no-plugins --no-scripts --no-interaction audit --locked --no-dev
+```
+
+```mermaid
+flowchart LR
+    A[composer.json y composer.lock de la misma versión] --> B[Validar esquema y lock]
+    B --> C[Comprobar PHP y extensiones del servidor]
+    C --> D[Auditar dependencias de producción]
+    D --> E[Revisar resultados antes de instalar]
+```
+
+La validación estricta y una simulación de instalación sin red pasaron localmente
+con PHP 8.3.30 y Composer 2.10.3. La simulación utiliza metadatos de caché y no
+sustituye la auditoría en línea ni la revalidación del nuevo manifiesto en el VPS.
 
 ### Pasos de Instalación
 
