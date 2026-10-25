@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Ventanilla\Recibidos;
 
 use App\Models\Configuracion\ConfigVarias;
+use App\Rules\ArchivoLegible;
 use App\Rules\ArchivoSeguro;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -31,7 +32,9 @@ class UploadArchivosAdjuntosRecibidoRequest extends FormRequest
         return [
             'archivos' => 'required|array|min:1|max:10',
             'archivos.*' => [
+                'bail',
                 'file',
+                new ArchivoLegible,
                 'max:'.$maxSize,
                 // M01-04: extensión permitida (tipos_archivos_permitidos) y contenido real
                 new ArchivoSeguro,

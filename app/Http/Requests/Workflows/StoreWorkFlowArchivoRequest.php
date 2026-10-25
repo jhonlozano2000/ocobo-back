@@ -6,6 +6,7 @@ use App\Http\Requests\SanitizedFormRequest;
 use App\Models\Workflows\Workflow;
 use App\Models\Workflows\WorkflowInstancia;
 use App\Models\Workflows\WorkflowNodo;
+use App\Rules\ArchivoLegible;
 
 class StoreWorkFlowArchivoRequest extends SanitizedFormRequest
 {
@@ -24,7 +25,7 @@ class StoreWorkFlowArchivoRequest extends SanitizedFormRequest
     public function rules(): array
     {
         return [
-            'archivo' => 'required|file|max:51200|mimes:pdf,jpeg,png,gif,doc,docx,xls,xlsx,ppt,pptx,zip,rar',
+            'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'max:51200', 'mimes:pdf,jpeg,png,gif,doc,docx,xls,xlsx,ppt,pptx,zip,rar'],
             'archivable_type' => 'required|string|in:'.implode(',', array_keys(self::TIPOS)),
             'archivable_id' => 'required|integer',
             'categoria' => 'nullable|in:adjunto,evidencia,instruccion,resultado',

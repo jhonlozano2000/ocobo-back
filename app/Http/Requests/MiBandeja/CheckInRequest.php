@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\MiBandeja;
 
+use App\Rules\ArchivoLegible;
 use App\Rules\MagicMime;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -15,7 +16,7 @@ class CheckInRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'archivo' => ['required', 'file', 'mimes:docx,doc,pdf,odt,dotx,xlsx,xls,pptx,ppt,txt,csv,jpeg,jpg,png,gif', 'max:51200', new MagicMime],
+            'archivo' => ['bail', 'required', 'file', new ArchivoLegible, 'mimes:docx,doc,pdf,odt,dotx,xlsx,xls,pptx,ppt,txt,csv,jpeg,jpg,png,gif', 'max:51200', new MagicMime],
             'comentario' => 'nullable|string|max:1000',
         ];
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Ventanilla\Enviados;
 
 use App\Models\Configuracion\ConfigVarias;
+use App\Rules\ArchivoLegible;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UploadArchivoEnviadoRequest extends FormRequest
@@ -33,8 +34,10 @@ class UploadArchivoEnviadoRequest extends FormRequest
 
         return [
             'archivo_digital' => [
+                'bail',
                 'required',
                 'file',
+                new ArchivoLegible,
                 'max:'.$config['maxSize'],
                 'mimes:'.implode(',', $allowedExtensions),
             ],

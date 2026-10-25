@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Ventanilla\Internos;
 
 use App\Models\Configuracion\ConfigVarias;
+use App\Rules\ArchivoLegible;
 use App\Rules\ArchivoSeguro;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -20,7 +21,9 @@ class UploadArchivosAdjuntosInternoRequest extends FormRequest
         return [
             'archivos' => 'required|array|min:1|max:10',
             'archivos.*' => [
+                'bail',
                 'file',
+                new ArchivoLegible,
                 'max:'.$maxSize,
                 // M03-10: extensión permitida (tipos_archivos_permitidos) y contenido real
                 new ArchivoSeguro,

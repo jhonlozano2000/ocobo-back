@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\OfiArchivo;
 
+use App\Rules\ArchivoLegible;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdatePlantillaDocumentoRequest extends FormRequest
@@ -22,8 +23,10 @@ class UpdatePlantillaDocumentoRequest extends FormRequest
             'categoria_id' => ['nullable', 'integer', PlantillaGeneradaRequest::reglaTipo()],
             'activo' => 'boolean',
             'archivo' => [
+                'bail',
                 'nullable',
                 'file',
+                new ArchivoLegible,
                 'mimes:docx,doc,pdf,odt,dotx,ott,xlsx,xls,ppt,pptx,txt,rtf,csv',
                 'max:10240',
             ],

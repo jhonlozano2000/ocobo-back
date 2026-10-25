@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Ventanilla\Pqrs;
 
 use App\Models\Configuracion\ConfigVarias;
+use App\Rules\ArchivoLegible;
 use App\Rules\ArchivoSeguro;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -67,10 +68,9 @@ class UploadPqrsAdjuntosRequest extends FormRequest
                 'max:10',
             ],
             'archivos.*' => [
-                // bail + ArchivoSeguro antes de mimes: un archivo ilegible (p. ej. bloqueado por el antivirus)
-                // se rechaza aquí; mimes lo leería con finfo y lanzaría una excepción
                 'bail',
                 'file',
+                new ArchivoLegible,
                 'max:'.$config['maxSize'],
                 new ArchivoSeguro(array_map('strtolower', $allowedExtensions)),
                 'mimes:'.implode(',', $allowedExtensions),

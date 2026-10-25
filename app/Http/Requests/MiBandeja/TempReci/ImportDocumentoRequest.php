@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\MiBandeja\TempReci;
 
+use App\Rules\ArchivoLegible;
 use App\Rules\RadicadoAccesible;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -15,7 +16,7 @@ class ImportDocumentoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'archivo' => 'nullable|file|mimes:docx,doc,html,htm,txt|max:10240',
+            'archivo' => ['bail', 'nullable', 'file', new ArchivoLegible, 'mimes:docx,doc,html,htm,txt', 'max:10240'],
             'contenido' => 'nullable|string',
             'titulo' => 'nullable|string|max:255',
             'radica_reci_id' => ['nullable', new RadicadoAccesible('recibido')],

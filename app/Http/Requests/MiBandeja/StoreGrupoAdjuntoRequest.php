@@ -3,6 +3,7 @@
 namespace App\Http\Requests\MiBandeja;
 
 use App\Models\Configuracion\ConfigVarias;
+use App\Rules\ArchivoLegible;
 use App\Rules\ArchivoSeguro;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -32,8 +33,10 @@ class StoreGrupoAdjuntoRequest extends FormRequest
     {
         return [
             'archivo' => [
+                'bail',
                 'required',
                 'file',
+                new ArchivoLegible,
                 'max:'.$this->maxSizeKB(), // la regla max de archivos se expresa en KB
                 new ArchivoSeguro,
             ],

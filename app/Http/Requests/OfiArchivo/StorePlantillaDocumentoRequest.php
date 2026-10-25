@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\OfiArchivo;
 
+use App\Rules\ArchivoLegible;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StorePlantillaDocumentoRequest extends FormRequest
@@ -15,8 +16,10 @@ class StorePlantillaDocumentoRequest extends FormRequest
     {
         return [
             'archivo' => [
+                'bail',
                 'required',
                 'file',
+                new ArchivoLegible,
                 'mimes:docx,doc,pdf,odt,dotx,ott,xlsx,xls,ppt,pptx,txt,rtf,csv',
                 'max:10240',
             ],
