@@ -186,7 +186,7 @@ return [
          */
         AppServiceProvider::class,
         AuthServiceProvider::class,
-        // BroadcastServiceProvider::class,
+        BroadcastServiceProvider::class,
         EventServiceProvider::class,
         RouteServiceProvider::class,
         PermissionServiceProvider::class,

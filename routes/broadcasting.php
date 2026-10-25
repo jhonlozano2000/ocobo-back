@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -9,23 +10,16 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
+// Firma la suscripción (HMAC con el secreto de Reverb, que nunca sale del servidor) solo si el
+// callback del canal en routes/channels.php autoriza al usuario; si no, 403.
 Route::post('/broadcasting/auth', function (Request $request) {
-    if (! auth()->check()) {
+    $user = auth('sanctum')->user();
+
+    if (! $user) {
         return response()->json(['message' => 'No autenticado'], 401);
     }
 
-    $appKey = config('reverb.app_key', 'ocobo-app-key-2024');
-    $appSecret = config('reverb.app_secret', 'secret-key-2024');
-    $user = auth()->user();
-    $userId = $user->id;
-    $userName = $user->name ?? $user->nombres ?? 'Usuario';
+    $request->setUserResolver(fn () => $user);
 
-    return response()->json([
-        'auth' => $appKey.':user-'.$userId,
-        'channel_data' => json_encode([
-            'user_id' => $userId,
-            'user_info' => ['name' => $userName],
-        ]),
-        'shared_secret' => $appSecret,
-    ]);
+    return Broadcast::auth($request);
 });

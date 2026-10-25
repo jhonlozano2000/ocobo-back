@@ -53,7 +53,9 @@ Broadcast::channel('grupo-colaborativo.{grupoId}', function ($user, $grupoId) {
         return false;
     }
 
-    return $grupo->responsables()->where('user_id', $user->id)->exists()
+    return (int) $grupo->usua_crea_id === (int) $user->id
+        || $grupo->revisores()->where('user_id', $user->id)->exists()
         || $grupo->firmantes()->where('user_id', $user->id)->exists()
-        || $grupo->proyectores()->where('user_id', $user->id)->exists();
+        || $grupo->proyectores()->where('user_id', $user->id)->exists()
+        || $grupo->aprobadores()->where('user_id', $user->id)->exists();
 });

@@ -100,6 +100,9 @@ class MiBandejaTempNotaController extends Controller
 
     public function typing(Request $request, $grupoId)
     {
+        // Solo los miembros pueden anunciar que escriben en el canal del grupo
+        $this->autorizarGrupo($grupoId);
+
         try {
             $request->validate([
                 'typing' => 'required|boolean',
