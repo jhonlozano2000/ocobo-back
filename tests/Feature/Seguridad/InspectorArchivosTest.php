@@ -3,6 +3,7 @@
 namespace Tests\Feature\Seguridad;
 
 use App\Rules\ArchivoSeguro;
+use App\Rules\MagicMime;
 use App\Services\Seguridad\InspectorArchivos;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
@@ -94,6 +95,21 @@ class InspectorArchivosTest extends TestCase
         $this->assertSame('pdf', InspectorArchivos::extensionSegura($this->archivo($this->pdf()), 'Oficio.PDF'));
         $this->assertSame('pdf', InspectorArchivos::extensionSegura($this->archivo($this->pdf()), 'oficio.php'));
         $this->assertNotSame('php', InspectorArchivos::extensionSegura($this->archivo('<?php echo 1; ?>'), 'x.php'));
+    }
+
+    public function test_un_archivo_que_no_se_puede_leer_se_rechaza_sin_excepcion(): void
+    {
+        // Así queda un adjunto que el antivirus bloquea: finfo no lo puede abrir
+        $ilegible = sys_get_temp_dir().'/no-existe-'.uniqid().'.pdf';
+
+        $this->assertSame('', InspectorArchivos::mimeReal($ilegible));
+        $this->assertSame('bin', InspectorArchivos::extensionSegura($ilegible, 'oficio.php'));
+
+        $subido = new UploadedFile($temporal = $this->archivo($this->pdf()), 'oficio.pdf', null, null, true);
+        unlink($temporal);
+        $validador = Validator::make(['f' => $subido], ['f' => [new MagicMime]]);
+        $this->assertTrue($validador->fails());
+        $this->assertSame('El archivo está vacío o no se pudo leer.', $validador->errors()->first('f'));
     }
 
     public function test_regla_archivo_seguro(): void

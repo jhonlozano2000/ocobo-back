@@ -105,6 +105,10 @@ class InspectorArchivos
 
         $mime = self::mimeReal($path);
 
+        if ($mime === '') {
+            return 'El archivo está vacío o no se pudo leer.';
+        }
+
         if (in_array($mime, self::MIME_PELIGROSOS, true)) {
             return 'El contenido del archivo no está permitido.';
         }
@@ -137,9 +141,13 @@ class InspectorArchivos
         return $sugerida && ! in_array($sugerida, self::EXT_PELIGROSAS, true) ? $sugerida : 'bin';
     }
 
+    /**
+     * MIME según el contenido; '' si no se puede leer (p. ej. el antivirus del servidor bloqueó el archivo),
+     * para que quien llama lo rechace en vez de fallar con una excepción.
+     */
     public static function mimeReal(string $path): string
     {
-        return (string) (new finfo(FILEINFO_MIME_TYPE))->file($path);
+        return (string) @(new finfo(FILEINFO_MIME_TYPE))->file($path);
     }
 
     private static function extension(string $nombre): string

@@ -2,6 +2,7 @@
 
 namespace App\Rules;
 
+use App\Services\Seguridad\InspectorArchivos;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Http\UploadedFile;
@@ -42,9 +43,13 @@ class MagicMime implements ValidationRule
             return;
         }
 
-        $finfo = \finfo_open(\FILEINFO_MIME_TYPE);
-        $mimeReal = \finfo_file($finfo, $value->getPathname());
-        \finfo_close($finfo);
+        $mimeReal = InspectorArchivos::mimeReal($value->getPathname());
+
+        if ($mimeReal === '') {
+            $fail('El archivo está vacío o no se pudo leer.');
+
+            return;
+        }
 
         $mimeEsperado = self::MAP[$extension];
 

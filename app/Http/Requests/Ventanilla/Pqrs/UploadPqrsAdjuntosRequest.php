@@ -67,10 +67,13 @@ class UploadPqrsAdjuntosRequest extends FormRequest
                 'max:10',
             ],
             'archivos.*' => [
+                // bail + ArchivoSeguro antes de mimes: un archivo ilegible (p. ej. bloqueado por el antivirus)
+                // se rechaza aquí; mimes lo leería con finfo y lanzaría una excepción
+                'bail',
                 'file',
                 'max:'.$config['maxSize'],
-                'mimes:'.implode(',', $allowedExtensions),
                 new ArchivoSeguro(array_map('strtolower', $allowedExtensions)),
+                'mimes:'.implode(',', $allowedExtensions),
             ],
             'descripcion' => ['nullable', 'string', 'max:500'],
             'palabras_clave' => ['nullable', 'string', 'max:500'],
