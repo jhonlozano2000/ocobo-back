@@ -157,23 +157,24 @@ class MetadataController extends Controller
             $query->where('dependencia_id', $dependenciaId);
         }
 
-        $sugerencias = $query->with(['parent' => fn ($q) => $q->with('parent')])
-            ->limit(5)
+        // La columna «parent» tapa la relación del mismo nombre ($trd->parent es el id), así que la
+        // serie y la subserie salen de getJerarquia(); el tipo puede colgar directo de la serie.
+        $sugerencias = $query->limit(5)
             ->get()
-            ->map(fn ($trd) => [
-                'id' => $trd->id,
-                'cod' => $trd->cod,
-                'nom' => $trd->nom,
-                'tipo' => $trd->tipo,
-                'serie' => $trd->parent?->parent?->nom ?? $trd->parent?->nom,
-                'subserie' => $trd->parent?->nom,
-                'dias_vencimiento' => $trd->dias_vencimiento,
-                'ruta' => implode(' › ', array_filter([
-                    $trd->parent?->parent?->nom,
-                    $trd->parent?->nom,
-                    $trd->nom,
-                ])),
-            ]);
+            ->map(function (ClasificacionDocumentalTRD $trd) {
+                $jerarquia = collect($trd->getJerarquia());
+
+                return [
+                    'id' => $trd->id,
+                    'cod' => $trd->cod,
+                    'nom' => $trd->nom,
+                    'tipo' => $trd->tipo,
+                    'serie' => $jerarquia->firstWhere('tipo', 'Serie')['nom'] ?? null,
+                    'subserie' => $jerarquia->firstWhere('tipo', 'SubSerie')['nom'] ?? null,
+                    'dias_vencimiento' => $trd->dias_vencimiento,
+                    'ruta' => $jerarquia->pluck('nom')->implode(' › '),
+                ];
+            });
 
         return $this->successResponse($sugerencias, "Se encontraron {$sugerencias->count()} sugerencias");
     }
