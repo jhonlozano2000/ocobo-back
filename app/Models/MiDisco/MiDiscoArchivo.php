@@ -2,12 +2,15 @@
 
 namespace App\Models\MiDisco;
 
+use App\Models\Concerns\RegistraMetricaArchivo;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MiDiscoArchivo extends Model
 {
+    use RegistraMetricaArchivo;
+
     protected $table = 'mi_disco_archivos';
 
     protected $fillable = [
@@ -47,5 +50,21 @@ class MiDiscoArchivo extends Model
         }
 
         return $bytes.' B';
+    }
+
+    /**
+     * Métricas de archivos: archivo de Mi Disco.
+     */
+    public function datosMetricaArchivo(): array
+    {
+        return [
+            'modulo' => 'mi_bandeja',
+            'submodulo' => 'mi_disco',
+            'ruta' => $this->ruta_almacenamiento,
+            'bytes' => $this->peso,
+            'extension' => null,
+            'mime' => $this->mime_type,
+            'user_id' => $this->user_id,
+        ];
     }
 }

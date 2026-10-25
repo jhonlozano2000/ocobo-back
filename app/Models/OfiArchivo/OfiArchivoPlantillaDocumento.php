@@ -2,6 +2,7 @@
 
 namespace App\Models\OfiArchivo;
 
+use App\Models\Concerns\RegistraMetricaArchivo;
 use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class OfiArchivoPlantillaDocumento extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, RegistraMetricaArchivo, SoftDeletes;
 
     protected $table = 'ofi_archivo_plantillas_documentos';
 
@@ -89,5 +90,21 @@ class OfiArchivoPlantillaDocumento extends Model
         }
 
         return 'success';
+    }
+
+    /**
+     * Métricas de archivos: plantilla de documento (peso en KB).
+     */
+    public function datosMetricaArchivo(): array
+    {
+        return [
+            'modulo' => 'gestion_archivo',
+            'submodulo' => 'plantillas',
+            'ruta' => $this->ruta_completa,
+            'bytes' => (float) $this->peso * 1024,
+            'extension' => $this->extension,
+            'mime' => $this->mime_type,
+            'user_id' => $this->user_crea_id,
+        ];
     }
 }

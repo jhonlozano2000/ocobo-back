@@ -3,6 +3,7 @@
 namespace App\Models\OfiArchivo;
 
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Models\Concerns\RegistraMetricaArchivo;
 use App\Models\User;
 use App\Services\OfiArchivo\ExpedienteEventosService;
 use App\Services\OfiArchivo\IndiceExpedienteService;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class OfiArchivoExpedienteDocumento extends Model
 {
-    use HasFactory;
+    use HasFactory, RegistraMetricaArchivo;
 
     protected $table = 'ofi_archivo_expedientes_documentos';
 
@@ -134,5 +135,29 @@ class OfiArchivoExpedienteDocumento extends Model
     public function usuario()
     {
         return $this->belongsTo(User::class, 'usuario_id');
+    }
+
+    /**
+     * Métricas de archivos: folio con archivo del expediente electrónico.
+     */
+    public function datosMetricaArchivo(): array
+    {
+        return [
+            'modulo' => 'gestion_archivo',
+            'submodulo' => 'expedientes',
+            'ruta' => $this->archivo_path,
+            'bytes' => $this->tamano_bytes,
+            'extension' => $this->formato_archivo,
+            'mime' => null,
+            'user_id' => $this->usuario_id,
+        ];
+    }
+
+    /**
+     * Un folio retirado (activo = false) deja de contar; los folios incorporados por referencia no tienen archivo.
+     */
+    public function archivoAlmacenadoMetrica(): bool
+    {
+        return filled($this->archivo_path) && (bool) $this->activo;
     }
 }

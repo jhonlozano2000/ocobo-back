@@ -169,6 +169,11 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('api')
                 ->prefix('api/dashboard')
                 ->group(base_path('routes/dashboard.php'));
+
+            // MÉTRICAS TRANSVERSALES (archivos cargados en todos los módulos)
+            Route::middleware('api')
+                ->prefix('api/metricas')
+                ->group(base_path('routes/metricas.php'));
         });
     }
 }

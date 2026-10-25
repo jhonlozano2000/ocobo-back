@@ -5,6 +5,7 @@ namespace App\Models\VentanillaUnica\Recibidos;
 use App\Helpers\ArchivoHelper;
 use App\Helpers\CalendarioHelper;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Models\Concerns\RegistraMetricaArchivo;
 use App\Models\Configuracion\ConfigListaDetalle;
 use App\Models\Configuracion\ConfigServerArchivo;
 use App\Models\ControlAcceso\UserCargo;
@@ -24,7 +25,7 @@ use Illuminate\Support\Facades\Storage;
 
 class VentanillaRadicaReci extends Model
 {
-    use AbacHierarquico, HasFactory, SoftDeletes;
+    use AbacHierarquico, HasFactory, RegistraMetricaArchivo, SoftDeletes;
 
     /**
      * Visible por ABAC (creador, responsable, jerarquía o "Ver Todos"), o radicado de una
@@ -641,5 +642,21 @@ class VentanillaRadicaReci extends Model
         }
 
         return $info;
+    }
+
+    /**
+     * Métricas de archivos: archivo digital del radicado (también PQRS).
+     */
+    public function datosMetricaArchivo(): array
+    {
+        return [
+            'modulo' => 'ventanilla_unica',
+            'submodulo' => 'recibidos',
+            'ruta' => $this->archivo_digital,
+            'bytes' => $this->archivo_peso,
+            'extension' => null,
+            'mime' => $this->archivo_tipo,
+            'user_id' => $this->uploaded_by,
+        ];
     }
 }

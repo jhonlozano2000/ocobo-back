@@ -3,6 +3,7 @@
 namespace App\Models\VentanillaUnica\Internos;
 
 use App\Helpers\ArchivoHelper;
+use App\Models\Concerns\RegistraMetricaArchivo;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 
 class VentanillaRadicaInternoArchivos extends Model
 {
-    use HasFactory;
+    use HasFactory, RegistraMetricaArchivo;
 
     protected $table = 'ventanilla_radica_internos_archivos';
 
@@ -73,5 +74,21 @@ class VentanillaRadicaInternoArchivos extends Model
         }
 
         return $info;
+    }
+
+    /**
+     * Métricas de archivos: adjunto del radicado interno.
+     */
+    public function datosMetricaArchivo(): array
+    {
+        return [
+            'modulo' => 'ventanilla_unica',
+            'submodulo' => 'internos_adjuntos',
+            'ruta' => $this->archivo,
+            'bytes' => $this->archivo_peso,
+            'extension' => null,
+            'mime' => $this->archivo_tipo,
+            'user_id' => $this->subido_por,
+        ];
     }
 }

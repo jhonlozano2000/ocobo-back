@@ -6,6 +6,7 @@ use App\Helpers\ArchivoHelper;
 use App\Helpers\CalendarioHelper;
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
+use App\Models\Concerns\RegistraMetricaArchivo;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
@@ -18,7 +19,7 @@ use Illuminate\Support\Facades\Storage;
 
 class VentanillaRadicaInterno extends Model
 {
-    use AbacHierarquico, HasFactory;
+    use AbacHierarquico, HasFactory, RegistraMetricaArchivo;
 
     protected $table = 'ventanilla_radica_internos';
 
@@ -610,5 +611,21 @@ class VentanillaRadicaInterno extends Model
         }
 
         return false;
+    }
+
+    /**
+     * Métricas de archivos: archivo digital del radicado interno.
+     */
+    public function datosMetricaArchivo(): array
+    {
+        return [
+            'modulo' => 'ventanilla_unica',
+            'submodulo' => 'internos',
+            'ruta' => $this->archivo_digital,
+            'bytes' => $this->archivo_peso,
+            'extension' => null,
+            'mime' => $this->archivo_tipo,
+            'user_id' => $this->subido_por,
+        ];
     }
 }

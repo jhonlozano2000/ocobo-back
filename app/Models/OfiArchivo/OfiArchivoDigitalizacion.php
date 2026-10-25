@@ -2,6 +2,7 @@
 
 namespace App\Models\OfiArchivo;
 
+use App\Models\Concerns\RegistraMetricaArchivo;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class OfiArchivoDigitalizacion extends Model
 {
+    use RegistraMetricaArchivo;
+
     public $timestamps = false;
 
     protected $table = 'ofi_archivo_digitalizaciones';
@@ -39,5 +42,22 @@ class OfiArchivoDigitalizacion extends Model
     public function usuario(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Métricas de archivos: digitalización de un expediente físico.
+     */
+    public function datosMetricaArchivo(): array
+    {
+        return [
+            'modulo' => 'gestion_archivo',
+            'submodulo' => 'digitalizaciones',
+            'ruta' => $this->archivo_path,
+            'bytes' => $this->tamano_bytes,
+            'extension' => $this->formato,
+            'mime' => null,
+            'user_id' => $this->user_id,
+            'fecha' => $this->digitalizado_at,
+        ];
     }
 }

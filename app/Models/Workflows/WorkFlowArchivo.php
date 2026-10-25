@@ -2,6 +2,7 @@
 
 namespace App\Models\Workflows;
 
+use App\Models\Concerns\RegistraMetricaArchivo;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class WorkFlowArchivo extends Model
 {
-    use HasFactory;
+    use HasFactory, RegistraMetricaArchivo;
 
     protected $table = 'work_flow_archivos';
 
@@ -52,5 +53,21 @@ class WorkFlowArchivo extends Model
     public function uploader()
     {
         return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    /**
+     * Métricas de archivos: archivo de un workflow o tarea.
+     */
+    public function datosMetricaArchivo(): array
+    {
+        return [
+            'modulo' => 'workflows',
+            'submodulo' => 'workflow_archivos',
+            'ruta' => $this->ruta_almacenada,
+            'bytes' => $this->peso_bytes,
+            'extension' => null,
+            'mime' => $this->mime_type,
+            'user_id' => $this->uploaded_by,
+        ];
     }
 }

@@ -18,6 +18,7 @@ class PermisosReportesSeeder extends Seeder
             'Reporte -> Indicadores',
             'Reporte -> Detallados',
             'Reporte -> Estadisticos',
+            'Reporte -> Metricas de archivos',
         ];
 
         $rolAdmin = Role::where('name', 'Administrador')->first();

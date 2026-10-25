@@ -2,6 +2,7 @@
 
 namespace App\Models\MiBandeja;
 
+use App\Models\Concerns\RegistraMetricaArchivo;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class MiBandejaTempGrupoArchiAdjunto extends Model
 {
-    use HasFactory;
+    use HasFactory, RegistraMetricaArchivo;
 
     protected $table = 'mi_bandeja_temp_grupo_archi_adjuntos';
 
@@ -45,5 +46,21 @@ class MiBandejaTempGrupoArchiAdjunto extends Model
     public function subidoPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'subido_por');
+    }
+
+    /**
+     * Métricas de archivos: adjunto del grupo colaborativo.
+     */
+    public function datosMetricaArchivo(): array
+    {
+        return [
+            'modulo' => 'mi_bandeja',
+            'submodulo' => 'grupos_adjuntos',
+            'ruta' => $this->archivo,
+            'bytes' => $this->peso,
+            'extension' => null,
+            'mime' => $this->tipo_mime,
+            'user_id' => $this->subido_por,
+        ];
     }
 }

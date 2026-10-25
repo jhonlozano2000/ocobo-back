@@ -2,6 +2,7 @@
 
 namespace App\Models\MiBandeja;
 
+use App\Models\Concerns\RegistraMetricaArchivo;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MiBandejaTempArchivoVersion extends Model
 {
-    use HasFactory;
+    use HasFactory, RegistraMetricaArchivo;
 
     protected $table = 'mi_bandeja_temp_archivo_versiones';
 
@@ -72,5 +73,21 @@ class MiBandejaTempArchivoVersion extends Model
     {
         return $this->fecha_bloqueo !== null
             && $this->fecha_bloqueo->lt(Carbon::now()->subHours(24));
+    }
+
+    /**
+     * Métricas de archivos: versión del documento colaborativo (peso en KB).
+     */
+    public function datosMetricaArchivo(): array
+    {
+        return [
+            'modulo' => 'mi_bandeja',
+            'submodulo' => 'documentos_versiones',
+            'ruta' => $this->ruta_completa,
+            'bytes' => (float) $this->peso * 1024,
+            'extension' => $this->extension,
+            'mime' => $this->mime_type,
+            'user_id' => $this->user_subio_id,
+        ];
     }
 }
