@@ -29,13 +29,11 @@ class VentanillaRadicaReciDigitalController extends Controller
 
     private const DISK = 'radicados_recibidos';
 
-    private const PERM = 'Radicar -> Cores. Recibida -> ';
-
     public function __construct()
     {
-        $this->middleware('can:'.self::PERM.'Subir digital')->only(['upload']);
-        $this->middleware('can:'.self::PERM.'Eliminar digital')->only(['deleteFile']);
-        $this->middleware('can:'.self::PERM.'Mostrar')->only(['download', 'getFileInfo']);
+        $this->middleware('permiso_archivo_recibido:Subir digital')->only(['upload']);
+        $this->middleware('permiso_archivo_recibido:Eliminar digital')->only(['deleteFile']);
+        $this->middleware('permiso_archivo_recibido:Mostrar')->only(['download', 'getFileInfo']);
     }
 
     /**

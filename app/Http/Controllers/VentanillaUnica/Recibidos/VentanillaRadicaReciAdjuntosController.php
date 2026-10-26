@@ -30,13 +30,11 @@ class VentanillaRadicaReciAdjuntosController extends Controller
 
     private const DISK = 'radicados_recibidos';
 
-    private const PERM = 'Radicar -> Cores. Recibida -> ';
-
     public function __construct()
     {
-        $this->middleware('can:'.self::PERM.'Subir adjuntos')->only(['subir', 'subirArchivosAdjuntos']);
-        $this->middleware('can:'.self::PERM.'Eliminar adjuntos')->only(['eliminar', 'eliminarArchivoAdjunto']);
-        $this->middleware('can:'.self::PERM.'Mostrar')->only(['listar', 'listarArchivosAdjuntos', 'descargar', 'descargarArchivoAdjunto']);
+        $this->middleware('permiso_archivo_recibido:Subir adjuntos')->only(['subir', 'subirArchivosAdjuntos']);
+        $this->middleware('permiso_archivo_recibido:Eliminar adjuntos')->only(['eliminar', 'eliminarArchivoAdjunto']);
+        $this->middleware('permiso_archivo_recibido:Mostrar')->only(['listar', 'listarArchivosAdjuntos', 'descargar', 'descargarArchivoAdjunto']);
     }
 
     /**

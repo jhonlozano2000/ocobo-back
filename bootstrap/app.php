@@ -9,6 +9,7 @@ use App\Http\Middleware\DataIntegrity;
 use App\Http\Middleware\EncryptCookies;
 use App\Http\Middleware\EnsureApiAuthenticated;
 use App\Http\Middleware\ExigirCambioPassword;
+use App\Http\Middleware\PermisoArchivoRecibido;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\PropioOPermiso;
 use App\Http\Middleware\PuedeAlguno;
@@ -103,6 +104,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'propio_o_can' => PropioOPermiso::class,
             'can_any' => PuedeAlguno::class,
             'acceso_radicado' => AccesoRadicado::class,
+            'permiso_archivo_recibido' => PermisoArchivoRecibido::class,
             'acceso_asignacion' => AccesoAsignacion::class,
         ]);
     })
