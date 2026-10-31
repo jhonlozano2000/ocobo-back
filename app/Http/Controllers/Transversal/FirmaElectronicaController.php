@@ -9,6 +9,7 @@ use App\Models\Transversal\FirmaEvento;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Rules\PdfFirmable;
 use App\Services\Firma\FirmaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -196,6 +197,10 @@ class FirmaElectronicaController extends Controller
                 'documentable_id' => $request->documentable_id,
                 'error' => $e->getMessage(),
             ]);
+
+            if ($e->getMessage() === PdfFirmable::MENSAJE) {
+                return $this->errorResponse(PdfFirmable::MENSAJE, null, 422);
+            }
 
             return $this->errorResponse('Error en el proceso de firma', $e->getMessage(), 500);
         }

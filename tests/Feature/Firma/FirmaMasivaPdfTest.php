@@ -6,6 +6,7 @@ use App\Mail\OtpFirmaMail;
 use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
+use App\Rules\PdfFirmable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
@@ -42,7 +43,7 @@ class FirmaMasivaPdfTest extends TestCase
         $this->firmante = User::factory()->create(['estado' => 1]);
     }
 
-    private function interno(bool $conPdf = true, bool $conHash = true): int
+    private function interno(bool $conPdf = true, bool $conHash = true, bool $cifrado = false): int
     {
         $ruta = 'm13/'.uniqid().'.pdf';
         $hash = null;
@@ -52,6 +53,15 @@ class FirmaMasivaPdfTest extends TestCase
             $pdf->SetFont('Arial', '', 12);
             $pdf->Cell(40, 10, 'Lote 13.4');
             $contenido = $pdf->Output('S');
+            if ($cifrado) {
+                // Un PDF protegido declara /Encrypt en el trailer
+                $contenido = str_replace('trailer
+<<
+', 'trailer
+<<
+/Encrypt 1 0 R
+', $contenido);
+            }
             Storage::disk('radicados_internos')->put($ruta, $contenido);
             // Como lo deja la subida del digital
             $hash = $conHash ? hash('sha256', $contenido) : null;
@@ -139,5 +149,17 @@ class FirmaMasivaPdfTest extends TestCase
         $this->assertSame('pendiente', VentanillaRadicaInterno::find($roto)->estado_firma);
         $this->assertSame(0, (int) DB::table('ventanilla_radica_internos_firmantes')
             ->where('radica_interno_id', $roto)->value('firmado'));
+    }
+
+    public function test_un_pdf_protegido_falla_con_un_mensaje_claro(): void
+    {
+        $protegido = $this->interno(cifrado: true);
+
+        $this->firmarLote($protegido)
+            ->assertJsonPath('data.resumen.fallidos', 1)
+            ->assertJsonPath('data.resultados.0.error', PdfFirmable::MENSAJE);
+
+        $this->assertSame(0, (int) DB::table('ventanilla_radica_internos_firmantes')
+            ->where('radica_interno_id', $protegido)->value('firmado'));
     }
 }

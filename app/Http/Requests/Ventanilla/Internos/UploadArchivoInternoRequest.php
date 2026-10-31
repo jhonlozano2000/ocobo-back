@@ -5,6 +5,7 @@ namespace App\Http\Requests\Ventanilla\Internos;
 use App\Models\Configuracion\ConfigVarias;
 use App\Rules\ArchivoLegible;
 use App\Rules\ArchivoSeguro;
+use App\Rules\PdfFirmable;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UploadArchivoInternoRequest extends FormRequest
@@ -42,6 +43,7 @@ class UploadArchivoInternoRequest extends FormRequest
                 'max:'.$config['maxSize'],
                 new ArchivoSeguro(array_map('strtolower', $allowedExtensions)),
                 'mimes:'.implode(',', $allowedExtensions),
+                new PdfFirmable,
             ],
             'descripcion' => ['nullable', 'string', 'max:500'],
             'palabras_clave' => ['nullable', 'string', 'max:500'],

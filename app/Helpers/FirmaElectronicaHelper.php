@@ -2,10 +2,12 @@
 
 namespace App\Helpers;
 
+use App\Rules\PdfFirmable;
 use App\Services\Firma\TsaService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use setasign\Fpdi\Fpdi;
+use setasign\Fpdi\PdfParser\CrossReference\CrossReferenceException;
 
 class FirmaElectronicaHelper
 {
@@ -31,7 +33,12 @@ class FirmaElectronicaHelper
 
         try {
             $pdf = new Fpdi;
-            $pageCount = $pdf->setSourceFile($tempPath);
+            try {
+                $pageCount = $pdf->setSourceFile($tempPath);
+            } catch (CrossReferenceException $e) {
+                // PDF cargado antes de rechazar los protegidos: mensaje claro en vez del de FPDI
+                throw $e->getCode() === CrossReferenceException::ENCRYPTED ? new \Exception(PdfFirmable::MENSAJE) : $e;
+            }
 
             // Importar todas las páginas
             for ($n = 1; $n <= $pageCount; $n++) {

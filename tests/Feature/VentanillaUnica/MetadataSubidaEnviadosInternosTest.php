@@ -5,6 +5,7 @@ namespace Tests\Feature\VentanillaUnica;
 use App\Models\User;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosMetadata;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoMetadata;
+use App\Rules\PdfFirmable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -115,6 +116,23 @@ class MetadataSubidaEnviadosInternosTest extends TestCase
         $meta = $modelo::where('radicado_id', $id)->where('tipo_archivo', 'digital')->firstOrFail();
         $this->assertSame('Oficio firmado', $meta->descripcion);
         $this->assertSame(['oficio', 'firma', 'respuesta'], $meta->palabras_clave);
+    }
+
+    #[DataProvider('modulos')]
+    public function test_el_digital_rechaza_un_pdf_protegido(string $tipo): void
+    {
+        [$prefijo] = self::MODULOS[$tipo];
+        $id = $this->radicado($tipo);
+        $fpdf = new \FPDF;
+        $fpdf->AddPage();
+        // Un PDF protegido declara /Encrypt en el trailer: el sello de la firma no se puede estampar
+        $pdf = str_replace("trailer\n<<\n", "trailer\n<<\n/Encrypt 1 0 R\n", $fpdf->Output('S'));
+
+        $this->actingAs($this->user)
+            ->post("/api/ventanilla/{$prefijo}/{$id}/archivos/digital/upload",
+                ['archivo_digital' => UploadedFile::fake()->createWithContent('oficio.pdf', $pdf)], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonFragment([PdfFirmable::MENSAJE]);
     }
 
     #[DataProvider('modulos')]
