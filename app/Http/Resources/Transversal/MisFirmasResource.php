@@ -19,10 +19,14 @@ class MisFirmasResource extends JsonResource
             VentanillaPqrs::class => 'pqrs',
         ];
 
+        $documento = $this->documentable instanceof VentanillaPqrs ? $this->documentable->radicado : $this->documentable;
+
         return [
             'id' => $this->id,
             'documentable_type' => $tipoMap[$this->documentable_type] ?? $this->documentable_type,
             'documentable_id' => $this->documentable_id,
+            'num_radicado' => $documento?->num_radicado,
+            'asunto' => $documento?->asunto,
             'hash_original' => $this->hash_original,
             'hash_firmado' => $this->hash_firmado,
             'estampado' => $this->estaEstampado(),
@@ -30,7 +34,7 @@ class MisFirmasResource extends JsonResource
             'fecha_firma' => $this->fecha_firma?->toIso8601String(),
             'user' => [
                 'id' => $this->user_id,
-                'name' => $this->user?->name,
+                'name' => $this->user ? trim("{$this->user->nombres} {$this->user->apellidos}") : null,
                 'email' => $this->user?->email,
             ],
         ];

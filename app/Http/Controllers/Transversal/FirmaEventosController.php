@@ -10,6 +10,7 @@ use App\Models\VentanillaUnica\Comunes\VentanillaPqrs;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -81,8 +82,10 @@ class FirmaEventosController extends Controller
             'pqrs' => VentanillaPqrs::class,
         ];
 
+        // El documento firmado para mostrar su número y asunto (la PQRS los toma de su radicado)
         $query = FirmaEvento::where('user_id', $request->user()->id)
-            ->with('user');
+            ->with(['user:id,nombres,apellidos,email', 'documentable' => fn (MorphTo $documento) => $documento
+                ->morphWith([VentanillaPqrs::class => ['radicado:id,num_radicado,asunto']])]);
 
         if ($tipo = $request->query('tipo')) {
             if (isset($tipoMap[$tipo])) {

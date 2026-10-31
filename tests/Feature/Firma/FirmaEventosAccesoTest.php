@@ -99,4 +99,19 @@ class FirmaEventosAccesoTest extends TestCase
         $this->assertFalse($filas[$sinEstampa->id]['estampado']);
         $this->assertSame('reci', $filas[$estampado->id]['documentable_type']);
     }
+
+    public function test_mis_firmas_muestra_el_numero_el_asunto_y_el_nombre_del_firmante(): void
+    {
+        $radicado = $this->radicado($this->user->id);
+        DB::table('ventanilla_radica_reci')->where('id', $radicado)->update(['asunto' => 'Derecho de petición']);
+        $this->user->update(['nombres' => 'Ana', 'apellidos' => 'Pérez']);
+        $evento = $this->evento($radicado, $this->user->id);
+
+        $fila = collect($this->actingAs($this->user)->getJson('/api/transversal/firma-eventos/mis-firmas')
+            ->assertOk()->json('data'))->firstWhere('id', $evento->id);
+
+        $this->assertSame(DB::table('ventanilla_radica_reci')->where('id', $radicado)->value('num_radicado'), $fila['num_radicado']);
+        $this->assertSame('Derecho de petición', $fila['asunto']);
+        $this->assertSame('Ana Pérez', $fila['user']['name']);
+    }
 }
