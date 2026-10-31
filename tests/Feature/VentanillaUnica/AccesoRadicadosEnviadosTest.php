@@ -99,4 +99,14 @@ class AccesoRadicadosEnviadosTest extends TestCase
         $this->user->givePermissionTo(Permission::findOrCreate(self::PERM.'Ver Todos', 'web'));
         $this->assertNotSame(404, $this->actingAs($this->user)->getJson("/api/ventanilla/radica-enviada/{$ajeno}/linea-tiempo")->status());
     }
+
+    public function test_detalle_de_enviado_con_recibidos_asociados_responde(): void
+    {
+        $id = $this->enviado($this->user->id);
+        Schema::disableForeignKeyConstraints();
+        DB::table('ventanilla_radica_enviados_respuestas')->insert(['radica_enviado_id' => $id, 'radica_reci_id' => 999999]);
+        Schema::enableForeignKeyConstraints();
+
+        $this->actingAs($this->user)->getJson("/api/ventanilla/radica-enviada/{$id}")->assertOk();
+    }
 }

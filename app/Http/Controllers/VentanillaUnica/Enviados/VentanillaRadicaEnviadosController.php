@@ -374,7 +374,6 @@ class VentanillaRadicaEnviadosController extends Controller
                 'usuarioSubio',
                 'responsables.userCargo.user',
                 'responsables.userCargo.cargo',
-                'respuestas.userCargo',
                 'firmas.userCargo.user',
                 'firmas.userCargo.cargo',
                 'proyectores.userCargo.user',
