@@ -31,6 +31,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/radica-enviada/pendientes-anulacion', [VentanillaRadicaEnviadosController::class, 'listarPendientesAnulacion'])->name('radica-enviada.pendientes-anulacion')->middleware('can:Jefe de Archivo');
     Route::post('/radica-enviada/{id}/solicitar-anulacion', [VentanillaRadicaEnviadosController::class, 'solicitarAnulacion'])->name('radica-enviada.solicitar-anulacion')->middleware('can:'.$permEnvi.'Listar')->middleware('acceso_radicado:enviado');
     Route::post('/radica-enviada/{id}/procesar-anulacion', [VentanillaRadicaEnviadosController::class, 'procesarAnulacion'])->name('radica-enviada.procesar-anulacion')->middleware('can:Jefe de Archivo');
+    Route::get('/radica-enviada/recibidos-disponibles', [VentanillaRadicaEnviadosRespuestasController::class, 'disponibles'])->name('radica-enviada.recibidos.disponibles')->middleware('can:'.$permEnvi.'Editar');
     Route::get('/radica-enviada/{id}', [VentanillaRadicaEnviadosController::class, 'show'])->name('radica-enviada.show')->middleware('can:'.$permEnvi.'Mostrar')->middleware('acceso_radicado:enviado');
     Route::put('/radica-enviada/{id}', [VentanillaRadicaEnviadosController::class, 'update'])->name('radica-enviada.update')->middleware('can:'.$permEnvi.'Editar')->middleware('acceso_radicado:enviado');
     Route::delete('/radica-enviada/{id}', [VentanillaRadicaEnviadosController::class, 'destroy'])->name('radica-enviada.destroy')->middleware('can:'.$permEnvi.'Eliminar')->middleware('acceso_radicado:enviado');

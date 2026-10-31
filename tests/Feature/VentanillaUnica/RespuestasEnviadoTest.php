@@ -89,18 +89,33 @@ class RespuestasEnviadoTest extends TestCase
         $this->assertSame(1, DB::table('ventanilla_radica_enviados_respuestas')->where('radica_enviado_id', $enviadoId)->count());
     }
 
-    public function test_no_puede_asociar_un_recibido_que_no_ve(): void
+    public function test_puede_asociar_un_recibido_de_otro_usuario(): void
     {
-        [$enviadoId] = $this->enviado();
-        $propio = $this->recibido();
+        [$enviadoId, $num] = $this->enviado();
         $ajeno = $this->recibido(User::factory()->create());
 
-        $this->actingAs($this->user)->postJson($this->ruta($enviadoId), ['radica_reci_ids' => [$propio, $ajeno]])
-            ->assertForbidden();
+        $this->actingAs($this->user)->postJson($this->ruta($enviadoId), ['radica_reci_ids' => [$ajeno]])->assertCreated();
 
-        // No se asocia ninguno ni se toca el estado del ajeno
-        $this->assertSame(0, DB::table('ventanilla_radica_enviados_respuestas')->where('radica_enviado_id', $enviadoId)->count());
-        $this->assertNull(DB::table('ventanilla_radica_reci')->where('id', $ajeno)->value('estado_trabajo'));
+        $this->assertSame($num, DB::table('ventanilla_radica_reci')->where('id', $ajeno)->value('radicado_respuesta'));
+    }
+
+    public function test_disponibles_busca_en_todos_los_recibidos(): void
+    {
+        $clave = 'ZQX'.uniqid();
+        $ajeno = $this->recibido(User::factory()->create());
+        DB::table('ventanilla_radica_reci')->where('id', $ajeno)->update(['asunto' => "Petición {$clave}"]);
+        $this->recibido();
+
+        $datos = $this->actingAs($this->user)
+            ->getJson('/api/ventanilla/radica-enviada/recibidos-disponibles?search='.$clave)
+            ->assertOk()->json('data');
+
+        $this->assertSame([$ajeno], array_column($datos, 'id'));
+        $this->assertSame(['id', 'num_radicado', 'asunto', 'nombre_tercero'], array_keys($datos[0]));
+
+        $this->actingAs($this->user)->getJson('/api/ventanilla/radica-enviada/recibidos-disponibles?search=ab')->assertUnprocessable();
+        $sinPermiso = User::factory()->create(['estado' => 1]);
+        $this->actingAs($sinPermiso)->getJson('/api/ventanilla/radica-enviada/recibidos-disponibles?search='.$clave)->assertForbidden();
     }
 
     public function test_desasociar_revierte_la_respuesta_y_el_estado_del_recibido(): void

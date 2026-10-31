@@ -65,14 +65,7 @@ class VentanillaRadicaEnviadosRespuestasController extends Controller
                 return $this->errorResponse('Radicado enviado no encontrado', null, 404);
             }
 
-            // Asociar marca el recibido como tramitado: solo los que el usuario puede ver
-            $sinAcceso = collect($request->radica_reci_ids)
-                ->reject(fn ($recibidoId) => VentanillaRadicaReci::accesiblePara($request->user(), (int) $recibidoId))
-                ->values();
-            if ($sinAcceso->isNotEmpty()) {
-                return $this->errorResponse('No tiene acceso a uno o más radicados recibidos', ['radica_reci_ids' => $sinAcceso], 403);
-            }
-
+            // Cualquier usuario con permiso de editar enviados puede responder cualquier recibido
             DB::transaction(fn () => $this->asociar($enviado, $request->radica_reci_ids));
 
             return $this->successResponse($this->listado($enviado), 'Radicados recibidos asociados exitosamente', 201);
@@ -153,6 +146,31 @@ class VentanillaRadicaEnviadosRespuestasController extends Controller
 
             return $this->errorResponse('Error al desasociar el radicado recibido', $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Recibidos que se pueden asociar como respondidos: búsqueda sobre todos, sin filtro de acceso,
+     * con lo justo para elegirlos (número, asunto y remitente).
+     */
+    public function disponibles(Request $request): JsonResponse
+    {
+        $request->validate(['search' => 'required|string|min:3|max:100']);
+        $busqueda = '%'.addcslashes($request->search, '%_\\').'%';
+
+        $recibidos = VentanillaRadicaReci::query()
+            ->with('tercero:id,nom_razo_soci')
+            ->where(fn ($q) => $q->where('num_radicado', 'like', $busqueda)->orWhere('asunto', 'like', $busqueda))
+            ->latest('id')
+            ->limit(20)
+            ->get(['id', 'num_radicado', 'asunto', 'tercero_id'])
+            ->map(fn (VentanillaRadicaReci $recibido) => [
+                'id' => $recibido->id,
+                'num_radicado' => $recibido->num_radicado,
+                'asunto' => $recibido->asunto,
+                'nombre_tercero' => $recibido->tercero?->nom_razo_soci,
+            ]);
+
+        return $this->successResponse($recibidos, 'Radicados recibidos disponibles');
     }
 
     /**
