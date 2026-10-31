@@ -3,6 +3,7 @@
 namespace App\Helpers;
 
 use App\Rules\PdfFirmable;
+use App\Services\Firma\PdfCompatible;
 use App\Services\Firma\TsaService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -30,11 +31,13 @@ class FirmaElectronicaHelper
         // Crear archivo temporal para leer con FPDI
         $tempPath = tempnam(sys_get_temp_dir(), 'pdf_');
         file_put_contents($tempPath, $storage->get($path));
+        $fuente = $tempPath;
 
         try {
+            $fuente = PdfCompatible::paraFpdi($tempPath);
             $pdf = new Fpdi;
             try {
-                $pageCount = $pdf->setSourceFile($tempPath);
+                $pageCount = $pdf->setSourceFile($fuente);
             } catch (CrossReferenceException $e) {
                 // PDF cargado antes de rechazar los protegidos: mensaje claro en vez del de FPDI
                 throw $e->getCode() === CrossReferenceException::ENCRYPTED ? new \Exception(PdfFirmable::MENSAJE) : $e;
@@ -83,6 +86,9 @@ class FirmaElectronicaHelper
             ];
         } finally {
             @unlink($tempPath); // Limpiar temp
+            if ($fuente !== $tempPath) {
+                @unlink($fuente);
+            }
         }
     }
 

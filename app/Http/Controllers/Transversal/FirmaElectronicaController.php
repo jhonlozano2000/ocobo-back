@@ -11,6 +11,7 @@ use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Rules\PdfFirmable;
 use App\Services\Firma\FirmaService;
+use App\Services\Firma\PdfCompatible;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -200,6 +201,9 @@ class FirmaElectronicaController extends Controller
 
             if ($e->getMessage() === PdfFirmable::MENSAJE) {
                 return $this->errorResponse(PdfFirmable::MENSAJE, null, 422);
+            }
+            if ($e->getMessage() === PdfCompatible::MENSAJE_SIN_QPDF) {
+                return $this->errorResponse(PdfCompatible::MENSAJE_SIN_QPDF, null, 503);
             }
 
             return $this->errorResponse('Error en el proceso de firma', $e->getMessage(), 500);

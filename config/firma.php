@@ -9,4 +9,7 @@ return [
     // B10: sellar con la TSA cada versión firmada del índice (llamada de red al cerrar). Respaldo de la
     // clave archivo_indice_tsa de config_varias, que administra cada entidad.
     'tsa_indice_expediente' => (bool) env('ARCHIVO_INDICE_TSA', false),
+    // qpdf convierte los PDF con referencias comprimidas que la versión libre de FPDI no lee
+    // (PdfCompatible). Ruta al ejecutable si no está en el PATH.
+    'qpdf_path' => env('QPDF_PATH', 'qpdf'),
 ];

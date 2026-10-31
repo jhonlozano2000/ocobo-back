@@ -7,11 +7,13 @@ use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Rules\PdfFirmable;
+use App\Services\Firma\PdfCompatible;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -43,7 +45,7 @@ class FirmaMasivaPdfTest extends TestCase
         $this->firmante = User::factory()->create(['estado' => 1]);
     }
 
-    private function interno(bool $conPdf = true, bool $conHash = true, bool $cifrado = false): int
+    private function interno(bool $conPdf = true, bool $conHash = true, bool $cifrado = false, bool $comprimido = false): int
     {
         $ruta = 'm13/'.uniqid().'.pdf';
         $hash = null;
@@ -62,6 +64,9 @@ class FirmaMasivaPdfTest extends TestCase
 /Encrypt 1 0 R
 ', $contenido);
             }
+            if ($comprimido) {
+                $contenido = self::conReferenciasComprimidas($contenido);
+            }
             Storage::disk('radicados_internos')->put($ruta, $contenido);
             // Como lo deja la subida del digital
             $hash = $conHash ? hash('sha256', $contenido) : null;
@@ -78,6 +83,21 @@ class FirmaMasivaPdfTest extends TestCase
         Schema::enableForeignKeyConstraints();
 
         return $id;
+    }
+
+    /**
+     * Agrega una actualización cuya tabla de referencias es un flujo /XRef (PDF 1.5+): la versión libre
+     * de FPDI la rechaza (COMPRESSED_XREF) igual que a los PDF que exportan Word o los escáneres.
+     */
+    private static function conReferenciasComprimidas(string $pdf, bool $cifrado = false): string
+    {
+        $offset = strlen($pdf);
+        $encrypt = $cifrado ? ' /Encrypt 1 0 R' : '';
+
+        return $pdf.implode("\n", [
+            '99 0 obj', "<< /Type /XRef /Size 100 /W [1 1 1]{$encrypt} /Length 0 >>", 'stream', '', 'endstream', 'endobj',
+            'startxref', $offset, '%%EOF', '',
+        ]);
     }
 
     private function firmarLote(int ...$ids)
@@ -161,5 +181,58 @@ class FirmaMasivaPdfTest extends TestCase
 
         $this->assertSame(0, (int) DB::table('ventanilla_radica_internos_firmantes')
             ->where('radica_interno_id', $protegido)->value('firmado'));
+    }
+
+    public function test_un_pdf_clasico_no_pasa_por_qpdf(): void
+    {
+        Process::fake();
+
+        $this->firmarLote($this->interno())->assertJsonPath('data.resumen.exitosos', 1);
+
+        Process::assertNothingRan();
+    }
+
+    public function test_un_pdf_con_referencias_comprimidas_se_convierte_con_qpdf_y_se_firma(): void
+    {
+        $id = $this->interno(comprimido: true);
+        // qpdf deja la tabla clásica: el fake escribe la copia sin la actualización comprimida
+        Process::fake(function ($proceso) {
+            [, , $entrada, $salida] = $proceso->command;
+            file_put_contents($salida, substr(file_get_contents($entrada), 0, strrpos(file_get_contents($entrada), '99 0 obj')));
+
+            return Process::result();
+        });
+
+        $this->firmarLote($id)->assertJsonPath('data.resumen.exitosos', 1);
+
+        Process::assertRan(fn ($proceso) => in_array('--object-streams=disable', $proceso->command, true));
+        $this->assertSame('firmado', VentanillaRadicaInterno::find($id)->estado_firma);
+    }
+
+    public function test_sin_qpdf_un_pdf_comprimido_falla_con_un_mensaje_claro(): void
+    {
+        $id = $this->interno(comprimido: true);
+        Process::fake(fn () => Process::result(exitCode: 1, errorOutput: "'qpdf' no se reconoce como un comando"));
+
+        $this->firmarLote($id)
+            ->assertJsonPath('data.resumen.fallidos', 1)
+            ->assertJsonPath('data.resultados.0.error', PdfCompatible::MENSAJE_SIN_QPDF);
+
+        $this->assertSame(0, (int) DB::table('ventanilla_radica_internos_firmantes')
+            ->where('radica_interno_id', $id)->value('firmado'));
+    }
+
+    public function test_al_subir_se_aceptan_los_pdf_comprimidos_y_se_rechazan_los_protegidos(): void
+    {
+        $pdf = new \FPDF;
+        $pdf->AddPage();
+        $clasico = $pdf->Output('S');
+
+        foreach ([[false, false], [true, true]] as [$cifrado, $esperado]) {
+            $ruta = tempnam(sys_get_temp_dir(), 'pdf_');
+            file_put_contents($ruta, self::conReferenciasComprimidas($clasico, $cifrado));
+            $this->assertSame($esperado, PdfFirmable::estaCifrado($ruta));
+            @unlink($ruta);
+        }
     }
 }
