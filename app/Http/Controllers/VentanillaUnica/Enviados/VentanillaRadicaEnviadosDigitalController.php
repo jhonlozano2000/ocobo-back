@@ -29,7 +29,6 @@ class VentanillaRadicaEnviadosDigitalController extends Controller
     {
         $this->middleware('can:'.self::PERM.'Subir digital')->only(['upload']);
         $this->middleware('can:'.self::PERM.'Eliminar digital')->only(['deleteFile']);
-        $this->middleware('can:'.self::PERM.'Mostrar')->only(['getFileInfo', 'download', 'historialEliminaciones', 'getOcr']);
     }
 
     public function upload($id, UploadArchivoEnviadoRequest $request)

@@ -20,7 +20,7 @@ class VentanillaRadicaEnviadosResponsableController extends Controller
 
     public function __construct()
     {
-        $this->middleware('can:Radicar -> Cores. Enviada -> Editar');
+        $this->middleware('can:Radicar -> Cores. Enviada -> Editar')->except(['getByRadicado']);
     }
 
     public function index(ListResponsablesEnviadoRequest $request)

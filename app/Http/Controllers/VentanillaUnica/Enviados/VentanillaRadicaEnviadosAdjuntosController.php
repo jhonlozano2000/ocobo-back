@@ -28,7 +28,6 @@ class VentanillaRadicaEnviadosAdjuntosController extends Controller
     {
         $this->middleware('can:'.self::PERM.'Subir adjuntos')->only(['subirArchivosAdjuntos']);
         $this->middleware('can:'.self::PERM.'Eliminar adjuntos')->only(['eliminarArchivoAdjunto']);
-        $this->middleware('can:'.self::PERM.'Mostrar')->only(['listarArchivosAdjuntos', 'descargarArchivoAdjunto']);
     }
 
     public function subirArchivosAdjuntos($id, UploadArchivosAdjuntosEnviadoRequest $request)

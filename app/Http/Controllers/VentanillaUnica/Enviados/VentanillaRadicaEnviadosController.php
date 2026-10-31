@@ -46,7 +46,6 @@ class VentanillaRadicaEnviadosController extends Controller
         $this->exportService = $exportService;
         $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'listarRadicados', 'estadisticas', 'export']);
         $this->middleware('can:'.self::PERM.'Crear')->only(['store']);
-        $this->middleware('can:'.self::PERM.'Mostrar')->only(['show', 'lineaTiempo']);
         $this->middleware('can:'.self::PERM.'Editar')->only(['update']);
         $this->middleware('can:'.self::PERM.'Actualizar asunto')->only(['updateAsunto']);
         $this->middleware('can:'.self::PERM.'Atualizar fechas de radicados')->only(['updateFechas']);
