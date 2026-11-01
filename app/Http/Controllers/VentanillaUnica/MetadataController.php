@@ -83,6 +83,34 @@ class MetadataController extends Controller
         return $this->successResponse($resultado, 'Metadatos obtenidos correctamente');
     }
 
+    /**
+     * Metadata del documento digital de un radicado, para precargarla al volver a subirlo. El digital se
+     * guarda con archivo_id = 0 (centinela), así que no es alcanzable por /archivos/{id}: se busca por radicado.
+     */
+    public function digital(int $radicadoId, string $tipo = 'reci'): JsonResponse
+    {
+        abort_unless(in_array($tipo, ['reci', 'enviados', 'interno'], true), 422, 'Tipo de metadata no válido. Use: reci, enviados, interno');
+        $this->autorizarPorTipo($tipo, 'Mostrar');
+
+        $tipoAcceso = match ($tipo) {
+            'enviados' => 'enviado',
+            'interno' => 'interno',
+            default => 'recibido',
+        };
+        abort_unless(AccesoRadicado::permitido(auth()->user(), $tipoAcceso, $radicadoId), 404);
+
+        $metadata = $this->resolverModelo($tipo)::where('radicado_id', $radicadoId)->where('archivo_id', 0)->first();
+
+        if (! $metadata) {
+            return $this->notFoundResponse('Metadatos no encontrados');
+        }
+
+        return $this->successResponse([
+            'descripcion' => $metadata->descripcion,
+            'palabras_clave' => $metadata->palabras_clave ?? [],
+        ], 'Metadatos obtenidos correctamente');
+    }
+
     public function historial(int $archivoId, string $tipo = 'reci'): JsonResponse
     {
         $this->autorizarPorTipo($tipo, 'Mostrar');

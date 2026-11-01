@@ -93,6 +93,7 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
         Route::get('/metadata/clasificacion-niveles', [MetadataController::class, 'nivelClasificacionIndex'])->name('metadata.niveles');
         Route::get('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'show'])->name('metadata.show')->where('archivoId', '[1-9][0-9]*');
         Route::put('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'store'])->name('metadata.update')->where('archivoId', '[1-9][0-9]*');
+        Route::get('/metadata/digital/{radicadoId}/{tipo?}', [MetadataController::class, 'digital'])->name('metadata.digital')->where('radicadoId', '[1-9][0-9]*');
         Route::get('/metadata/historial/{archivoId}/{tipo?}', [MetadataController::class, 'historial'])->name('metadata.historial')->where('archivoId', '[1-9][0-9]*');
         Route::get('/metadata/exportar/{tipo?}', [MetadataController::class, 'exportar'])->name('metadata.exportar');
         Route::get('/metadata/sugerir-clasificacion', [MetadataController::class, 'sugerirClasificacion'])->name('metadata.sugerir-clasificacion');
