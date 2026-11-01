@@ -75,6 +75,30 @@ class FiltrosRadicadosEnviadosTest extends TestCase
         $this->assertSame(['FENTEST con ocr', 'FENTEST otro medio'], $this->asuntos('', 'zqxenv'));
     }
 
+    public function test_clasificacion_por_serie_incluye_sus_tipos_documentales(): void
+    {
+        Schema::disableForeignKeyConstraints();
+        $trd = fn (string $tipo, ?int $parent = null) => DB::table('clasificacion_documental_trd')->insertGetId([
+            'tipo' => $tipo, 'cod' => 'FEN'.random_int(100, 999), 'nom' => "{$tipo} FENTEST", 'parent' => $parent,
+            'user_register' => $this->user->id, 'estado' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $serie = $trd('Serie');
+        $subserie = $trd('SubSerie', $serie);
+        $otraSerie = $trd('Serie');
+
+        $this->enviado('FENTEST en subserie', ['clasifica_documen_id' => $trd('TipoDocumento', $subserie)]);
+        $this->enviado('FENTEST en serie', ['clasifica_documen_id' => $trd('TipoDocumento', $serie)]);
+        $this->enviado('FENTEST otra serie', ['clasifica_documen_id' => $trd('TipoDocumento', $otraSerie)]);
+        Schema::enableForeignKeyConstraints();
+
+        $this->assertSame(['FENTEST en serie', 'FENTEST en subserie'], $this->asuntos("clasifica_documen_id={$serie}"));
+        $this->assertSame(['FENTEST en subserie'], $this->asuntos("clasifica_documen_id={$subserie}"));
+
+        $this->actingAs($this->user)->getJson('/api/ventanilla/radica-enviada/clasificaciones')->assertOk()
+            ->assertJsonFragment(['id' => $subserie, 'tipo' => 'SubSerie', 'nom' => 'SubSerie FENTEST'])
+            ->assertJsonMissing(['nom' => 'TipoDocumento FENTEST']);
+    }
+
     public function test_responsable_por_nombre(): void
     {
         $cargo = DB::table('calidad_organigrama')->insertGetId([

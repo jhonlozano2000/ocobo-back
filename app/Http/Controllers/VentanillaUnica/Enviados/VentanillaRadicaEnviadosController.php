@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Enviados\ListRadicadosEnviadosRequest;
 use App\Http\Requests\Ventanilla\Enviados\StoreRadicadoEnviadoRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\User;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
@@ -161,6 +162,9 @@ class VentanillaRadicaEnviadosController extends Controller
                 'Desde' => $request->fecha_desde,
                 'Hasta' => $request->fecha_hasta,
                 'Responsable' => $request->usuario_responsable,
+                'Clasificación' => $request->filled('clasifica_documen_id')
+                    ? implode(' ', ClasificacionDocumentalTRD::find($request->clasifica_documen_id)?->only(['cod', 'nom']) ?? [])
+                    : null,
                 'Selección' => $request->filled('ids') ? count($datos).' radicados' : null,
             ]),
         ];
@@ -202,8 +206,9 @@ class VentanillaRadicaEnviadosController extends Controller
             $query->whereDate('created_at', '<=', $request->fecha_hasta);
         }
 
+        // El filtro elige una serie o subserie y los radicados se clasifican en sus tipos documentales
         if ($request->filled('clasifica_documen_id')) {
-            $query->where('clasifica_documen_id', $request->clasifica_documen_id);
+            $query->whereIn('clasifica_documen_id', $this->clasificacionYDescendientes((int) $request->clasifica_documen_id));
         }
 
         if ($request->filled('tercero_enviado_id')) {
@@ -597,6 +602,40 @@ class VentanillaRadicaEnviadosController extends Controller
 
             return $this->errorResponse('Error al enviar la notificación', $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Series y subseries para el filtro de clasificación del listado
+     */
+    public function clasificaciones(): JsonResponse
+    {
+        $clasificaciones = ClasificacionDocumentalTRD::query()
+            ->whereIn('tipo', ['Serie', 'SubSerie'])
+            ->where('estado', 1)
+            ->with('dependencia:id,nom_organico')
+            ->orderBy('cod')
+            ->get(['id', 'cod', 'nom', 'tipo', 'dependencia_id'])
+            ->map(fn ($c) => [
+                'id' => $c->id, 'cod' => $c->cod, 'nom' => $c->nom, 'tipo' => $c->tipo,
+                'dependencia' => $c->dependencia?->nom_organico,
+            ]);
+
+        return $this->successResponse($clasificaciones, 'Clasificaciones obtenidas exitosamente');
+    }
+
+    /**
+     * Ids de la clasificación y de sus hijos (subseries y tipos documentales, máximo dos niveles)
+     */
+    private function clasificacionYDescendientes(int $id): array
+    {
+        $ids = $nivel = [$id];
+
+        for ($i = 0; $i < 2 && $nivel; $i++) {
+            $nivel = ClasificacionDocumentalTRD::whereIn('parent', $nivel)->pluck('id')->all();
+            $ids = array_merge($ids, $nivel);
+        }
+
+        return $ids;
     }
 
     public function estadisticas()
