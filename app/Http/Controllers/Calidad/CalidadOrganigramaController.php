@@ -8,6 +8,7 @@ use App\Http\Requests\Calidad\ListCalidadOrganigramaRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Calidad\CalidadOrganigrama;
 use App\Services\Calidad\CalidadOrganigramaService;
+use App\Services\ReportesExportService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -197,5 +198,53 @@ class CalidadOrganigramaController extends Controller
 
             return $this->serverErrorResponse('Error al obtener las estadísticas', $e->getMessage());
         }
+    }
+
+    /**
+     * Exporta el organigrama completo en orden jerárquico (Excel, PDF o CSV).
+     */
+    public function export(Request $request, ReportesExportService $exportService)
+    {
+        $request->validate(['format' => 'required|in:excel,pdf,csv']);
+
+        $query = CalidadOrganigrama::query()->orderBy('nom_organico');
+        $exportService->validarVolumen($query, $request->format);
+
+        $porPadre = $query->get(['id', 'tipo', 'nom_organico', 'cod_organico', 'parent'])->groupBy(fn ($n) => $n->parent ?? 0);
+        $datos = [];
+        $recorrer = function (int $padreId, string $padre, int $nivel) use (&$recorrer, &$datos, $porPadre) {
+            foreach ($porPadre->get($padreId, []) as $nodo) {
+                $datos[] = [
+                    'Código' => $nodo->cod_organico,
+                    'Nombre' => $nodo->nom_organico,
+                    'Tipo' => $nodo->tipo,
+                    'Nivel' => $nivel,
+                    'Depende de' => $padre,
+                ];
+                $recorrer($nodo->id, $nodo->nom_organico, $nivel + 1);
+            }
+        };
+        $recorrer(0, '', 0);
+
+        $tipos = array_count_values(array_column($datos, 'Tipo'));
+        $data = [
+            'titulo' => 'Organigrama',
+            'columnas' => ['Código', 'Nombre', 'Tipo', 'Nivel', 'Depende de'],
+            'datos' => $datos,
+            'total' => count($datos),
+            'resumen' => array_filter([
+                'Dependencias' => isset($tipos['Dependencia']) ? (string) $tipos['Dependencia'] : null,
+                'Oficinas' => isset($tipos['Oficina']) ? (string) $tipos['Oficina'] : null,
+                'Cargos' => isset($tipos['Cargo']) ? (string) $tipos['Cargo'] : null,
+            ]),
+        ];
+
+        $archivo = 'organigrama';
+
+        return match ($request->format) {
+            'excel' => response()->download($exportService->exportarExcel($data, $archivo), $archivo.'.xlsx')->deleteFileAfterSend(true),
+            'pdf' => response()->download($exportService->exportarPDF($data, $archivo), $archivo.'.pdf')->deleteFileAfterSend(true),
+            'csv' => $exportService->exportarCSV($data, $archivo, $data['columnas']),
+        };
     }
 }

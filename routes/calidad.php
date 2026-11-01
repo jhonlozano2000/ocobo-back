@@ -21,6 +21,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dependencias', [CalidadOrganigramaController::class, 'listDependencias'])->name('dependencias')->middleware('can:'.$p.'Listar');
         Route::get('/oficinas', [CalidadOrganigramaController::class, 'listOficinas'])->name('oficinas')->middleware('can:'.$p.'Listar');
         Route::get('/estadisticas', [CalidadOrganigramaController::class, 'estadisticas'])->name('estadisticas')->middleware('can:'.$p.'Listar');
+        Route::get('/export', [CalidadOrganigramaController::class, 'export'])->name('export')->middleware('can:'.$p.'Exportar');
 
         Route::get('/', [CalidadOrganigramaController::class, 'index'])->name('index')->middleware('can:'.$p.'Listar');
         Route::post('/', [CalidadOrganigramaController::class, 'store'])->name('store')->middleware('can:'.$p.'Crear');
