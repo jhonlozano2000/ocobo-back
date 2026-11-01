@@ -126,6 +126,20 @@ class FiltrosRadicadosRecibidosTest extends TestCase
             ->assertOk()->assertJsonFragment(['id' => $dependencia, 'nom_organico' => 'Dep FILTEST']);
     }
 
+    public function test_busca_en_el_ocr_combinado_con_otros_filtros(): void
+    {
+        $this->recibido('FILTEST con ocr', ['ocr' => 'resolucion zqxfil de licencia ambiental', 'estado_trabajo' => 'RECIBIDO']);
+        $this->recibido('FILTEST ocr tramitado', ['ocr' => 'licencia ambiental', 'estado_trabajo' => 'TRAMITADO']);
+        $this->recibido('FILTEST sin ocr');
+
+        $this->assertSame(['FILTEST con ocr', 'FILTEST ocr tramitado'], $this->asuntos('ocr=licencia'));
+        $this->assertSame(['FILTEST con ocr'], $this->asuntos('ocr=licencia&estado_trabajo=RECIBIDO'));
+
+        $filas = $this->actingAs($this->user)->getJson('/api/ventanilla/radica-recibida?per_page=100&search=zqxfil')
+            ->assertOk()->json();
+        $this->assertSame(['FILTEST con ocr'], array_column($filas['data']['data'] ?? $filas['data'], 'asunto'));
+    }
+
     public function test_el_export_aplica_los_mismos_filtros_y_trae_el_estado(): void
     {
         $this->recibido('FILTEST tramitado', ['estado_trabajo' => 'TRAMITADO', 'fec_docu' => '2026-02-01']);

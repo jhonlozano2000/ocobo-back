@@ -32,6 +32,12 @@ class ListRadicadosRecibidosRequest extends FormRequest
                 'string',
                 'max:100',
             ],
+            'ocr' => [
+                'nullable',
+                'string',
+                'min:3',
+                'max:100',
+            ],
             'fecha_desde' => [
                 'nullable',
                 'date',

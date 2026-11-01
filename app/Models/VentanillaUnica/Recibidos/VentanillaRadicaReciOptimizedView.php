@@ -98,7 +98,37 @@ class VentanillaRadicaReciOptimizedView extends Model
             $q->where('num_radicado', 'like', "%{$search}%")
                 ->orWhere('asunto', 'like', "%{$search}%")
                 ->orWhere('tercero_nombre', 'like', "%{$search}%")
-                ->orWhere('tercero_documento', 'like', "%{$search}%");
+                ->orWhere('tercero_documento', 'like', "%{$search}%")
+                ->orWhereIn('id', self::idsConOcr($search));
+        });
+    }
+
+    /**
+     * Scope para buscar solo en el contenido OCR del documento.
+     */
+    public function scopeContenidoOcr(Builder $query, ?string $texto): Builder
+    {
+        return empty($texto) ? $query : $query->whereIn('id', self::idsConOcr($texto));
+    }
+
+    /**
+     * Ids de radicados cuyo OCR contiene el texto: índice FULLTEXT ft_ocr_content en MySQL, con LIKE de respaldo
+     * (FULLTEXT no ve filas aún no confirmadas). La vista no expone el OCR: se consulta en la tabla base.
+     */
+    private static function idsConOcr(string $texto): Builder
+    {
+        $palabras = array_filter(array_map(
+            fn ($p) => preg_replace('/[+\-><()~*\"@]/', '', trim($p)),
+            explode(' ', trim($texto))
+        ), fn ($p) => mb_strlen($p) >= 3);
+        $fullText = implode(' ', array_map(fn ($p) => '+'.$p.'*', $palabras));
+
+        return VentanillaRadicaReci::select('id')->where(function ($q) use ($texto, $fullText) {
+            if ($fullText !== '' && $q->getConnection()->getDriverName() === 'mysql') {
+                $q->whereRaw('MATCH(ocr) AGAINST(? IN BOOLEAN MODE)', [$fullText])->orWhere('ocr', 'like', "%{$texto}%");
+            } else {
+                $q->where('ocr', 'like', "%{$texto}%");
+            }
         });
     }
 

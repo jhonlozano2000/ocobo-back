@@ -256,6 +256,7 @@ class VentanillaRadicaReciController extends Controller
             'total' => count($datos),
             'resumen' => array_filter([
                 'Búsqueda' => $request->search,
+                'Contenido OCR' => $request->ocr,
                 'Desde' => $request->fecha_desde,
                 'Hasta' => $request->fecha_hasta,
                 'Estado' => $request->estado_trabajo,
@@ -288,6 +289,7 @@ class VentanillaRadicaReciController extends Controller
     private function filtrarListado($query, ListRadicadosRecibidosRequest $request): void
     {
         $query->search($request->search)
+            ->contenidoOcr($request->ocr)
             ->fechaEntre($request->fecha_desde, $request->fecha_hasta)
             ->clasificacionDocumental($request->clasifica_documen_id)
             ->tercero($request->tercero_id)
