@@ -54,6 +54,10 @@ class TVDService
             $query->where('tipo', $filters['tipo']);
         }
 
+        if (isset($filters['estado']) && $filters['estado'] !== '') {
+            $query->where('estado', (bool) $filters['estado']);
+        }
+
         if (! empty($filters['buscar'])) {
             $query->where(function ($q) use ($filters) {
                 $q->where('cod', 'like', "%{$filters['buscar']}%")

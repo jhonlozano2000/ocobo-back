@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\ClasificacionDocumental;
 
-use App\Helpers\ExportSeguroHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ClasificacionDocumental\StoreTVDRequest;
 use App\Http\Requests\ClasificacionDocumental\UpdateTVDRequest;
@@ -13,17 +12,16 @@ use App\Models\ClasificacionDocumental\FondoAcumuladoUnidad;
 use App\Rules\ArchivoLegible;
 use App\Rules\ArchivoSeguro;
 use App\Services\ClasificacionDocumental\TVDService;
+use App\Services\ReportesExportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class ClasificacionDocumentalTVDController extends Controller
@@ -307,116 +305,70 @@ class ClasificacionDocumentalTVDController extends Controller
     }
 
     /**
-     * Exporta la TVD a Excel o CSV.
+     * Exporta la TVD con los filtros del listado (o solo las filas seleccionadas) en Excel, PDF o CSV.
      */
-    public function export(Request $request)
+    public function export(Request $request, ReportesExportService $exportService)
     {
-        try {
-            $filters = $request->only(['fondo_id', 'periodo_id', 'unidad_id', 'tipo', 'buscar']);
-            $format = $request->get('format', 'excel');
+        $request->validate([
+            'format' => 'required|in:excel,pdf,csv',
+            'fondo_id' => 'nullable|integer',
+            'periodo_id' => 'nullable|integer',
+            'unidad_id' => 'nullable|integer',
+            'tipo' => 'nullable|string|max:50',
+            'buscar' => 'nullable|string|max:100',
+            'estado' => 'nullable|in:0,1',
+            'ids' => 'nullable|array|max:'.ReportesExportService::MAX_FILAS['excel'],
+            'ids.*' => 'integer',
+        ]);
 
-            $query = ClasificacionDocumentalTVD::with(['unidad', 'periodo.fondo'])
-                ->orderBy('periodo_id')
-                ->orderBy('unidad_id')
-                ->orderBy('cod', 'asc');
-
-            $rows = $this->service->aplicarFiltros($query, $filters)->get();
-            $headers = ['Fondo', 'Período', 'Unidad Administrativa', 'Tipo', 'Código', 'Nombre', 'Soporte', 'Gestión', 'Central', 'Total Años', 'Disposición Final'];
-
-            if ($format === 'csv') {
-                return $this->exportCsv($rows, $headers);
-            }
-
-            return $this->exportExcel($rows, $headers);
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-
-            return $this->errorResponse('Error al exportar la TVD', $e->getMessage(), 500);
+        $query = ClasificacionDocumentalTVD::with(['unidad', 'periodo.fondo'])
+            ->orderBy('periodo_id')
+            ->orderBy('unidad_id')
+            ->orderBy('cod', 'asc');
+        $this->service->aplicarFiltros($query, $request->only(['fondo_id', 'periodo_id', 'unidad_id', 'tipo', 'buscar', 'estado']));
+        if ($request->filled('ids')) {
+            $query->whereIn('id', $request->ids);
         }
-    }
 
-    /**
-     * Columnas Fondo, Período y Unidad de la exportación.
-     *
-     * @return array{0: ?string, 1: ?string, 2: ?string}
-     */
-    private function ubicacion(ClasificacionDocumentalTVD $tvd): array
-    {
-        return [
-            $tvd->periodo?->fondo?->nombre,
-            $tvd->periodo?->nombre,
-            $tvd->unidad ? $tvd->unidad->codigo.' - '.$tvd->unidad->nombre : null,
+        $exportService->validarVolumen($query, $request->format);
+
+        $datos = $query->get()->map(fn (ClasificacionDocumentalTVD $tvd) => [
+            'Fondo' => $tvd->periodo?->fondo?->nombre,
+            'Período' => $tvd->periodo?->nombre,
+            'Unidad administrativa' => $tvd->unidad ? $tvd->unidad->codigo.' - '.$tvd->unidad->nombre : null,
+            'Tipo' => $tvd->tipo,
+            'Código' => $tvd->cod,
+            'Nombre' => $tvd->nom,
+            'Soporte' => $tvd->soporte,
+            'Gestión' => $tvd->gestion,
+            'Central' => $tvd->central,
+            'Total años' => $tvd->total_anios,
+            'Disposición final' => $tvd->disposicion_final,
+            'Estado' => $tvd->estado ? 'Activo' : 'Inactivo',
+        ])->toArray();
+
+        $periodo = $request->filled('periodo_id') ? FondoAcumuladoPeriodo::with('fondo')->find($request->periodo_id) : null;
+        $data = [
+            'titulo' => 'Tabla de Valoración Documental',
+            'columnas' => ['Fondo', 'Período', 'Unidad administrativa', 'Tipo', 'Código', 'Nombre', 'Soporte', 'Gestión', 'Central', 'Total años', 'Disposición final', 'Estado'],
+            'datos' => $datos,
+            'total' => count($datos),
+            'resumen' => array_filter([
+                'Fondo' => $periodo?->fondo?->nombre,
+                'Período' => $periodo?->nombre,
+                'Búsqueda' => $request->buscar,
+                'Estado' => ['1' => 'Activo', '0' => 'Inactivo'][$request->estado] ?? null,
+                'Selección' => $request->filled('ids') ? count($datos).' elementos' : null,
+            ]),
         ];
-    }
 
-    private function exportExcel($rows, array $headers): BinaryFileResponse
-    {
-        $spreadsheet = new Spreadsheet;
-        $sheet = $spreadsheet->getActiveSheet();
+        $archivo = 'tvd';
 
-        foreach ($headers as $index => $header) {
-            $col = Coordinate::stringFromColumnIndex($index + 1);
-            $sheet->setCellValue($col.'1', $header);
-        }
-
-        $rowIdx = 2;
-        foreach ($rows as $tvd) {
-            $values = [
-                ...$this->ubicacion($tvd),
-                $tvd->tipo,
-                $tvd->cod,
-                $tvd->nom,
-                $tvd->soporte,
-                $tvd->gestion,
-                $tvd->central,
-                $tvd->total_anios,
-                $tvd->disposicion_final,
-            ];
-            foreach ($values as $index => $value) {
-                $col = Coordinate::stringFromColumnIndex($index + 1);
-                ExportSeguroHelper::setCelda($sheet, $col.$rowIdx, $value);
-            }
-            $rowIdx++;
-        }
-
-        $fileName = 'tvd_export_'.date('Ymd_His').'.xlsx';
-        $path = storage_path('app/exports/'.$fileName);
-        if (! is_dir(storage_path('app/exports'))) {
-            mkdir(storage_path('app/exports'), 0755, true);
-        }
-
-        (new Xlsx($spreadsheet))->save($path);
-
-        return response()->download($path, $fileName)->deleteFileAfterSend();
-    }
-
-    private function exportCsv($rows, array $headers): StreamedResponse
-    {
-        $fileName = 'tvd_export_'.date('Ymd_His').'.csv';
-
-        return response()->streamDownload(function () use ($rows, $headers) {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, $headers);
-            foreach ($rows as $tvd) {
-                fputcsv($out, ExportSeguroHelper::filaCsv([
-                    ...$this->ubicacion($tvd),
-                    $tvd->tipo,
-                    $tvd->cod,
-                    $tvd->nom,
-                    $tvd->soporte,
-                    $tvd->gestion,
-                    $tvd->central,
-                    $tvd->total_anios,
-                    $tvd->disposicion_final,
-                ]));
-            }
-            fclose($out);
-        }, $fileName, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        return match ($request->format) {
+            'excel' => response()->download($exportService->exportarExcel($data, $archivo), $archivo.'.xlsx')->deleteFileAfterSend(true),
+            'pdf' => response()->download($exportService->exportarPDF($data, $archivo), $archivo.'.pdf')->deleteFileAfterSend(true),
+            'csv' => $exportService->exportarCSV($data, $archivo, $data['columnas']),
+        };
     }
 
     public function estadisticas()
