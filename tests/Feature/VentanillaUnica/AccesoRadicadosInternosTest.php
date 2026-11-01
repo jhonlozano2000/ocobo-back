@@ -104,4 +104,15 @@ class AccesoRadicadosInternosTest extends TestCase
         $this->user->givePermissionTo(Permission::findOrCreate(self::PERM.'Ver Todos', 'web'));
         $this->assertNotSame(404, $this->actingAs($this->user)->getJson("/api/ventanilla/radica-interno/{$ajeno}/linea-tiempo")->status());
     }
+
+    public function test_el_firmante_abre_el_detalle_desde_mi_bandeja(): void
+    {
+        // Sin permisos de Ventanilla el show valida la participación; para los firmantes fallaba con 500
+        $firmante = User::factory()->create(['estado' => 1]);
+        $firmante->givePermissionTo(Permission::findOrCreate('Mi Bandeja - Internos -> Ver', 'web'));
+        $id = $this->interno($this->otro->id);
+        DB::table('ventanilla_radica_internos_firmantes')->insert(['radica_interno_id' => $id, 'users_id' => $firmante->id]);
+
+        $this->actingAs($firmante)->getJson("/api/ventanilla/radica-interno/{$id}")->assertOk()->assertJsonPath('data.id', $id);
+    }
 }

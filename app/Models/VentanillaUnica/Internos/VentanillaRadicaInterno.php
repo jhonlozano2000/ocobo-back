@@ -591,10 +591,7 @@ class VentanillaRadicaInterno extends Model
         }
 
         // Firmante
-        $esFirmante = DB::table('ventanilla_radica_internos_firmantes')
-            ->where('radica_interno_id', $this->id)
-            ->where('users_id', $userId)
-            ->exists();
+        $esFirmante = $this->firmantes()->where('users_id', $userId)->exists();
         if ($esFirmante) {
             return true;
         }
