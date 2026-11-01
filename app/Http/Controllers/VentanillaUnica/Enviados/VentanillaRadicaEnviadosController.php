@@ -18,11 +18,13 @@ use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\MiBandeja\RadicacionGrupoDocumentoService;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
 use App\Services\ReportesExportService;
+use App\Services\ReportesUnificadoService;
 use App\Services\VentanillaUnica\RadicadoConsecutivoService;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use App\Traits\AuditViewTrait;
 use App\Traits\VentanillaAuditTrait;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -59,37 +61,7 @@ class VentanillaRadicaEnviadosController extends Controller
         try {
             $query = VentanillaRadicaEnviados::conPermisoJerarquico($request->user());
 
-            if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('num_radicado', 'like', "%{$search}%")
-                        ->orWhere('asunto', 'like', "%{$search}%");
-                });
-            }
-
-            if ($request->filled('fecha_desde') && $request->filled('fecha_hasta')) {
-                $query->whereBetween('created_at', [$request->fecha_desde, $request->fecha_hasta]);
-            }
-
-            if ($request->filled('clasifica_documen_id')) {
-                $query->where('clasifica_documen_id', $request->clasifica_documen_id);
-            }
-
-            if ($request->filled('tercero_enviado_id')) {
-                $query->where('tercero_id', $request->tercero_enviado_id);
-            }
-
-            if ($request->filled('medio_enviado_id')) {
-                $query->where('medio_enviado_id', $request->medio_enviado_id);
-            }
-
-            if ($request->filled('usuario_responsable')) {
-                $query->whereHas('responsables', function ($q) use ($request) {
-                    $q->whereHas('userCargo', function ($qc) use ($request) {
-                        $qc->where('user_id', $request->usuario_responsable);
-                    });
-                });
-            }
+            $this->aplicarFiltros($query, $request);
 
             $query->with([
                 'clasificacionDocumental',
@@ -138,20 +110,71 @@ class VentanillaRadicaEnviadosController extends Controller
     }
 
     /**
-     * Exporta el listado de radicados enviados en el formato solicitado.
+     * Exporta el listado de radicados enviados con los mismos filtros del listado; con `ids` solo las filas
+     * seleccionadas. Columnas legibles: antes el front volcaba el registro crudo (ids, hash, rutas, JSON).
      */
-    public function export(Request $request)
+    public function export(ListRadicadosEnviadosRequest $request)
     {
         $request->validate([
             'format' => 'required|in:excel,pdf,csv',
+            'ids' => 'nullable|array|max:'.ReportesExportService::MAX_FILAS['excel'],
+            'ids.*' => 'integer',
         ]);
 
         $query = VentanillaRadicaEnviados::conPermisoJerarquico($request->user())->with([
             'clasificacionDocumental',
             'tercero',
             'medioEnvio',
+            'responsables.userCargo.user',
         ]);
+        $this->aplicarFiltros($query, $request);
+        if ($request->filled('ids')) {
+            $query->whereIn('id', $request->ids);
+        }
 
+        $this->exportService->validarVolumen($query, $request->format);
+        $radicados = $query->orderBy('created_at', 'desc')->get();
+
+        $datos = $radicados->map(fn ($r) => [
+            'Radicado' => $r->num_radicado,
+            'Fecha radicación' => $r->created_at?->format('Y-m-d H:i'),
+            'Asunto' => $r->asunto,
+            'Destinatario' => $r->tercero?->nom_razo_soci ?? '',
+            'Clasificación' => $r->clasificacionDocumental?->nom ?? '',
+            'Medio de envío' => $r->medioEnvio?->nombre ?? '',
+            'Responsables' => $r->responsables
+                ->map(fn ($resp) => trim(($resp->userCargo?->user?->nombres ?? '').' '.($resp->userCargo?->user?->apellidos ?? '')))
+                ->filter()->implode(', '),
+            'Fecha documento' => $r->fec_docu,
+            'Fecha vencimiento' => $r->fec_venci,
+            'Estado' => $r->estado_trabajo ?: ReportesUnificadoService::SIN_ESTADO,
+        ])->toArray();
+
+        $data = [
+            'titulo' => 'Radicados Enviados',
+            'columnas' => ['Radicado', 'Fecha radicación', 'Asunto', 'Destinatario', 'Clasificación', 'Medio de envío', 'Responsables', 'Fecha documento', 'Fecha vencimiento', 'Estado'],
+            'datos' => $datos,
+            'total' => count($datos),
+            'resumen' => array_filter([
+                'Búsqueda' => $request->search,
+                'Desde' => $request->fecha_desde,
+                'Hasta' => $request->fecha_hasta,
+                'Selección' => $request->filled('ids') ? count($datos).' radicados' : null,
+            ]),
+        ];
+
+        $nombre = 'radicados_enviados';
+
+        return match ($request->format) {
+            'excel' => $this->downloadExcel($data, $nombre),
+            'pdf' => $this->downloadPDF($data, $nombre),
+            'csv' => $this->exportService->exportarCSV($data, $nombre, $data['columnas']),
+        };
+    }
+
+    /** Filtros del listado; el export usa los mismos para que el archivo coincida con lo que se ve. */
+    private function aplicarFiltros(Builder $query, Request $request): void
+    {
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -176,36 +199,13 @@ class VentanillaRadicaEnviadosController extends Controller
             $query->where('medio_enviado_id', $request->medio_enviado_id);
         }
 
-        $this->exportService->validarVolumen($query, $request->format);
-        $radicados = $query->orderBy('created_at', 'desc')->get();
-
-        $datos = $radicados->map(function ($r) {
-            return [
-                'id' => $r->id,
-                'num_radicado' => $r->num_radicado,
-                'asunto' => $r->asunto,
-                'fec_docu' => $r->fec_docu,
-                'fec_venci' => $r->fec_venci,
-                'clasificacion' => $r->clasificacionDocumental?->nom ?? '',
-                'tercero' => $r->tercero?->nom_razo_soci ?? '',
-                'medio_envio' => $r->medioEnvio?->nombre ?? '',
-                'estado_trabajo' => $r->estado_trabajo ?? '',
-                'created_at' => $r->created_at,
-            ];
-        })->toArray();
-
-        $data = [
-            'titulo' => 'Radicados Enviados',
-            'datos' => $datos,
-        ];
-
-        $nombre = 'radicados_enviados';
-
-        return match ($request->format) {
-            'excel' => $this->downloadExcel($data, $nombre),
-            'pdf' => $this->downloadPDF($data, $nombre),
-            'csv' => $this->exportService->exportarCSV($data, $nombre),
-        };
+        if ($request->filled('usuario_responsable')) {
+            $query->whereHas('responsables', function ($q) use ($request) {
+                $q->whereHas('userCargo', function ($qc) use ($request) {
+                    $qc->where('user_id', $request->usuario_responsable);
+                });
+            });
+        }
     }
 
     protected function downloadExcel(array $data, string $nombre)
