@@ -39,6 +39,8 @@ class MetadataDigitalTest extends TestCase
             'medio_enviado_id' => 999999, 'tipo_respuesta_id' => 999999, 'usuario_crea' => $this->creador->id,
         ]);
         DB::table('ventanilla_radica_enviados_metadata')->insert([
+            // Subida anterior del mismo digital: cada subida crea una fila y vale la última
+            ['archivo_id' => 0, 'radicado_id' => $this->enviado, 'descripcion' => 'Subida anterior', 'palabras_clave' => null, 'created_at' => now(), 'updated_at' => now()],
             ['archivo_id' => 0, 'radicado_id' => $this->enviado, 'descripcion' => 'Prueba de firma', 'palabras_clave' => json_encode(['uno', 'dos']), 'created_at' => now(), 'updated_at' => now()],
             // Digital de otro radicado: comparte el centinela 0 y no debe filtrarse
             ['archivo_id' => 0, 'radicado_id' => $this->enviado + 1000000, 'descripcion' => 'Otro radicado', 'palabras_clave' => null, 'created_at' => now(), 'updated_at' => now()],

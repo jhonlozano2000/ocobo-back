@@ -99,7 +99,8 @@ class MetadataController extends Controller
         };
         abort_unless(AccesoRadicado::permitido(auth()->user(), $tipoAcceso, $radicadoId), 404);
 
-        $metadata = $this->resolverModelo($tipo)::where('radicado_id', $radicadoId)->where('archivo_id', 0)->first();
+        // Cada subida del digital crea una fila nueva: la vigente es la última
+        $metadata = $this->resolverModelo($tipo)::where('radicado_id', $radicadoId)->where('archivo_id', 0)->latest('id')->first();
 
         if (! $metadata) {
             return $this->notFoundResponse('Metadatos no encontrados');
