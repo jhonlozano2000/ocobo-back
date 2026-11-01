@@ -22,6 +22,7 @@ use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciPaseHistorial;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciResponsable;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
 use App\Services\ReportesExportService;
+use App\Services\ReportesUnificadoService;
 use App\Services\VentanillaUnica\PqrsService;
 use App\Services\VentanillaUnica\RadicadoConsecutivoService;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
@@ -208,12 +209,15 @@ class VentanillaRadicaReciController extends Controller
     }
 
     /**
-     * Exporta el listado de radicaciones recibidas en el formato solicitado.
+     * Exporta el listado de radicaciones recibidas con los filtros del listado y, si el usuario seleccionó
+     * filas, solo esas (`ids`). Columnas legibles y los filtros en el membrete del archivo.
      */
-    public function export(Request $request)
+    public function export(ListRadicadosRecibidosRequest $request)
     {
         $request->validate([
             'format' => 'required|in:excel,pdf,csv',
+            'ids' => 'nullable|array|max:'.ReportesExportService::MAX_FILAS['excel'],
+            'ids.*' => 'integer',
         ]);
 
         $query = VentanillaRadicaReciOptimizedView::query()
@@ -226,29 +230,38 @@ class VentanillaRadicaReciController extends Controller
             ->medioRecepcion($request->medio_recep_id)
             ->estadoTrabajo($request->estado_trabajo)
             ->ordenadoPorFecha();
+        if ($request->filled('ids')) {
+            $query->whereIn('id', $request->ids);
+        }
 
         $this->exportService->validarVolumen($query, $request->format);
         $radicados = $query->get();
 
-        $datos = $radicados->map(function ($r) {
-            return [
-                'id' => $r->id,
-                'num_radicado' => $r->num_radicado,
-                'asunto' => $r->asunto,
-                'fec_docu' => $r->fec_docu,
-                'fec_venci' => $r->fec_venci,
-                'clasificacion' => $r->clasificacion_nombre ?? '',
-                'tercero' => $r->tercero_nombre ?? '',
-                'medio_recepcion' => $r->medio_recepcion_nombre ?? '',
-                'estado_trabajo' => $r->estado_trabajo ?? '',
-                'creado_por' => $r->usuario_crea_nombre ?? '',
-                'created_at' => $r->created_at,
-            ];
-        })->toArray();
+        $datos = $radicados->map(fn ($r) => [
+            'Radicado' => $r->num_radicado,
+            'Fecha radicación' => $r->created_at ? Carbon::parse($r->created_at)->format('Y-m-d H:i') : '',
+            'Asunto' => $r->asunto,
+            'Remitente' => $r->tercero_nombre ?? '',
+            'Clasificación' => $r->clasificacion_nombre ?? '',
+            'Medio de recepción' => $r->medio_recepcion_nombre ?? '',
+            'Fecha documento' => $r->fec_docu,
+            'Fecha vencimiento' => $r->fec_venci,
+            'Radicado por' => $r->usuario_crea_nombre ?? '',
+            'Estado' => $r->estado_trabajo ?: ReportesUnificadoService::SIN_ESTADO,
+        ])->toArray();
 
         $data = [
             'titulo' => 'Radicaciones Recibidas',
+            'columnas' => ['Radicado', 'Fecha radicación', 'Asunto', 'Remitente', 'Clasificación', 'Medio de recepción', 'Fecha documento', 'Fecha vencimiento', 'Radicado por', 'Estado'],
             'datos' => $datos,
+            'total' => count($datos),
+            'resumen' => array_filter([
+                'Búsqueda' => $request->search,
+                'Desde' => $request->fecha_desde,
+                'Hasta' => $request->fecha_hasta,
+                'Estado' => $request->estado_trabajo,
+                'Selección' => $request->filled('ids') ? count($datos).' radicados' : null,
+            ]),
         ];
 
         $nombre = 'radicaciones_recibidas';
@@ -256,7 +269,7 @@ class VentanillaRadicaReciController extends Controller
         return match ($request->format) {
             'excel' => $this->downloadExcel($data, $nombre),
             'pdf' => $this->downloadPDF($data, $nombre),
-            'csv' => $this->exportService->exportarCSV($data, $nombre),
+            'csv' => $this->exportService->exportarCSV($data, $nombre, $data['columnas']),
         };
     }
 
