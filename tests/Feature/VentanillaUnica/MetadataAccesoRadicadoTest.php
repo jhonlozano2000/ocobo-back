@@ -65,6 +65,21 @@ class MetadataAccesoRadicadoTest extends TestCase
         $this->assertDatabaseHas('ventanilla_radica_reci_metadata', ['archivo_id' => $this->archivoId, 'descripcion' => 'original']);
     }
 
+    // La validación apuntaba a una tabla inexistente: guardar el nivel desde /metadata daba 500
+    public function test_guarda_el_nivel_de_clasificacion(): void
+    {
+        $nivel = DB::table('config_file_classification_levels')->value('id');
+
+        $this->actingAs($this->creador)
+            ->putJson("/api/ventanilla/metadata/archivos/{$this->archivoId}/reci", ['nivel_clasificacion_id' => $nivel])
+            ->assertOk();
+        $this->assertDatabaseHas('ventanilla_radica_reci_metadata', ['archivo_id' => $this->archivoId, 'nivel_clasificacion_id' => $nivel]);
+
+        $this->actingAs($this->creador)
+            ->putJson("/api/ventanilla/metadata/archivos/{$this->archivoId}/reci", ['nivel_clasificacion_id' => 999999])
+            ->assertStatus(422);
+    }
+
     public function test_la_metadata_de_pqrs_exige_acceso_a_la_pqrs(): void
     {
         Permission::findOrCreate('Radicar -> PQRSF -> Mostrar', 'web');

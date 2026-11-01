@@ -79,7 +79,7 @@ class MetadataController extends Controller
             'palabras_clave' => 'nullable|array',
             'palabras_clave.*' => 'string|max:100',
             'nivel_clasificacion' => 'nullable|string|in:PUBLICO,INTERNO,CONFIDENCIAL,RESERVADO,SECRETO',
-            'nivel_clasificacion_id' => 'nullable|integer|exists:file_classification_levels,id',
+            'nivel_clasificacion_id' => 'nullable|integer|exists:config_file_classification_levels,id',
             'clasificacion_id' => 'nullable|integer|exists:clasificacion_documental_trd,id',
             'es_registro_vital' => 'nullable|boolean',
             'categoria_informacion' => 'nullable|string|max:100',
