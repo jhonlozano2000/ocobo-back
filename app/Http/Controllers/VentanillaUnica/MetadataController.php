@@ -6,6 +6,7 @@ use App\Helpers\FileMetadataHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\AccesoRadicado;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\FileClassificationLevel;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivos;
@@ -15,6 +16,7 @@ use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoMetadata;
 use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsMetadata;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivo;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciMetadata;
+use App\Services\ControlAcceso\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -200,7 +202,7 @@ class MetadataController extends Controller
      *
      * @param  Request  $request  asunto: texto a buscar, dependencia_id: opcional
      */
-    public function sugerirClasificacion(Request $request): JsonResponse
+    public function sugerirClasificacion(Request $request, UserService $usuarios): JsonResponse
     {
         $request->validate([
             'asunto' => 'required|string|max:500',
@@ -237,9 +239,24 @@ class MetadataController extends Controller
 
         // La columna «parent» tapa la relación del mismo nombre ($trd->parent es el id), así que la
         // serie y la subserie salen de getJerarquia(); el tipo puede colgar directo de la serie.
-        $sugerencias = $query->limit(5)
+        // Con cada sugerencia van los funcionarios de su dependencia, para elegir el responsable ahí mismo
+        $funcionariosPorDependencia = [];
+        $funcionarios = function (?CalidadOrganigrama $dependencia) use (&$funcionariosPorDependencia, $usuarios) {
+            if (! $dependencia) {
+                return [];
+            }
+
+            return $funcionariosPorDependencia[$dependencia->id] ??= $usuarios
+                ->getForSelector(null, CalidadOrganigrama::cargosDeDependencia($dependencia->id))
+                ->map(fn ($f) => ['dependencia' => $f['dependencia'] ?? ['id' => $dependencia->id, 'nom_organico' => $dependencia->nom_organico]] + $f)
+                ->values()
+                ->all();
+        };
+
+        $sugerencias = $query->with('dependencia:id,nom_organico')
+            ->limit(5)
             ->get()
-            ->map(function (ClasificacionDocumentalTRD $trd) {
+            ->map(function (ClasificacionDocumentalTRD $trd) use ($funcionarios) {
                 $jerarquia = collect($trd->getJerarquia());
 
                 return [
@@ -251,6 +268,8 @@ class MetadataController extends Controller
                     'subserie' => $jerarquia->firstWhere('tipo', 'SubSerie')['nom'] ?? null,
                     'dias_vencimiento' => $trd->dias_vencimiento,
                     'ruta' => $jerarquia->pluck('nom')->implode(' › '),
+                    'dependencia' => $trd->dependencia ? ['id' => $trd->dependencia->id, 'nom_organico' => $trd->dependencia->nom_organico] : null,
+                    'funcionarios' => $funcionarios($trd->dependencia),
                 ];
             });
 

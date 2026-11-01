@@ -440,6 +440,36 @@ class CalidadOrganigrama extends Model
     }
 
     /**
+     * Ids de los cargos que pertenecen a una dependencia: los que cuelgan de ella o de sus oficinas.
+     * No baja a las dependencias hijas, que tienen su propia TRD y sus propios funcionarios.
+     *
+     * @return array<int, int>
+     */
+    public static function cargosDeDependencia(int $id): array
+    {
+        $visitados = [$id => true];
+        $frontera = [$id];
+        $cargos = [];
+
+        for ($nivel = 0; $frontera !== [] && $nivel < self::MAX_PROFUNDIDAD; $nivel++) {
+            $hijos = self::whereIn('parent', $frontera)->where('tipo', '!=', 'Dependencia')->get(['id', 'tipo']);
+            $frontera = [];
+
+            foreach ($hijos as $hijo) {
+                if (! isset($visitados[$hijo->id])) {
+                    $visitados[$hijo->id] = true;
+                    $frontera[] = $hijo->id;
+                    if ($hijo->tipo === 'Cargo') {
+                        $cargos[] = $hijo->id;
+                    }
+                }
+            }
+        }
+
+        return $cargos;
+    }
+
+    /**
      * Descendientes de un nodo, recorridos por niveles (una consulta por nivel),
      * sin repetir nodos y con profundidad máxima (M17-02).
      *

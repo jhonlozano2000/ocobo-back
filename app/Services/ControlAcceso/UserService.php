@@ -195,12 +195,19 @@ class UserService
     /**
      * Listado mínimo de usuarios activos para selectores (sin datos sensibles).
      */
-    public function getForSelector(?string $search = null)
+    /**
+     * @param  array<int, int>|null  $cargoIds  Solo usuarios con el cargo activo entre estos (null = todos)
+     */
+    public function getForSelector(?string $search = null, ?array $cargoIds = null)
     {
         $query = User::query()
             ->with('cargoActivo.cargo')
             ->where('estado', 1)
             ->select(['id', 'nombres', 'apellidos', 'email', 'avatar']);
+
+        if ($cargoIds !== null) {
+            $query->whereHas('cargoActivo', fn ($q) => $q->whereIn('cargo_id', $cargoIds));
+        }
 
         if ($search) {
             $query->where(fn ($q) => $q

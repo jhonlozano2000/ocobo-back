@@ -64,6 +64,48 @@ class SugerirClasificacionTest extends TestCase
         $this->assertSame(15, $datos[0]['dias_vencimiento']);
     }
 
+    private function nodo(string $tipo, string $nom, ?int $parent = null): int
+    {
+        return DB::table('calidad_organigrama')->insertGetId([
+            'tipo' => $tipo, 'nom_organico' => $nom, 'cod_organico' => 'S'.random_int(10000, 99999), 'parent' => $parent,
+        ]);
+    }
+
+    private function funcionario(int $cargo, string $nombre, bool $activo = true): int
+    {
+        $id = User::factory()->create(['estado' => 1, 'nombres' => $nombre, 'apellidos' => 'XSUG'])->id;
+        DB::table('users_cargos')->insert([
+            'user_id' => $id, 'cargo_id' => $cargo, 'fecha_inicio' => now()->toDateString(),
+            'fecha_fin' => $activo ? null : now()->toDateString(), 'estado' => $activo,
+        ]);
+
+        return $id;
+    }
+
+    // Con la clasificación sugerida se elige el responsable: van los funcionarios de su dependencia
+    public function test_cada_sugerencia_trae_los_funcionarios_de_su_dependencia(): void
+    {
+        $dependencia = $this->nodo('Dependencia', 'Gestion Humana XSUG');
+        $oficina = $this->nodo('Oficina', 'Nomina XSUG', $dependencia);
+        $hija = $this->nodo('Dependencia', 'Bienestar XSUG', $dependencia);
+        $directo = $this->funcionario($this->nodo('Cargo', 'Jefe XSUG', $dependencia), 'Ana');
+        $deOficina = $this->funcionario($this->nodo('Cargo', 'Auxiliar XSUG', $oficina), 'Luis');
+        $this->funcionario($this->nodo('Cargo', 'Psicologo XSUG', $hija), 'Marta');
+        $this->funcionario($this->nodo('Cargo', 'Antiguo XSUG', $dependencia), 'Pedro', false);
+        $this->trd('TipoDocumento', 'Contrato zarquifonia', $dependencia);
+
+        $datos = $this->actingAs($this->user)
+            ->getJson(self::RUTA.'?asunto='.urlencode('Contrato zarquifonia'))
+            ->assertOk()->json('data');
+
+        $this->assertSame(['id' => $dependencia, 'nom_organico' => 'Gestion Humana XSUG'], $datos[0]['dependencia']);
+        $funcionarios = collect($datos[0]['funcionarios']);
+        $this->assertEqualsCanonicalizing([$directo, $deOficina], $funcionarios->pluck('id')->all());
+        // El de la oficina también queda con la dependencia, que es la que se guarda en el responsable
+        $this->assertSame($dependencia, $funcionarios->firstWhere('id', $deOficina)['dependencia']['id']);
+        $this->assertSame('Auxiliar XSUG', $funcionarios->firstWhere('id', $deOficina)['cargo']['nom_organico']);
+    }
+
     public function test_sin_palabras_utiles_no_sugiere_nada(): void
     {
         $this->actingAs($this->user)
