@@ -74,17 +74,20 @@ class ReportesExportService
 
         $fila = 1;
         $encabezado = array_filter([
-            [$membrete['entidad'], 14, true, self::COLOR_PRIMARIO],
-            [$titulo, 12, true, '2F2B3D'],
-            [$this->lineaMeta($data, $membrete), 9, false, '808390'],
-            [$this->lineaResumen($data), 9, false, '444050'],
+            [$membrete['entidad'], 14, true, 'FFFFFF', self::COLOR_PRIMARIO, 30],
+            [$titulo, 12, true, self::COLOR_PRIMARIO, 'EEEDFD', 24],
+            [$this->lineaMeta($data, $membrete), 9, false, '444050', 'F8F7FA', 18],
+            [$this->lineaResumen($data), 9, false, '444050', 'F8F7FA', 18],
         ], fn ($linea) => $linea[0] !== '');
-        foreach ($encabezado as [$texto, $tamano, $negrita, $color]) {
-            $this->lineaTitulo($sheet, "A{$fila}:{$ultima}{$fila}", $texto)
-                ->getFont()->setSize($tamano)->setBold($negrita)->getColor()->setRGB($color);
-            $sheet->getRowDimension($fila)->setRowHeight($tamano + 8);
+        foreach ($encabezado as [$texto, $tamano, $negrita, $color, $fondo, $alto]) {
+            $estilo = $this->lineaTitulo($sheet, "A{$fila}:{$ultima}{$fila}", $texto);
+            $estilo->getFont()->setSize($tamano)->setBold($negrita)->getColor()->setRGB($color);
+            $estilo->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($fondo);
+            $sheet->getRowDimension($fila)->setRowHeight($alto);
             $fila++;
         }
+        $sheet->getStyle("A1:{$ultima}".($fila - 1))->getBorders()->getOutline()
+            ->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB(self::COLOR_PRIMARIO);
         if (! empty($data['resumen']['Nota'])) {
             $estilo = $this->lineaTitulo($sheet, "A{$fila}:{$ultima}{$fila}", $data['resumen']['Nota']);
             $estilo->getFont()->setSize(9)->setItalic(true)->getColor()->setRGB('B26A00');

@@ -53,7 +53,9 @@ class ReportesExportDisenoTest extends TestCase
         $cabecera = $this->filaDe($sheet, 'Radicado');
 
         $this->assertNotEmpty($sheet->getCell('A1')->getValue());
-        $this->assertSame(ReportesExportService::COLOR_PRIMARIO, $sheet->getStyle('A1')->getFont()->getColor()->getRGB());
+        $this->assertSame(ReportesExportService::COLOR_PRIMARIO, $sheet->getStyle('A1')->getFill()->getStartColor()->getRGB());
+        $this->assertSame('FFFFFF', $sheet->getStyle('A1')->getFont()->getColor()->getRGB());
+        $this->assertSame('EEEDFD', $sheet->getStyle('A2')->getFill()->getStartColor()->getRGB());
         $this->assertSame('Radicaciones Recibidas', $sheet->getCell('A2')->getValue());
         $this->assertStringContainsString('Total registros: 2', $sheet->getCell('A3')->getValue());
         $this->assertSame('Módulo: Radicaciones Recibidas   ·   Estado: Pendiente', $sheet->getCell('A4')->getValue());
