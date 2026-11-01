@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->group(function () {
 
     $permInterno = 'Radicar -> Cores. Interna -> ';
+    Route::get('/radica-interno/export', [VentanillaRadicaInternoController::class, 'export'])->name('radica-interno.export')->middleware('can:'.$permInterno.'Listar');
+    Route::get('/radica-interno/dependencias', [VentanillaRadicaInternoController::class, 'dependencias'])->name('radica-interno.dependencias')->middleware('can:'.$permInterno.'Listar');
+    Route::get('/radica-interno/clasificaciones', [VentanillaRadicaInternoController::class, 'clasificaciones'])->name('radica-interno.clasificaciones')->middleware('can:'.$permInterno.'Listar');
     Route::get('/radica-interno/estadisticas', [VentanillaRadicaInternoController::class, 'estadisticas'])->name('radica-interno.estadisticas')->middleware('can:'.$permInterno.'Listar');
     Route::get('/radica-interno/pendientes-anulacion', [VentanillaRadicaInternoController::class, 'listarPendientesAnulacion'])->name('radica-interno.pendientes-anulacion')->middleware('can:Jefe de Archivo');
     Route::put('/radica-interno/{id}/update-asunto', [VentanillaRadicaInternoController::class, 'updateAsunto'])->name('radica-interno.update-asunto')->middleware('can:'.$permInterno.'Actualizar asunto')->middleware('acceso_radicado:interno');

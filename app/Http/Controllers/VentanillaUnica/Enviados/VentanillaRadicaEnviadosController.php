@@ -206,9 +206,8 @@ class VentanillaRadicaEnviadosController extends Controller
             $query->whereDate('created_at', '<=', $request->fecha_hasta);
         }
 
-        // El filtro elige una serie o subserie y los radicados se clasifican en sus tipos documentales
         if ($request->filled('clasifica_documen_id')) {
-            $query->whereIn('clasifica_documen_id', $this->clasificacionYDescendientes((int) $request->clasifica_documen_id));
+            $query->whereIn('clasifica_documen_id', ClasificacionDocumentalTRD::idsConDescendientes((int) $request->clasifica_documen_id));
         }
 
         if ($request->filled('tercero_enviado_id')) {
@@ -609,33 +608,7 @@ class VentanillaRadicaEnviadosController extends Controller
      */
     public function clasificaciones(): JsonResponse
     {
-        $clasificaciones = ClasificacionDocumentalTRD::query()
-            ->whereIn('tipo', ['Serie', 'SubSerie'])
-            ->where('estado', 1)
-            ->with('dependencia:id,nom_organico')
-            ->orderBy('cod')
-            ->get(['id', 'cod', 'nom', 'tipo', 'dependencia_id'])
-            ->map(fn ($c) => [
-                'id' => $c->id, 'cod' => $c->cod, 'nom' => $c->nom, 'tipo' => $c->tipo,
-                'dependencia' => $c->dependencia?->nom_organico,
-            ]);
-
-        return $this->successResponse($clasificaciones, 'Clasificaciones obtenidas exitosamente');
-    }
-
-    /**
-     * Ids de la clasificación y de sus hijos (subseries y tipos documentales, máximo dos niveles)
-     */
-    private function clasificacionYDescendientes(int $id): array
-    {
-        $ids = $nivel = [$id];
-
-        for ($i = 0; $i < 2 && $nivel; $i++) {
-            $nivel = ClasificacionDocumentalTRD::whereIn('parent', $nivel)->pluck('id')->all();
-            $ids = array_merge($ids, $nivel);
-        }
-
-        return $ids;
+        return $this->successResponse(ClasificacionDocumentalTRD::opcionesFiltro(), 'Clasificaciones obtenidas exitosamente');
     }
 
     public function estadisticas()

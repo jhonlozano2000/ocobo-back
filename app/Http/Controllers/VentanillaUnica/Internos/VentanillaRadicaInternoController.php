@@ -6,9 +6,12 @@ use App\Helpers\ArchivoHelper;
 use App\Helpers\FileMetadataHelper;
 use App\Helpers\MailConfigHelper;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Ventanilla\Internos\ListRadicadosInternosRequest;
 use App\Http\Requests\Ventanilla\Internos\StoreRadicadoInternoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Jobs\AplicarOcrArchivoDigital;
+use App\Models\Calidad\CalidadOrganigrama;
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\Notificacion;
@@ -18,10 +21,13 @@ use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoResponsable;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternosHistorialClasificacionDocumental;
 use App\Services\MiBandeja\RadicacionGrupoDocumentoService;
 use App\Services\Notificaciones\NotificacionCorrespondenciaService;
+use App\Services\ReportesExportService;
+use App\Services\ReportesUnificadoService;
 use App\Services\VentanillaUnica\RadicadoConsecutivoService;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use App\Traits\VentanillaAuditTrait;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -40,7 +46,7 @@ class VentanillaRadicaInternoController extends Controller
     public function __construct(
         protected RadicadoConsecutivoService $consecutivoService
     ) {
-        $this->middleware('can:'.self::PERM.' Listar')->only(['index', 'estadisticas']);
+        $this->middleware('can:'.self::PERM.' Listar')->only(['index', 'estadisticas', 'export', 'dependencias', 'clasificaciones']);
         $this->middleware('can:'.self::PERM.' Crear')->only(['store']);
         $this->middleware('can:'.self::PERM.' Editar')->only(['update']);
         $this->middleware('can:'.self::PERM.' Actualizar asunto')->only(['updateAsunto']);
@@ -50,26 +56,11 @@ class VentanillaRadicaInternoController extends Controller
         $this->middleware('can:'.self::PERM.' Notificar Email')->only(['enviarNotificacion']);
     }
 
-    public function index(Request $request)
+    public function index(ListRadicadosInternosRequest $request)
     {
         try {
             $query = VentanillaRadicaInterno::conPermisoJerarquico($request->user());
-
-            if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('num_radicado', 'like', "%{$search}%")
-                        ->orWhere('asunto', 'like', "%{$search}%");
-                });
-            }
-
-            if ($request->filled('fecha_desde') && $request->filled('fecha_hasta')) {
-                $query->whereBetween('created_at', [$request->fecha_desde, $request->fecha_hasta]);
-            }
-
-            if ($request->filled('clasifica_documen_id')) {
-                $query->where('clasifica_documen_id', $request->clasifica_documen_id);
-            }
+            $this->aplicarFiltros($query, $request);
 
             $query->with([
                 'clasificacionDocumental',
@@ -134,6 +125,152 @@ class VentanillaRadicaInternoController extends Controller
 
             return $this->errorResponse('Error al obtener el listado de radicados internos', $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Filtros del listado; los comparte el export para que el archivo traiga lo mismo que la tabla
+     */
+    private function aplicarFiltros(Builder $query, Request $request): void
+    {
+        // La búsqueda general también mira el contenido OCR
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(fn ($q) => $q->where('num_radicado', 'like', "%{$search}%")
+                ->orWhere('asunto', 'like', "%{$search}%")
+                ->orWhere('ocr', 'like', "%{$search}%"));
+        }
+
+        if ($request->filled('ocr')) {
+            $query->where('ocr', 'like', '%'.$request->ocr.'%');
+        }
+
+        // Cada extremo filtra solo y ambos son inclusivos: "hasta" incluye todo ese día
+        if ($request->filled('fecha_desde')) {
+            $query->whereDate('created_at', '>=', $request->fecha_desde);
+        }
+
+        if ($request->filled('fecha_hasta')) {
+            $query->whereDate('created_at', '<=', $request->fecha_hasta);
+        }
+
+        if ($request->filled('fecha_venci_desde')) {
+            $query->whereDate('fec_venci', '>=', $request->fecha_venci_desde);
+        }
+
+        if ($request->filled('fecha_venci_hasta')) {
+            $query->whereDate('fec_venci', '<=', $request->fecha_venci_hasta);
+        }
+
+        if ($request->filled('estado_trabajo')) {
+            $query->where('estado_trabajo', $request->estado_trabajo);
+        }
+
+        if ($request->filled('clasifica_documen_id')) {
+            $query->whereIn('clasifica_documen_id', ClasificacionDocumentalTRD::idsConDescendientes((int) $request->clasifica_documen_id));
+        }
+
+        // Con archivos: el documento principal o algún adjunto
+        if ($request->con_archivos === 'si') {
+            $query->where(fn ($q) => $q->whereNotNull('archivo_digital')->orWhereHas('archivos'));
+        } elseif ($request->con_archivos === 'no') {
+            $query->whereNull('archivo_digital')->whereDoesntHave('archivos');
+        }
+
+        // La dependencia incluye sus oficinas
+        if ($request->filled('dependencia_id')) {
+            $id = (int) $request->dependencia_id;
+            $query->whereIn('dependencia_origen_id', CalidadOrganigrama::descendientes($id)->pluck('id')->push($id));
+        }
+    }
+
+    /**
+     * Exporta el listado con los mismos filtros; con `ids` solo las filas seleccionadas
+     */
+    public function export(ListRadicadosInternosRequest $request, ReportesExportService $exportService)
+    {
+        $request->validate([
+            'format' => 'required|in:excel,pdf,csv',
+            'ids' => 'nullable|array|max:'.ReportesExportService::MAX_FILAS['excel'],
+            'ids.*' => 'integer',
+        ]);
+
+        $query = VentanillaRadicaInterno::conPermisoJerarquico($request->user())->with([
+            'clasificacionDocumental',
+            'dependenciaOrigen',
+            'usuarioCrea',
+            'responsables.userCargo.user',
+            'responsables.userCargo.cargo',
+            'destinatarios.userCargo.user',
+        ]);
+        $this->aplicarFiltros($query, $request);
+        if ($request->filled('ids')) {
+            $query->whereIn('id', $request->ids);
+        }
+
+        $exportService->validarVolumen($query, $request->format);
+        $nombreUsuario = fn ($userCargo) => trim(($userCargo?->user?->nombres ?? '').' '.($userCargo?->user?->apellidos ?? ''));
+
+        $datos = $query->orderBy('created_at', 'desc')->get()->map(fn ($r) => [
+            'Radicado' => $r->num_radicado,
+            'Fecha radicación' => $r->created_at?->format('Y-m-d H:i'),
+            'Asunto' => $r->asunto,
+            'Dependencia origen' => $r->dependencia_origen['nombre'] ?? '',
+            'Clasificación' => trim(($r->clasificacionDocumental?->cod ?? '').' '.($r->clasificacionDocumental?->nom ?? '')),
+            'Responsables' => $r->responsables->map(fn ($resp) => $nombreUsuario($resp->userCargo))->filter()->implode(', '),
+            'Destinatarios' => $r->destinatarios->map(fn ($dest) => $nombreUsuario($dest->userCargo))->filter()->implode(', '),
+            'Fecha documento' => $r->fec_docu,
+            'Fecha vencimiento' => $r->fec_venci,
+            'Estado' => $r->estado_trabajo ?: ReportesUnificadoService::SIN_ESTADO,
+        ])->toArray();
+
+        $data = [
+            'titulo' => 'Radicados Internos',
+            'columnas' => ['Radicado', 'Fecha radicación', 'Asunto', 'Dependencia origen', 'Clasificación', 'Responsables', 'Destinatarios', 'Fecha documento', 'Fecha vencimiento', 'Estado'],
+            'datos' => $datos,
+            'total' => count($datos),
+            'resumen' => array_filter([
+                'Búsqueda' => $request->search,
+                'Contenido OCR' => $request->ocr,
+                'Desde' => $request->fecha_desde,
+                'Hasta' => $request->fecha_hasta,
+                'Vence desde' => $request->fecha_venci_desde,
+                'Vence hasta' => $request->fecha_venci_hasta,
+                'Estado' => $request->estado_trabajo,
+                'Clasificación' => $request->filled('clasifica_documen_id')
+                    ? implode(' ', ClasificacionDocumentalTRD::find($request->clasifica_documen_id)?->only(['cod', 'nom']) ?? [])
+                    : null,
+                'Archivos' => ['si' => 'Con archivos', 'no' => 'Sin archivos'][$request->con_archivos] ?? null,
+                'Dependencia' => $request->filled('dependencia_id') ? CalidadOrganigrama::find($request->dependencia_id)?->nom_organico : null,
+                'Selección' => $request->filled('ids') ? count($datos).' radicados' : null,
+            ]),
+        ];
+
+        $nombre = 'radicados_internos';
+
+        return match ($request->format) {
+            'excel' => response()->download($exportService->exportarExcel($data, $nombre), $nombre.'.xlsx')->deleteFileAfterSend(true),
+            'pdf' => response()->download($exportService->exportarPDF($data, $nombre), $nombre.'.pdf')->deleteFileAfterSend(true),
+            'csv' => $exportService->exportarCSV($data, $nombre, $data['columnas']),
+        };
+    }
+
+    /**
+     * Dependencias para el filtro del listado
+     */
+    public function dependencias(): JsonResponse
+    {
+        return $this->successResponse(
+            CalidadOrganigrama::porTipo('Dependencia')->orderBy('nom_organico')->get(['id', 'cod_organico', 'nom_organico']),
+            'Dependencias obtenidas exitosamente'
+        );
+    }
+
+    /**
+     * Series y subseries para el filtro de clasificación del listado
+     */
+    public function clasificaciones(): JsonResponse
+    {
+        return $this->successResponse(ClasificacionDocumentalTRD::opcionesFiltro(), 'Clasificaciones obtenidas exitosamente');
     }
 
     public function show($id)

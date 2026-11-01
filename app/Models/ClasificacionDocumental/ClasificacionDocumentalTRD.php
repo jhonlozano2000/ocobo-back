@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 class ClasificacionDocumentalTRD extends Model
@@ -239,6 +240,41 @@ class ClasificacionDocumentalTRD extends Model
     public function versionTRD(): BelongsTo
     {
         return $this->belongsTo(ClasificacionDocumentalTRDVersion::class, 'version_id');
+    }
+
+    // ==================== FILTROS DE LISTADOS ====================
+
+    /**
+     * Series y subseries vigentes para los filtros de clasificación de los listados de radicados
+     */
+    public static function opcionesFiltro(): Collection
+    {
+        return self::query()
+            ->whereIn('tipo', ['Serie', 'SubSerie'])
+            ->where('estado', 1)
+            ->with('dependencia:id,nom_organico')
+            ->orderBy('cod')
+            ->get(['id', 'cod', 'nom', 'tipo', 'dependencia_id'])
+            ->map(fn ($c) => [
+                'id' => $c->id, 'cod' => $c->cod, 'nom' => $c->nom, 'tipo' => $c->tipo,
+                'dependencia' => $c->dependencia?->nom_organico,
+            ]);
+    }
+
+    /**
+     * Ids de la clasificación y de sus hijos (subseries y tipos documentales, máximo dos niveles): el filtro
+     * elige una serie o subserie y los radicados se clasifican en sus tipos documentales
+     */
+    public static function idsConDescendientes(int $id): array
+    {
+        $ids = $nivel = [$id];
+
+        for ($i = 0; $i < 2 && $nivel; $i++) {
+            $nivel = self::whereIn('parent', $nivel)->pluck('id')->all();
+            $ids = array_merge($ids, $nivel);
+        }
+
+        return $ids;
     }
 
     // ==================== SCOPES ====================
