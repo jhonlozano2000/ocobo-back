@@ -157,8 +157,10 @@ class VentanillaRadicaEnviadosController extends Controller
             'total' => count($datos),
             'resumen' => array_filter([
                 'Búsqueda' => $request->search,
+                'Contenido OCR' => $request->ocr,
                 'Desde' => $request->fecha_desde,
                 'Hasta' => $request->fecha_hasta,
+                'Responsable' => $request->usuario_responsable,
                 'Selección' => $request->filled('ids') ? count($datos).' radicados' : null,
             ]),
         ];
@@ -175,16 +177,29 @@ class VentanillaRadicaEnviadosController extends Controller
     /** Filtros del listado; el export usa los mismos para que el archivo coincida con lo que se ve. */
     private function aplicarFiltros(Builder $query, Request $request): void
     {
+        // La búsqueda general mira también destinatario y OCR; antes el front usaba /search/ocr, que descartaba el resto
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('num_radicado', 'like', "%{$search}%")
-                    ->orWhere('asunto', 'like', "%{$search}%");
+                    ->orWhere('asunto', 'like', "%{$search}%")
+                    ->orWhere('ocr', 'like', "%{$search}%")
+                    ->orWhereHas('terceroEnviado', fn ($t) => $t->where('nom_razo_soci', 'like', "%{$search}%")
+                        ->orWhere('num_docu_nit', 'like', "%{$search}%"));
             });
         }
 
-        if ($request->filled('fecha_desde') && $request->filled('fecha_hasta')) {
-            $query->whereBetween('created_at', [$request->fecha_desde, $request->fecha_hasta]);
+        if ($request->filled('ocr')) {
+            $query->where('ocr', 'like', '%'.$request->ocr.'%');
+        }
+
+        // Cada extremo filtra solo y ambos son inclusivos: "hasta" incluye todo ese día
+        if ($request->filled('fecha_desde')) {
+            $query->whereDate('created_at', '>=', $request->fecha_desde);
+        }
+
+        if ($request->filled('fecha_hasta')) {
+            $query->whereDate('created_at', '<=', $request->fecha_hasta);
         }
 
         if ($request->filled('clasifica_documen_id')) {
@@ -199,12 +214,11 @@ class VentanillaRadicaEnviadosController extends Controller
             $query->where('medio_enviado_id', $request->medio_enviado_id);
         }
 
+        // El filtro de la vista es un texto "Buscar por nombre"
         if ($request->filled('usuario_responsable')) {
-            $query->whereHas('responsables', function ($q) use ($request) {
-                $q->whereHas('userCargo', function ($qc) use ($request) {
-                    $qc->where('user_id', $request->usuario_responsable);
-                });
-            });
+            $nombre = $request->usuario_responsable;
+            $query->whereHas('responsables.userCargo.user', fn ($u) => $u
+                ->whereRaw("CONCAT_WS(' ', nombres, apellidos) LIKE ?", ["%{$nombre}%"]));
         }
     }
 
