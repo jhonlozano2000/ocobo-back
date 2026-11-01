@@ -78,6 +78,7 @@ Route::middleware(['auth:sanctum', 'throttle:archivo'])->prefix('archivo')->grou
     // Bandeja "Pendientes de archivar" (diseño §3.4 y §6.1); va antes de /expedientes/{id}
     Route::get('/expedientes/pendientes-archivar', [OfiArchivoPendientesController::class, 'index'])->middleware('can:'.$permExp.'Ver');
     Route::post('/expedientes/pendientes-archivar/instancias/{instanciaId}/reintentar', [OfiArchivoPendientesController::class, 'reintentar'])->whereNumber('instanciaId')->middleware('can:'.$permExp.'Incorporar');
+    Route::get('/expedientes/export', [OfiArchivoExpedienteController::class, 'export'])->middleware('can:'.$permExp.'Ver');
     Route::get('/expedientes/{id}', [OfiArchivoExpedienteController::class, 'show'])->middleware('can:'.$permExp.'Ver');
     Route::put('/expedientes/{id}', [OfiArchivoExpedienteController::class, 'update'])->middleware('can:'.$permExp.'Editar');
     Route::post('/expedientes/{id}/cerrar', [OfiArchivoExpedienteController::class, 'cerrarExpediente'])->middleware('can:'.$permExp.'Cerrar');

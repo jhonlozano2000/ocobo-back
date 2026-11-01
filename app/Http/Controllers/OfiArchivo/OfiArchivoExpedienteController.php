@@ -15,6 +15,7 @@ use App\Http\Requests\OfiArchivo\SubirArchivosExpedienteRequest;
 use App\Http\Requests\OfiArchivo\TipificarDocumentoExpedienteRequest;
 use App\Http\Requests\OfiArchivo\UpdateExpedienteRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\OfiArchivo\OfiArchivoExpediente;
 use App\Models\OfiArchivo\OfiArchivoExpedienteDocumento;
@@ -29,6 +30,8 @@ use App\Services\OfiArchivo\HojaControlService;
 use App\Services\OfiArchivo\IndiceExpedienteService;
 use App\Services\OfiArchivo\TiposDocumentalesExpediente;
 use App\Services\OfiArchivo\UbicacionTopograficaService;
+use App\Services\ReportesExportService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -364,37 +367,7 @@ class OfiArchivoExpedienteController extends Controller
 
         try {
             $query = OfiArchivoExpediente::visiblesPara(Auth::user())->with(['dependencia', 'serieTrd', 'subserieTrd', 'usuarioApertura']);
-
-            // Filtros opcionales
-            if ($request->filled('dependencia_id')) {
-                $query->where('dependencia_id', $request->dependencia_id);
-            }
-
-            if ($request->filled('serie_trd_id')) {
-                $query->where(fn ($q) => $q->where('serie_trd_id', $request->serie_trd_id)
-                    ->orWhere('subserie_trd_id', $request->serie_trd_id));
-            }
-
-            // B06/D6: expedientes a los que les falta nivel de acceso o subserie
-            if ($request->has('por_completar')) {
-                $query->where('por_completar', $request->boolean('por_completar'));
-            }
-
-            // B03: el filtro de estado de la lista se ignoraba
-            if ($request->filled('estado')) {
-                $query->where('estado', $request->estado);
-            }
-
-            if ($request->filled('fase')) {
-                $query->where('fase', $request->fase);
-            }
-
-            if ($request->filled('search')) {
-                $query->where(function ($q) use ($request) {
-                    $q->where('numero_expediente', 'like', "%{$request->search}%")
-                        ->orWhere('nombre_expediente', 'like', "%{$request->search}%");
-                });
-            }
+            $this->aplicarFiltros($query, $request);
 
             $perPage = min($request->get('per_page', 15), 100);
             $expedientes = $query->latest()->paginate($perPage);
@@ -410,6 +383,97 @@ class OfiArchivoExpedienteController extends Controller
             }
 
             return $this->serverErrorResponse('Error al obtener el listado', $e->getMessage());
+        }
+    }
+
+    /**
+     * Exporta los expedientes con los filtros del listado (o solo los seleccionados) en Excel, PDF o CSV.
+     */
+    public function export(ListarExpedientesRequest $request, ReportesExportService $exportService)
+    {
+        $request->validate([
+            'format' => 'required|in:excel,pdf,csv',
+            'ids' => 'nullable|array|max:'.ReportesExportService::MAX_FILAS['excel'],
+            'ids.*' => 'integer',
+        ]);
+
+        $query = OfiArchivoExpediente::visiblesPara(Auth::user())->with(['dependencia', 'serieTrd', 'subserieTrd', 'usuarioApertura']);
+        $this->aplicarFiltros($query, $request);
+        if ($request->filled('ids')) {
+            $query->whereIn('id', $request->ids);
+        }
+
+        $exportService->validarVolumen($query, $request->format);
+        $trd = fn ($nodo) => $nodo ? trim($nodo->cod.' '.$nodo->nom) : '';
+
+        $datos = $query->latest()->get()->map(fn (OfiArchivoExpediente $e) => [
+            'Número' => $e->numero_expediente,
+            'Nombre' => $e->nombre_expediente,
+            'Dependencia' => $e->dependencia?->nom_organico ?? $e->dependencia_nom,
+            'Serie' => $trd($e->serieTrd),
+            'Subserie' => $trd($e->subserieTrd),
+            'Estado' => $e->estado,
+            'Fase' => $e->fase,
+            'Folios electrónicos' => $e->total_folios_elec ?? 0,
+            'Apertura' => $e->fecha_apertura ? Carbon::parse($e->fecha_apertura)->format('Y-m-d') : '',
+            'Abierto por' => trim(($e->usuarioApertura?->nombres ?? '').' '.($e->usuarioApertura?->apellidos ?? '')),
+        ])->toArray();
+
+        $data = [
+            'titulo' => 'Expedientes',
+            'columnas' => ['Número', 'Nombre', 'Dependencia', 'Serie', 'Subserie', 'Estado', 'Fase', 'Folios electrónicos', 'Apertura', 'Abierto por'],
+            'datos' => $datos,
+            'total' => count($datos),
+            'resumen' => array_filter([
+                'Búsqueda' => $request->search,
+                'Dependencia' => $request->filled('dependencia_id') ? CalidadOrganigrama::find($request->dependencia_id)?->nom_organico : null,
+                'Estado' => $request->estado,
+                'Fase' => $request->fase,
+                'Selección' => $request->filled('ids') ? count($datos).' expedientes' : null,
+            ]),
+        ];
+
+        $archivo = 'expedientes';
+
+        return match ($request->format) {
+            'excel' => response()->download($exportService->exportarExcel($data, $archivo), $archivo.'.xlsx')->deleteFileAfterSend(true),
+            'pdf' => response()->download($exportService->exportarPDF($data, $archivo), $archivo.'.pdf')->deleteFileAfterSend(true),
+            'csv' => $exportService->exportarCSV($data, $archivo, $data['columnas']),
+        };
+    }
+
+    private function aplicarFiltros(Builder $query, Request $request): void
+    {
+        if ($request->filled('dependencia_id')) {
+            $query->where('dependencia_id', $request->dependencia_id);
+        }
+
+        if ($request->filled('serie_trd_id')) {
+            $query->where(fn ($q) => $q->where('serie_trd_id', $request->serie_trd_id)
+                ->orWhere('subserie_trd_id', $request->serie_trd_id));
+        }
+
+        // B06/D6: expedientes a los que les falta nivel de acceso o subserie
+        if ($request->has('por_completar')) {
+            $query->where('por_completar', $request->boolean('por_completar'));
+        }
+
+        // B03: el filtro de estado de la lista se ignoraba
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        if ($request->filled('fase')) {
+            $query->where('fase', $request->fase);
+        }
+
+        // La tabla también encuentra por el nombre de la dependencia
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('numero_expediente', 'like', "%{$request->search}%")
+                    ->orWhere('nombre_expediente', 'like', "%{$request->search}%")
+                    ->orWhereHas('dependencia', fn ($d) => $d->where('nom_organico', 'like', "%{$request->search}%"));
+            });
         }
     }
 

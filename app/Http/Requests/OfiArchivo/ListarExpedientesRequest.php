@@ -18,6 +18,10 @@ class ListarExpedientesRequest extends FormRequest
     {
         return [
             'estado' => 'nullable|in:abierto,cerrado,transferido,eliminado',
+            'search' => 'nullable|string|max:100',
+            'dependencia_id' => 'nullable|integer',
+            'serie_trd_id' => 'nullable|integer',
+            'fase' => 'nullable|string|max:30',
             'por_completar' => 'nullable|boolean',
         ];
     }
@@ -26,6 +30,7 @@ class ListarExpedientesRequest extends FormRequest
     {
         return [
             'estado.in' => 'El estado debe ser abierto, cerrado, transferido o eliminado.',
+            'search.max' => 'El término de búsqueda no puede superar los 100 caracteres.',
         ];
     }
 }
