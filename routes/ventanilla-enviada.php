@@ -16,6 +16,7 @@ Route::middleware('auth:sanctum')->group(function () {
     $verEnvi = fn (string $accion) => 'can_any:'.$permEnvi.$accion.',Mi Bandeja - Enviados -> Ver';
 
     Route::get('/radica-enviada/pendientes-radicar', [VentanillaRadicaEnviadosPendientesController::class, 'index'])->name('radica-enviada.pendientes-radicar.index')->middleware('can:'.$permEnvi.'Listar');
+    Route::get('/radica-enviada/pendientes-radicar/export', [VentanillaRadicaEnviadosPendientesController::class, 'export'])->name('radica-enviada.pendientes-radicar.export')->middleware('can:'.$permEnvi.'Listar');
     Route::get('/radica-enviada/pendientes-radicar/{id}/documento/{versionId?}', [VentanillaRadicaEnviadosPendientesController::class, 'descargarDocumento'])->name('radica-enviada.pendientes-radicar.documento')->middleware('can:'.$permEnvi.'Listar');
     Route::get('/radica-enviada/pendientes-radicar/{id}/adjunto/{adjuntoId}', [VentanillaRadicaEnviadosPendientesController::class, 'descargarAdjunto'])->name('radica-enviada.pendientes-radicar.adjunto')->middleware('can:'.$permEnvi.'Listar');
     Route::get('/radica-enviada/pendientes-radicar/{id}', [VentanillaRadicaEnviadosPendientesController::class, 'show'])->name('radica-enviada.pendientes-radicar.show')->middleware('can:'.$permEnvi.'Listar');

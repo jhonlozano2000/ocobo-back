@@ -4,11 +4,14 @@ namespace App\Http\Controllers\VentanillaUnica\Enviados;
 
 use App\Helpers\ArchivoHelper;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Ventanilla\Enviados\ListPendientesRadicarRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempArchivoVersion;
 use App\Models\MiBandeja\MiBandejaTempGrupoArchiAdjunto;
 use App\Services\MiBandeja\TempDocumentosRecibidos\DocumentoExportService;
+use App\Services\ReportesExportService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -25,82 +28,17 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
 
     public function __construct()
     {
-        $this->middleware('can:'.self::PERM_LISTAR)->only(['index', 'show', 'descargarDocumento', 'descargarAdjunto']);
+        $this->middleware('can:'.self::PERM_LISTAR)->only(['index', 'export', 'show', 'descargarDocumento', 'descargarAdjunto']);
     }
 
     /**
      * Listar grupos colaborativos con flujo terminado pendientes por radicar como enviados.
      */
-    public function index(Request $request): JsonResponse
+    public function index(ListPendientesRadicarRequest $request): JsonResponse
     {
         try {
-            $query = MiBandejaTemp::query()
-                // Plantilla Word, o documento del editor (se radica su PDF con la constancia de firmas)
-                ->where(function ($q) {
-                    $q->where('plantilla_cargada', true)->orWhereNotNull('documento_id');
-                })
-                // El del editor, solo si se puede radicar (mismas reglas que RadicacionGrupoDocumentoService::pendiente)
-                ->where(function ($q) {
-                    $q->whereNull('documento_id')->orWhere(function ($d) {
-                        $d->where('estado_grupo', 'activo')->where('estado', '!=', 'finalizado')->has('firmantes');
-                    });
-                })
-                ->where(function ($q) {
-                    $q->whereNull('respuesta_final')
-                        ->orWhere('respuesta_final', '!=', 'radicado');
-                })
-                // No debe tener radicado enviado ya asignado
-                ->where(function ($q) {
-                    $q->where('radicado_tipo', '!=', 'enviado')
-                        ->orWhereNull('radicado_tipo')
-                        ->orWhereNull('radicado_id');
-                })
-                // Todos los proyectores deben haber cumplido su tarea si existen
-                ->whereDoesntHave('proyectores', function ($q) {
-                    $q->where('estado_tarea', '!=', 'cumplido');
-                })
-                // Todos los revisores deben haber cumplido su tarea si existen
-                ->whereDoesntHave('revisores', function ($q) {
-                    $q->where('estado_tarea', '!=', 'cumplido');
-                })
-                // Todos los firmantes deben haber cumplido y firmado si existen
-                ->whereDoesntHave('firmantes', function ($q) {
-                    $q->where(function ($qf) {
-                        $qf->where('estado_tarea', '!=', 'cumplido')
-                            ->orWhereNull('fechor_firmado');
-                    });
-                })
-                // Todos los aprobadores deben haber cumplido si existen
-                ->whereDoesntHave('aprobadores', function ($q) {
-                    $q->where('estado_tarea', '!=', 'cumplido');
-                })
-                // Debe tener al menos un miembro asignado en alguna de las 4 categorías
-                ->where(function ($q) {
-                    $q->has('proyectores')
-                        ->orHas('revisores')
-                        ->orHas('firmantes')
-                        ->orHas('aprobadores');
-                });
-
-            // Filtro de búsqueda
-            if ($request->filled('search')) {
-                $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('nombre', 'like', "%{$search}%")
-                        ->orWhere('asunto', 'like', "%{$search}%")
-                        ->orWhereHas('radicadoRecibido', function ($qr) use ($search) {
-                            $qr->where('num_radicado', 'like', "%{$search}%")
-                                ->orWhereHas('tercero', function ($qt) use ($search) {
-                                    $qt->where('nom_razo_soci', 'like', "%{$search}%")
-                                        ->orWhere('num_docu_nit', 'like', "%{$search}%");
-                                });
-                        });
-                });
-            }
-
-            if ($request->filled('fecha_desde') && $request->filled('fecha_hasta')) {
-                $query->whereBetween('updated_at', [$request->fecha_desde, $request->fecha_hasta]);
-            }
+            $query = $this->consultaPendientes();
+            $this->aplicarFiltros($query, $request);
 
             $query->with([
                 'radicadoRecibido.tercero',
@@ -118,12 +56,161 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
                 'creadoPor',
             ])->orderBy('updated_at', 'desc');
 
-            $perPage = (int) $request->get('per_page', 10);
-            $pendientes = $query->paginate($perPage);
+            $pendientes = $query->paginate((int) $request->get('per_page', 10));
 
             return $this->successResponse($pendientes, 'Listado de pendientes por radicar obtenido exitosamente');
         } catch (\Exception $e) {
             return $this->errorResponse('Error al consultar pendientes por radicar', $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Exportar los pendientes por radicar con los filtros del listado (o solo los seleccionados)
+     */
+    public function export(ListPendientesRadicarRequest $request, ReportesExportService $exportService)
+    {
+        $request->validate([
+            'format' => 'required|in:excel,pdf,csv',
+            'ids' => 'nullable|array|max:'.ReportesExportService::MAX_FILAS['excel'],
+            'ids.*' => 'integer',
+        ]);
+
+        $query = $this->consultaPendientes()->with([
+            'radicadoRecibido.tercero',
+            'radicadoRecibido.clasificacionDocumental',
+            'proyectores.user',
+            'revisores.user',
+            'firmantes.user',
+            'aprobadores.user',
+            'creadoPor',
+        ]);
+        $this->aplicarFiltros($query, $request);
+        if ($request->filled('ids')) {
+            $query->whereIn('id', $request->ids);
+        }
+
+        $exportService->validarVolumen($query, $request->format);
+        $nombre = fn ($user) => trim(($user?->nombres ?? '').' '.($user?->apellidos ?? ''));
+        $miembros = fn ($lista) => $lista->map(fn ($m) => $nombre($m->user))->filter()->implode(', ');
+
+        $datos = $query->orderBy('updated_at', 'desc')->get()->map(function ($g) use ($nombre, $miembros) {
+            $recibido = $g->radicadoRecibido;
+            $clasificacion = $recibido?->clasificacionDocumental;
+
+            return [
+                'Nombre' => $g->nombre,
+                'Asunto' => $g->asunto ?: $recibido?->asunto,
+                'Radicado recibido' => $recibido?->num_radicado,
+                'Tercero' => trim(($recibido?->tercero?->num_docu_nit ?? '').' '.($recibido?->tercero?->nom_razo_soci ?? '')),
+                'Clasificación' => trim(($clasificacion?->cod ?? '').' '.($clasificacion?->nom ?? '')),
+                'Proyectores' => $miembros($g->proyectores),
+                'Revisores' => $miembros($g->revisores),
+                'Firmantes' => $miembros($g->firmantes),
+                'Aprobadores' => $miembros($g->aprobadores),
+                'Creado por' => $nombre($g->creadoPor),
+                'Actualizado' => $g->updated_at?->format('Y-m-d H:i'),
+            ];
+        })->toArray();
+
+        $data = [
+            'titulo' => 'Pendientes por Radicar',
+            'columnas' => ['Nombre', 'Asunto', 'Radicado recibido', 'Tercero', 'Clasificación', 'Proyectores', 'Revisores', 'Firmantes', 'Aprobadores', 'Creado por', 'Actualizado'],
+            'datos' => $datos,
+            'total' => count($datos),
+            'resumen' => array_filter([
+                'Búsqueda' => $request->search,
+                'Desde' => $request->fecha_desde,
+                'Hasta' => $request->fecha_hasta,
+                'Selección' => $request->filled('ids') ? count($datos).' grupos' : null,
+            ]),
+        ];
+
+        $archivo = 'pendientes_por_radicar';
+
+        return match ($request->format) {
+            'excel' => response()->download($exportService->exportarExcel($data, $archivo), $archivo.'.xlsx')->deleteFileAfterSend(true),
+            'pdf' => response()->download($exportService->exportarPDF($data, $archivo), $archivo.'.pdf')->deleteFileAfterSend(true),
+            'csv' => $exportService->exportarCSV($data, $archivo, $data['columnas']),
+        };
+    }
+
+    /**
+     * Grupos con el flujo terminado que aún no tienen radicado enviado
+     */
+    private function consultaPendientes(): Builder
+    {
+        return MiBandejaTemp::query()
+            // Plantilla Word, o documento del editor (se radica su PDF con la constancia de firmas)
+            ->where(function ($q) {
+                $q->where('plantilla_cargada', true)->orWhereNotNull('documento_id');
+            })
+            // El del editor, solo si se puede radicar (mismas reglas que RadicacionGrupoDocumentoService::pendiente)
+            ->where(function ($q) {
+                $q->whereNull('documento_id')->orWhere(function ($d) {
+                    $d->where('estado_grupo', 'activo')->where('estado', '!=', 'finalizado')->has('firmantes');
+                });
+            })
+            ->where(function ($q) {
+                $q->whereNull('respuesta_final')
+                    ->orWhere('respuesta_final', '!=', 'radicado');
+            })
+            // No debe tener radicado enviado ya asignado
+            ->where(function ($q) {
+                $q->where('radicado_tipo', '!=', 'enviado')
+                    ->orWhereNull('radicado_tipo')
+                    ->orWhereNull('radicado_id');
+            })
+            // Todos los proyectores deben haber cumplido su tarea si existen
+            ->whereDoesntHave('proyectores', function ($q) {
+                $q->where('estado_tarea', '!=', 'cumplido');
+            })
+            // Todos los revisores deben haber cumplido su tarea si existen
+            ->whereDoesntHave('revisores', function ($q) {
+                $q->where('estado_tarea', '!=', 'cumplido');
+            })
+            // Todos los firmantes deben haber cumplido y firmado si existen
+            ->whereDoesntHave('firmantes', function ($q) {
+                $q->where(function ($qf) {
+                    $qf->where('estado_tarea', '!=', 'cumplido')
+                        ->orWhereNull('fechor_firmado');
+                });
+            })
+            // Todos los aprobadores deben haber cumplido si existen
+            ->whereDoesntHave('aprobadores', function ($q) {
+                $q->where('estado_tarea', '!=', 'cumplido');
+            })
+            // Debe tener al menos un miembro asignado en alguna de las 4 categorías
+            ->where(function ($q) {
+                $q->has('proyectores')
+                    ->orHas('revisores')
+                    ->orHas('firmantes')
+                    ->orHas('aprobadores');
+            });
+    }
+
+    private function aplicarFiltros(Builder $query, Request $request): void
+    {
+        // Filtro de búsqueda
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('nombre', 'like', "%{$search}%")
+                    ->orWhere('asunto', 'like', "%{$search}%")
+                    ->orWhereHas('radicadoRecibido', function ($qr) use ($search) {
+                        $qr->where('num_radicado', 'like', "%{$search}%")
+                            ->orWhereHas('tercero', function ($qt) use ($search) {
+                                $qt->where('nom_razo_soci', 'like', "%{$search}%")
+                                    ->orWhere('num_docu_nit', 'like', "%{$search}%");
+                            });
+                    });
+            });
+        }
+
+        if ($request->filled('fecha_desde')) {
+            $query->whereDate('updated_at', '>=', $request->fecha_desde);
+        }
+        if ($request->filled('fecha_hasta')) {
+            $query->whereDate('updated_at', '<=', $request->fecha_hasta);
         }
     }
 
