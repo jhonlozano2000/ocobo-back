@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Ventanilla\Recibidos;
 
+use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class ListRadicadosRecibidosRequest extends FormRequest
 {
@@ -33,7 +35,6 @@ class ListRadicadosRecibidosRequest extends FormRequest
             'fecha_desde' => [
                 'nullable',
                 'date',
-                'before_or_equal:fecha_hasta',
             ],
             'fecha_hasta' => [
                 'nullable',
@@ -57,7 +58,33 @@ class ListRadicadosRecibidosRequest extends FormRequest
             'estado_trabajo' => [
                 'nullable',
                 'string',
-                'in:RECIBIDO,EN_PROCESO,POR_VENCER,VENCIDO,FINALIZADO',
+                Rule::in([...RadicadoEstadoTrabajoService::getEstados(), 'ANULADO']),
+            ],
+            'medio_recep_id' => [
+                'nullable',
+                'integer',
+            ],
+            'tercero_tipo' => [
+                'nullable',
+                'in:Natural,Juridico',
+            ],
+            'con_archivos' => [
+                'nullable',
+                'in:si,no',
+            ],
+            'vencimiento' => [
+                'nullable',
+                'in:vencidos,por_vencer,vigentes',
+            ],
+            'responsable' => [
+                'nullable',
+                'string',
+                'max:100',
+            ],
+            'dependencia_id' => [
+                'nullable',
+                'integer',
+                'exists:calidad_organigrama,id',
             ],
             'usuario_responsable' => [
                 'nullable',
@@ -82,7 +109,6 @@ class ListRadicadosRecibidosRequest extends FormRequest
             'search.string' => 'El término de búsqueda debe ser una cadena de texto.',
             'search.max' => 'El término de búsqueda no puede superar los 100 caracteres.',
             'fecha_desde.date' => 'La fecha desde debe tener un formato válido.',
-            'fecha_desde.before_or_equal' => 'La fecha desde debe ser anterior o igual a la fecha hasta.',
             'fecha_hasta.date' => 'La fecha hasta debe tener un formato válido.',
             'fecha_hasta.after_or_equal' => 'La fecha hasta debe ser posterior o igual a la fecha desde.',
             'clasifica_documen_id.integer' => 'El ID de clasificación documental debe ser un número entero.',

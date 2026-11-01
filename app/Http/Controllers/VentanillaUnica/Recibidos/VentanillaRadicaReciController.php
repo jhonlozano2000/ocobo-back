@@ -10,6 +10,7 @@ use App\Http\Requests\Ventanilla\Recibidos\ListRadicadosRecibidosRequest;
 use App\Http\Requests\Ventanilla\Recibidos\StoreRadicadoReciboRequest;
 use App\Http\Resources\VentanillaUnica\PqrsResource;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\User;
@@ -117,14 +118,7 @@ class VentanillaRadicaReciController extends Controller
             $query = VentanillaRadicaReciOptimizedView::query()
                 ->conPermisoJerarquico(auth()->user()); // Filtrado ABAC automático
 
-            // Aplicar filtros adicionales usando los scopes del modelo optimizado
-            $query->search($request->search)
-                ->fechaEntre($request->fecha_desde, $request->fecha_hasta)
-                ->clasificacionDocumental($request->clasifica_documen_id)
-                ->tercero($request->tercero_id)
-                ->medioRecepcion($request->medio_recep_id)
-                ->estadoTrabajo($request->estado_trabajo)
-                ->ordenadoPorFecha();
+            $this->filtrarListado($query, $request);
 
             // Paginar
             $perPage = $request->get('per_page', 10);
@@ -223,13 +217,7 @@ class VentanillaRadicaReciController extends Controller
         $query = VentanillaRadicaReciOptimizedView::query()
             ->conPermisoJerarquico(auth()->user());
 
-        $query->search($request->search)
-            ->fechaEntre($request->fecha_desde, $request->fecha_hasta)
-            ->clasificacionDocumental($request->clasifica_documen_id)
-            ->tercero($request->tercero_id)
-            ->medioRecepcion($request->medio_recep_id)
-            ->estadoTrabajo($request->estado_trabajo)
-            ->ordenadoPorFecha();
+        $this->filtrarListado($query, $request);
         if ($request->filled('ids')) {
             $query->whereIn('id', $request->ids);
         }
@@ -237,18 +225,29 @@ class VentanillaRadicaReciController extends Controller
         $this->exportService->validarVolumen($query, $request->format);
         $radicados = $query->get();
 
-        $datos = $radicados->map(fn ($r) => [
-            'Radicado' => $r->num_radicado,
-            'Fecha radicación' => $r->created_at ? Carbon::parse($r->created_at)->format('Y-m-d H:i') : '',
-            'Asunto' => $r->asunto,
-            'Remitente' => $r->tercero_nombre ?? '',
-            'Clasificación' => $r->clasificacion_nombre ?? '',
-            'Medio de recepción' => $r->medio_recepcion_nombre ?? '',
-            'Fecha documento' => $r->fec_docu,
-            'Fecha vencimiento' => $r->fec_venci,
-            'Radicado por' => $r->usuario_crea_nombre ?? '',
-            'Estado' => $r->estado_trabajo ?: ReportesUnificadoService::SIN_ESTADO,
-        ])->toArray();
+        // La vista no trae estado, fecha del documento ni quién radicó: se toman de la tabla base
+        $base = VentanillaRadicaReci::whereIn('id', $radicados->pluck('id'))
+            ->with('usuarioCreaRadicado:id,nombres,apellidos')
+            ->get(['id', 'estado_trabajo', 'fec_docu', 'usuario_crea'])
+            ->keyBy('id');
+
+        $datos = $radicados->map(function ($r) use ($base) {
+            $b = $base->get($r->id);
+            $creador = $b?->usuarioCreaRadicado;
+
+            return [
+                'Radicado' => $r->num_radicado,
+                'Fecha radicación' => $r->created_at ? Carbon::parse($r->created_at)->format('Y-m-d H:i') : '',
+                'Asunto' => $r->asunto,
+                'Remitente' => $r->tercero_nombre ?? '',
+                'Clasificación' => trim(($r->clasificacion_cod ?? '').' '.($r->clasificacion_nom ?? '')),
+                'Medio de recepción' => $r->medio_recepcion_nombre ?? '',
+                'Fecha documento' => $b?->fec_docu ? Carbon::parse($b->fec_docu)->format('Y-m-d') : '',
+                'Fecha vencimiento' => $r->fec_venci ? Carbon::parse($r->fec_venci)->format('Y-m-d') : '',
+                'Radicado por' => $creador ? trim($creador->nombres.' '.$creador->apellidos) : '',
+                'Estado' => $b?->estado_trabajo ?: ReportesUnificadoService::SIN_ESTADO,
+            ];
+        })->values()->toArray();
 
         $data = [
             'titulo' => 'Radicaciones Recibidas',
@@ -260,6 +259,16 @@ class VentanillaRadicaReciController extends Controller
                 'Desde' => $request->fecha_desde,
                 'Hasta' => $request->fecha_hasta,
                 'Estado' => $request->estado_trabajo,
+                'Tipo de persona' => $request->tercero_tipo,
+                'Medio de recepción' => $request->filled('medio_recep_id')
+                    ? DB::table('config_listas_detalles')->where('id', $request->medio_recep_id)->value('nombre')
+                    : null,
+                'Archivos' => ['si' => 'Con archivos', 'no' => 'Sin archivos'][$request->con_archivos] ?? null,
+                'Vencimiento' => ['vencidos' => 'Vencidos', 'por_vencer' => 'Por vencer', 'vigentes' => 'Vigentes'][$request->vencimiento] ?? null,
+                'Responsable' => $request->responsable,
+                'Dependencia' => $request->filled('dependencia_id')
+                    ? CalidadOrganigrama::whereKey($request->dependencia_id)->value('nom_organico')
+                    : null,
                 'Selección' => $request->filled('ids') ? count($datos).' radicados' : null,
             ]),
         ];
@@ -271,6 +280,37 @@ class VentanillaRadicaReciController extends Controller
             'pdf' => $this->downloadPDF($data, $nombre),
             'csv' => $this->exportService->exportarCSV($data, $nombre, $data['columnas']),
         };
+    }
+
+    /**
+     * Filtros comunes del listado y del export de Recibidos.
+     */
+    private function filtrarListado($query, ListRadicadosRecibidosRequest $request): void
+    {
+        $query->search($request->search)
+            ->fechaEntre($request->fecha_desde, $request->fecha_hasta)
+            ->clasificacionDocumental($request->clasifica_documen_id)
+            ->tercero($request->tercero_id)
+            ->medioRecepcion($request->medio_recep_id)
+            ->estadoTrabajo($request->estado_trabajo)
+            ->tipoPersona($request->tercero_tipo)
+            ->archivos($request->con_archivos)
+            ->vencimiento($request->vencimiento)
+            ->responsable($request->responsable)
+            ->dependencia($request->dependencia_id)
+            ->ordenadoPorFecha();
+    }
+
+    /**
+     * Dependencias del organigrama para el filtro del listado.
+     */
+    public function dependencias(): JsonResponse
+    {
+        $dependencias = CalidadOrganigrama::porTipo('Dependencia')
+            ->orderBy('nom_organico')
+            ->get(['id', 'cod_organico', 'nom_organico']);
+
+        return $this->successResponse($dependencias, 'Dependencias obtenidas exitosamente');
     }
 
     protected function downloadExcel(array $data, string $nombre)

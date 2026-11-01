@@ -3,6 +3,7 @@
 namespace App\Models\VentanillaUnica\Recibidos;
 
 use App\Helpers\CalendarioHelper;
+use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -95,7 +96,9 @@ class VentanillaRadicaReciOptimizedView extends Model
 
         return $query->where(function ($q) use ($search) {
             $q->where('num_radicado', 'like', "%{$search}%")
-                ->orWhere('asunto', 'like', "%{$search}%");
+                ->orWhere('asunto', 'like', "%{$search}%")
+                ->orWhere('tercero_nombre', 'like', "%{$search}%")
+                ->orWhere('tercero_documento', 'like', "%{$search}%");
         });
     }
 
@@ -104,11 +107,10 @@ class VentanillaRadicaReciOptimizedView extends Model
      */
     public function scopeFechaEntre(Builder $query, ?string $fechaDesde, ?string $fechaHasta): Builder
     {
-        if (empty($fechaDesde) || empty($fechaHasta)) {
-            return $query;
-        }
-
-        return $query->whereBetween('created_at', [$fechaDesde, $fechaHasta]);
+        // Cada extremo filtra solo y ambos son inclusivos: "hasta" incluye todo ese día
+        return $query
+            ->when($fechaDesde, fn ($q) => $q->whereDate('created_at', '>=', $fechaDesde))
+            ->when($fechaHasta, fn ($q) => $q->whereDate('created_at', '<=', $fechaHasta));
     }
 
     /**
@@ -156,7 +158,80 @@ class VentanillaRadicaReciOptimizedView extends Model
             return $query;
         }
 
-        return $query->where('estado_trabajo', $estadoTrabajo);
+        // La vista no expone estado_trabajo: se consulta en la tabla base
+        return $query->whereIn('id', VentanillaRadicaReci::select('id')->where('estado_trabajo', $estadoTrabajo));
+    }
+
+    /**
+     * Scope para filtrar por tipo de persona del remitente (Natural / Juridico).
+     */
+    public function scopeTipoPersona(Builder $query, ?string $tipo): Builder
+    {
+        return $tipo ? $query->where('tercero_tipo', $tipo) : $query;
+    }
+
+    /**
+     * Scope para filtrar por si tiene o no archivos ('si' / 'no').
+     */
+    public function scopeArchivos(Builder $query, ?string $conArchivos): Builder
+    {
+        return match ($conArchivos) {
+            'si' => $query->conArchivos(),
+            'no' => $query->sinArchivos(),
+            default => $query,
+        };
+    }
+
+    /**
+     * Scope para filtrar por vencimiento: vencidos, por_vencer (próximos 5 días) o vigentes.
+     */
+    public function scopeVencimiento(Builder $query, ?string $vencimiento): Builder
+    {
+        $hoy = CalendarioHelper::hoy()->toDateString();
+
+        return match ($vencimiento) {
+            'vencidos' => $query->vencidos(),
+            'por_vencer' => $query->proximosAVencer(5),
+            'vigentes' => $query->whereNotNull('fec_venci')->where('fec_venci', '>=', $hoy),
+            default => $query,
+        };
+    }
+
+    /**
+     * Scope para filtrar por nombre de un responsable asignado.
+     */
+    public function scopeResponsable(Builder $query, ?string $nombre): Builder
+    {
+        if (empty($nombre)) {
+            return $query;
+        }
+
+        return $query->whereIn('id', function ($sub) use ($nombre) {
+            $sub->select('r.radica_reci_id')
+                ->from('ventanilla_radica_reci_responsa as r')
+                ->join('users_cargos as uc', 'uc.id', '=', 'r.users_cargos_id')
+                ->join('users as u', 'u.id', '=', 'uc.user_id')
+                ->whereRaw("CONCAT_WS(' ', u.nombres, u.apellidos) LIKE ?", ["%{$nombre}%"]);
+        });
+    }
+
+    /**
+     * Scope para filtrar por dependencia: radicados con un responsable cuyo cargo cuelga de ella.
+     */
+    public function scopeDependencia(Builder $query, ?int $dependenciaId): Builder
+    {
+        if (empty($dependenciaId)) {
+            return $query;
+        }
+
+        $cargos = CalidadOrganigrama::descendientes($dependenciaId)->pluck('id')->push($dependenciaId);
+
+        return $query->whereIn('id', function ($sub) use ($cargos) {
+            $sub->select('r.radica_reci_id')
+                ->from('ventanilla_radica_reci_responsa as r')
+                ->join('users_cargos as uc', 'uc.id', '=', 'r.users_cargos_id')
+                ->whereIn('uc.cargo_id', $cargos);
+        });
     }
 
     /**

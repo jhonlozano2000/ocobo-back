@@ -29,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
         Route::post('/radica-recibida/{id}/solicitar-anulacion', [VentanillaRadicaReciController::class, 'solicitarAnulacion'])->name('radica-recibida.solicitar-anulacion')->middleware('can:'.$permReci.'Listar')->middleware('acceso_radicado:recibido,id');
         Route::post('/radica-recibida/{id}/procesar-anulacion', [VentanillaRadicaReciController::class, 'procesarAnulacion'])->name('radica-recibida.procesar-anulacion')->middleware('can:Jefe de Archivo');
         Route::get('/radica-recibida', [VentanillaRadicaReciController::class, 'index'])->name('radica-recibida.index')->middleware('can:'.$permReci.'Listar');
+        Route::get('/radica-recibida/dependencias', [VentanillaRadicaReciController::class, 'dependencias'])->name('radica-recibida.dependencias')->middleware('can:'.$permReci.'Listar');
         Route::get('/radica-recibida/export', [VentanillaRadicaReciController::class, 'export'])->name('radica-recibida.export')->middleware('can:'.$permReci.'Listar');
         Route::get('/radica-recibida/{id}', [VentanillaRadicaReciController::class, 'show'])->name('radica-recibida.show')->middleware('can:'.$permReci.'Mostrar')->middleware('acceso_radicado:recibido,id');
         Route::get('/radica-recibida/search/ocr', [VentanillaRadicaReciController::class, 'searchByOcr'])->name('radica-recibida.search-ocr')->middleware('can:'.$permReci.'Listar');
