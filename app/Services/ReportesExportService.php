@@ -16,7 +16,6 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Style;
-use PhpOffice\PhpSpreadsheet\Worksheet\MemoryDrawing;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -45,8 +44,17 @@ class ReportesExportService
         }
     }
 
-    /** Color primario de la app: cabecera de las tablas y membrete de los archivos. */
-    public const COLOR_PRIMARIO = '7367F0';
+    /**
+     * Paleta institucional de los archivos exportados, la misma de los exports que arma el front: banda
+     * oscura de OCOBO, entidad y cabecera de la tabla en azul, título sobre celeste.
+     */
+    public const COLOR_PRIMARIO = '0284C7';
+
+    public const COLOR_OSCURO = '0F172A';
+
+    protected const COLOR_BORDE = 'CBD5E1';
+
+    protected const SISTEMA = 'OCOBO — Sistema de Gestión Documental';
 
     /** Ancho máximo de columna en Excel; los textos más largos se ajustan en varias líneas. */
     protected const ANCHO_MAXIMO = 60;
@@ -55,8 +63,9 @@ class ReportesExportService
     protected const COLUMNAS_HORIZONTAL = 6;
 
     /**
-     * Excel con el membrete de la entidad (logo, razón social, título, fecha y filtros), la cabecera de la
-     * tabla con el color de la app, bordes, filas alternas, cabecera fija, autofiltro y listo para imprimir.
+     * Excel con el membrete institucional (OCOBO, entidad y NIT, título, emisión, quién lo generó y filtros),
+     * la cabecera de la tabla en azul, bordes, filas alternas, fila de total, cabecera fija, autofiltro y
+     * listo para imprimir.
      */
     public function exportarExcel(array $data, string $nombre, array $columnas = []): string
     {
@@ -73,28 +82,33 @@ class ReportesExportService
         $sheet->setShowGridlines(false);
 
         $fila = 1;
+        $generadoPor = $this->generadoPor();
+        $resumen = $this->lineaResumen($data);
         $encabezado = array_filter([
-            [$membrete['entidad'], 14, true, 'FFFFFF', self::COLOR_PRIMARIO, 30],
-            [$titulo, 12, true, self::COLOR_PRIMARIO, 'EEEDFD', 24],
-            [$this->lineaMeta($data, $membrete), 9, false, '444050', 'F8F7FA', 18],
-            [$this->lineaResumen($data), 9, false, '444050', 'F8F7FA', 18],
+            [self::SISTEMA, 16, true, 'FFFFFF', self::COLOR_OSCURO, 30],
+            [$membrete['entidad'].($membrete['nit'] ? ' — NIT: '.$membrete['nit'] : ''), 13, true, self::COLOR_PRIMARIO, 'F1F5F9', 22],
+            [mb_strtoupper($titulo), 12, true, '0369A1', 'E0F2FE', 22],
+            ['Fecha y hora de emisión: '.$this->emision($data).'   |   Total registros: '.$this->total($data), 9, false, '64748B', 'FFFFFF', 18],
+            [$generadoPor ? 'Generado por: '.$generadoPor : '', 9, false, '475569', 'FFFFFF', 18],
+            [$resumen ? 'Filtros: '.$resumen : '', 9, false, '475569', 'FFFFFF', 18],
         ], fn ($linea) => $linea[0] !== '');
         foreach ($encabezado as [$texto, $tamano, $negrita, $color, $fondo, $alto]) {
             $estilo = $this->lineaTitulo($sheet, "A{$fila}:{$ultima}{$fila}", $texto);
+            $estilo->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setIndent(1);
             $estilo->getFont()->setSize($tamano)->setBold($negrita)->getColor()->setRGB($color);
             $estilo->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($fondo);
+            $estilo->getBorders()->getOutline()->setBorderStyle(Border::BORDER_THIN)->getColor()
+                ->setRGB($fila === 1 ? self::COLOR_OSCURO : self::COLOR_BORDE);
             $sheet->getRowDimension($fila)->setRowHeight($alto);
             $fila++;
         }
-        $sheet->getStyle("A1:{$ultima}".($fila - 1))->getBorders()->getOutline()
-            ->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB(self::COLOR_PRIMARIO);
         if (! empty($data['resumen']['Nota'])) {
             $estilo = $this->lineaTitulo($sheet, "A{$fila}:{$ultima}{$fila}", $data['resumen']['Nota']);
-            $estilo->getFont()->setSize(9)->setItalic(true)->getColor()->setRGB('B26A00');
-            $estilo->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FFF4E5');
+            $estilo->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setIndent(1);
+            $estilo->getFont()->setSize(9)->setItalic(true)->getColor()->setRGB('B45309');
+            $estilo->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FEF3C7');
             $fila++;
         }
-        $this->insertarLogo($sheet, $membrete['logo']);
 
         $cabecera = $fila + 1;
         $col = 1;
@@ -105,7 +119,7 @@ class ReportesExportService
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_PRIMARIO]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => self::COLOR_PRIMARIO]]],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => '0369A1']]],
         ]);
         $sheet->getRowDimension($cabecera)->setRowHeight(24);
 
@@ -117,7 +131,7 @@ class ReportesExportService
             }
             if (($fila - $cabecera) % 2 === 0) {
                 $sheet->getStyle("A{$fila}:{$ultima}{$fila}")->getFill()
-                    ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('F8F7FA');
+                    ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('F8FAFC');
             }
             $fila++;
         }
@@ -126,14 +140,16 @@ class ReportesExportService
         if ($ultimaFila === $cabecera) {
             $ultimaFila++;
             $this->lineaTitulo($sheet, "A{$ultimaFila}:{$ultima}{$ultimaFila}", 'Sin datos')
-                ->getFont()->setItalic(true)->getColor()->setRGB('808390');
+                ->getFont()->setItalic(true)->getColor()->setRGB('64748B');
         } else {
             $sheet->setAutoFilter("A{$cabecera}:{$ultima}{$ultimaFila}");
         }
         $sheet->getStyle('A'.($cabecera + 1).":{$ultima}{$ultimaFila}")->applyFromArray([
+            'font' => ['color' => ['rgb' => '1E293B']],
             'alignment' => ['vertical' => Alignment::VERTICAL_TOP],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'DBDADE']]],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => self::COLOR_BORDE]]],
         ]);
+        $this->filaTotal($sheet, $ultimaFila + 1, count($columnas), $this->total($data));
         $sheet->freezePane('A'.($cabecera + 1));
 
         $this->ajustarAnchos($sheet, count($columnas), $cabecera, $ultimaFila);
@@ -162,8 +178,12 @@ class ReportesExportService
 
         $pdf = Pdf::loadView('reportes.export-pdf', [
             'titulo' => $data['titulo'] ?? $nombre,
+            'sistema' => self::SISTEMA,
             'entidad' => $membrete['entidad'],
-            'meta' => $this->lineaMeta($data, $membrete),
+            'nit' => $membrete['nit'],
+            'emision' => $this->emision($data),
+            'total' => $this->total($data),
+            'generadoPor' => $this->generadoPor(),
             'logo' => $logo ? 'data:'.$logo['mime'].';base64,'.base64_encode($logo['bytes']) : null,
             'columnas' => array_values($columnas),
             'datos' => array_map(
@@ -240,13 +260,47 @@ class ReportesExportService
         ];
     }
 
-    protected function lineaMeta(array $data, array $membrete): string
+    protected function emision(array $data): string
     {
-        return implode('   ·   ', array_filter([
-            $membrete['nit'] ? 'NIT '.$membrete['nit'] : null,
-            'Generado: '.($data['fecha_generacion'] ?? now()->format('Y-m-d H:i:s')),
-            'Total registros: '.($data['total'] ?? count($data['datos'] ?? [])),
-        ]));
+        return $data['fecha_generacion'] ?? now()->format('d/m/Y h:i a');
+    }
+
+    protected function total(array $data): int
+    {
+        return (int) ($data['total'] ?? count($data['datos'] ?? []));
+    }
+
+    /** "Nombre Apellido — Cargo" de quien exporta; los reportes programados no tienen usuario. */
+    protected function generadoPor(): ?string
+    {
+        $usuario = auth()->user();
+        if (! $usuario) {
+            return null;
+        }
+        $cargo = $usuario->cargo()->value('nom_organico');
+
+        return trim($usuario->nombres.' '.$usuario->apellidos).($cargo ? ' — '.$cargo : '');
+    }
+
+    /** Fila final "Total registros:" sobre gris, como en los exports del front. */
+    protected function filaTotal(Worksheet $sheet, int $fila, int $columnas, int $total): void
+    {
+        $ultima = Coordinate::stringFromColumnIndex(max($columnas, 1));
+        if ($columnas > 1) {
+            $penultima = Coordinate::stringFromColumnIndex($columnas - 1);
+            $this->lineaTitulo($sheet, "A{$fila}:{$penultima}{$fila}", 'Total registros:')
+                ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+            $sheet->setCellValue($ultima.$fila, $total);
+        } else {
+            ExportSeguroHelper::setCelda($sheet, "A{$fila}", "Total registros: {$total}");
+        }
+        $sheet->getStyle("A{$fila}:{$ultima}{$fila}")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => '1E293B']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E2E8F0']],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => self::COLOR_BORDE]]],
+        ]);
+        $sheet->getStyle($ultima.$fila)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getRowDimension($fila)->setRowHeight(20);
     }
 
     /**
@@ -279,20 +333,6 @@ class ReportesExportService
             ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 
         return $sheet->getStyle($rango);
-    }
-
-    /** El logo va arriba a la izquierda, a la altura del membrete. */
-    protected function insertarLogo(Worksheet $sheet, ?array $logo): void
-    {
-        $imagen = $logo ? @imagecreatefromstring($logo['bytes']) : false;
-        if (! $imagen) {
-            return;
-        }
-
-        $dibujo = new MemoryDrawing;
-        $dibujo->setName('Logo')->setImageResource($imagen);
-        $dibujo->setRenderingFunction(MemoryDrawing::RENDERING_PNG)->setMimeType(MemoryDrawing::MIMETYPE_PNG);
-        $dibujo->setCoordinates('A1')->setOffsetX(4)->setOffsetY(4)->setHeight(52)->setWorksheet($sheet);
     }
 
     /** Ancho según el contenido de la tabla (el membrete combinado no cuenta), con tope y ajuste de línea. */

@@ -87,8 +87,9 @@ class ExportRadicadosEnviadosTest extends TestCase
         $sheet = IOFactory::load($archivo)->getActiveSheet();
         @unlink($archivo);
 
-        $this->assertSame('Radicados Enviados', $sheet->getCell('A2')->getValue());
-        $this->assertStringContainsString('Búsqueda: EXPXLS', $sheet->getCell('A4')->getValue());
+        $this->assertSame('RADICADOS ENVIADOS', $sheet->getCell('A3')->getValue());
+        $this->assertStringStartsWith('Generado por: ', $sheet->getCell('A5')->getValue());
+        $this->assertStringContainsString('Búsqueda: EXPXLS', $sheet->getCell('A6')->getValue());
         $this->assertNotNull($sheet->getFreezePane());
     }
 }

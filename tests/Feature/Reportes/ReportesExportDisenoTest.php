@@ -52,14 +52,16 @@ class ReportesExportDisenoTest extends TestCase
         $sheet = $this->hoja(self::REPORTE, self::REPORTE['columnas']);
         $cabecera = $this->filaDe($sheet, 'Radicado');
 
-        $this->assertNotEmpty($sheet->getCell('A1')->getValue());
-        $this->assertSame(ReportesExportService::COLOR_PRIMARIO, $sheet->getStyle('A1')->getFill()->getStartColor()->getRGB());
+        $this->assertSame('OCOBO — Sistema de Gestión Documental', $sheet->getCell('A1')->getValue());
+        $this->assertSame(ReportesExportService::COLOR_OSCURO, $sheet->getStyle('A1')->getFill()->getStartColor()->getRGB());
         $this->assertSame('FFFFFF', $sheet->getStyle('A1')->getFont()->getColor()->getRGB());
-        $this->assertSame('EEEDFD', $sheet->getStyle('A2')->getFill()->getStartColor()->getRGB());
-        $this->assertSame('Radicaciones Recibidas', $sheet->getCell('A2')->getValue());
-        $this->assertStringContainsString('Total registros: 2', $sheet->getCell('A3')->getValue());
-        $this->assertSame('Módulo: Radicaciones Recibidas   ·   Estado: Pendiente', $sheet->getCell('A4')->getValue());
-        $this->assertSame('Acote el rango.', $sheet->getCell('A5')->getValue());
+        $this->assertNotEmpty($sheet->getCell('A2')->getValue());
+        $this->assertSame(ReportesExportService::COLOR_PRIMARIO, $sheet->getStyle('A2')->getFont()->getColor()->getRGB());
+        $this->assertSame('RADICACIONES RECIBIDAS', $sheet->getCell('A3')->getValue());
+        $this->assertSame('E0F2FE', $sheet->getStyle('A3')->getFill()->getStartColor()->getRGB());
+        $this->assertStringContainsString('Total registros: 2', $sheet->getCell('A4')->getValue());
+        $this->assertSame('Filtros: Módulo: Radicaciones Recibidas   ·   Estado: Pendiente', $sheet->getCell('A5')->getValue());
+        $this->assertSame('Acote el rango.', $sheet->getCell('A6')->getValue());
         $this->assertContains('A1:G1', array_keys($sheet->getMergeCells()));
 
         $estilo = $sheet->getStyle("A{$cabecera}");
@@ -70,6 +72,8 @@ class ReportesExportDisenoTest extends TestCase
         $this->assertSame('R-1', $sheet->getCell('A'.($cabecera + 1))->getValue());
         $this->assertSame('A'.($cabecera + 1), $sheet->getFreezePane());
         $this->assertSame("A{$cabecera}:G".($cabecera + 2), $sheet->getAutoFilter()->getRange());
+        $this->assertSame('Total registros:', $sheet->getCell('A'.($cabecera + 3))->getValue());
+        $this->assertEquals(2, $sheet->getCell('G'.($cabecera + 3))->getValue());
         $this->assertEquals([$cabecera, $cabecera], $sheet->getPageSetup()->getRowsToRepeatAtTop());
         $this->assertSame(PageSetup::ORIENTATION_LANDSCAPE, $sheet->getPageSetup()->getOrientation());
         $this->assertSame(1, $sheet->getPageSetup()->getFitToWidth());
