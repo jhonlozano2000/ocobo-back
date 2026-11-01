@@ -4,7 +4,9 @@ namespace Tests\Feature\VentanillaUnica;
 
 use App\Models\User;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosMetadata;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosMetadataHistory;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoMetadata;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoMetadataHistory;
 use App\Rules\PdfFirmable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
@@ -30,6 +32,11 @@ class MetadataSubidaEnviadosInternosTest extends TestCase
     private const MODULOS = [
         'enviados' => ['radica-enviada', VentanillaRadicaEnviadosMetadata::class],
         'interno' => ['radica-interno', VentanillaRadicaInternoMetadata::class],
+    ];
+
+    private const HISTORIAL = [
+        'enviados' => VentanillaRadicaEnviadosMetadataHistory::class,
+        'interno' => VentanillaRadicaInternoMetadataHistory::class,
     ];
 
     private User $user;
@@ -116,6 +123,32 @@ class MetadataSubidaEnviadosInternosTest extends TestCase
         $meta = $modelo::where('radicado_id', $id)->where('tipo_archivo', 'digital')->firstOrFail();
         $this->assertSame('Oficio firmado', $meta->descripcion);
         $this->assertSame(['oficio', 'firma', 'respuesta'], $meta->palabras_clave);
+    }
+
+    // Antes cada subida creaba otra fila con archivo_id = 0 y la metadata del digital se duplicaba
+    #[DataProvider('modulos')]
+    public function test_volver_a_subir_el_digital_actualiza_su_metadata(string $tipo): void
+    {
+        [$prefijo, $modelo] = self::MODULOS[$tipo];
+        $id = $this->radicado($tipo);
+
+        foreach ([self::METADATA, ['descripcion' => 'Oficio corregido', 'palabras_clave' => 'oficio, corregido']] as $metadata) {
+            $this->actingAs($this->user)
+                ->post("/api/ventanilla/{$prefijo}/{$id}/archivos/digital/upload",
+                    ['archivo_digital' => $this->png()] + $metadata, ['Accept' => 'application/json'])
+                ->assertSuccessful();
+        }
+
+        $filas = $modelo::where('radicado_id', $id)->where('archivo_id', 0)->get();
+        $this->assertCount(1, $filas);
+        $this->assertSame('Oficio corregido', $filas[0]->descripcion);
+        $this->assertSame(['oficio', 'corregido'], $filas[0]->palabras_clave);
+
+        $historial = (self::HISTORIAL[$tipo])::where('metadata_id', $filas[0]->id)->get();
+        $this->assertSame(1, $historial->where('tipo_cambio', 'CREACION')->count());
+        $cambio = $historial->firstWhere('campo_modificado', 'descripcion');
+        $this->assertSame('Oficio firmado', $cambio->valor_anterior);
+        $this->assertSame('Oficio corregido', $cambio->valor_nuevo);
     }
 
     #[DataProvider('modulos')]

@@ -23,6 +23,7 @@ use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciMetadata;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciMetadataHistory;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -197,17 +198,46 @@ class FileMetadataHelper
             'estado_registro' => 'ACTIVO',
         ];
 
-        $metadata = VentanillaRadicaReciMetadata::create(array_merge($metadataData, $extra));
+        return self::guardarMetadata(VentanillaRadicaReciMetadata::class, VentanillaRadicaReciMetadataHistory::class, array_merge($metadataData, $extra));
+    }
 
+    /**
+     * Crea la metadata y registra la creación en el historial. El documento digital (archivo_id = 0) tiene
+     * una sola metadata por radicado: al volver a subirlo se actualiza esa fila y el historial guarda
+     * cada campo que cambió, en vez de acumular una fila por subida.
+     *
+     * @param  class-string<Model>  $modelo
+     * @param  class-string  $historial
+     */
+    private static function guardarMetadata(string $modelo, string $historial, array $datos): Model
+    {
         $usuario = Auth::user();
-        VentanillaRadicaReciMetadataHistory::registrarCreacion(
-            $metadata->id,
-            array_merge($metadataData, $extra),
-            $usuario?->id,
-            $usuario ? trim("{$usuario->nombres} {$usuario->apellidos}") : null
-        );
+        $nombre = $usuario ? trim("{$usuario->nombres} {$usuario->apellidos}") : null;
 
-        return $metadata;
+        $existente = $datos['archivo_id'] === 0
+            ? $modelo::where('radicado_id', $datos['radicado_id'])->where('archivo_id', 0)->latest('id')->first()
+            : null;
+
+        if (! $existente) {
+            $metadata = $modelo::create($datos);
+            $historial::registrarCreacion($metadata->id, $datos, $usuario?->id, $nombre);
+
+            return $metadata;
+        }
+
+        $existente->fill($datos);
+        // Cambian en cada subida y no aportan al historial
+        $cambios = collect($existente->getDirty())
+            ->except(['fecha_ultima_consulta', 'copias_backups', 'updated_at'])
+            ->map(fn ($nuevo, $campo) => ['anterior' => $existente->getRawOriginal($campo), 'nuevo' => $nuevo])
+            ->all();
+        $existente->save();
+
+        if ($cambios) {
+            $historial::registrarActualizacion($existente->id, $cambios, $usuario?->id, $nombre);
+        }
+
+        return $existente;
     }
 
     /**
@@ -517,17 +547,8 @@ class FileMetadataHelper
             'categoria_informacion' => $tipoDocumento,
             'estado_registro' => 'ACTIVO',
         ];
-        $metadata = VentanillaRadicaEnviadosMetadata::create(array_merge($metadataData, $extra));
 
-        $usuario = Auth::user();
-        VentanillaRadicaEnviadosMetadataHistory::registrarCreacion(
-            $metadata->id,
-            array_merge($metadataData, $extra),
-            $usuario?->id,
-            $usuario ? trim("{$usuario->nombres} {$usuario->apellidos}") : null
-        );
-
-        return $metadata;
+        return self::guardarMetadata(VentanillaRadicaEnviadosMetadata::class, VentanillaRadicaEnviadosMetadataHistory::class, array_merge($metadataData, $extra));
     }
 
     public static function crearMetadataArchivoDigitalInterno(VentanillaRadicaInterno $radicado, string $archivoPath, string $hash, int $archivoPeso, array $extra = []): ?VentanillaRadicaInternoMetadata
@@ -663,17 +684,8 @@ class FileMetadataHelper
             'categoria_informacion' => $tipoDocumento,
             'estado_registro' => 'ACTIVO',
         ];
-        $metadata = VentanillaRadicaInternoMetadata::create(array_merge($metadataData, $extra));
 
-        $usuario = Auth::user();
-        VentanillaRadicaInternoMetadataHistory::registrarCreacion(
-            $metadata->id,
-            array_merge($metadataData, $extra),
-            $usuario?->id,
-            $usuario ? trim("{$usuario->nombres} {$usuario->apellidos}") : null
-        );
-
-        return $metadata;
+        return self::guardarMetadata(VentanillaRadicaInternoMetadata::class, VentanillaRadicaInternoMetadataHistory::class, array_merge($metadataData, $extra));
     }
 
     public static function obtenerMetadataConInfo(int $archivoId, string $tipo = 'reci'): ?array
