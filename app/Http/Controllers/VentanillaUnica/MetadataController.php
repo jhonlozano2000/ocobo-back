@@ -8,9 +8,12 @@ use App\Http\Middleware\AccesoRadicado;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\Configuracion\FileClassificationLevel;
+use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosArchivos;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviadosMetadata;
+use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoArchivos;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInternoMetadata;
 use App\Models\VentanillaUnica\Pqrs\VentanillaPqrsMetadata;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivo;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciMetadata;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,6 +22,52 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class MetadataController extends Controller
 {
     use ApiResponseTrait;
+
+    /**
+     * Archivos adjuntos con metadata que el usuario puede ver, para elegir cuál editar sin conocer su ID.
+     * Busca por número de radicado, asunto, nombre del archivo o descripción.
+     */
+    public function listado(Request $request, string $tipo = 'reci'): JsonResponse
+    {
+        $this->autorizarPorTipo($tipo, 'Mostrar');
+        $request->validate([
+            'search' => 'nullable|string|max:100',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $archivos = match ($tipo) {
+            'enviados' => VentanillaRadicaEnviadosArchivos::query(),
+            'interno' => VentanillaRadicaInternoArchivos::query(),
+            default => VentanillaRadicaReciArchivo::query(),
+        };
+        $query = FileMetadataHelper::consultaVisible($request->user(), $tipo);
+        $tabla = $query->getModel()->getTable();
+
+        // archivo_id = 0 es el centinela del documento digital, que no se edita desde aquí
+        $query->where('archivo_id', '>', 0)
+            ->with(['radicado:id,num_radicado,asunto', 'nivelClasificacion:id,codigo,nombre'])
+            ->addSelect(["{$tabla}.*", 'nombre_archivo' => (clone $archivos)->select('nom_origi')->whereColumn('id', "{$tabla}.archivo_id")->limit(1)]);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(fn ($q) => $q->where('descripcion', 'like', "%{$search}%")
+                ->orWhereHas('radicado', fn ($r) => $r->where('num_radicado', 'like', "%{$search}%")->orWhere('asunto', 'like', "%{$search}%"))
+                ->orWhereIn('archivo_id', (clone $archivos)->select('id')->where('nom_origi', 'like', "%{$search}%")));
+        }
+
+        $pagina = $query->orderByDesc('updated_at')->orderByDesc('id')->paginate($request->integer('per_page', 10));
+        $pagina->through(fn ($m) => [
+            'archivo_id' => $m->archivo_id,
+            'num_radicado' => $m->radicado?->num_radicado,
+            'asunto' => $m->radicado?->asunto,
+            'nombre_archivo' => $m->nombre_archivo,
+            'descripcion' => $m->descripcion,
+            'nivel' => $m->nivelClasificacion ? $m->nivelClasificacion->codigo.' - '.$m->nivelClasificacion->nombre : $m->nivel_clasificacion,
+            'actualizado' => $m->updated_at?->toDateTimeString(),
+        ]);
+
+        return $this->successResponse($pagina, 'Listado de metadatos obtenido');
+    }
 
     public function show(int $archivoId, string $tipo = 'reci'): JsonResponse
     {

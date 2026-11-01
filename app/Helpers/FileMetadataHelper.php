@@ -22,6 +22,7 @@ use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciArchivo;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciMetadata;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReciMetadataHistory;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -714,7 +715,10 @@ class FileMetadataHelper
         ];
     }
 
-    public static function exportarMetadata(User $user, array $filtros = [], string $tipo = 'reci'): StreamedResponse
+    /**
+     * Metadata de los radicados que el usuario puede ver (mismo ABAC que show/store).
+     */
+    public static function consultaVisible(User $user, string $tipo = 'reci'): Builder
     {
         $query = match ($tipo) {
             'enviados' => VentanillaRadicaEnviadosMetadata::query(),
@@ -735,6 +739,13 @@ class FileMetadataHelper
                 $q->orWhereIn('radicado_id', VentanillaPqrsOptimizedView::conPermisoJerarquico($user)->select('ventanilla_radica_reci_id'));
             }
         });
+
+        return $query;
+    }
+
+    public static function exportarMetadata(User $user, array $filtros = [], string $tipo = 'reci'): StreamedResponse
+    {
+        $query = self::consultaVisible($user, $tipo);
 
         if (! empty($filtros['radicado_id'])) {
             $query->where('radicado_id', $filtros['radicado_id']);

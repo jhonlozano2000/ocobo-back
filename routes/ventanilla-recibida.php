@@ -89,6 +89,7 @@ Route::middleware('auth:sanctum')->group(function () use ($permReci) {
         // (MetadataController::autorizarPorTipo) y no con un can: fijo aqui.
         // archivoId >= 1: los digitales se guardan con archivo_id = 0 (centinela compartido por todos
         // los radicados), así que /archivos/0 resolvía la metadata de un radicado cualquiera.
+        Route::get('/metadata/listado/{tipo?}', [MetadataController::class, 'listado'])->name('metadata.listado');
         Route::get('/metadata/clasificacion-niveles', [MetadataController::class, 'nivelClasificacionIndex'])->name('metadata.niveles');
         Route::get('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'show'])->name('metadata.show')->where('archivoId', '[1-9][0-9]*');
         Route::put('/metadata/archivos/{archivoId}/{tipo?}', [MetadataController::class, 'store'])->name('metadata.update')->where('archivoId', '[1-9][0-9]*');
