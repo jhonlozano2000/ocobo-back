@@ -7,6 +7,7 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Models\VentanillaUnica\Internos\VentanillaRadicaInterno;
 use App\Services\MiBandeja\MiBandejaFiltroService;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,7 +21,7 @@ class MiBandejaInternosController extends Controller
 
     /**
      * Obtener radicados internos asignados al usuario actual (Mi Bandeja).
-     * Filtra por los cargos del usuario a través de ventanilla_radica_internos_responsa.
+     * Incluye los radicados donde el usuario es responsable o firmante.
      *
      * Parámetros:
      * - nivel: 'mis_radicados' | 'ver_todo' (default: 'mis_radicados')
@@ -35,30 +36,7 @@ class MiBandejaInternosController extends Controller
 
             $query = VentanillaRadicaInterno::query();
 
-            // Aplicar filtro jerárquico
-            if ($nivel === 'ver_todo') {
-                $userIds = MiBandejaFiltroService::getUserIdsParaFiltro($userId);
-
-                if ($userIds) {
-                    $query->whereHas('responsables', function ($q) use ($userIds) {
-                        $q->whereHas('userCargo', function ($q2) use ($userIds) {
-                            $q2->whereIn('user_id', $userIds);
-                        });
-                    });
-                } else {
-                    $query->whereHas('responsables', function ($q) use ($userId) {
-                        $q->whereHas('userCargo', function ($q2) use ($userId) {
-                            $q2->where('user_id', $userId);
-                        });
-                    });
-                }
-            } else {
-                $query->whereHas('responsables', function ($q) use ($userId) {
-                    $q->whereHas('userCargo', function ($q2) use ($userId) {
-                        $q2->where('user_id', $userId);
-                    });
-                });
-            }
+            $this->filtrarAsignados($query, $userId, $nivel);
 
             $query->orderBy('created_at', 'desc')->orderBy('id', 'desc');
 
@@ -140,30 +118,7 @@ class MiBandejaInternosController extends Controller
 
             $baseQuery = VentanillaRadicaInterno::query();
 
-            // Aplicar filtro jerárquico
-            if ($nivel === 'ver_todo') {
-                $userIds = MiBandejaFiltroService::getUserIdsParaFiltro($userId);
-
-                if ($userIds) {
-                    $baseQuery->whereHas('responsables', function ($q) use ($userIds) {
-                        $q->whereHas('userCargo', function ($q2) use ($userIds) {
-                            $q2->whereIn('user_id', $userIds);
-                        });
-                    });
-                } else {
-                    $baseQuery->whereHas('responsables', function ($q) use ($userId) {
-                        $q->whereHas('userCargo', function ($q2) use ($userId) {
-                            $q2->where('user_id', $userId);
-                        });
-                    });
-                }
-            } else {
-                $baseQuery->whereHas('responsables', function ($q) use ($userId) {
-                    $q->whereHas('userCargo', function ($q2) use ($userId) {
-                        $q2->where('user_id', $userId);
-                    });
-                });
-            }
+            $this->filtrarAsignados($baseQuery, $userId, $nivel);
 
             $total = (clone $baseQuery)->count();
             // Estados que asigna calcularEstadoTrabajo(); BORRADOR no existe y FINALIZADO casi nunca llega
@@ -187,5 +142,17 @@ class MiBandejaInternosController extends Controller
 
             return $this->serverErrorResponse('Error al obtener estadísticas', $e->getMessage());
         }
+    }
+
+    /**
+     * Radicados asignados al usuario como responsable o firmante; con 'ver_todo', los de su jerarquía.
+     */
+    private function filtrarAsignados(Builder $query, int $userId, string $nivel): void
+    {
+        $userIds = ($nivel === 'ver_todo' ? MiBandejaFiltroService::getUserIdsParaFiltro($userId) : null) ?: [$userId];
+
+        $query->where(fn ($q) => $q
+            ->whereHas('responsables.userCargo', fn ($r) => $r->whereIn('user_id', $userIds))
+            ->orWhereHas('firmantes', fn ($f) => $f->whereIn('users_id', $userIds)));
     }
 }
