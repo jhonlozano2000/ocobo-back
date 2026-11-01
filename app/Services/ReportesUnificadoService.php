@@ -192,10 +192,8 @@ class ReportesUnificadoService
         $datos = $items->map($config['map'])->toArray();
 
         $resumen = [
-            'Total' => $total,
             'Módulo' => $config['label'],
-            'Página' => $page,
-            'Por página' => $perPage,
+            'Total' => $total,
         ];
 
         if ($exportar && $total > $perPage) {
@@ -206,6 +204,9 @@ class ReportesUnificadoService
         }
         if (! empty($filtros['hasta'])) {
             $resumen['Hasta'] = $filtros['hasta'];
+        }
+        if (! empty($filtros['estado'])) {
+            $resumen['Estado'] = $filtros['estado'];
         }
 
         return [

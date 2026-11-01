@@ -35,10 +35,12 @@ class ExportSinFormulasTest extends TestCase
 
         try {
             $sheet = IOFactory::load($path)->getActiveSheet();
+            // La primera fila de datos va debajo del membrete y la cabecera de la tabla
+            $fila = 1 + collect($sheet->rangeToArray('A1:A20', null, false, false, true))->search(fn ($c) => $c['A'] === 'Nombre');
 
-            $this->assertSame(DataType::TYPE_STRING, $sheet->getCell('A2')->getDataType());
-            $this->assertSame(self::PAYLOAD, $sheet->getCell('A2')->getValue());
-            $this->assertSame(DataType::TYPE_NUMERIC, $sheet->getCell('B2')->getDataType());
+            $this->assertSame(DataType::TYPE_STRING, $sheet->getCell("A{$fila}")->getDataType());
+            $this->assertSame(self::PAYLOAD, $sheet->getCell("A{$fila}")->getValue());
+            $this->assertSame(DataType::TYPE_NUMERIC, $sheet->getCell("B{$fila}")->getDataType());
         } finally {
             @unlink($path);
         }
