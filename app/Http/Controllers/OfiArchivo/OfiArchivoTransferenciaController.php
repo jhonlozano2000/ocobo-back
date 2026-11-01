@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\OfiArchivo\OfiArchivoEliminacion;
 use App\Models\OfiArchivo\OfiArchivoTransferencia;
+use App\Services\ReportesExportService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -37,22 +39,7 @@ class OfiArchivoTransferenciaController extends Controller
     {
         try {
             $query = OfiArchivoTransferencia::with(['expediente', 'responsableOrigen', 'responsableDestino', 'lote:id,codigo,estado']);
-
-            if ($request->has('tipo') && $request->tipo !== '') {
-                $query->where('tipo', $request->tipo);
-            }
-
-            if ($request->has('estado') && $request->estado !== '') {
-                $query->where('estado', $request->estado);
-            }
-
-            if ($request->has('search') && $request->search !== '') {
-                $search = $request->search;
-                $query->whereHas('expediente', function ($q) use ($search) {
-                    $q->where('numero_expediente', 'like', "%{$search}%")
-                        ->orWhere('nombre_expediente', 'like', "%{$search}%");
-                });
-            }
+            $this->filtrarTransferencias($query, $request);
 
             $perPage = min($request->get('per_page', 15), 100);
             $transferencias = $query->latest()->paginate($perPage);
@@ -171,13 +158,7 @@ class OfiArchivoTransferenciaController extends Controller
     {
         try {
             $query = OfiArchivoEliminacion::with(['expediente', 'aprobadoPor', 'usuarioRegistro']);
-
-            if ($request->has('search') && $request->search !== '') {
-                $search = $request->search;
-                $query->whereHas('expediente', function ($q) use ($search) {
-                    $q->where('numero_expediente', 'like', "%{$search}%");
-                });
-            }
+            $this->filtrarEliminaciones($query, $request);
 
             $perPage = min($request->get('per_page', 15), 100);
             $eliminaciones = $query->latest()->paginate($perPage);
@@ -202,6 +183,140 @@ class OfiArchivoTransferenciaController extends Controller
     public function storeEliminacion()
     {
         return $this->warningResponse('La eliminación individual ya no está disponible: proponga el lote de la serie en Gestión de Archivo → Eliminaciones');
+    }
+
+    /**
+     * Exporta las transferencias con los filtros del listado (o la selección) en el formato de los reportes.
+     */
+    public function exportTransferencias(Request $request, ReportesExportService $exportService)
+    {
+        $this->validarExport($request);
+        $request->validate(['tipo' => 'nullable|string|max:30', 'estado' => 'nullable|string|max:30']);
+
+        $query = OfiArchivoTransferencia::with(['expediente', 'responsableOrigen', 'responsableDestino', 'lote:id,codigo']);
+        $this->filtrarTransferencias($query, $request);
+        if ($request->filled('ids')) {
+            $query->whereIn('id', $request->ids);
+        }
+
+        $exportService->validarVolumen($query, $request->format);
+
+        $datos = $query->latest()->get()->map(fn (OfiArchivoTransferencia $t) => [
+            'Expediente' => $t->expediente?->numero_expediente,
+            'Nombre del expediente' => $t->expediente?->nombre_expediente,
+            'Tipo' => $t->tipo,
+            'Origen' => $t->origen,
+            'Destino' => $t->destino,
+            'Responsable origen' => $this->nombre($t->responsableOrigen),
+            'Responsable destino' => $this->nombre($t->responsableDestino),
+            'Lote' => $t->lote?->codigo,
+            'Fecha' => $t->fecha_transferencia?->format('Y-m-d'),
+            'Estado' => $t->estado,
+        ])->toArray();
+
+        return $this->descargar($exportService, $request, 'transferencias', [
+            'titulo' => 'Transferencias documentales',
+            'columnas' => ['Expediente', 'Nombre del expediente', 'Tipo', 'Origen', 'Destino', 'Responsable origen', 'Responsable destino', 'Lote', 'Fecha', 'Estado'],
+            'datos' => $datos,
+            'total' => count($datos),
+            'resumen' => array_filter([
+                'Búsqueda' => $request->search,
+                'Tipo' => $request->tipo,
+                'Estado' => $request->estado,
+                'Selección' => $request->filled('ids') ? count($datos).' transferencias' : null,
+            ]),
+        ]);
+    }
+
+    /**
+     * Exporta las eliminaciones con los filtros del listado (o la selección) en el formato de los reportes.
+     */
+    public function exportEliminaciones(Request $request, ReportesExportService $exportService)
+    {
+        $this->validarExport($request);
+
+        $query = OfiArchivoEliminacion::with(['expediente', 'aprobadoPor', 'usuarioRegistro']);
+        $this->filtrarEliminaciones($query, $request);
+        if ($request->filled('ids')) {
+            $query->whereIn('id', $request->ids);
+        }
+
+        $exportService->validarVolumen($query, $request->format);
+
+        $datos = $query->latest()->get()->map(fn (OfiArchivoEliminacion $e) => [
+            'Expediente' => $e->expediente?->numero_expediente,
+            'Nombre del expediente' => $e->expediente?->nombre_expediente,
+            'Fecha' => $e->fecha?->format('Y-m-d'),
+            'Método' => $e->metodo,
+            'Aprobado por' => $this->nombre($e->aprobadoPor),
+            'Registrado por' => $this->nombre($e->usuarioRegistro),
+        ])->toArray();
+
+        return $this->descargar($exportService, $request, 'eliminaciones', [
+            'titulo' => 'Eliminaciones documentales',
+            'columnas' => ['Expediente', 'Nombre del expediente', 'Fecha', 'Método', 'Aprobado por', 'Registrado por'],
+            'datos' => $datos,
+            'total' => count($datos),
+            'resumen' => array_filter([
+                'Búsqueda' => $request->search,
+                'Selección' => $request->filled('ids') ? count($datos).' eliminaciones' : null,
+            ]),
+        ]);
+    }
+
+    private function validarExport(Request $request): void
+    {
+        $request->validate([
+            'format' => 'required|in:excel,pdf,csv',
+            'search' => 'nullable|string|max:100',
+            'ids' => 'nullable|array|max:'.ReportesExportService::MAX_FILAS['excel'],
+            'ids.*' => 'integer',
+        ]);
+    }
+
+    private function descargar(ReportesExportService $exportService, Request $request, string $archivo, array $data)
+    {
+        return match ($request->format) {
+            'excel' => response()->download($exportService->exportarExcel($data, $archivo), $archivo.'.xlsx')->deleteFileAfterSend(true),
+            'pdf' => response()->download($exportService->exportarPDF($data, $archivo), $archivo.'.pdf')->deleteFileAfterSend(true),
+            'csv' => $exportService->exportarCSV($data, $archivo, $data['columnas']),
+        };
+    }
+
+    private function nombre($usuario): string
+    {
+        return $usuario ? trim($usuario->nombres.' '.$usuario->apellidos) : '';
+    }
+
+    /**
+     * Filtros del listado de transferencias; la búsqueda cubre lo mismo que la de la tabla.
+     */
+    private function filtrarTransferencias(Builder $query, Request $request): void
+    {
+        if ($request->filled('tipo')) {
+            $query->where('tipo', $request->tipo);
+        }
+
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(fn ($q) => $q->where('origen', 'like', "%{$search}%")
+                ->orWhere('destino', 'like', "%{$search}%")
+                ->orWhereHas('expediente', fn ($e) => $e->where('numero_expediente', 'like', "%{$search}%")
+                    ->orWhere('nombre_expediente', 'like', "%{$search}%")));
+        }
+    }
+
+    private function filtrarEliminaciones(Builder $query, Request $request): void
+    {
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('expediente', fn ($e) => $e->where('numero_expediente', 'like', "%{$search}%")
+                ->orWhere('nombre_expediente', 'like', "%{$search}%"));
+        }
     }
 
     /**

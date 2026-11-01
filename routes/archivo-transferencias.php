@@ -14,6 +14,8 @@ Route::middleware(['auth:sanctum', 'throttle:archivo'])->group(function () {
     // Transferencias
     Route::get('transferencias', [OfiArchivoTransferenciaController::class, 'indexTransferencias'])
         ->middleware('can:Gestion de Archivo -> Transferencias -> Ver');
+    Route::get('transferencias/export', [OfiArchivoTransferenciaController::class, 'exportTransferencias'])
+        ->middleware('can:Gestion de Archivo -> Transferencias -> Ver');
     Route::post('transferencias', [OfiArchivoTransferenciaController::class, 'storeTransferencia'])
         ->middleware('can:Gestion de Archivo -> Transferencias -> Crear');
     Route::post('transferencias/{id}/aprobar', [OfiArchivoTransferenciaController::class, 'aprobarTransferencia'])
@@ -32,6 +34,8 @@ Route::middleware(['auth:sanctum', 'throttle:archivo'])->group(function () {
 
     // Eliminaciones
     Route::get('eliminaciones', [OfiArchivoTransferenciaController::class, 'indexEliminaciones'])
+        ->middleware('can:Gestion de Archivo -> Eliminaciones -> Ver');
+    Route::get('eliminaciones/export', [OfiArchivoTransferenciaController::class, 'exportEliminaciones'])
         ->middleware('can:Gestion de Archivo -> Eliminaciones -> Ver');
     Route::post('eliminaciones', [OfiArchivoTransferenciaController::class, 'storeEliminacion'])
         ->middleware('can:Gestion de Archivo -> Eliminaciones -> Crear');
