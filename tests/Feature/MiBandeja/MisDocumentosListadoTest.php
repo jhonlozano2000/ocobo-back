@@ -71,6 +71,35 @@ class MisDocumentosListadoTest extends TestCase
             ->assertJsonPath('data.0.titulo', 'Informe trimestral');
     }
 
+    // Redactar desde Enviados o Internos: el documento base del grupo debe ser propio y sin grupo activo
+    public function test_para_grupo_lista_solo_los_propios_sin_grupo_activo(): void
+    {
+        $this->withoutMiddleware(ThrottleRequests::class);
+        $yo = User::factory()->create(['estado' => 1]);
+        $otro = User::factory()->create(['estado' => 1]);
+        $this->documento($yo, 'Libre');
+        $conGrupo = $this->documento($yo, 'Con grupo');
+        $grupoAnulado = $this->documento($yo, 'Grupo anulado');
+        $compartido = $this->documento($otro, 'Compartido');
+        DB::table('mi_bandeja_temp_reci_usuarios')->insert([
+            'documento_id' => $compartido, 'user_id' => $yo->id, 'rol' => 'responsable', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        foreach ([[$conGrupo, 'activo'], [$grupoAnulado, 'anulado']] as [$documentoId, $estadoGrupo]) {
+            DB::table('mi_bandeja_temp')->insert([
+                'nombre' => 'Grupo', 'usua_crea_id' => $yo->id, 'estado' => 'borrador', 'estado_grupo' => $estadoGrupo,
+                'documento_id' => $documentoId, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        $titulos = fn ($respuesta) => collect($respuesta->assertOk()->json('data'))->pluck('titulo')->sort()->values()->all();
+
+        $this->assertSame(['Grupo anulado', 'Libre'], $titulos($this->actingAs($yo)->getJson(self::URL.'?para_grupo=1')));
+        $this->assertSame(
+            ['Compartido', 'Con grupo', 'Grupo anulado', 'Libre'],
+            $titulos($this->actingAs($yo)->getJson(self::URL))
+        );
+    }
+
     public function test_rechaza_un_tamano_de_pagina_fuera_de_rango(): void
     {
         $this->withoutMiddleware(ThrottleRequests::class);

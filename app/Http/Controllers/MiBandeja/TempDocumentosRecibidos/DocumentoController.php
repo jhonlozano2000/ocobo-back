@@ -52,6 +52,7 @@ class DocumentoController extends Controller
      * @return JsonResponse Lista paginada de documentos
      *
      * @queryParam per_page integer Elementos por página (por defecto: 20). Example: 20
+     * @queryParam para_grupo boolean Solo los propios sin grupo colaborativo activo. Example: 1
      *
      * @response 200 {
      *   "data": [
@@ -70,10 +71,14 @@ class DocumentoController extends Controller
         $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'para_grupo' => ['nullable', 'boolean'],
         ]);
         $search = trim((string) $request->input('search'));
 
         $documentos = $this->misDocumentos($request)
+            // Base de un grupo colaborativo nuevo (Redactar): solo los propios y sin grupo activo, como exige el store
+            ->when($request->boolean('para_grupo'), fn ($q) => $q->where('user_id', $request->user()->id)
+                ->whereDoesntHave('grupos', fn ($g) => $g->where('estado_grupo', 'activo')))
             ->when($search !== '', fn ($q) => $q->where(fn ($b) => $b->where('titulo', 'like', "%{$search}%")
                 ->orWhereHas('creador', fn ($u) => $u->whereRaw("CONCAT(nombres, ' ', apellidos) LIKE ?", ["%{$search}%"]))))
             ->with(['usuarios', 'contenido', 'creador'])

@@ -148,7 +148,9 @@ class GrupoDocumentoTest extends TestCase
         $this->getJson(self::URL_GRUPOS."/{$grupoId}")
             ->assertOk()
             ->assertJsonPath('data.clasifica_documen_id', $this->trd)
-            ->assertJsonPath('data.clasificacion_documental.id', $this->trd);
+            ->assertJsonPath('data.clasificacion_documental.id', $this->trd)
+            // El detalle del grupo muestra su documento base
+            ->assertJsonPath('data.documento.id', $this->documento);
 
         // Se puede cambiar pero no quitar
         $this->creador->givePermissionTo(Permission::findOrCreate('Mi Bandeja - Grupos Colaborativos -> Editar', 'web'));
