@@ -318,6 +318,9 @@ class UserController extends Controller
                 return $this->notFoundResponse('Usuario no encontrado');
             }
 
+            // El encabezado del perfil muestra la foto: necesita la URL, no solo el nombre del archivo
+            $user->append('avatar_url');
+
             return $this->successResponse([
                 'user' => $user,
                 'cargo' => $user->cargoActivo?->cargo,

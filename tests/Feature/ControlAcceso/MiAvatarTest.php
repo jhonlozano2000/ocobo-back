@@ -59,6 +59,16 @@ class MiAvatarTest extends TestCase
         $this->assertSame('/api/archivo/documentos/ver?disk=avatars&path=yo.png', $datos['avatar_url']);
     }
 
+    public function test_su_perfil_completo_trae_la_url_de_la_foto(): void
+    {
+        $this->user->forceFill(['avatar' => 'yo.png'])->save();
+
+        $this->actingAs($this->user)
+            ->getJson("/api/control-acceso/users/{$this->user->id}/perfil-completo")
+            ->assertOk()
+            ->assertJsonPath('data.user.avatar_url', '/api/archivo/documentos/ver?disk=avatars&path=yo.png');
+    }
+
     public function test_rechaza_lo_que_no_es_png_o_jpg_o_pesa_mas_de_2mb(): void
     {
         $this->actingAs($this->user)
