@@ -131,7 +131,7 @@ class GuardarCanvasTest extends TestCase
         $url = "/api/workflows/workflows/{$this->workflow->id}/canvas";
         $nota = [
             'id' => 'anot_1', 'tipo' => 'nota', 'x' => 10, 'y' => 20, 'ancho' => 180, 'alto' => 140,
-            'texto' => 'Revisar con jurídica', 'estilo' => ['color' => 'amarillo'],
+            'texto' => 'Revisar con jurídica', 'estilo' => ['color' => 'amarillo', 'fuente' => 'manuscrita', 'negrita' => true],
         ];
         $trazo = ['id' => 'anot_2', 'tipo' => 'trazo', 'x' => 0, 'y' => 0, 'puntos' => [[0, 0], [12.5, 4]], 'estilo' => ['color' => 'verde']];
 
