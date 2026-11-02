@@ -334,7 +334,7 @@ class MiBandejaTempController extends Controller
                 'adjuntos',
                 'creadoPor.cargo',
                 'plantilla',
-                'clasificacionDocumental:id,cod,nom',
+                'clasificacionDocumental:id,cod,nom,dependencia_id',
                 'versiones.subidoPor',
                 'firmaEventos.user',
             ]);

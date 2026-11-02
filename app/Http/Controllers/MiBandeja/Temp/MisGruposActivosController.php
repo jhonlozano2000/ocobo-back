@@ -39,6 +39,7 @@ class MisGruposActivosController extends Controller
                 'radicadoEnviado.tercero',
                 'radicadoInterno',
                 'plantilla:id,nombre_original',
+                'clasificacionDocumental:id,dependencia_id',
                 'notas:id,grupo_id,user_id,created_at',
                 'lecturasNotas' => fn ($q) => $q->where('user_id', $user->id),
             ])
@@ -208,6 +209,9 @@ class MisGruposActivosController extends Controller
                     'plantilla_id' => $grupo->plantilla_id,
                     // Documento del editor en línea (Mis Documentos): se abre en el editor, sin check-out
                     'documento_id' => $grupo->documento_id,
+                    // TRD del grupo: se precarga al radicarlo como interno
+                    'clasifica_documen_id' => $grupo->clasifica_documen_id,
+                    'clasificacion_dependencia_id' => $grupo->clasificacionDocumental?->dependencia_id,
                     'total_notas' => $totalNotas,
                     'notas_no_leidas' => $notasNoLeidas,
                     'ultima_version' => $versionData,
