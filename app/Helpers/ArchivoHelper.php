@@ -517,8 +517,9 @@ class ArchivoHelper
             return null;
         }
 
-        // Generar URL apuntando al endpoint seguro protegido por Sanctum
-        return route('documentos.ver', ['disk' => $disk, 'path' => $path]);
+        // Endpoint seguro protegido por Sanctum. Relativa: el navegador la pide al origen del front, que la
+        // pasa al back por su proxy con la cookie de sesión (APP_URL no es necesariamente un host alcanzable)
+        return route('documentos.ver', ['disk' => $disk, 'path' => $path], false);
     }
 
     /**

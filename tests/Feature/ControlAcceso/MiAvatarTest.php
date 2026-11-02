@@ -45,6 +45,8 @@ class MiAvatarTest extends TestCase
         Storage::disk('avatars')->assertExists($nueva);
         Storage::disk('avatars')->assertMissing('vieja.png');
         $this->assertSame($this->user->fresh()->avatar_url, $url);
+        // Relativa: el navegador la pide por el proxy del front, con la cookie de sesión
+        $this->assertSame('/api/archivo/documentos/ver?disk=avatars&path='.$nueva, $url);
     }
 
     public function test_rechaza_lo_que_no_es_png_o_jpg_o_pesa_mas_de_2mb(): void
