@@ -51,7 +51,9 @@ class WorkflowService
 
     public function obtenerConRelaciones(int $id): Workflow
     {
+        // El builder avisa de entrada que no se puede editar el grafo mientras haya instancias en curso
         return Workflow::with(['nodos', 'conexiones', 'creador:id,nombres,apellidos', 'settings'])
+            ->withCount(['instancias as instancias_en_curso_count' => fn ($q) => $q->where('estado', 'en_curso')])
             ->findOrFail($id);
     }
 
