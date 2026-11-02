@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ControlAcceso;
 
+use App\Helpers\ArchivoHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ControlAcceso\StoreUserRequest;
 use App\Http\Requests\ControlAcceso\UpdatePasswordRequest;
@@ -224,6 +225,44 @@ class UserController extends Controller
 
             return $this->serverErrorResponse('Error al actualizar el perfil', $e->getMessage());
         }
+    }
+
+    /**
+     * Cambia la foto del usuario autenticado desde Mi perfil (PNG o JPG, máx. 2 MB).
+     */
+    public function actualizarMiAvatar(Request $request)
+    {
+        $request->validate([
+            'avatar' => ['required', 'file', 'image', 'mimes:png,jpg,jpeg', 'max:2048'],
+        ], [
+            'avatar.required' => 'Selecciona una imagen.',
+            'avatar.image' => 'El avatar debe ser una imagen.',
+            'avatar.mimes' => 'El avatar debe ser PNG o JPG.',
+            'avatar.max' => 'El avatar no puede superar los 2MB.',
+        ]);
+
+        $user = Auth::user();
+        $upload = ArchivoHelper::guardarUploadedConHash($request->file('avatar'), 'avatars');
+        if (! $upload) {
+            return $this->errorResponse('No se pudo guardar la imagen', null, 422);
+        }
+
+        ArchivoHelper::eliminarArchivo($user->avatar, 'avatars');
+        $user->update(['avatar' => $upload['nombre_almacenado']]);
+
+        return $this->successResponse(['avatar_url' => $user->avatar_url], 'Foto actualizada');
+    }
+
+    /**
+     * Quita la foto del usuario autenticado.
+     */
+    public function eliminarMiAvatar()
+    {
+        $user = Auth::user();
+        ArchivoHelper::eliminarArchivo($user->avatar, 'avatars');
+        $user->update(['avatar' => null]);
+
+        return $this->successResponse(['avatar_url' => null], 'Foto eliminada');
     }
 
     /**

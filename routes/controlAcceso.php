@@ -18,6 +18,8 @@ Route::middleware(['throttle:config-operations', 'auth:sanctum'])->group(functio
      */
     Route::put('/user/changePassword', [UserController::class, 'updatePassword']);
     Route::put('/user/profile-information', [UserController::class, 'updateUserProfile']);
+    Route::post('/user/avatar', [UserController::class, 'actualizarMiAvatar'])->name('user.avatar.actualizar');
+    Route::delete('/user/avatar', [UserController::class, 'eliminarMiAvatar'])->name('user.avatar.eliminar');
 
     /**
      * RBAC-001 / M14-001: toda la gestión de usuarios exige permiso explícito.
