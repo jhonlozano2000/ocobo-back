@@ -34,6 +34,8 @@ class GrupoDocumentoTest extends TestCase
 
     private int $documento;
 
+    private int $trd;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -53,6 +55,7 @@ class GrupoDocumentoTest extends TestCase
             'user_id' => $this->creador->id, 'titulo' => 'Oficio de respuesta', 'estado' => 'borrador',
             'created_at' => now(), 'updated_at' => now(),
         ]);
+        $this->trd = DB::table('clasificacion_documental_trd')->insertGetId(['user_register' => $this->creador->id, 'tipo' => 'Serie']);
     }
 
     private function url(): string
@@ -66,6 +69,7 @@ class GrupoDocumentoTest extends TestCase
             'nombre' => 'Oficio de respuesta',
             'asunto' => 'Respuesta al derecho de petición',
             'documento_id' => $this->documento,
+            'clasifica_documen_id' => $this->trd,
         ]);
     }
 
@@ -132,6 +136,27 @@ class GrupoDocumentoTest extends TestCase
         $this->actingAs($this->creador)->postJson(self::URL_GRUPOS, [
             'nombre' => 'Sin documento', 'documento_id' => 999999999,
         ])->assertUnprocessable()->assertJsonValidationErrors(['documento_id']);
+    }
+
+    public function test_la_clasificacion_documental_es_obligatoria_al_crear_el_grupo(): void
+    {
+        $this->actingAs($this->creador)->postJson(self::URL_GRUPOS, [
+            'nombre' => 'Oficio de respuesta', 'documento_id' => $this->documento,
+        ])->assertUnprocessable()->assertJsonValidationErrors(['clasifica_documen_id']);
+
+        $grupoId = $this->crearGrupo($this->creador)->assertCreated()->json('data.id');
+        $this->getJson(self::URL_GRUPOS."/{$grupoId}")
+            ->assertOk()
+            ->assertJsonPath('data.clasifica_documen_id', $this->trd)
+            ->assertJsonPath('data.clasificacion_documental.id', $this->trd);
+
+        // Se puede cambiar pero no quitar
+        $this->creador->givePermissionTo(Permission::findOrCreate('Mi Bandeja - Grupos Colaborativos -> Editar', 'web'));
+        $this->putJson(self::URL_GRUPOS."/{$grupoId}", ['clasifica_documen_id' => null])
+            ->assertUnprocessable()->assertJsonValidationErrors(['clasifica_documen_id']);
+        $otra = DB::table('clasificacion_documental_trd')->insertGetId(['user_register' => $this->creador->id, 'tipo' => 'Serie']);
+        $this->putJson(self::URL_GRUPOS."/{$grupoId}", ['clasifica_documen_id' => $otra])->assertOk();
+        $this->assertSame($otra, (int) DB::table('mi_bandeja_temp')->where('id', $grupoId)->value('clasifica_documen_id'));
     }
 
     public function test_sin_permisos_de_grupos_el_dueno_no_puede_crearlo(): void

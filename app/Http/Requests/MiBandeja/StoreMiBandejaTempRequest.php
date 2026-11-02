@@ -53,6 +53,8 @@ class StoreMiBandejaTempRequest extends FormRequest
             'plantilla_id' => 'nullable|integer|exists:ofi_archivo_plantillas_documentos,id',
             // Documento de Mis Documentos (editor en línea) como documento base del grupo
             'documento_id' => 'nullable|integer|exists:mi_bandeja_temp_reci_documentos,id',
+            // La TRD se elige al crear: se precarga al radicar el documento del grupo
+            'clasifica_documen_id' => 'required|integer|exists:clasificacion_documental_trd,id',
         ];
     }
 
@@ -68,6 +70,8 @@ class StoreMiBandejaTempRequest extends FormRequest
             'radicado_id.exists' => 'El radicado seleccionado no existe.',
             'radicado_tipo.in' => 'El tipo de radicado no es válido.',
             'documento_id.exists' => 'El documento seleccionado no existe.',
+            'clasifica_documen_id.required' => 'La clasificación documental es obligatoria.',
+            'clasifica_documen_id.exists' => 'La clasificación documental seleccionada no existe.',
         ];
     }
 }

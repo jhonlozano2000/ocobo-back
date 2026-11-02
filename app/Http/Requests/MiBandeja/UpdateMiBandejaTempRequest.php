@@ -51,6 +51,8 @@ class UpdateMiBandejaTempRequest extends FormRequest
             'anexos' => 'nullable|array',
             'plantilla_cargada' => 'nullable|boolean',
             'plantilla_id' => 'nullable|integer|exists:ofi_archivo_plantillas_documentos,id',
+            // Se puede cambiar pero no quitar: la TRD del grupo es obligatoria
+            'clasifica_documen_id' => 'sometimes|required|integer|exists:clasificacion_documental_trd,id',
         ];
     }
 }

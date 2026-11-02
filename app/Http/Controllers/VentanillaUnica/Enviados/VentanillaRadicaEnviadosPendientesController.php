@@ -43,6 +43,7 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
             $query->with([
                 'radicadoRecibido.tercero',
                 'radicadoRecibido.clasificacionDocumental',
+                'clasificacionDocumental',
                 'plantilla',
                 'ultimaVersion.subidoPor',
                 'proyectores.user',
@@ -78,6 +79,7 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
         $query = $this->consultaPendientes()->with([
             'radicadoRecibido.tercero',
             'radicadoRecibido.clasificacionDocumental',
+            'clasificacionDocumental',
             'proyectores.user',
             'revisores.user',
             'firmantes.user',
@@ -95,7 +97,7 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
 
         $datos = $query->orderBy('updated_at', 'desc')->get()->map(function ($g) use ($nombre, $miembros) {
             $recibido = $g->radicadoRecibido;
-            $clasificacion = $recibido?->clasificacionDocumental;
+            $clasificacion = $g->clasificacionDocumental ?? $recibido?->clasificacionDocumental;
 
             return [
                 'Nombre' => $g->nombre,
@@ -223,6 +225,7 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
             $grupo = MiBandejaTemp::with([
                 'radicadoRecibido.tercero',
                 'radicadoRecibido.clasificacionDocumental',
+                'clasificacionDocumental',
                 'plantilla',
                 'ultimaVersion.subidoPor',
                 'versiones.subidoPor',
@@ -245,7 +248,8 @@ class VentanillaRadicaEnviadosPendientesController extends Controller
 
             $radicadoRecibido = $grupo->radicadoRecibido;
             $tercero = $radicadoRecibido?->tercero;
-            $clasificacion = $radicadoRecibido?->clasificacionDocumental;
+            // La TRD elegida al crear el grupo; los grupos anteriores usan la del recibido
+            $clasificacion = $grupo->clasificacionDocumental ?? $radicadoRecibido?->clasificacionDocumental;
             $ultimaVersion = $grupo->ultimaVersion;
 
             $resolveMember = function ($member) {

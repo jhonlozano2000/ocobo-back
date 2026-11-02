@@ -33,6 +33,8 @@ class RadicacionGrupoDocumentoTest extends TestCase
 
     private int $documento;
 
+    private int $trd;
+
     private int $grupo;
 
     protected function setUp(): void
@@ -60,6 +62,7 @@ class RadicacionGrupoDocumentoTest extends TestCase
             'user_id' => $this->creador->id, 'titulo' => 'Oficio de respuesta', 'estado' => 'borrador',
             'created_at' => now(), 'updated_at' => now(),
         ]);
+        $this->trd = DB::table('clasificacion_documental_trd')->insertGetId(['user_register' => $this->creador->id, 'tipo' => 'Serie']);
         $contenido = ['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Cordial saludo']]]]];
         DB::table('mi_bandeja_temp_reci_contenido')->insert([
             'documento_id' => $this->documento, 'contenido_yjs' => json_encode($contenido),
@@ -68,6 +71,7 @@ class RadicacionGrupoDocumentoTest extends TestCase
 
         $this->grupo = $this->actingAs($this->creador)->postJson(self::URL_GRUPOS, [
             'nombre' => 'Oficio', 'asunto' => 'Respuesta', 'documento_id' => $this->documento,
+            'clasifica_documen_id' => $this->trd,
         ])->assertCreated()->json('data.id');
         $this->postJson(self::URL_GRUPOS."/{$this->grupo}/revisores", ['user_id' => $this->revisor->id])->assertCreated();
         $this->postJson(self::URL_GRUPOS."/{$this->grupo}/firmantes", ['user_id' => $this->firmante->id, 'orden_firma' => 1])->assertCreated();
@@ -130,7 +134,9 @@ class RadicacionGrupoDocumentoTest extends TestCase
         $this->assertContains($this->grupo, $pendientes());
         $this->getJson("/api/ventanilla/radica-enviada/pendientes-radicar/{$this->grupo}")
             ->assertOk()
-            ->assertJsonPath('data.documento_editor.id', $this->documento);
+            ->assertJsonPath('data.documento_editor.id', $this->documento)
+            // Ventanilla recibe precargada la TRD elegida al crear el grupo
+            ->assertJsonPath('data.clasifica_documen_id', $this->trd);
 
         [$trd, $detalle, $tercero] = $this->catalogos($ventanilla);
         $id = $this->postJson('/api/ventanilla/radica-enviada', [
@@ -169,7 +175,7 @@ class RadicacionGrupoDocumentoTest extends TestCase
             'created_at' => now(), 'updated_at' => now(),
         ]);
         $sinFirmantes = $this->actingAs($this->creador)->postJson(self::URL_GRUPOS, [
-            'nombre' => 'Sin firmantes', 'asunto' => 'Respuesta', 'documento_id' => $documento,
+            'nombre' => 'Sin firmantes', 'asunto' => 'Respuesta', 'documento_id' => $documento, 'clasifica_documen_id' => $this->trd,
         ])->assertCreated()->json('data.id');
         $this->postJson(self::URL_GRUPOS."/{$sinFirmantes}/revisores", ['user_id' => $this->revisor->id])->assertCreated();
         $this->actingAs($this->revisor)->postJson(self::URL_GRUPOS."/{$sinFirmantes}/marcar-terminado")->assertOk();

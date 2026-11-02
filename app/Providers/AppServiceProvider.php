@@ -66,6 +66,10 @@ class AppServiceProvider extends ServiceProvider
                 return false;
             }
         });
+
+        // El árbol de la TRD por dependencia también lo consulta quien crea grupos colaborativos: la clasificación
+        // del grupo es obligatoria y el rol «Mi espacio» no tiene 'TRD -> Listar'
+        Gate::define('Ver árbol TRD', fn ($user) => $user->can('TRD -> Listar') || $user->can('Mi Bandeja - Grupos Colaborativos -> Crear'));
     }
 
     private function registrarObservers(): void

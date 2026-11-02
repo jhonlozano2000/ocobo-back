@@ -2,6 +2,7 @@
 
 namespace App\Models\MiBandeja;
 
+use App\Models\ClasificacionDocumental\ClasificacionDocumentalTRD;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\OfiArchivo\OfiArchivoPlantillaDocumento;
 use App\Models\Transversal\FirmaEvento;
@@ -36,6 +37,7 @@ class MiBandejaTemp extends Model
         'usua_crea_plantilla_id',
         'plantilla_id',
         'documento_id',
+        'clasifica_documen_id',
         'asunto',
         'con_copia',
         'anexos',
@@ -51,6 +53,14 @@ class MiBandejaTemp extends Model
         'estado_grupo' => 'string',
         'radicado_tipo' => 'string',
     ];
+
+    /**
+     * Clasificación documental (TRD) del grupo; se precarga al radicar su documento.
+     */
+    public function clasificacionDocumental(): BelongsTo
+    {
+        return $this->belongsTo(ClasificacionDocumentalTRD::class, 'clasifica_documen_id');
+    }
 
     /**
      * Relación con el radicado recibido asociado.

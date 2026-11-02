@@ -33,6 +33,8 @@ class FirmaGrupoDocumentoTest extends TestCase
 
     private int $documento;
 
+    private int $trd;
+
     private int $grupo;
 
     private int $firmanteId;
@@ -59,9 +61,11 @@ class FirmaGrupoDocumentoTest extends TestCase
             'user_id' => $this->creador->id, 'titulo' => 'Oficio', 'estado' => 'borrador',
             'created_at' => now(), 'updated_at' => now(),
         ]);
+        $this->trd = DB::table('clasificacion_documental_trd')->insertGetId(['user_register' => $this->creador->id, 'tipo' => 'Serie']);
 
         $this->grupo = $this->actingAs($this->creador)->postJson(self::URL_GRUPOS, [
             'nombre' => 'Oficio', 'asunto' => 'Respuesta', 'documento_id' => $this->documento,
+            'clasifica_documen_id' => $this->trd,
         ])->assertCreated()->json('data.id');
         $this->postJson(self::URL_GRUPOS."/{$this->grupo}/revisores", ['user_id' => $this->revisor->id])->assertCreated();
         $this->firmanteId = $this->postJson(self::URL_GRUPOS."/{$this->grupo}/firmantes", [

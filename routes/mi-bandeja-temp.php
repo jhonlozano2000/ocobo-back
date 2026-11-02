@@ -29,6 +29,9 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('grupos-colaborativo
     Route::get('/buscar-radicados', [MiBandejaTempController::class, 'buscarRadicados'])
         ->name('buscar-radicados')
         ->middleware('can:'.$permMiBandeja.'Ver');
+    Route::get('/dependencias-trd', [MiBandejaTempController::class, 'dependenciasTrd'])
+        ->name('dependencias-trd')
+        ->middleware('can:'.$permMiBandeja.'Crear');
     Route::get('/{id}', [MiBandejaTempController::class, 'show'])->name('show')->middleware('can:'.$permMiBandeja.'Ver');
     Route::put('/{id}', [MiBandejaTempController::class, 'update'])->name('update')->middleware('can:'.$permMiBandeja.'Editar');
     Route::delete('/{id}', [MiBandejaTempController::class, 'destroy'])->name('destroy')->middleware('can:'.$permMiBandeja.'Eliminar');

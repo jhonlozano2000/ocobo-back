@@ -8,6 +8,7 @@ use App\Http\Requests\MiBandeja\CheckInRequest;
 use App\Http\Requests\MiBandeja\StoreMiBandejaTempRequest;
 use App\Http\Requests\MiBandeja\UpdateMiBandejaTempRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\VentanillaUnica\Enviados\VentanillaRadicaEnviados;
@@ -301,6 +302,20 @@ class MiBandejaTempController extends Controller
     }
 
     /**
+     * Dependencias para elegir el árbol de la TRD del grupo, con la del usuario como valor por defecto.
+     */
+    public function dependenciasTrd(): JsonResponse
+    {
+        $jerarquia = Auth::user()?->cargoActivo?->cargo?->getJerarquiaCompleta() ?? [];
+        $miDependencia = collect($jerarquia)->last(fn ($nodo) => ($nodo['tipo'] ?? '') === 'Dependencia');
+
+        return $this->successResponse([
+            'dependencias' => CalidadOrganigrama::porTipo('Dependencia')->orderBy('nom_organico')->get(['id', 'cod_organico', 'nom_organico']),
+            'mi_dependencia_id' => $miDependencia['id'] ?? null,
+        ], 'Dependencias obtenidas exitosamente');
+    }
+
+    /**
      * Muestra el detalle de un grupo colaborativo temporal específico.
      *
      * @param  int  $id  Identificador del grupo
@@ -319,6 +334,7 @@ class MiBandejaTempController extends Controller
                 'adjuntos',
                 'creadoPor.cargo',
                 'plantilla',
+                'clasificacionDocumental:id,cod,nom',
                 'versiones.subidoPor',
                 'firmaEventos.user',
             ]);
