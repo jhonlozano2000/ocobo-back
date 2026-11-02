@@ -7,6 +7,7 @@ use App\Events\MiBandeja\Grupos\NotasLeidas;
 use App\Events\MiBandeja\Grupos\NotaTyping;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempGrupoFirmante;
+use App\Models\MiBandeja\MiBandejaTempNota;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Routing\Middleware\ThrottleRequests;
@@ -175,6 +176,21 @@ class NotasTiempoRealTest extends TestCase
         // Releer sin notas nuevas no repite el aviso (los clientes recargan al recibirlo)
         $this->actingAs($this->firmante)->postJson("{$url}/leidas")->assertOk();
         Event::assertDispatchedTimes(NotasLeidas::class, 1);
+    }
+
+    // created_at venía del CURRENT_TIMESTAMP de MySQL (hora local) y las lecturas de now() (UTC)
+    public function test_la_nota_guarda_la_hora_de_la_app_y_no_se_da_por_leida_antes_de_tiempo(): void
+    {
+        Event::fake([NotaCreada::class, NotasLeidas::class]);
+        $url = "/api/mi-bandeja/grupos-colaborativos/{$this->grupo->id}/notas";
+        $this->travelTo(now()->startOfMinute());
+
+        $this->actingAs($this->firmante)->getJson($url)->assertOk();
+        $this->travel(1)->minutes();
+        $this->actingAs($this->creador)->postJson($url, ['contenido' => 'Después de que leyó'])->assertCreated();
+
+        $this->assertSame(now()->toDateTimeString(), MiBandejaTempNota::latest('id')->first()->created_at->toDateTimeString());
+        $this->actingAs($this->creador)->getJson($url)->assertJsonPath('data.0.leida', false);
     }
 
     public function test_marcar_leidas_es_solo_de_los_miembros(): void

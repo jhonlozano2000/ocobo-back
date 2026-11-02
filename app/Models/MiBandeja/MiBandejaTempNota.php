@@ -22,6 +22,15 @@ class MiBandejaTempNota extends Model
         'contenido',
     ];
 
+    /**
+     * La hora la pone la app (UTC) y no el CURRENT_TIMESTAMP de MySQL (hora local del servidor):
+     * así se compara bien con las lecturas y se muestra la hora correcta.
+     */
+    protected static function booted(): void
+    {
+        static::creating(fn (self $nota) => $nota->created_at ??= now());
+    }
+
     protected function contenido(): Attribute
     {
         return Attribute::make(

@@ -120,7 +120,8 @@ class MiBandejaTempNotaController extends Controller
         $previa = MiBandejaTempNotaLectura::where('grupo_id', $grupo->id)->where('user_id', $userId)->value('ultima_lectura_at');
         $habiaSinLeer = $grupo->notas()
             ->where('user_id', '!=', $userId)
-            ->when($previa, fn ($q) => $q->where('created_at', '>=', $previa))
+            // Misma regla que conLeida: leída si la lectura es igual o posterior a la nota
+            ->when($previa, fn ($q) => $q->where('created_at', '>', $previa))
             ->exists();
         $ahora = now();
 
