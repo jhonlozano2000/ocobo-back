@@ -165,7 +165,11 @@ class NotasTiempoRealTest extends TestCase
 
         $this->assertNotSame('foto-creador.png', $esperada);
         $this->actingAs($this->creador)->postJson($url, ['contenido' => 'Con foto'])->assertJsonPath('data.user.avatar', $esperada);
-        $this->actingAs($this->firmante)->getJson($url)->assertJsonPath('data.0.user.avatar', $esperada);
+        $this->actingAs($this->creador)->postJson($url, ['contenido' => 'Otra'])->assertCreated();
+        // Varias notas del mismo autor: la URL no se envuelve una vez por nota
+        $this->actingAs($this->firmante)->getJson($url)
+            ->assertJsonPath('data.0.user.avatar', $esperada)
+            ->assertJsonPath('data.1.user.avatar', $esperada);
         Event::assertDispatched(NotaCreada::class, fn (NotaCreada $e) => $e->broadcastWith()['user']['avatar'] === $esperada);
 
         $this->actingAs($this->creador)->postJson("{$url}/typing", ['typing' => true])->assertOk();

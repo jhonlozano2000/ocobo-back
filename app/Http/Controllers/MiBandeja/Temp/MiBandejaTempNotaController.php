@@ -5,6 +5,7 @@ namespace App\Http\Controllers\MiBandeja\Temp;
 use App\Events\MiBandeja\Grupos\NotaCreada;
 use App\Events\MiBandeja\Grupos\NotasLeidas;
 use App\Events\MiBandeja\Grupos\NotaTyping;
+use App\Helpers\ArchivoHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\MiBandeja\Concerns\AutorizaGrupoColaborativo;
 use App\Http\Requests\MiBandeja\StoreNotaRequest;
@@ -119,7 +120,8 @@ class MiBandejaTempNotaController extends Controller
     /** La columna avatar guarda la ruta del archivo; el front necesita la URL para mostrar la foto. */
     private function conAvatarUrl(MiBandejaTempNota $nota): MiBandejaTempNota
     {
-        $nota->user?->setAttribute('avatar', $nota->user->avatar_url);
+        // Las notas de un mismo autor comparten el modelo: partir del archivo original o la URL se envuelve otra vez
+        $nota->user?->setAttribute('avatar', ArchivoHelper::obtenerUrl($nota->user->getRawOriginal('avatar'), 'avatars'));
 
         return $nota;
     }
