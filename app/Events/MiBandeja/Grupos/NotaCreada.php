@@ -40,7 +40,7 @@ class NotaCreada implements ShouldBroadcast
                 'id' => $userModel->id,
                 'nombres' => $userModel->nombres ?? '',
                 'apellidos' => $userModel->apellidos ?? '',
-                'avatar' => $userModel->avatar ?: null,
+                'avatar' => $userModel->avatar_url,
             ]
             : [
                 'id' => $nota->user_id,

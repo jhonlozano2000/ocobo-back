@@ -38,6 +38,7 @@ class MiBandejaTempNotaController extends Controller
             $this->marcarLeidas($grupo);
 
             $notas = $grupo->notas()->with(self::AUTOR)->orderBy('created_at', 'asc')->get();
+            $notas->each(fn ($nota) => $this->conAvatarUrl($nota));
             $this->conLeida($grupo, $notas);
 
             return $this->successResponse($notas, 'Notas del grupo');
@@ -86,7 +87,8 @@ class MiBandejaTempNotaController extends Controller
                 ]);
             }
 
-            return $this->successResponse($nota, 'Nota creada exitosamente', 201);
+            // Después del evento: NotaCreada calcula la URL desde la ruta original
+            return $this->successResponse($this->conAvatarUrl($nota), 'Nota creada exitosamente', 201);
         } catch (\Exception $e) {
             if ($e instanceof ValidationException) {
                 throw $e;
@@ -114,6 +116,14 @@ class MiBandejaTempNotaController extends Controller
      * Registra la lectura del usuario y, si tenía notas ajenas sin leer, lo avisa por el canal del grupo
      * (solo entonces: así los demás clientes, que recargan al recibir el aviso, no lo repiten en bucle).
      */
+    /** La columna avatar guarda la ruta del archivo; el front necesita la URL para mostrar la foto. */
+    private function conAvatarUrl(MiBandejaTempNota $nota): MiBandejaTempNota
+    {
+        $nota->user?->setAttribute('avatar', $nota->user->avatar_url);
+
+        return $nota;
+    }
+
     private function marcarLeidas(MiBandejaTemp $grupo): void
     {
         $userId = (int) Auth::id();
@@ -173,7 +183,7 @@ class MiBandejaTempNotaController extends Controller
 
             $user = Auth::user();
             $userName = trim(($user->nombres ?? '').' '.($user->apellidos ?? ''));
-            $userAvatar = $user->avatar ?? null;
+            $userAvatar = $user->avatar_url;
 
             try {
                 event(new NotaTyping(

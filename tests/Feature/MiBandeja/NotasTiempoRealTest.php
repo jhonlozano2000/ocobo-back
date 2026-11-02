@@ -156,6 +156,22 @@ class NotasTiempoRealTest extends TestCase
         $this->assertEqualsCanonicalizing($campos, array_keys($listada));
     }
 
+    public function test_el_avatar_del_autor_llega_como_url_y_no_como_ruta(): void
+    {
+        Event::fake([NotaCreada::class, NotaTyping::class]);
+        $url = "/api/mi-bandeja/grupos-colaborativos/{$this->grupo->id}/notas";
+        $this->creador->forceFill(['avatar' => 'foto-creador.png'])->save();
+        $esperada = $this->creador->fresh()->avatar_url;
+
+        $this->assertNotSame('foto-creador.png', $esperada);
+        $this->actingAs($this->creador)->postJson($url, ['contenido' => 'Con foto'])->assertJsonPath('data.user.avatar', $esperada);
+        $this->actingAs($this->firmante)->getJson($url)->assertJsonPath('data.0.user.avatar', $esperada);
+        Event::assertDispatched(NotaCreada::class, fn (NotaCreada $e) => $e->broadcastWith()['user']['avatar'] === $esperada);
+
+        $this->actingAs($this->creador)->postJson("{$url}/typing", ['typing' => true])->assertOk();
+        Event::assertDispatched(NotaTyping::class, fn (NotaTyping $e) => $e->broadcastWith()['user_avatar'] === $esperada);
+    }
+
     public function test_la_nota_queda_leida_cuando_la_leen_todos_los_demas_miembros_y_se_avisa_en_tiempo_real(): void
     {
         Event::fake([NotaCreada::class, NotasLeidas::class]);
