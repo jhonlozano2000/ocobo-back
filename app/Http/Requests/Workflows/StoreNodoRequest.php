@@ -38,6 +38,24 @@ class StoreNodoRequest extends FormRequest
             'conexiones.*.nodo_destino_id' => ['required', 'string', Rule::in($clientIds)],
             'conexiones.*.etiqueta' => 'nullable|string|max:255',
             'conexiones.*.condicion_json' => 'nullable|array',
+            // Notas, textos, formas y resaltados del lienzo: solo visuales, fuera del grafo
+            'anotaciones' => 'sometimes|array|max:300',
+            'anotaciones.*.id' => 'required|string|max:100|distinct',
+            'anotaciones.*.tipo' => 'required|string|in:nota,texto,forma,trazo',
+            'anotaciones.*.x' => 'required|numeric',
+            'anotaciones.*.y' => 'required|numeric',
+            'anotaciones.*.ancho' => 'nullable|numeric|min:1|max:5000',
+            'anotaciones.*.alto' => 'nullable|numeric|min:1|max:5000',
+            'anotaciones.*.texto' => 'nullable|string|max:2000',
+            'anotaciones.*.estilo' => 'nullable|array:color,figura,tamano,negrita,cursiva',
+            'anotaciones.*.estilo.color' => 'nullable|string|max:30',
+            'anotaciones.*.estilo.figura' => 'nullable|in:rectangulo,elipse,flecha',
+            'anotaciones.*.estilo.tamano' => 'nullable|integer|min:8|max:96',
+            'anotaciones.*.estilo.negrita' => 'nullable|boolean',
+            'anotaciones.*.estilo.cursiva' => 'nullable|boolean',
+            'anotaciones.*.puntos' => 'nullable|array|max:2000',
+            'anotaciones.*.puntos.*' => 'array|size:2',
+            'anotaciones.*.puntos.*.*' => 'numeric',
         ];
     }
 }

@@ -197,7 +197,8 @@ class WorkflowController extends Controller
             $workflow = $this->workflowService->guardarNodosYconexiones(
                 $workflowId,
                 $data['nodos'],
-                $data['conexiones']
+                $data['conexiones'],
+                $data['anotaciones'] ?? null
             );
 
             return $this->successResponse($workflow, 'Canvas guardado correctamente');

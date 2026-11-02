@@ -125,4 +125,37 @@ class GuardarCanvasTest extends TestCase
 
         $this->assertSame(0, $this->workflow->nodos()->count());
     }
+
+    public function test_las_anotaciones_del_lienzo_se_guardan_y_se_devuelven_con_el_workflow(): void
+    {
+        $url = "/api/workflows/workflows/{$this->workflow->id}/canvas";
+        $nota = [
+            'id' => 'anot_1', 'tipo' => 'nota', 'x' => 10, 'y' => 20, 'ancho' => 180, 'alto' => 140,
+            'texto' => 'Revisar con jurídica', 'estilo' => ['color' => 'amarillo'],
+        ];
+        $trazo = ['id' => 'anot_2', 'tipo' => 'trazo', 'x' => 0, 'y' => 0, 'puntos' => [[0, 0], [12.5, 4]], 'estilo' => ['color' => 'verde']];
+
+        $this->actingAs($this->creador)
+            ->postJson($url, $this->payloadDelBuilder() + ['anotaciones' => [$nota, $trazo]])
+            ->assertOk()
+            ->assertJsonPath('data.anotaciones.0.texto', 'Revisar con jurídica');
+        // MySQL reordena las claves del JSON: se compara sin importar el orden
+        $this->assertEquals([$nota, $trazo], $this->workflow->fresh()->anotaciones);
+
+        // Sin la clave, guardar el grafo no toca las anotaciones; con lista vacía se borran
+        $this->postJson($url, $this->payloadDelBuilder())->assertOk();
+        $this->assertCount(2, $this->workflow->fresh()->anotaciones);
+        $this->postJson($url, $this->payloadDelBuilder() + ['anotaciones' => []])->assertOk();
+        $this->assertSame([], $this->workflow->fresh()->anotaciones);
+    }
+
+    public function test_una_anotacion_con_tipo_o_estilo_desconocido_se_rechaza(): void
+    {
+        $anotacion = ['id' => 'anot_1', 'tipo' => 'imagen', 'x' => 0, 'y' => 0, 'estilo' => ['script' => 'x']];
+
+        $this->actingAs($this->creador)
+            ->postJson("/api/workflows/workflows/{$this->workflow->id}/canvas", $this->payloadDelBuilder() + ['anotaciones' => [$anotacion]])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['anotaciones.0.tipo', 'anotaciones.0.estilo']);
+    }
 }

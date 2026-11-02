@@ -164,6 +164,7 @@ class WorkflowService
                 'administrador_user_id' => $original->administrador_user_id,
                 'creador_user_id' => auth()->id(),
                 'estado' => 'borrador',
+                'anotaciones' => $original->anotaciones,
             ] + Arr::only($original->getAttributes(), ['tiempo_finalizacion_unidad']));
 
             if ($original->settings) {
@@ -256,12 +257,19 @@ class WorkflowService
         }
     }
 
-    public function guardarNodosYconexiones(int $workflowId, array $nodos, array $conexiones): Workflow
+    /**
+     * @param  array|null  $anotaciones  notas y dibujos del lienzo; null las deja como estaban
+     */
+    public function guardarNodosYconexiones(int $workflowId, array $nodos, array $conexiones, ?array $anotaciones = null): Workflow
     {
-        return DB::transaction(function () use ($workflowId, $nodos, $conexiones) {
+        return DB::transaction(function () use ($workflowId, $nodos, $conexiones, $anotaciones) {
             $workflow = Workflow::findOrFail($workflowId);
 
             $this->asegurarGrafoEditable($workflow, 'el canvas');
+
+            if ($anotaciones !== null) {
+                $workflow->update(['anotaciones' => array_values($anotaciones)]);
+            }
 
             // M19-18: un borrador puede guardarse a medias; un workflow activo, solo con el grafo completo
             $this->grafoValidator->validar(

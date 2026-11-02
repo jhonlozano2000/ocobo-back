@@ -39,10 +39,12 @@ class Workflow extends Model
         'creador_user_id',
         'administrador_user_id',
         'estado',
+        'anotaciones',
     ];
 
     protected $casts = [
         'tiempo_finalizacion_horas' => 'integer',
+        'anotaciones' => 'array',
     ];
 
     protected static function boot(): void
