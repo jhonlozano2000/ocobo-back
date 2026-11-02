@@ -112,9 +112,9 @@ class TareaService
                 $tarea->update($updateData);
             }
 
-            if (($updateData['estado'] ?? null) === 'completada') {
-                $this->avanzarNodoSiTerminado($tarea);
-            }
+            $avance = ($updateData['estado'] ?? null) === 'completada'
+                ? $this->avanzarNodoSiTerminado($tarea)
+                : null;
 
             if (isset($data['propietarios'])) {
                 $tarea->propietarios()->sync($data['propietarios']);
@@ -154,7 +154,10 @@ class TareaService
                 ['tarea_id' => $tarea->id, 'nombre' => $tarea->nombre]
             );
 
-            return $tarea->load(['propietarios', 'responsables', 'checklists', 'workflow']);
+            $tarea->load(['propietarios', 'responsables', 'checklists', 'workflow']);
+            $tarea->setAttribute('avance', $avance);
+
+            return $tarea;
         });
     }
 
@@ -202,20 +205,26 @@ class TareaService
             );
 
             $this->notificationService->notificarTareaCompletada($tarea, auth()->user());
-            $this->avanzarNodoSiTerminado($tarea);
+            $avance = $this->avanzarNodoSiTerminado($tarea);
 
-            return $tarea->load(['propietarios', 'responsables', 'checklists', 'workflow']);
+            $tarea->load(['propietarios', 'responsables', 'checklists', 'workflow']);
+            $tarea->setAttribute('avance', $avance);
+
+            return $tarea;
         });
     }
 
     /**
      * M19-19: completar la última tarea abierta del nodo actual avanza la instancia. Cancelar no
      * avanza (alguien debe decidir); los nodos de condición tampoco, porque necesitan resultado.
+     *
+     * @return array|null dónde quedó la instancia tras avanzar, para que el front pueda avisarlo;
+     *                    null si esta tarea no movió el flujo
      */
-    private function avanzarNodoSiTerminado(Tarea $tarea): void
+    private function avanzarNodoSiTerminado(Tarea $tarea): ?array
     {
         if (! $tarea->instancia_id || ! $tarea->nodo_id) {
-            return;
+            return null;
         }
 
         // El bloqueo de la instancia serializa las tareas hermanas que se completan a la vez
@@ -226,10 +235,35 @@ class TareaService
             || ! WorkflowNodoInstancia::where('instancia_id', $instancia->id)->where('nodo_id', $tarea->nodo_id)->where('estado', 'en_curso')->exists()
             || WorkflowNodo::whereKey($tarea->nodo_id)->value('tipo') === 'condicion'
             || $this->tareasDeNodo->abiertas($instancia->id, $tarea->nodo_id, true) > 0) {
-            return;
+            return null;
         }
 
         $this->executionService->ejecutarNodo($instancia->id, $tarea->nodo_id, ['origen' => 'tareas_completadas']);
+
+        return $this->resumenAvance($instancia->id);
+    }
+
+    /**
+     * Dónde quedó la instancia después de avanzar: su estado y los nodos que ahora están en curso
+     * (pueden ser varios si el flujo se abrió en ramas paralelas, o ninguno si terminó).
+     */
+    private function resumenAvance(int $instanciaId): array
+    {
+        $nodos = WorkflowNodoInstancia::where('instancia_id', $instanciaId)
+            ->where('estado', 'en_curso')
+            ->with('nodo:id,titulo,tipo')
+            ->get()
+            ->pluck('nodo')
+            ->filter()
+            ->map(fn ($nodo) => ['id' => $nodo->id, 'titulo' => $nodo->titulo, 'tipo' => $nodo->tipo])
+            ->values()
+            ->all();
+
+        return [
+            'instancia_id' => $instanciaId,
+            'estado' => WorkflowInstancia::whereKey($instanciaId)->value('estado'),
+            'nodos_actuales' => $nodos,
+        ];
     }
 
     public function iniciar(Tarea $tarea): Tarea

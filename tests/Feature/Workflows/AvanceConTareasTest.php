@@ -9,6 +9,7 @@ use App\Models\Workflows\WorkflowInstancia;
 use App\Models\Workflows\WorkflowNodo;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -40,13 +41,13 @@ class AvanceConTareasTest extends TestCase
             $this->markTestSkipped('Requiere la migración 2026_10_17_120000 (instancia/nodo en workflow_tareas).');
         }
 
-        foreach (['Workflows -> Instancias -> Ejecutar', 'Workflows -> Tareas -> Editar', 'Workflows -> Tareas -> Eliminar'] as $permiso) {
+        foreach (['Workflows -> Instancias -> Ejecutar', 'Workflows -> Tareas -> Editar', 'Workflows -> Tareas -> Eliminar', 'Workflows -> Tareas -> Listar'] as $permiso) {
             Permission::findOrCreate($permiso, 'web');
         }
         $this->ejecutor = User::factory()->create(['estado' => 1]);
         $this->ejecutor->givePermissionTo('Workflows -> Instancias -> Ejecutar', 'Workflows -> Tareas -> Editar', 'Workflows -> Tareas -> Eliminar');
         $this->revisor = User::factory()->create(['estado' => 1]);
-        $this->revisor->givePermissionTo('Workflows -> Tareas -> Editar');
+        $this->revisor->givePermissionTo('Workflows -> Tareas -> Editar', 'Workflows -> Tareas -> Listar');
 
         $this->workflow = Workflow::create(['nombre' => 'M19-19', 'estado' => 'activo', 'creador_user_id' => $this->ejecutor->id]);
         $nodo = fn (string $tipo, string $titulo) => $this->workflow->nodos()->create(
@@ -73,11 +74,12 @@ class AvanceConTareasTest extends TestCase
         return Tarea::where('instancia_id', $this->instanciaId)->where('nombre', $nombre)->firstOrFail();
     }
 
-    private function completar(string $nombre): void
+    private function completar(string $nombre): TestResponse
     {
         $tarea = $this->tarea($nombre);
         $this->actingAs($this->revisor)->postJson("/api/workflows/tareas/{$tarea->id}/iniciar")->assertOk();
-        $this->actingAs($this->revisor)->postJson("/api/workflows/tareas/{$tarea->id}/completar")->assertOk();
+
+        return $this->actingAs($this->revisor)->postJson("/api/workflows/tareas/{$tarea->id}/completar")->assertOk();
     }
 
     private function nodoActual(): ?int
@@ -114,5 +116,28 @@ class AvanceConTareasTest extends TestCase
             ->postJson("/api/workflows/workflows/{$this->workflow->id}/instancias/{$this->instanciaId}/ejecutar", ['nodo_id' => $this->revision->id])
             ->assertOk();
         $this->assertSame($this->aprobacion->id, $this->nodoActual());
+    }
+
+    /** Completar desde el tablero mueve el flujo: la respuesta dice si se movió y a dónde. */
+    public function test_completar_informa_a_donde_avanzo_el_flujo(): void
+    {
+        $this->assertNull($this->completar('Revisar soporte')->json('data.avance'));
+
+        $avance = $this->completar('Revisar firmas')->json('data.avance');
+
+        $this->assertSame($this->instanciaId, $avance['instancia_id']);
+        $this->assertSame('en_curso', $avance['estado']);
+        $this->assertSame([['id' => $this->aprobacion->id, 'titulo' => 'Aprobación', 'tipo' => 'tarea']], $avance['nodos_actuales']);
+    }
+
+    public function test_mis_tareas_dice_de_que_caso_y_de_que_paso_viene_cada_tarea(): void
+    {
+        $tarea = $this->actingAs($this->revisor)->getJson('/api/workflows/mis-tareas')
+            ->assertOk()
+            ->json('data.0');
+
+        $this->assertSame($this->instanciaId, $tarea['instancia']['id']);
+        $this->assertSame('en_curso', $tarea['instancia']['estado']);
+        $this->assertSame('Revisión', $tarea['nodo']['titulo']);
     }
 }

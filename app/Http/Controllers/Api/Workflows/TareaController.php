@@ -57,7 +57,10 @@ class TareaController extends Controller
                     ->orWhereHas('responsables', fn ($q) => $q->where('user_id', $user->id));
             })
                 ->tap(fn ($q) => $this->filtrar($q))
-                ->with(['propietarios', 'responsables', 'checklists', 'workflow'])
+                // Sin instancia ni nodo la tarjeta del tablero no puede decir de qué caso y de
+                // qué paso del flujo viene la tarea
+                ->with(['propietarios', 'responsables', 'checklists', 'workflow',
+                    'instancia:id,workflow_id,estado', 'nodo:id,titulo,tipo'])
                 ->orderBy('created_at', 'desc')
                 ->paginate(min(max((int) request('per_page', 15), 1), 100));
 
