@@ -12,7 +12,8 @@ class UserResource extends JsonResource
 
     protected function getSkipSanitization(): array
     {
-        return ['permissions', 'roles'];
+        // Las URLs las arma el back: escaparlas convierte «&» en «&amp;» y rompe la consulta
+        return ['permissions', 'roles', 'avatar_url', 'firma_url'];
     }
 
     public function toArray($request)

@@ -3,6 +3,7 @@
 namespace Tests\Feature\ControlAcceso;
 
 use App\Helpers\ArchivoHelper;
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
@@ -47,6 +48,15 @@ class MiAvatarTest extends TestCase
         $this->assertSame($this->user->fresh()->avatar_url, $url);
         // Relativa: el navegador la pide por el proxy del front, con la cookie de sesión
         $this->assertSame('/api/archivo/documentos/ver?disk=avatars&path='.$nueva, $url);
+    }
+
+    public function test_la_url_del_usuario_en_sesion_llega_sin_escapar(): void
+    {
+        $this->user->forceFill(['avatar' => 'yo.png'])->save();
+
+        $datos = (new UserResource($this->user))->toArray(request());
+
+        $this->assertSame('/api/archivo/documentos/ver?disk=avatars&path=yo.png', $datos['avatar_url']);
     }
 
     public function test_rechaza_lo_que_no_es_png_o_jpg_o_pesa_mas_de_2mb(): void
