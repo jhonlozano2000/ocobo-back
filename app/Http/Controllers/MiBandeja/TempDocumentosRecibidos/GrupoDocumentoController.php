@@ -34,14 +34,17 @@ class GrupoDocumentoController extends Controller
             'puede_gestionar' => $user->can('gestionarUsuarios', $documento)
                 && $user->can(self::PERMISO_GRUPOS.'Crear')
                 && $user->can(self::PERMISO_GRUPOS.'Gestionar Miembros'),
-            'grupo' => ($grupo = $documento->grupoVigente()) ? $this->resumen($grupo) : null,
+            'grupo' => ($grupo = $documento->grupoVigente()) ? $this->resumen($grupo, (int) $user->id) : null,
         ]);
     }
 
-    private function resumen(MiBandejaTemp $grupo): array
+    private function resumen(MiBandejaTemp $grupo, int $userId): array
     {
         $grupo->load(array_map(fn ($rol) => "{$rol}.user:id,nombres,apellidos", self::ROLES));
         $radicado = $grupo->radicado;
+        // Las notas del grupo son solo de su creador y sus miembros (AutorizaGrupoColaborativo)
+        $puedeVerNotas = (int) $grupo->usua_crea_id === $userId
+            || collect(self::ROLES)->contains(fn ($rol) => $grupo->{$rol}->contains('user_id', $userId));
 
         return [
             'id' => $grupo->id,
@@ -50,6 +53,7 @@ class GrupoDocumentoController extends Controller
             'descripcion' => $grupo->descripcion,
             'estado' => $grupo->estado,
             'estado_grupo' => $grupo->estado_grupo,
+            'puede_ver_notas' => $puedeVerNotas,
             'radicado' => $radicado ? [
                 'id' => $radicado->id,
                 'tipo' => $grupo->radicado_tipo,

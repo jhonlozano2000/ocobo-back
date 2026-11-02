@@ -110,6 +110,20 @@ class GrupoDocumentoTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.puede_gestionar', false)
             ->assertJsonPath('data.grupo.id', $grupoId);
+
+        // El editor muestra las notas del grupo solo a su creador y sus miembros
+        $this->actingAs($this->creador)->getJson($this->url())->assertJsonPath('data.grupo.puede_ver_notas', true);
+        $this->actingAs($this->revisor)->getJson($this->url())->assertJsonPath('data.grupo.puede_ver_notas', true);
+        // Un colaborador directo del documento que no es miembro del grupo no ve sus notas
+        $colaborador = User::factory()->create(['estado' => 1]);
+        DB::table('mi_bandeja_temp_reci_usuarios')->insert([
+            'documento_id' => $this->documento, 'user_id' => $colaborador->id, 'rol' => 'proyector',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->actingAs($colaborador)->getJson($this->url())
+            ->assertOk()
+            ->assertJsonPath('data.grupo.puede_ver_notas', false);
+        $this->actingAs($colaborador)->getJson(self::URL_GRUPOS."/{$grupoId}/notas")->assertForbidden();
         $this->actingAs($this->firmante)->getJson(self::URL)
             ->assertOk()
             ->assertJsonFragment(['id' => $this->documento]);
