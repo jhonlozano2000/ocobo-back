@@ -21,6 +21,9 @@ class MiBandejaTempNotaController extends Controller
     use ApiResponseTrait;
     use AutorizaGrupoColaborativo;
 
+    /** Del autor solo lo que muestra el chat: nunca documento, correo, teléfono, dirección ni firma */
+    private const AUTOR = 'user:id,nombres,apellidos,avatar';
+
     public function index($grupoId)
     {
         try {
@@ -38,7 +41,7 @@ class MiBandejaTempNotaController extends Controller
                 );
             }
 
-            $notas = $grupo->notas()->with('user')->orderBy('created_at', 'asc')->get();
+            $notas = $grupo->notas()->with(self::AUTOR)->orderBy('created_at', 'asc')->get();
 
             return $this->successResponse($notas, 'Notas del grupo');
         } catch (\Exception $e) {
@@ -68,7 +71,7 @@ class MiBandejaTempNotaController extends Controller
                 'contenido' => $request->contenido,
             ]);
 
-            $nota->load('user');
+            $nota->load(self::AUTOR);
 
             try {
                 event(new NotaCreada($nota));

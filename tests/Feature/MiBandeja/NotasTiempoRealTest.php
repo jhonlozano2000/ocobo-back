@@ -128,4 +128,18 @@ class NotasTiempoRealTest extends TestCase
         Event::assertDispatched(NotaCreada::class, fn (NotaCreada $e) => $e->broadcastWith()['contenido'] === 'Hola equipo'
             && $e->broadcastOn()[0]->name === "private-grupo-colaborativo.{$this->grupo->id}");
     }
+
+    public function test_las_notas_no_exponen_datos_personales_del_autor(): void
+    {
+        $url = "/api/mi-bandeja/grupos-colaborativos/{$this->grupo->id}/notas";
+        $campos = ['id', 'nombres', 'apellidos', 'avatar'];
+
+        $creada = $this->actingAs($this->creador)->postJson($url, ['contenido' => 'Sin datos personales'])
+            ->assertCreated()
+            ->json('data.user');
+        $this->assertEqualsCanonicalizing($campos, array_keys($creada));
+
+        $listada = $this->actingAs($this->firmante)->getJson($url)->assertOk()->json('data.0.user');
+        $this->assertEqualsCanonicalizing($campos, array_keys($listada));
+    }
 }
