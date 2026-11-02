@@ -31,6 +31,12 @@ class NotaTyping implements ShouldBroadcast
         $this->typing = $typing;
     }
 
+    /** El front escucha «.NotaTyping»: sin esto Reverb lo emite con el nombre completo de la clase. */
+    public function broadcastAs(): string
+    {
+        return 'NotaTyping';
+    }
+
     public function broadcastOn(): array
     {
         return [

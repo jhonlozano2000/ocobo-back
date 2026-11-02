@@ -52,6 +52,12 @@ class NotaCreada implements ShouldBroadcast
         $this->createdAt = $nota->created_at?->toISOString() ?? now()->toISOString();
     }
 
+    /** El front escucha «.NotaCreada»: sin esto Reverb lo emite con el nombre completo de la clase. */
+    public function broadcastAs(): string
+    {
+        return 'NotaCreada';
+    }
+
     public function broadcastOn(): array
     {
         return [

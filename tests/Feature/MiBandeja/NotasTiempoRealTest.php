@@ -130,6 +130,17 @@ class NotasTiempoRealTest extends TestCase
             && $e->broadcastOn()[0]->name === "private-grupo-colaborativo.{$this->grupo->id}");
     }
 
+    // El front escucha «.NotaCreada», «.NotaTyping» y «.NotasLeidas» (sin el namespace de la clase)
+    public function test_los_eventos_se_emiten_con_el_nombre_que_escucha_el_front(): void
+    {
+        Event::fake([NotaCreada::class, NotasLeidas::class]);
+        $this->actingAs($this->creador)->postJson("/api/mi-bandeja/grupos-colaborativos/{$this->grupo->id}/notas", ['contenido' => 'Hola'])->assertCreated();
+
+        Event::assertDispatched(NotaCreada::class, fn (NotaCreada $e) => $e->broadcastAs() === 'NotaCreada');
+        $this->assertSame('NotasLeidas', (new NotasLeidas($this->grupo->id, 1, now()->toISOString()))->broadcastAs());
+        $this->assertSame('NotaTyping', (new \ReflectionClass(NotaTyping::class))->newInstanceWithoutConstructor()->broadcastAs());
+    }
+
     public function test_las_notas_no_exponen_datos_personales_del_autor(): void
     {
         $url = "/api/mi-bandeja/grupos-colaborativos/{$this->grupo->id}/notas";

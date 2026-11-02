@@ -17,6 +17,12 @@ class NotasLeidas implements ShouldBroadcast
 
     public function __construct(public int $grupoId, public int $userId, public string $leidoAt) {}
 
+    /** El front escucha «.NotasLeidas»: sin esto Reverb lo emite con el nombre completo de la clase. */
+    public function broadcastAs(): string
+    {
+        return 'NotasLeidas';
+    }
+
     public function broadcastOn(): array
     {
         return [
