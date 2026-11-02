@@ -3,6 +3,7 @@
 namespace Tests\Feature\MiBandeja;
 
 use App\Events\MiBandeja\Grupos\NotaCreada;
+use App\Events\MiBandeja\Grupos\NotasLeidas;
 use App\Events\MiBandeja\Grupos\NotaTyping;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\MiBandeja\MiBandejaTempGrupoFirmante;
@@ -141,5 +142,41 @@ class NotasTiempoRealTest extends TestCase
 
         $listada = $this->actingAs($this->firmante)->getJson($url)->assertOk()->json('data.0.user');
         $this->assertEqualsCanonicalizing($campos, array_keys($listada));
+    }
+
+    public function test_la_nota_queda_leida_cuando_la_leen_todos_los_demas_miembros_y_se_avisa_en_tiempo_real(): void
+    {
+        Event::fake([NotaCreada::class, NotasLeidas::class]);
+        $url = "/api/mi-bandeja/grupos-colaborativos/{$this->grupo->id}/notas";
+
+        $this->actingAs($this->creador)->postJson($url, ['contenido' => '¿Revisaron?'])
+            ->assertCreated()
+            ->assertJsonPath('data.leida', false);
+        $this->actingAs($this->creador)->getJson($url)->assertJsonPath('data.0.leida', false);
+        Event::assertNotDispatched(NotasLeidas::class);
+
+        // El firmante abre el chat: lee la nota pendiente y el autor recibe el aviso
+        $this->actingAs($this->firmante)->getJson($url)->assertOk();
+        Event::assertDispatched(NotasLeidas::class, fn (NotasLeidas $e) => $e->broadcastWith()['user_id'] === $this->firmante->id
+            && $e->broadcastOn()[0]->name === "private-grupo-colaborativo.{$this->grupo->id}");
+        $this->actingAs($this->creador)->getJson($url)->assertJsonPath('data.0.leida', true);
+
+        // Releer sin notas nuevas no repite el aviso (los clientes recargan al recibirlo)
+        $this->actingAs($this->firmante)->postJson("{$url}/leidas")->assertOk();
+        Event::assertDispatchedTimes(NotasLeidas::class, 1);
+    }
+
+    public function test_marcar_leidas_es_solo_de_los_miembros(): void
+    {
+        Event::fake([NotaCreada::class, NotasLeidas::class]);
+        $url = "/api/mi-bandeja/grupos-colaborativos/{$this->grupo->id}/notas";
+        $this->actingAs($this->creador)->postJson($url, ['contenido' => 'Pendiente'])->assertCreated();
+
+        $this->actingAs($this->ajeno)->postJson("{$url}/leidas")->assertForbidden();
+        Event::assertNotDispatched(NotasLeidas::class);
+
+        $this->actingAs($this->firmante)->postJson("{$url}/leidas")->assertOk();
+        Event::assertDispatched(NotasLeidas::class);
+        $this->actingAs($this->creador)->getJson($url)->assertJsonPath('data.0.leida', true);
     }
 }

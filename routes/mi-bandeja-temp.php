@@ -109,5 +109,6 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('grupos-colaborativo
         Route::get('/', [MiBandejaTempNotaController::class, 'index'])->name('index')->middleware('can:'.$permMiBandeja.'Ver');
         Route::post('/', [MiBandejaTempNotaController::class, 'store'])->name('store')->middleware('can:'.$permMiBandeja.'Ver');
         Route::post('/typing', [MiBandejaTempNotaController::class, 'typing'])->name('typing')->middleware('can:'.$permMiBandeja.'Ver');
+        Route::post('/leidas', [MiBandejaTempNotaController::class, 'leidas'])->name('leidas')->middleware('can:'.$permMiBandeja.'Ver');
     });
 });
