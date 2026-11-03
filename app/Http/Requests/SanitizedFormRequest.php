@@ -143,8 +143,13 @@ abstract class SanitizedFormRequest extends FormRequest
 
     /**
      * Sanitización por defecto para strings
+     *
+     * Sin tipo de retorno a propósito: el archivo no declara strict_types, así que un `: string`
+     * convertía al salir todo lo que no fuera texto (false => '', true => '1', 7 => '7') aunque la
+     * primera línea lo devolviera intacto. Un booleano en false llegaba a la base de datos como ''
+     * y rompía el INSERT en columnas enteras.
      */
-    private function sanitizarValor($valor): string
+    private function sanitizarValor($valor)
     {
         if (! is_string($valor)) {
             return $valor;
