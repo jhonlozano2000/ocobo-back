@@ -41,7 +41,7 @@ class AvanceConTareasTest extends TestCase
             $this->markTestSkipped('Requiere la migración 2026_10_17_120000 (instancia/nodo en workflow_tareas).');
         }
 
-        foreach (['Workflows -> Instancias -> Ejecutar', 'Workflows -> Tareas -> Editar', 'Workflows -> Tareas -> Eliminar', 'Workflows -> Tareas -> Listar'] as $permiso) {
+        foreach (['Workflows -> Instancias -> Ejecutar', 'Workflows -> Tareas -> Editar', 'Workflows -> Tareas -> Eliminar', 'Workflows -> Tareas -> Listar', 'Workflows -> Workflows -> Mostrar'] as $permiso) {
             Permission::findOrCreate($permiso, 'web');
         }
         $this->ejecutor = User::factory()->create(['estado' => 1]);
@@ -138,6 +138,19 @@ class AvanceConTareasTest extends TestCase
 
         $this->assertSame($this->instanciaId, $tarea['instancia']['id']);
         $this->assertSame('en_curso', $tarea['instancia']['estado']);
+        $this->assertSame('Revisión', $tarea['nodo']['titulo']);
+    }
+
+    public function test_el_tablero_de_un_flujo_tambien_dice_el_caso_y_el_paso(): void
+    {
+        $tareas = $this->actingAs($this->revisor)->getJson("/api/workflows/{$this->workflow->id}/tareas")
+            ->assertOk()
+            ->json('data');
+
+        $tarea = collect($tareas)->firstWhere('nombre', 'Revisar soporte');
+
+        $this->assertSame($this->instanciaId, $tarea['instancia']['id']);
+        $this->assertSame($this->workflow->id, $tarea['instancia']['workflow_id']);
         $this->assertSame('Revisión', $tarea['nodo']['titulo']);
     }
 }

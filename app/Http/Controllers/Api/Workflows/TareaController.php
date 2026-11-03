@@ -61,6 +61,7 @@ class TareaController extends Controller
                 // qué paso del flujo viene la tarea
                 ->with(['propietarios', 'responsables', 'checklists', 'workflow',
                     'instancia:id,workflow_id,estado', 'nodo:id,titulo,tipo'])
+                ->withCount('archivos')
                 ->orderBy('created_at', 'desc')
                 ->paginate(min(max((int) request('per_page', 15), 1), 100));
 
@@ -99,7 +100,12 @@ class TareaController extends Controller
                         ->orWhereHas('responsables', fn ($q) => $q->where('user_id', $user->id));
                 }))
                 ->tap(fn ($q) => $this->filtrar($q))
-                ->with(['propietarios', 'responsables', 'checklists'])
+                // Igual que en misTareas: sin instancia ni nodo el tablero del flujo no puede
+                // decir de qué caso y de qué paso viene cada tarea
+                ->with(['propietarios', 'responsables', 'checklists',
+                    'instancia:id,workflow_id,estado', 'nodo:id,titulo,tipo'])
+                // El tablero marca con un clip las tareas que ya tienen evidencia (M19-35)
+                ->withCount('archivos')
                 ->orderBy('created_at', 'desc')
                 ->paginate(min(max((int) request('per_page', 15), 1), 100));
 
