@@ -21,7 +21,8 @@ class WorkFlowTareaService
     public function listar(int $nodoId, ?int $instanciaId = null): Collection
     {
         $query = WorkFlowTarea::where('nodo_id', $nodoId)
-            ->with('responsable:id,nombres,apellidos');
+            // El editor se abre con la fila del listado; omitir la lista la presenta vacía al editar.
+            ->with(['responsable:id,nombres,apellidos', 'checklists']);
 
         if ($instanciaId) {
             $query->where('instancia_id', $instanciaId);
@@ -162,7 +163,7 @@ class WorkFlowTareaService
             }
 
             return WorkFlowTarea::where('nodo_id', $nodoId)
-                ->with('responsable:id,nombres,apellidos')
+                ->with(['responsable:id,nombres,apellidos', 'checklists'])
                 ->orderBy('orden')
                 ->orderBy('created_at')
                 ->get();
