@@ -47,7 +47,7 @@ class AvanceConTareasTest extends TestCase
         $this->ejecutor = User::factory()->create(['estado' => 1]);
         $this->ejecutor->givePermissionTo('Workflows -> Instancias -> Ejecutar', 'Workflows -> Tareas -> Editar', 'Workflows -> Tareas -> Eliminar');
         $this->revisor = User::factory()->create(['estado' => 1]);
-        $this->revisor->givePermissionTo('Workflows -> Tareas -> Editar', 'Workflows -> Tareas -> Listar');
+        $this->revisor->givePermissionTo('Workflows -> Tareas -> Editar', 'Workflows -> Tareas -> Listar', 'Workflows -> Workflows -> Mostrar');
 
         $this->workflow = Workflow::create(['nombre' => 'M19-19', 'estado' => 'activo', 'creador_user_id' => $this->ejecutor->id]);
         $nodo = fn (string $tipo, string $titulo) => $this->workflow->nodos()->create(

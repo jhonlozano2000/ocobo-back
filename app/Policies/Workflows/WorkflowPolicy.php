@@ -20,7 +20,13 @@ class WorkflowPolicy
     public function view(User $user, Workflow $workflow): bool
     {
         return $user->hasPermissionTo('Workflows -> Workflows -> Mostrar')
-            && Workflow::paraParticipante($user)->whereKey($workflow->id)->exists();
+            && $this->participar($user, $workflow);
+    }
+
+    /** Pertenencia común; cada endpoint mantiene adicionalmente su permiso específico. */
+    public function participar(User $user, Workflow $workflow): bool
+    {
+        return Workflow::paraParticipante($user)->whereKey($workflow->id)->exists();
     }
 
     public function create(User $user): bool

@@ -27,6 +27,7 @@ class WorkflowNodoController extends Controller
         private readonly WorkflowAuditService $auditService
     ) {
         $this->middleware('can:Workflows -> Workflows -> Mostrar')->only(['index']);
+        $this->middleware($this->workflowDeRuta())->only(['index']);
         $this->middleware('can:Workflows -> Workflows -> Editar')->except(['index']);
         // Modificar el grafo es diseño: creador del workflow o Administrador
         $this->middleware($this->workflowDeRuta('update'))->except(['index']);

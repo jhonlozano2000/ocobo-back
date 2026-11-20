@@ -136,10 +136,12 @@ Cada código de estado HTTP se mapea de forma semántica con el tipo de Toast mo
 
 ## Testing
 - Decisión del usuario (20/11/2026): no crear ni recrear entornos o bases aisladas de Ocobo. Se eliminaron `ocobo_back_testing`, `ocobo_scratch_m1913` y `phpunit.scratch.local.xml`. Esta decisión sustituye las instrucciones históricas de usar scratch.
-- No redirigir automáticamente PHPUnit a `ocobo_back`: las suites pueden incluir RefreshDatabase/migraciones destructivas. La configuración histórica apunta a una base ya eliminada; las pruebas de integración quedan sin entorno ejecutable hasta acordar un procedimiento que preserve los datos de desarrollo. Se permiten pruebas unitarias sin BD y pruebas frontend.
+- Autorización del usuario (20/11/2026): ejecutar integración de Workflows sobre `ocobo_back` con rollback, sin crear BD/entornos aislados. `phpunit.xml` apunta a desarrollo; usar `php vendor/phpunit/phpunit/phpunit --testsuite Workflows`.
+- `DevelopmentDatabaseGuard` se valida antes de `parent::setUp()`: solo permite clases del módulo Workflows con `DatabaseTransactions` y rechaza RefreshDatabase, DatabaseMigrations y DatabaseTruncation. Verifica MySQL/InnoDB, bloquea DDL y escrituras sin transacción. Las suites de otros módulos quedan bloqueadas sobre desarrollo hasta revisarlas; no retirar la barrera para hacerlas pasar.
+- No ejecutar `migrate:fresh`, truncados ni restauraciones para preparar pruebas. Las pruebas de archivos usan Storage::fake; correo y broadcasting usan drivers sin salida externa. El rollback conserva filas; los contadores autoincrementales pueden avanzar por las inserciones temporales.
 - PHPUnit v11 (Unit + Feature en `tests/Unit/` y `tests/Feature/`)
 - `phpunit.xml`: `APP_ENV=testing`, `CACHE_DRIVER=array`, `QUEUE_CONNECTION=sync`
-- DB_CONNECTION comentado — usa BD real (no sqlite)
+- DB_DATABASE=ocobo_back; DB_CONNECTION heredada de desarrollo (MySQL, no sqlite)
 - Spatie Permission: requiere ejecutar seeds antes de tests de autorización
 - Usar `DatabaseTransactions` trait para rollback automático entre tests
 

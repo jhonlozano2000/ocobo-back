@@ -17,19 +17,35 @@ class PerfilesWorkflowsTest extends TestCase
 
     public function test_el_seeder_crea_disenador_y_ejecutor_de_forma_idempotente(): void
     {
+        // Desarrollo puede tener permisos añadidos manualmente: el seeder debe conservarlos.
+        $disenadorAntes = Role::where('name', PermisosWorkflowsSeeder::ROL_DISENADOR)->first()?->permissions->pluck('name')->all() ?? [];
+        $ejecutorAntes = Role::where('name', PermisosWorkflowsSeeder::ROL_EJECUTOR)->first()?->permissions->pluck('name')->all() ?? [];
         $this->seed(PermisosWorkflowsSeeder::class);
         $this->seed(PermisosWorkflowsSeeder::class);
 
         $disenador = Role::findByName(PermisosWorkflowsSeeder::ROL_DISENADOR, 'web');
         $ejecutor = Role::findByName(PermisosWorkflowsSeeder::ROL_EJECUTOR, 'web');
 
-        $this->assertCount(17, $disenador->permissions);
+        $permisosDiseno = [
+            ...PermisosWorkflowsSeeder::PERMISOS_EJECUTOR,
+            'Workflows -> Workflows -> Crear',
+            'Workflows -> Workflows -> Editar',
+            'Workflows -> Workflows -> Eliminar',
+            'Workflows -> Tareas -> Eliminar',
+            'Workflows -> Tareas -> Asignar',
+            'Workflows -> Archivos -> Eliminar',
+        ];
         $this->assertEqualsCanonicalizing(
-            PermisosWorkflowsSeeder::PERMISOS_EJECUTOR,
+            array_unique([...$disenadorAntes, ...$permisosDiseno]),
+            $disenador->permissions->pluck('name')->all()
+        );
+        $this->assertEqualsCanonicalizing(
+            array_unique([...$ejecutorAntes, ...PermisosWorkflowsSeeder::PERMISOS_EJECUTOR]),
             $ejecutor->permissions->pluck('name')->all()
         );
-        $this->assertFalse($ejecutor->hasPermissionTo('Workflows -> Workflows -> Editar'));
-        $this->assertFalse($ejecutor->hasPermissionTo('Workflows -> Tareas -> Asignar'));
+        foreach (['Workflows -> Workflows -> Editar', 'Workflows -> Tareas -> Asignar'] as $permiso) {
+            $this->assertSame(in_array($permiso, $ejecutorAntes, true), $ejecutor->hasPermissionTo($permiso));
+        }
     }
 
     public function test_el_ejecutor_ve_sus_tareas_pero_no_disena_flujos(): void

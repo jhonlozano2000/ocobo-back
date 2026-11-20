@@ -82,6 +82,8 @@ class VisibilidadInstanciasTest extends TestCase
         $responsable = $this->usuario();
         $delRadicado = $this->usuario();
         $ajeno = $this->usuario();
+        // Pertenecer al flujo y poder consultar una ejecución son controles distintos.
+        $this->workflow->settings()->create(['configuracion_asignacion_json' => ['equipo' => [$ejecutor->id, $responsable->id, $delRadicado->id]]]);
 
         $propia = $this->instancia($ejecutor);
         $conTarea = $this->instancia($this->creador);
@@ -98,11 +100,13 @@ class VisibilidadInstanciasTest extends TestCase
         $this->assertSame([$propia], $this->listado($ejecutor));
         $this->assertSame([$conTarea], $this->listado($responsable));
         $this->assertSame([$deRadicado], $this->listado($delRadicado));
-        $this->assertSame([], $this->listado($ajeno));
+        $this->actingAs($ajeno)->getJson("/api/workflows/workflows/{$this->workflow->id}/instancias")->assertForbidden();
         $this->assertSame([$propia, $conTarea, $deRadicado], $this->listado($this->creador));
 
         $admin = $this->usuario();
         $admin->assignRole(Role::findOrCreate('Administrador', 'web'));
+        $this->actingAs($admin)->getJson("/api/workflows/workflows/{$this->workflow->id}/instancias")->assertForbidden();
+        $this->workflow->settings()->update(['configuracion_asignacion_json' => ['equipo' => [$ejecutor->id, $responsable->id, $delRadicado->id, $admin->id]]]);
         $this->assertSame([$propia, $conTarea, $deRadicado], $this->listado($admin));
 
         $this->actingAs($responsable)->getJson("/api/workflows/workflows/{$this->workflow->id}/instancias/{$conTarea}")->assertOk();
@@ -134,6 +138,8 @@ class VisibilidadInstanciasTest extends TestCase
     {
         $ejecutor = $this->usuario();
         $ajeno = $this->usuario();
+        // Puede consultar el flujo por equipo, pero no la ejecución ajena.
+        $this->workflow->settings()->create(['configuracion_asignacion_json' => ['equipo' => [$ajeno->id]]]);
         $instancia = $this->instancia($ejecutor);
         $url = "/api/workflows/workflows/{$this->workflow->id}/archivos";
 

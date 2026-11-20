@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Workflows;
 
 use App\Exceptions\Workflows\StateTransitionException;
 use App\Exceptions\Workflows\WorkflowException;
+use App\Http\Controllers\Api\Workflows\Concerns\AutorizaWorkflowDeRuta;
 use App\Http\Controllers\Api\Workflows\Concerns\RespondeErroresWorkflow;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflows\DetenerInstanciaRequest;
@@ -25,13 +26,14 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
  */
 class WorkflowInstanciaController extends Controller
 {
-    use ApiResponseTrait, RespondeErroresWorkflow;
+    use ApiResponseTrait, AutorizaWorkflowDeRuta, RespondeErroresWorkflow;
 
     public function __construct(
         private readonly WorkflowExecutionService $executionService
     ) {
         $this->middleware('can:Workflows -> Instancias -> Consultar')->only(['index', 'show']);
         $this->middleware('can:Workflows -> Instancias -> Ejecutar')->only(['store', 'ejecutarNodo', 'detener', 'devolver']);
+        $this->middleware($this->workflowDeRuta())->only(['index', 'store']);
         // M19-52: antes de validar el request, para no revelar nada de una instancia ajena
         $this->middleware(function ($request, $next) {
             abort_unless(WorkflowInstancia::visiblesPara($request->user())->whereKey((int) $request->route('instancia'))->exists(), 404, 'Instancia no encontrada');

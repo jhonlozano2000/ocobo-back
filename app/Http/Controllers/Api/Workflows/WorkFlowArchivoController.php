@@ -28,7 +28,7 @@ class WorkFlowArchivoController extends Controller
         $this->middleware('can:Workflows -> Archivos -> Subir')->only(['store']);
         $this->middleware('can:Workflows -> Archivos -> Descargar')->only(['download']);
         $this->middleware('can:Workflows -> Archivos -> Eliminar')->only(['destroy']);
-        $this->middleware($this->workflowDeRuta())->except(['store', 'destroy']);
+        $this->middleware($this->workflowDeRuta())->except(['destroy']);
     }
 
     public function index(int $workflowId)

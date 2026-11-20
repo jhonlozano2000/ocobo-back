@@ -12,11 +12,12 @@ use Illuminate\Support\Facades\Gate;
 /**
  * M19-05: las rutas anidadas bajo workflows/{workflow} solo exigían el permiso plano (can:).
  * Este middleware de controlador comprueba que {nodo} y {tarea} cuelgan del workflow de la ruta
- * y, si se indica una ability, la autoriza contra WorkflowPolicy (creador o Administrador).
+ * y autoriza pertenencia al flujo por defecto. Las acciones de diseño indican explícitamente
+ * update para exigir además la autorización del creador o Administrador.
  */
 trait AutorizaWorkflowDeRuta
 {
-    protected function workflowDeRuta(?string $ability = null): Closure
+    protected function workflowDeRuta(?string $ability = 'participar'): Closure
     {
         return function (Request $request, Closure $next) use ($ability) {
             $workflow = $request->route('workflow');

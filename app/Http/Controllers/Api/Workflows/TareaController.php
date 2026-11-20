@@ -88,17 +88,13 @@ class TareaController extends Controller
     public function index(int $workflowId)
     {
         $workflow = Workflow::findOrFail($workflowId);
-        $user = request()->user();
+        $this->authorize('view', $workflow);
 
         try {
             $this->tareaService->verificarVencimientosPorWorkflow($workflowId);
 
-            // Quien no puede ver el workflow (creador o Administrador) solo ve las tareas donde participa
+            // La policy confirma pertenencia: el tablero compartido muestra las tareas del flujo.
             $tareas = Tarea::where('workflow_id', $workflowId)
-                ->when($user->cannot('view', $workflow), fn ($q) => $q->where(function ($q) use ($user) {
-                    $q->whereHas('propietarios', fn ($q) => $q->where('user_id', $user->id))
-                        ->orWhereHas('responsables', fn ($q) => $q->where('user_id', $user->id));
-                }))
                 ->tap(fn ($q) => $this->filtrar($q))
                 // Igual que en misTareas: sin instancia ni nodo el tablero del flujo no puede
                 // decir de qué caso y de qué paso viene cada tarea
@@ -159,6 +155,7 @@ class TareaController extends Controller
     public function store(StoreTareaRequest $request)
     {
         try {
+            $this->authorize('participar', Workflow::findOrFail((int) $request->validated('workflow_id')));
             $tarea = $this->tareaService->store(
                 $request->validated(),
                 $request->user()

@@ -16,6 +16,10 @@ trait CreatesApplication
 
         $app->make(Kernel::class)->bootstrap();
 
+        if (getenv('DB_DATABASE') === 'ocobo_back') {
+            Support\DevelopmentDatabaseGuard::protectConnection($app);
+        }
+
         return $app;
     }
 }

@@ -10,8 +10,7 @@ use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 /**
- * M19-03: GET /api/workflows/{workflow}/tareas devolvía todas las tareas de cualquier workflow
- * a quien tuviera el permiso Listar, sin mirar propietario ni responsable.
+ * El tablero muestra tareas del flujo a sus participantes; las acciones exigen responsabilidad.
  */
 class TareasDelWorkflowTest extends TestCase
 {
@@ -51,16 +50,30 @@ class TareasDelWorkflowTest extends TestCase
         $this->actingAs($this->creador)->getJson($this->url())->assertOk()->assertJsonCount(2, 'data');
     }
 
-    public function test_otro_usuario_solo_ve_las_tareas_donde_participa(): void
+    public function test_participante_ve_tablero_pero_solo_tramita_su_tarea(): void
     {
+        Permission::findOrCreate('Workflows -> Tareas -> Editar', 'web');
         $otro = User::factory()->create(['estado' => 1]);
-        $otro->givePermissionTo(['Workflows -> Tareas -> Listar', 'Workflows -> Workflows -> Mostrar']);
+        $otro->givePermissionTo(['Workflows -> Tareas -> Listar', 'Workflows -> Workflows -> Mostrar', 'Workflows -> Tareas -> Editar']);
         $this->suya->responsables()->attach($otro->id);
 
         $this->actingAs($otro)->getJson($this->url())
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.id', $this->suya->id);
+            ->assertJsonCount(2, 'data')
+            ->assertJsonFragment(['id' => $this->suya->id, 'nombre' => 'Suya'])
+            ->assertJsonFragment(['id' => $this->ajena->id, 'nombre' => 'Ajena']);
+
+        $this->postJson("/api/workflows/tareas/{$this->ajena->id}/iniciar")->assertForbidden();
+        $this->assertSame('pendiente', $this->ajena->fresh()->estado);
+        $this->postJson("/api/workflows/tareas/{$this->suya->id}/iniciar")->assertOk();
+        $this->assertSame('en_curso', $this->suya->fresh()->estado);
+    }
+
+    public function test_usuario_sin_pertenencia_no_ve_el_tablero(): void
+    {
+        $otro = User::factory()->create(['estado' => 1]);
+        $otro->givePermissionTo(['Workflows -> Tareas -> Listar', 'Workflows -> Workflows -> Mostrar']);
+        $this->actingAs($otro)->getJson($this->url())->assertForbidden();
     }
 
     public function test_un_workflow_inexistente_da_404(): void
