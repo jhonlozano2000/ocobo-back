@@ -286,7 +286,8 @@ class WorkflowService
     public function guardarNodosYconexiones(int $workflowId, array $nodos, array $conexiones, ?array $anotaciones = null): Workflow
     {
         return DB::transaction(function () use ($workflowId, $nodos, $conexiones, $anotaciones) {
-            $workflow = Workflow::findOrFail($workflowId);
+            // La activación usa este mismo bloqueo: no guardar sobre un estado anterior al arranque.
+            $workflow = Workflow::lockForUpdate()->findOrFail($workflowId);
 
             $this->asegurarGrafoEditable($workflow, 'el canvas');
 

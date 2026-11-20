@@ -178,7 +178,12 @@ class TareaService
     public function completar(Tarea $tarea): Tarea
     {
         return DB::transaction(function () use ($tarea) {
-            $tarea = $tarea->fresh('checklists');
+            // Orden común al motor: instancia → tarea. Evita que tareas hermanas se bloqueen
+            // entre sí al actualizarse primero y después intentar avanzar la misma instancia.
+            if ($tarea->instancia_id) {
+                WorkflowInstancia::whereKey($tarea->instancia_id)->lockForUpdate()->firstOrFail();
+            }
+            $tarea = Tarea::with('checklists')->lockForUpdate()->findOrFail($tarea->id);
 
             if (! WorkflowEstadoMachine::puedeTransitar($tarea->estado, 'completada')) {
                 throw new StateTransitionException(

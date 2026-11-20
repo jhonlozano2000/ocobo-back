@@ -63,6 +63,7 @@ class TareaController extends Controller
                     'instancia:id,workflow_id,estado', 'nodo:id,titulo,tipo'])
                 ->withCount('archivos')
                 ->orderBy('created_at', 'desc')
+                ->orderBy('id', 'desc')
                 ->paginate(min(max((int) request('per_page', 15), 1), 100));
 
             return $this->successResponse($tareas, 'Mis tareas obtenidas correctamente');
@@ -103,6 +104,7 @@ class TareaController extends Controller
                 // El tablero marca con un clip las tareas que ya tienen evidencia (M19-35)
                 ->withCount('archivos')
                 ->orderBy('created_at', 'desc')
+                ->orderBy('id', 'desc')
                 ->paginate(min(max((int) request('per_page', 15), 1), 100));
 
             return $this->successResponse($tareas, 'Tareas obtenidas correctamente');

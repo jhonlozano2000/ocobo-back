@@ -144,6 +144,7 @@ Cada código de estado HTTP se mapea de forma semántica con el tipo de Toast mo
 - DB_DATABASE=ocobo_back; DB_CONNECTION heredada de desarrollo (MySQL, no sqlite)
 - Spatie Permission: requiere ejecutar seeds antes de tests de autorización
 - Usar `DatabaseTransactions` trait para rollback automático entre tests
+- Concurrencia real: `php tests/Concurrency/workflows.php` ejecuta cinco escenarios con ocho procesos/conexiones cada uno. No se incluye en PHPUnit: requiere fixtures confirmados visibles entre procesos. Crea un usuario y flujos con marcador aleatorio, limpia exclusivamente sus propios IDs y compara huella de las 140 tablas antes/después (AUTO_INCREMENT puede avanzar). No modifica ni desactiva DevelopmentDatabaseGuard. No crear una BD ni entorno aparte para este runner. Informe local ignorado por Git: `storage/logs/workflows-concurrency.json`.
 
 ## Archivos de Configuración Clave
 - `.env` — `APP_URL=http://ocobo.test`, `SANCTUM_STATEFUL_DOMAINS=ocobo.test:3000`, `SESSION_DRIVER=cookie`
