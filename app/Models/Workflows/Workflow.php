@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models\Workflows;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -61,6 +62,28 @@ class Workflow extends Model
     public function creador(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creador_user_id');
+    }
+
+    /**
+     * Limits consultation to actual membership; participation never grants design permissions.
+     */
+    public function scopeParaParticipante(Builder $query, User $user): Builder
+    {
+        return $query->where(function (Builder $q) use ($user) {
+            $q->where('creador_user_id', $user->id)
+                ->orWhere('administrador_user_id', $user->id)
+                ->orWhereHas('settings', fn ($s) => $s->where(function ($team) use ($user) {
+                    $team->whereJsonContains('configuracion_asignacion_json->equipo', $user->id)
+                        ->orWhereJsonContains('configuracion_asignacion_json->equipo', (string) $user->id);
+                }))
+                ->orWhereHas('nodos', fn ($n) => $n->where('responsable_usuario_id', $user->id))
+                ->orWhereHas('tareas', fn ($t) => $t->where('work_flow_tareas.responsable_usuario_id', $user->id))
+                ->orWhereHas('instancias', fn ($i) => $i->where('usuario_ejecuta_id', $user->id))
+                ->orWhereHas('tareasModulo', fn ($t) => $t->where(function ($assigned) use ($user) {
+                    $assigned->whereHas('responsables', fn ($r) => $r->where('users.id', $user->id))
+                        ->orWhereHas('propietarios', fn ($p) => $p->where('users.id', $user->id));
+                }));
+        });
     }
 
     public function administrador(): BelongsTo

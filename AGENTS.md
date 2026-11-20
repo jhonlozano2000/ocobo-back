@@ -43,7 +43,7 @@ Cada código de estado HTTP se mapea de forma semántica con el tipo de Toast mo
 | **204** | Sin contenido / Eliminación silenciosa | `$this->noContentResponse()` | — | — |
 | **400** | Solicitud incorrecta / Parámetros inválidos | `$this->badRequestResponse($message, $error)` | `toastWarning` | 🟡 Amarillo |
 | **401** | No autenticado / Sesión expirada | `$this->unauthorizedResponse($message)` | `toastWarning` + redirect login | 🟡 Amarillo |
-| **403** | Sin permisos / Acceso prohibido | `$this->forbiddenResponse($message)` | `toastError` | 🔴 Rojo |
+| **403** | Sin permisos / Acceso prohibido | `$this->forbiddenResponse($message)` | `toastWarning` | Amarillo |
 | **404** | Registro o entidad no encontrada | `$this->notFoundResponse($message)` | `toastInfo` | 🔵 Azul |
 | **409** | Conflicto de concurrencia o estado | `$this->conflictResponse($message, $error)` | `toastWarning` | 🟡 Amarillo |
 | **422** | Validación / Regla de negocio no cumplida | `$this->validationResponse($errors, $msg)` / `$this->warningResponse($msg)` | `toastWarning` | 🟡 Amarillo |
@@ -51,6 +51,7 @@ Cada código de estado HTTP se mapea de forma semántica con el tipo de Toast mo
 | **500** | Error interno no controlado del servidor | `$this->serverErrorResponse($message, $error)` | `toastError` | 🔴 Rojo |
 
 **Reglas de negocio para respuestas:**
+- La selección del color del toast se centraliza exclusivamente en `src/utils/toastr.js` del frontend. El backend conserva códigos HTTP semánticos y mensajes específicos mediante `ApiResponseTrait`; nunca cambiar un 403 por 422 o 200 para alterar el color. Errores de API: `toastFromError`; 400/401/403/409/422/429 amarillo, 404 informativo, 5xx rojo y 2xx éxito.
 - **Prohibido `response()->json()` directo**: Reemplazar todo `return response()->json(...)` por el método semántico correspondiente del trait.
 - **Paginadores de Laravel**: Pasar directamente la instancia paginada a `$this->successResponse($paginados, '...')`; el trait desacopla `items()` en `data` y agrega el bloque `pagination` preservando compatibilidad completa con el frontend.
 - **Validaciones de Formulario (HTTP 422)**: El campo `message` NUNCA debe ser un texto genérico estático como `"Error de validación."`. Debe contener siempre el primer error puntual de la validación (ej. `"El número de documento ya está en uso."`) para que el toast muestre el problema de inmediato, manteniendo el mapa completo en `errors`.
@@ -134,6 +135,8 @@ Cada código de estado HTTP se mapea de forma semántica con el tipo de Toast mo
   - En Models: documentar propiedades mágicas (`@property`), relaciones (`@method`) y scopes para permitir autocompletado estático y claridad de negocio.
 
 ## Testing
+- Decisión del usuario (20/11/2026): no crear ni recrear entornos o bases aisladas de Ocobo. Se eliminaron `ocobo_back_testing`, `ocobo_scratch_m1913` y `phpunit.scratch.local.xml`. Esta decisión sustituye las instrucciones históricas de usar scratch.
+- No redirigir automáticamente PHPUnit a `ocobo_back`: las suites pueden incluir RefreshDatabase/migraciones destructivas. La configuración histórica apunta a una base ya eliminada; las pruebas de integración quedan sin entorno ejecutable hasta acordar un procedimiento que preserve los datos de desarrollo. Se permiten pruebas unitarias sin BD y pruebas frontend.
 - PHPUnit v11 (Unit + Feature en `tests/Unit/` y `tests/Feature/`)
 - `phpunit.xml`: `APP_ENV=testing`, `CACHE_DRIVER=array`, `QUEUE_CONNECTION=sync`
 - DB_CONNECTION comentado — usa BD real (no sqlite)

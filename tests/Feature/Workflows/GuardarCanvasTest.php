@@ -65,6 +65,62 @@ class GuardarCanvasTest extends TestCase
         ]);
     }
 
+    public function test_nodo_temporal_guarda_actividades_con_responsable_y_checklist_opcional(): void
+    {
+        Permission::findOrCreate('Workflows -> Tareas -> Asignar', 'web');
+        $this->creador->givePermissionTo('Workflows -> Tareas -> Asignar');
+        $responsable = User::factory()->create(['estado' => 1]);
+        $payload = $this->payloadDelBuilder();
+        foreach ($payload['nodos'] as &$nodo) {
+            $nodo['client_id'] = str_replace('nodo_', 'nuevo_', $nodo['client_id']);
+        }
+        unset($nodo);
+        foreach ($payload['conexiones'] as &$conexion) {
+            $conexion['nodo_origen_id'] = str_replace('nodo_', 'nuevo_', $conexion['nodo_origen_id']);
+            $conexion['nodo_destino_id'] = str_replace('nodo_', 'nuevo_', $conexion['nodo_destino_id']);
+        }
+        unset($conexion);
+        $payload['nodos'][1]['actividades_nuevas'] = [
+            ['titulo' => 'Revisar anexos', 'responsable_usuario_id' => $responsable->id,
+                'checklists' => [['item_descripcion' => 'Legibles'], ['item_descripcion' => 'Completos']]],
+            ['titulo' => 'Preparar respuesta', 'checklists' => []],
+        ];
+        $url = "/api/workflows/workflows/{$this->workflow->id}/canvas";
+        $this->actingAs($this->creador)->postJson($url, $payload)->assertOk();
+
+        $paso = $this->workflow->nodos()->where('tipo', 'tarea')->sole();
+        $actividades = $paso->tareas()->with('checklists')->orderBy('orden')->get();
+        $this->assertCount(2, $actividades);
+        $this->assertSame($responsable->id, $actividades[0]->responsable_usuario_id);
+        $this->assertSame(['Legibles', 'Completos'], $actividades[0]->checklists->pluck('item_descripcion')->all());
+        $this->assertCount(0, $actividades[1]->checklists);
+        $this->assertSame(0, $this->workflow->tareasModulo()->count());
+
+        // Saving the returned real IDs must preserve activities, without creating them twice.
+        foreach ($payload['nodos'] as &$nodo) {
+            $real = $this->workflow->nodos()->where('tipo', $nodo['tipo'])->sole();
+            $nodo['client_id'] = 'nodo_'.$real->id;
+            unset($nodo['actividades_nuevas']);
+        }
+        unset($nodo);
+        $payload['conexiones'] = [];
+        $this->postJson($url, $payload)->assertOk();
+        $this->assertSame(2, $paso->tareas()->count());
+    }
+
+    public function test_checklist_invalido_no_deja_nodos_ni_actividades_parciales(): void
+    {
+        $payload = $this->payloadDelBuilder();
+        $payload['nodos'][1]['actividades_nuevas'] = [
+            ['titulo' => 'Valida'],
+            ['titulo' => 'Invalida', 'checklists' => [['item_descripcion' => '']]],
+        ];
+        $this->actingAs($this->creador)->postJson("/api/workflows/workflows/{$this->workflow->id}/canvas", $payload)
+            ->assertStatus(422)->assertJsonValidationErrors('nodos.1.actividades_nuevas.1.checklists.0.item_descripcion');
+        $this->assertSame(0, $this->workflow->nodos()->count());
+        $this->assertSame(0, $this->workflow->tareas()->count());
+    }
+
     public function test_una_conexion_a_un_nodo_fuera_del_canvas_se_rechaza(): void
     {
         $payload = $this->payloadDelBuilder();

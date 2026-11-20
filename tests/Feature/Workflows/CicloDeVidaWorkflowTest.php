@@ -49,6 +49,30 @@ class CicloDeVidaWorkflowTest extends TestCase
         }
     }
 
+    public function test_activar_genera_actividad_y_reactivar_no_la_duplica(): void
+    {
+        $workflow = $this->workflow('borrador');
+        $inicio = $workflow->nodos()->where('tipo', 'inicio')->firstOrFail();
+        $fin = $workflow->nodos()->where('tipo', 'fin')->firstOrFail();
+        $workflow->conexiones()->delete();
+        $paso = $workflow->nodos()->create(['tipo' => 'tarea', 'titulo' => 'Revision', 'posicion_x' => 100, 'posicion_y' => 0]);
+        $plantilla = $paso->tareas()->create(['titulo' => 'Verificar anexos', 'responsable_usuario_id' => $this->usuario->id, 'orden' => 0]);
+        $plantilla->checklists()->create(['item_descripcion' => 'Anexo legible', 'orden' => 0, 'esta_completado' => false]);
+        $workflow->conexiones()->create(['nodo_origen_id' => $inicio->id, 'nodo_destino_id' => $paso->id]);
+        $workflow->conexiones()->create(['nodo_origen_id' => $paso->id, 'nodo_destino_id' => $fin->id]);
+
+        $url = "/api/workflows/workflows/{$workflow->id}/estado";
+        $this->actingAs($this->usuario)->patchJson($url, ['estado' => 'activo'])->assertOk();
+        $tarea = $workflow->tareasModulo()->sole();
+        $this->assertSame($plantilla->id, $tarea->plantilla_id);
+        $this->assertTrue($tarea->responsables()->where('users.id', $this->usuario->id)->exists());
+        $this->assertSame('Anexo legible', $tarea->checklists()->sole()->item_descripcion);
+        $this->patchJson($url, ['estado' => 'inactivo'])->assertOk();
+        $this->patchJson($url, ['estado' => 'activo'])->assertOk();
+        $this->assertSame(1, $workflow->instancias()->count());
+        $this->assertSame(1, $workflow->tareasModulo()->count());
+    }
+
     public function test_ciclo_permitido_y_mismo_estado_en_la_edicion(): void
     {
         $workflow = $this->workflow('borrador');

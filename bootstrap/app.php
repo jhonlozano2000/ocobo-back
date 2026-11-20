@@ -44,6 +44,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -155,6 +156,17 @@ return Application::configure(basePath: dirname(__DIR__))
                     'status' => false,
                     'success' => false,
                     'message' => 'No tiene permisos para realizar esta acción.',
+                ], 403);
+            }
+        });
+
+        $exceptions->render(function (AccessDeniedHttpException $e, $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'status' => false,
+                    'success' => false,
+                    'message' => 'No tiene acceso a este recurso o no cuenta con permisos para realizar esta acción.',
+                    'error' => 'FORBIDDEN',
                 ], 403);
             }
         });

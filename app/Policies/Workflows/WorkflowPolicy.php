@@ -20,7 +20,7 @@ class WorkflowPolicy
     public function view(User $user, Workflow $workflow): bool
     {
         return $user->hasPermissionTo('Workflows -> Workflows -> Mostrar')
-            && ($workflow->creador_user_id === $user->id || $user->hasRole('Administrador'));
+            && Workflow::paraParticipante($user)->whereKey($workflow->id)->exists();
     }
 
     public function create(User $user): bool

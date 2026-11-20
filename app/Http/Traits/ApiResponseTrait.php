@@ -22,7 +22,7 @@ use Illuminate\Support\MessageBag;
  *  204       | Sin Contenido                 | noContentResponse               | -
  *  400       | Solicitud Incorrecta          | badRequestResponse             | toastWarning (Amarillo)
  *  401       | No Autenticado                | unauthorizedResponse           | toastWarning (Amarillo)
- *  403       | No Autorizado / Prohibido     | forbiddenResponse              | toastError (Rojo)
+ *  403       | No Autorizado / Prohibido     | forbiddenResponse              | toastWarning (Amarillo)
  *  404       | Recurso No Encontrado         | notFoundResponse               | toastInfo (Azul)
  *  409       | Conflicto de Estado           | conflictResponse               | toastWarning (Amarillo)
  *  422       | Validación / Regla de Negocio | validationResponse, warningResponse | toastWarning (Amarillo)
@@ -207,7 +207,7 @@ trait ApiResponseTrait
 
     /**
      * Formatea una respuesta de acceso prohibido o falta de permisos (HTTP 403).
-     * Frontend: Muestra toastError (Rojo).
+     * Frontend: Muestra toastWarning (Amarillo).
      *
      * @param  string  $message  Mensaje de permisos insuficientes
      */

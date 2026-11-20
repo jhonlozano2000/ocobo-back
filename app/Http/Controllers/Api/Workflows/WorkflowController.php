@@ -41,7 +41,11 @@ class WorkflowController extends Controller
         try {
             $workflows = $this->workflowService->listar(request()->all());
 
-            return $this->successResponse($workflows, 'Flujos obtenidos correctamente');
+            $response = $this->successResponse($workflows, 'Flujos obtenidos correctamente');
+            $payload = $response->getData(true);
+            $payload['estadisticas'] = $this->workflowService->estadisticas();
+
+            return $response->setData($payload);
         } catch (\Exception $e) {
             if ($e instanceof AuthorizationException) {
                 throw $e;

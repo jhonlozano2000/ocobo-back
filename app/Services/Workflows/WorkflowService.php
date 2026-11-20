@@ -16,6 +16,21 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class WorkflowService
 {
+    /** Conteos completos limitados a la pertenencia del usuario, independientes de la página. */
+    public function estadisticas(): array
+    {
+        $conteos = Workflow::paraParticipante(auth()->user())
+            ->selectRaw('estado, COUNT(*) as cantidad')->groupBy('estado')->pluck('cantidad', 'estado');
+
+        return [
+            'total' => (int) $conteos->sum(),
+            'activo' => (int) ($conteos['activo'] ?? 0),
+            'borrador' => (int) ($conteos['borrador'] ?? 0),
+            'inactivo' => (int) ($conteos['inactivo'] ?? 0),
+            'archivado' => (int) ($conteos['archivado'] ?? 0),
+        ];
+    }
+
     public function __construct(
         private readonly WorkflowAuditService $auditService,
         private readonly WorkflowGrafoValidator $grafoValidator
@@ -23,12 +38,13 @@ class WorkflowService
 
     public function listar(array $filtros = [])
     {
-        $query = Workflow::with([
+        $query = Workflow::paraParticipante(auth()->user())->with([
             'creador:id,nombres,apellidos',
             'administrador:id,nombres,apellidos',
             'settings:id,workflow_id,estrategia_asignacion,configuracion_asignacion_json',
         ])->withCount([
             'nodos',
+            'tareas',
             'instancias',
             'tareasModulo',
             'tareasModulo as tareas_completadas_count' => fn ($q) => $q->where('estado', 'completada'),
@@ -52,7 +68,7 @@ class WorkflowService
     public function obtenerConRelaciones(int $id): Workflow
     {
         // El builder avisa de entrada que no se puede editar el grafo mientras haya instancias en curso
-        return Workflow::with(['nodos', 'conexiones', 'creador:id,nombres,apellidos', 'settings'])
+        return Workflow::with(['nodos.tareas', 'conexiones', 'creador:id,nombres,apellidos', 'settings'])
             ->withCount(['instancias as instancias_en_curso_count' => fn ($q) => $q->where('estado', 'en_curso')])
             ->findOrFail($id);
     }
@@ -224,6 +240,11 @@ class WorkflowService
             $estadoAnterior = $workflow->estado;
             $workflow->update(['estado' => $estado]);
 
+            // Start internal work once under the workflow lock; preserve existing history.
+            if ($estado === 'activo' && ! $workflow->instancias()->exists()) {
+                app(WorkflowExecutionService::class)->iniciarInstancia($workflow->id, (int) auth()->id());
+            }
+
             $this->auditService->registrar(
                 'workflow.cambio_estado',
                 $workflow->id,
@@ -290,7 +311,7 @@ class WorkflowService
 
             $clientIdMap = [];
             foreach ($nodos as $nodoData) {
-                $atributos = collect($nodoData)->except(['client_id'])->toArray();
+                $atributos = collect($nodoData)->except(['client_id', 'actividades_nuevas'])->toArray();
                 $atributos['orden_ejecucion'] ??= 0;
                 $idExistente = preg_match('/^nodo_(\d+)$/', $nodoData['client_id'], $m) ? (int) $m[1] : null;
 
@@ -306,6 +327,16 @@ class WorkflowService
                     $cambiosNodos['creados'][] = ['id' => $nodo->id, 'titulo' => $nodo->titulo, 'tipo' => $nodo->tipo];
                 }
                 $clientIdMap[$nodoData['client_id']] = $nodo->id;
+                foreach ($nodoData['actividades_nuevas'] ?? [] as $orden => $actividad) {
+                    // Only new nodes accept draft activities; an existing node uses its own API.
+                    if ($idExistente) {
+                        throw ValidationException::withMessages(['nodos' => 'Las actividades de un nodo guardado se editan desde su panel.']);
+                    }
+                    $tarea = $nodo->tareas()->create(Arr::except($actividad, ['checklists']) + ['orden' => $orden, 'estado' => 'pendiente']);
+                    foreach ($actividad['checklists'] ?? [] as $posicion => $item) {
+                        $tarea->checklists()->create(['item_descripcion' => $item['item_descripcion'], 'orden' => $posicion, 'esta_completado' => false]);
+                    }
+                }
             }
 
             $cambiosNodos['eliminados'] = $existentes->except(array_values($clientIdMap))

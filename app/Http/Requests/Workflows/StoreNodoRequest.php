@@ -19,6 +19,14 @@ class StoreNodoRequest extends FormRequest
         $clientIds = collect($this->input('nodos', []))->pluck('client_id')->filter(fn ($id) => is_string($id))->values()->all();
 
         return [
+            'nodos.*.actividades_nuevas' => 'sometimes|array|max:100',
+            'nodos.*.actividades_nuevas.*.titulo' => 'required|string|max:255',
+            'nodos.*.actividades_nuevas.*.descripcion' => 'nullable|string|max:1000',
+            'nodos.*.actividades_nuevas.*.tiempo_limite_horas' => 'nullable|integer|min:1',
+            'nodos.*.actividades_nuevas.*.tiempo_limite_unidad' => 'nullable|in:horas,dias_habiles',
+            'nodos.*.actividades_nuevas.*.responsable_usuario_id' => [$this->user()->can('Workflows -> Tareas -> Asignar') ? 'nullable' : 'prohibited', 'integer', 'exists:users,id,estado,1'],
+            'nodos.*.actividades_nuevas.*.checklists' => 'sometimes|array|max:100',
+            'nodos.*.actividades_nuevas.*.checklists.*.item_descripcion' => 'required|string|max:1000',
             // El builder identifica cada nodo con un client_id temporal; el servicio lo traduce al id real
             'nodos' => 'present|array',
             'nodos.*.client_id' => 'required|string|max:100|distinct',
