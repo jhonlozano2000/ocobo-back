@@ -65,4 +65,25 @@ class RadicarEmailDesdeImapTest extends TestCase
 
         $this->postJson('/api/ventanilla/email-radicados/404/radicar', $this->payload)->assertNotFound();
     }
+
+    public function test_estadisticas_cargan_sin_imap_y_excluyen_radicados_ajenos(): void
+    {
+        $user = auth()->user();
+        $user->givePermissionTo(Permission::findOrCreate('Radicar -> Cores. Recibida -> Listar', 'web'));
+        $otro = User::factory()->create(['estado' => 1]);
+        $crear = fn ($autor, $uid) => DB::table('ventanilla_radica_reci')->insertGetId([
+            'usuario_crea' => $autor, 'num_radicado' => 'EMAIL-'.uniqid(),
+            'medio_recep_id' => $this->payload['medio_recep_id'], 'imap_uid' => $uid,
+        ]);
+        $propio = $crear($user->id, 'regression-1');
+        $crear($user->id, 'regression-2');
+        $crear($otro->id, 'regression-ajeno');
+        DB::table('ventanilla_radica_reci_respuestas')->insert([
+            'radicado_id' => $propio, 'titulo' => 'Respuesta', 'contenido' => 'Prueba', 'user_crea_id' => $user->id,
+        ]);
+        $this->mock(ImapEmailService::class)->shouldNotReceive('getMessageDetails');
+        $this->getJson('/api/ventanilla/email-radicados/estadisticas')->assertOk()
+            ->assertJsonPath('data.radicados', 2)->assertJsonPath('data.respondidos', 1)
+            ->assertJsonPath('data.total', 2)->assertJsonPath('data.pendientes', 0);
+    }
 }

@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\RadicarEmailRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\Configuracion\ConfigLista;
+use App\Models\VentanillaUnica\Recibidos\RadicadoRespuesta;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\VentanillaUnica\EmailRadicacionService;
 use App\Services\VentanillaUnica\ImapEmailService;
 use Illuminate\Http\JsonResponse;
@@ -246,9 +248,10 @@ class EmailRadicadosController extends Controller
      */
     public function estadisticas(): JsonResponse
     {
-        $radicadosRecibidos = VentanillaRadicaReci::whereNotNull('imap_uid')->count();
-        $respondidos = VentanillaRadicaReci::whereNotNull('imap_uid')
-            ->whereHas('respuestas')
+        $query = VentanillaRadicaReci::paraUsuario()->whereNotNull('imap_uid');
+        $radicadosRecibidos = (clone $query)->count();
+        $respondidos = (clone $query)
+            ->whereIn('id', RadicadoRespuesta::query()->select('radicado_id'))
             ->count();
 
         return $this->successResponse([
