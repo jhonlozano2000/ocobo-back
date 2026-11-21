@@ -69,6 +69,7 @@ class GrupoDocumentoTest extends TestCase
             'nombre' => 'Oficio de respuesta',
             'asunto' => 'Respuesta al derecho de petición',
             'documento_id' => $this->documento,
+            'radicado_tipo' => 'interno',
             'clasifica_documen_id' => $this->trd,
         ]);
     }
@@ -135,7 +136,10 @@ class GrupoDocumentoTest extends TestCase
         // En Mis grupos activos el grupo trae su documento para abrirlo en el editor
         $this->actingAs($this->revisor)->getJson(self::URL_GRUPOS.'/mis-grupos-activos')
             ->assertOk()
-            ->assertJsonFragment(['id' => $grupoId, 'documento_id' => $this->documento, 'clasifica_documen_id' => $this->trd]);
+            ->assertJsonFragment(['id' => $grupoId, 'documento_id' => $this->documento, 'clasifica_documen_id' => $this->trd])
+            ->assertJsonPath('data.0.radicado_tipo', 'interno')
+            ->assertJsonPath('data.0.documento.titulo', 'Oficio de respuesta')
+            ->assertJsonPath('data.0.created_at', fn ($fecha) => is_string($fecha) && strlen($fecha) > 10);
 
         // Un solo grupo activo por documento
         $this->crearGrupo($this->creador)->assertUnprocessable();
