@@ -28,4 +28,10 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
     // Historial y trazabilidad de auditoría ISO 27001
     Route::get('/auditoria', [IaAsistenteController::class, 'historialAuditoria']);
+
+    // Creación de documento colaborativo desde borrador IA (F2-04)
+    Route::post('/crear-documento', [IaAsistenteController::class, 'crearDocumento']);
+
+    // Exportación directa a .docx con variables institucionales (F2-04)
+    Route::post('/exportar-docx', [IaAsistenteController::class, 'exportarDocx']);
 });

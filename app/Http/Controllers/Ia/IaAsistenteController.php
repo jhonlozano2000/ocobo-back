@@ -9,6 +9,7 @@ use App\Http\Traits\ApiResponseTrait;
 use App\Jobs\Ia\ProyectarBorradorIaJob;
 use App\Models\Ia\IaBorradorAuditoria;
 use App\Services\Ia\IaAsistenteService;
+use App\Services\Ia\IaDocumentoIntegracionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -170,5 +171,57 @@ class IaAsistenteController extends Controller
             $paginados,
             'Historial de auditoría de IA recuperado exitosamente.'
         );
+    }
+
+    /**
+     * Crea un documento colaborativo en Mi Bandeja a partir del borrador de la IA (F2-04).
+     */
+    public function crearDocumento(
+        CrearDocumentoDesdeBorradorIaRequest $request,
+        IaDocumentoIntegracionService $integracionService
+    ): JsonResponse {
+        $user = $request->user();
+        $datos = $request->validated();
+
+        $documento = $integracionService->crearDocumentoColaborativo($datos, $user);
+
+        return $this->createdResponse(
+            [
+                'id' => $documento->id,
+                'titulo' => $documento->titulo,
+                'estado' => $documento->estado,
+                'radica_reci_id' => $documento->radica_reci_id,
+                'created_at' => $documento->created_at->toISOString(),
+            ],
+            'Documento colaborativo creado exitosamente a partir del borrador institucional.'
+        );
+    }
+
+    /**
+     * Exporta directamente el borrador de IA a un archivo .docx de Word con variables institucionales.
+     */
+    public function exportarDocx(
+        CrearDocumentoDesdeBorradorIaRequest $request,
+        IaDocumentoIntegracionService $integracionService
+    ) {
+        $user = $request->user();
+        $datos = $request->validated();
+
+        try {
+            $resultado = $integracionService->exportarDocxDesdeBorrador($datos, $user);
+
+            return response()->download(
+                $resultado['ruta'],
+                $resultado['nombre'],
+                [
+                    'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                ]
+            )->deleteFileAfterSend(true);
+        } catch (\Throwable $e) {
+            return $this->serverErrorResponse(
+                'No fue posible exportar el documento Word a partir del borrador.',
+                $e->getMessage()
+            );
+        }
     }
 }
