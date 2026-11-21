@@ -5,7 +5,6 @@ namespace Tests\Feature\VentanillaUnica;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
@@ -25,14 +24,6 @@ class SugerirClasificacionTest extends TestCase
         parent::setUp();
 
         $this->user = User::factory()->create(['estado' => 1]);
-        Schema::disableForeignKeyConstraints();
-    }
-
-    protected function tearDown(): void
-    {
-        Schema::enableForeignKeyConstraints();
-
-        parent::tearDown();
     }
 
     private function trd(string $tipo, string $nom, int $dependencia, ?int $parent = null, array $extra = []): int
@@ -46,14 +37,16 @@ class SugerirClasificacionTest extends TestCase
 
     public function test_sugiere_tipos_documentales_por_el_asunto_con_su_ruta(): void
     {
-        $serie = $this->trd('Serie', 'Peticiones', 990001);
-        $subserie = $this->trd('SubSerie', 'Derechos de peticion', 990001, $serie);
-        $tipo = $this->trd('TipoDocumento', 'Oficio zarquifonia', 990001, $subserie, ['dias_vencimiento' => 15]);
-        $this->trd('TipoDocumento', 'Acta zarquifonia', 990001, $subserie, ['estado' => 0]);
-        $this->trd('TipoDocumento', 'Informe zarquifonia', 990002, $subserie);
+        $dependencia = $this->nodo('Dependencia', 'Peticiones XSUG');
+        $otraDependencia = $this->nodo('Dependencia', 'Informes XSUG');
+        $serie = $this->trd('Serie', 'Peticiones', $dependencia);
+        $subserie = $this->trd('SubSerie', 'Derechos de peticion', $dependencia, $serie);
+        $tipo = $this->trd('TipoDocumento', 'Oficio zarquifonia', $dependencia, $subserie, ['dias_vencimiento' => 15]);
+        $this->trd('TipoDocumento', 'Acta zarquifonia', $dependencia, $subserie, ['estado' => 0]);
+        $this->trd('TipoDocumento', 'Informe zarquifonia', $otraDependencia, $subserie);
 
         $datos = $this->actingAs($this->user)
-            ->getJson(self::RUTA.'?'.http_build_query(['asunto' => 'Solicitud de zarquifonia urgente', 'dependencia_id' => 990001]))
+            ->getJson(self::RUTA.'?'.http_build_query(['asunto' => 'Solicitud de zarquifonia urgente', 'dependencia_id' => $dependencia]))
             ->assertOk()->json('data');
 
         $this->assertSame(['Oficio zarquifonia'], array_column($datos, 'nom'));
@@ -92,14 +85,16 @@ class SugerirClasificacionTest extends TestCase
         $deOficina = $this->funcionario($this->nodo('Cargo', 'Auxiliar XSUG', $oficina), 'Luis');
         $this->funcionario($this->nodo('Cargo', 'Psicologo XSUG', $hija), 'Marta');
         $this->funcionario($this->nodo('Cargo', 'Antiguo XSUG', $dependencia), 'Pedro', false);
-        $this->trd('TipoDocumento', 'Contrato zarquifonia', $dependencia);
+        $tipo = $this->trd('TipoDocumento', 'Contrato zarquifonia', $dependencia);
 
         $datos = $this->actingAs($this->user)
             ->getJson(self::RUTA.'?asunto='.urlencode('Contrato zarquifonia'))
             ->assertOk()->json('data');
 
-        $this->assertSame(['id' => $dependencia, 'nom_organico' => 'Gestion Humana XSUG'], $datos[0]['dependencia']);
-        $funcionarios = collect($datos[0]['funcionarios']);
+        $sugerencia = collect($datos)->firstWhere('id', $tipo);
+        $this->assertNotNull($sugerencia);
+        $this->assertSame(['id' => $dependencia, 'nom_organico' => 'Gestion Humana XSUG'], $sugerencia['dependencia']);
+        $funcionarios = collect($sugerencia['funcionarios']);
         $this->assertEqualsCanonicalizing([$directo, $deOficina], $funcionarios->pluck('id')->all());
         // El de la oficina también queda con la dependencia, que es la que se guarda en el responsable
         $this->assertSame($dependencia, $funcionarios->firstWhere('id', $deOficina)['dependencia']['id']);

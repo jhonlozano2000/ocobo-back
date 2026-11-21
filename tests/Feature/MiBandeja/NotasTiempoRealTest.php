@@ -40,6 +40,11 @@ class NotasTiempoRealTest extends TestCase
     {
         parent::setUp();
 
+        // La autorización Reverb firma localmente; las emisiones siguen usando null.
+        config(['broadcasting.default' => 'reverb']);
+        require base_path('routes/channels.php');
+        config(['broadcasting.default' => 'null']);
+
         $this->withoutMiddleware(ThrottleRequests::class);
         Permission::findOrCreate(self::PERM, 'web');
 
@@ -64,7 +69,12 @@ class NotasTiempoRealTest extends TestCase
     {
         $peticion = $user ? $this->actingAs($user) : $this;
 
-        return $peticion->postJson('/broadcasting/auth', ['socket_id' => self::SOCKET, 'channel_name' => $canal]);
+        config(['broadcasting.default' => 'reverb']);
+        try {
+            return $peticion->postJson('/broadcasting/auth', ['socket_id' => self::SOCKET, 'channel_name' => $canal]);
+        } finally {
+            config(['broadcasting.default' => 'null']);
+        }
     }
 
     public function test_un_miembro_recibe_la_firma_valida_del_canal_del_grupo_sin_el_secreto(): void

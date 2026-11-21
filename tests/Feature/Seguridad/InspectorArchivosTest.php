@@ -5,6 +5,7 @@ namespace Tests\Feature\Seguridad;
 use App\Rules\ArchivoSeguro;
 use App\Rules\MagicMime;
 use App\Services\Seguridad\InspectorArchivos;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
@@ -15,6 +16,8 @@ use ZipArchive;
  */
 class InspectorArchivosTest extends TestCase
 {
+    use DatabaseTransactions;
+
     private array $temporales = [];
 
     protected function tearDown(): void

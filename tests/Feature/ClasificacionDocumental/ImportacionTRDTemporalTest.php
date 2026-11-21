@@ -4,6 +4,7 @@ namespace Tests\Feature\ClasificacionDocumental;
 
 use App\Http\Controllers\ClasificacionDocumental\ClasificacionDocumentalTRDController;
 use App\Services\ClasificacionDocumental\TRDService;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
@@ -14,6 +15,8 @@ use Tests\TestCase;
  */
 class ImportacionTRDTemporalTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public function test_no_existe_el_metodo_debug(): void
     {
         $this->assertFalse(method_exists(ClasificacionDocumentalTRDController::class, 'debug'));

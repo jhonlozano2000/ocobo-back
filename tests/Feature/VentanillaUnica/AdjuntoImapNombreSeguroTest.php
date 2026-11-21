@@ -5,6 +5,7 @@ namespace Tests\Feature\VentanillaUnica;
 use App\Services\VentanillaUnica\ImapEmailService;
 use DirectoryTree\ImapEngine\Attachment;
 use GuzzleHttp\Psr7\Utils;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
@@ -14,6 +15,8 @@ use Tests\TestCase;
  */
 class AdjuntoImapNombreSeguroTest extends TestCase
 {
+    use DatabaseTransactions;
+
     private string $directorio;
 
     protected function setUp(): void

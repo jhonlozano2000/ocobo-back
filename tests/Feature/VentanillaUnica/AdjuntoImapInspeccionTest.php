@@ -5,6 +5,7 @@ namespace Tests\Feature\VentanillaUnica;
 use App\Services\VentanillaUnica\ImapEmailService;
 use DirectoryTree\ImapEngine\Attachment;
 use GuzzleHttp\Psr7\Utils;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
@@ -16,6 +17,8 @@ use ZipArchive;
  */
 class AdjuntoImapInspeccionTest extends TestCase
 {
+    use DatabaseTransactions;
+
     private string $directorio;
 
     private ImapEmailService $servicio;

@@ -3,6 +3,7 @@
 namespace Tests\Feature\VentanillaUnica;
 
 use App\Helpers\ArchivoHelper;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Tests\TestCase;
@@ -12,6 +13,8 @@ use Tests\TestCase;
  */
 class ArchivoHelperEnviadosTest extends TestCase
 {
+    use DatabaseTransactions;
+
     private const DISK = 'radicados_enviados';
 
     protected function setUp(): void

@@ -3,6 +3,7 @@
 namespace Tests\Feature\VentanillaUnica;
 
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
@@ -14,6 +15,8 @@ use Tests\TestCase;
  */
 class RutasRecibidosAutorizadasTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public function test_toda_ruta_de_recibidos_tiene_middleware_de_autorizacion(): void
     {
         $sinAutorizacion = collect(Route::getRoutes()->getRoutes())

@@ -3,11 +3,14 @@
 namespace Tests\Feature\MiBandeja;
 
 use App\Http\Requests\MiBandeja\StoreMiBandejaTempRequest;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class StoreMiBandejaTempRequestTest extends TestCase
 {
+    use DatabaseTransactions;
+
     protected function getRulesFor(array $data)
     {
         $request = new StoreMiBandejaTempRequest;

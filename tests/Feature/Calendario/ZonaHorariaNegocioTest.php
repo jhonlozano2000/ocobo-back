@@ -7,6 +7,7 @@ use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Services\Configuracion\BusinessDaysService;
 use App\Services\VentanillaUnica\RadicadoEstadoTrabajoService;
 use Carbon\Carbon;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 /**
@@ -15,6 +16,8 @@ use Tests\TestCase;
  */
 class ZonaHorariaNegocioTest extends TestCase
 {
+    use DatabaseTransactions;
+
     protected function setUp(): void
     {
         parent::setUp();

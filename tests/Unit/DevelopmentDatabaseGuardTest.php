@@ -9,6 +9,9 @@ use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+use Tests\Feature\Calendario\ZonaHorariaNegocioTest;
+use Tests\Feature\Calidad\OrganigramaCiclosTest;
+use Tests\Feature\VentanillaUnica\SugerirClasificacionTest;
 use Tests\Feature\Workflows\ChecklistTareaLecturaTest;
 use Tests\Support\DevelopmentDatabaseGuard;
 
@@ -24,8 +27,22 @@ class DevelopmentDatabaseGuardTest extends TestCase
     public function test_acepta_workflow_transaccional_y_rechaza_modulo_no_auditado(): void
     {
         DevelopmentDatabaseGuard::validateTest(ChecklistTareaLecturaTest::class);
+        DevelopmentDatabaseGuard::validateTest(ZonaHorariaNegocioTest::class);
+        DevelopmentDatabaseGuard::validateTest(OrganigramaCiclosTest::class);
+        DevelopmentDatabaseGuard::validateTest(SugerirClasificacionTest::class);
         $this->expectException(RuntimeException::class);
         DevelopmentDatabaseGuard::validateTest(self::class);
+    }
+
+    public function test_todo_el_inventario_de_certificacion_garantiza_rollback(): void
+    {
+        $classes = require __DIR__.'/../Support/AuditedDevelopmentTests.php';
+        $this->assertNotEmpty($classes);
+        $this->assertCount(count(array_unique($classes)), $classes);
+        foreach ($classes as $class) {
+            DevelopmentDatabaseGuard::validateTest($class);
+            $this->assertTrue(is_subclass_of($class, \Tests\TestCase::class), $class);
+        }
     }
 
     public static function sentencias(): array

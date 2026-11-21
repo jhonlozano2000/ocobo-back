@@ -4,6 +4,8 @@ namespace Tests\Feature\VentanillaUnica;
 
 use App\Http\Requests\Ventanilla\Enviados\StoreRadicadoEnviadoRequest;
 use App\Http\Requests\Ventanilla\Recibidos\StoreRadicadoReciboRequest;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -13,6 +15,8 @@ use Tests\TestCase;
  */
 class CamposInmutablesRadicadoTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public static function casos(): array
     {
         return [
@@ -21,9 +25,7 @@ class CamposInmutablesRadicadoTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider casos
-     */
+    #[DataProvider('casos')]
     public function test_no_acepta_consecutivo_ni_autoria_del_cliente(string $request, array $campos): void
     {
         $rules = (new $request)->rules();

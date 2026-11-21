@@ -15,6 +15,7 @@ use App\Http\Requests\Ventanilla\Recibidos\UploadArchivoRecibidoRequest;
 use App\Http\Requests\Workflows\StoreTareaArchivoRequest;
 use App\Http\Requests\Workflows\StoreWorkFlowArchivoRequest;
 use App\Services\ClasificacionDocumental\TVDService;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -26,6 +27,8 @@ use Tests\TestCase;
  */
 class InspeccionCargasTest extends TestCase
 {
+    use DatabaseTransactions;
+
     private array $temporales = [];
 
     protected function tearDown(): void

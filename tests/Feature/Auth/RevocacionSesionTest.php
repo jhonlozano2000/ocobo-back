@@ -15,6 +15,12 @@ class RevocacionSesionTest extends TestCase
 {
     use DatabaseTransactions;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['cache.default' => 'array', 'cache.limiter' => 'array']);
+    }
+
     private function fila(User $user): UsersSession
     {
         return UsersSession::create([

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Configuracion;
 
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
@@ -12,6 +13,8 @@ use Tests\TestCase;
  */
 class SchedulerComandosTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public function test_todos_los_comandos_programados_existen(): void
     {
         $registrados = array_keys(Artisan::all());

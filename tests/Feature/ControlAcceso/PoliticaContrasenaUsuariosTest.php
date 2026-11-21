@@ -5,6 +5,7 @@ namespace Tests\Feature\ControlAcceso;
 use App\Http\Requests\ControlAcceso\StoreUserRequest;
 use App\Http\Requests\ControlAcceso\UpdatePasswordRequest;
 use App\Http\Requests\ControlAcceso\UpdateUserRequest;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
 
@@ -14,6 +15,8 @@ use Tests\TestCase;
  */
 class PoliticaContrasenaUsuariosTest extends TestCase
 {
+    use DatabaseTransactions;
+
     private function valida(string $request, string $password): bool
     {
         $regla = (new $request)->rules()['password'];

@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Seguridad;
 
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Route;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -11,6 +13,8 @@ use Tests\TestCase;
  */
 class LimitesSolicitudesTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public static function rutas(): array
     {
         return [
@@ -31,7 +35,7 @@ class LimitesSolicitudesTest extends TestCase
         ];
     }
 
-    /** @dataProvider rutas */
+    #[DataProvider('rutas')]
     public function test_ruta_tiene_su_limitador(string $metodo, string $uri, string $limitador): void
     {
         $ruta = collect(Route::getRoutes()->getRoutes())

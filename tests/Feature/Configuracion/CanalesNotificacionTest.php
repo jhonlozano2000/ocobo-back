@@ -205,7 +205,7 @@ class CanalesNotificacionTest extends TestCase
         $this->assertCount(1, $avisos);
         $this->assertSame($abierto, $avisos->first()->data['radica_reci_id']);
         $this->assertSame('Radicado próximo a vencer', $avisos->first()->title);
-        Mail::assertSent(RadicadoNotification::class, 1);
+        $this->assertCount(1, Mail::sent(RadicadoNotification::class, fn ($mail) => $mail->hasTo($this->user->email)));
     }
 
     public function test_el_comando_respeta_las_preferencias_de_vencimientos(): void
@@ -217,7 +217,7 @@ class CanalesNotificacionTest extends TestCase
         $this->artisan('alertas:vencimiento')->assertSuccessful();
 
         $this->assertCount(0, $this->vencimientosDelUsuario());
-        Mail::assertNothingSent();
+        $this->assertCount(0, Mail::sent(RadicadoNotification::class, fn ($mail) => $mail->hasTo($this->user->email)));
     }
 
     public function test_una_pqrs_se_avisa_una_sola_vez(): void
@@ -234,7 +234,7 @@ class CanalesNotificacionTest extends TestCase
         $avisos = $this->vencimientosDelUsuario();
         $this->assertCount(1, $avisos);
         $this->assertSame('PQRS próxima a vencer', $avisos->first()->title);
-        Mail::assertSent(RadicadoNotification::class, 1);
+        $this->assertCount(1, Mail::sent(RadicadoNotification::class, fn ($mail) => $mail->hasTo($this->user->email)));
     }
 
     public function test_el_dry_run_no_notifica(): void

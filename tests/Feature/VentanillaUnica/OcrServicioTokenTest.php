@@ -3,6 +3,7 @@
 namespace Tests\Feature\VentanillaUnica;
 
 use App\Services\VentanillaUnica\OcrHttpService;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -14,6 +15,8 @@ use Tests\TestCase;
  */
 class OcrServicioTokenTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public function test_las_llamadas_al_ocr_llevan_el_secreto_compartido(): void
     {
         config([

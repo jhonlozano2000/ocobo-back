@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\Process\ExecutableFinder;
 use Tests\TestCase;
 
 /**
@@ -161,7 +162,10 @@ class ExportarDocumentoTest extends TestCase
 
         $archivo = tempnam(sys_get_temp_dir(), 'pdf');
         file_put_contents($archivo, $pdf);
-        $texto = shell_exec('pdftotext -enc UTF-8 -layout '.escapeshellarg($archivo).' - 2>&1');
+        $binary = getenv('PDFTOTEXT_BINARY') ?: (new ExecutableFinder)->find(
+            'pdftotext', null, [dirname(PHP_BINARY, 3).'/git/mingw64/bin']
+        );
+        $texto = $binary ? shell_exec(escapeshellarg($binary).' -enc UTF-8 -layout '.escapeshellarg($archivo).' - 2>&1') : null;
         @unlink($archivo);
         if (! is_string($texto) || ! str_contains($texto, 'Hoja')) {
             $this->markTestSkipped('pdftotext no está disponible para leer el PDF');

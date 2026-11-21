@@ -3,6 +3,7 @@
 namespace Tests\Feature\Firma;
 
 use App\Services\Firma\TsaService;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -18,6 +19,8 @@ use Tests\TestCase;
  */
 class TsaServiceTest extends TestCase
 {
+    use DatabaseTransactions;
+
     private const HASH = '06957cf46592d4231d25293f815b0bf5a9f0145536fd607840bfd92958bfe60d';
 
     private const NONCE = '26C803317EDC95DC';

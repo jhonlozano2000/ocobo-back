@@ -21,6 +21,8 @@ class EnumeracionUsuariosTest extends TestCase
     {
         parent::setUp();
 
+        config(['cache.default' => 'array', 'cache.limiter' => 'array']);
+
         $this->withoutMiddleware(ThrottleRequests::class);
         Mail::fake();
     }

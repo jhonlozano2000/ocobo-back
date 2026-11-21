@@ -3,6 +3,7 @@
 namespace Tests\Feature\Reportes;
 
 use App\Services\ReportesExportService;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\View;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
@@ -15,6 +16,8 @@ use Tests\TestCase;
  */
 class ReportesExportDisenoTest extends TestCase
 {
+    use DatabaseTransactions;
+
     private const REPORTE = [
         'titulo' => 'Radicaciones Recibidas',
         'total' => 2,

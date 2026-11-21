@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Seguridad;
 
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 /**
@@ -10,6 +11,8 @@ use Tests\TestCase;
  */
 class CspNonceTest extends TestCase
 {
+    use DatabaseTransactions;
+
     private function nonceDeLaCsp(): string
     {
         $this->app['env'] = 'production';

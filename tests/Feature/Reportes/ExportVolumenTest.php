@@ -21,14 +21,14 @@ class ExportVolumenTest extends TestCase
 
     public function test_rechaza_exportaciones_por_encima_del_tope_del_formato(): void
     {
-        DB::statement('CREATE TEMPORARY TABLE export_volumen_tmp (id INT)');
-        DB::table('export_volumen_tmp')->insert(array_fill(0, ReportesExportService::MAX_FILAS['pdf'] + 1, ['id' => 1]));
+        $ids = User::factory()->count(ReportesExportService::MAX_FILAS['pdf'] + 1)->create()->modelKeys();
+        $query = DB::table('users')->whereIn('id', $ids);
 
         $servicio = new ReportesExportService;
-        $servicio->validarVolumen(DB::table('export_volumen_tmp'), 'excel'); // 1001 < 5000: pasa
+        $servicio->validarVolumen(clone $query, 'excel'); // 1001 < 5000: pasa
 
         $this->expectException(ValidationException::class);
-        $servicio->validarVolumen(DB::table('export_volumen_tmp'), 'pdf');
+        $servicio->validarVolumen(clone $query, 'pdf');
     }
 
     public function test_el_export_de_pqrs_aplica_el_tope(): void

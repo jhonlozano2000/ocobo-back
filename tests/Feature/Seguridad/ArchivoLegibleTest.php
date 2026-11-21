@@ -22,6 +22,7 @@ use App\Http\Requests\Workflows\StoreTareaArchivoRequest;
 use App\Http\Requests\Workflows\StoreWorkFlowArchivoRequest;
 use App\Rules\ArchivoLegible;
 use App\Services\ClasificacionDocumental\TVDService;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -33,6 +34,8 @@ use Tests\TestCase;
  */
 class ArchivoLegibleTest extends TestCase
 {
+    use DatabaseTransactions;
+
     private function ilegible(string $nombre): UploadedFile
     {
         $temporal = tempnam(sys_get_temp_dir(), 'ilegible');

@@ -25,6 +25,8 @@ class CambioPasswordObligatorioTest extends TestCase
     {
         parent::setUp();
 
+        config(['cache.default' => 'array', 'cache.limiter' => 'array']);
+
         $this->withoutMiddleware(ThrottleRequests::class);
 
         $this->user = User::factory()->create(['estado' => 1, 'password' => Hash::make(self::TEMPORAL)]);

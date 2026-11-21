@@ -8,8 +8,10 @@ use App\Http\Requests\Ventanilla\Internos\UploadArchivosAdjuntosInternoRequest;
 use App\Http\Requests\Ventanilla\Pqrs\UploadPqrsAdjuntosRequest;
 use App\Http\Requests\Ventanilla\Recibidos\UploadArchivosAdjuntosRecibidoRequest;
 use App\Models\Configuracion\ConfigVarias;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -18,6 +20,8 @@ use Tests\TestCase;
  */
 class CargaAdjuntosSegurosTest extends TestCase
 {
+    use DatabaseTransactions;
+
     private array $temporales = [];
 
     protected function setUp(): void
@@ -60,17 +64,13 @@ class CargaAdjuntosSegurosTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider requests
-     */
+    #[DataProvider('requests')]
     public function test_acepta_pdf_legitimo(string $request): void
     {
         $this->assertTrue(Validator::make(['archivos' => [$this->pdf()]], (new $request)->rules())->passes());
     }
 
-    /**
-     * @dataProvider requests
-     */
+    #[DataProvider('requests')]
     public function test_rechaza_webshell_y_extension_falsa(string $request): void
     {
         $rules = (new $request)->rules();

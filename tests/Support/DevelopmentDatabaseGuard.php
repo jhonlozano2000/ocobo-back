@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RuntimeException;
 
-/** Restringe las pruebas en desarrollo al módulo auditado y evita cambios de esquema. */
+/** Restringe la certificación al inventario explícito y evita cambios de esquema. */
 final class DevelopmentDatabaseGuard
 {
     /**
@@ -20,10 +20,10 @@ final class DevelopmentDatabaseGuard
     public static function validateTest(string $class): void
     {
         $traits = class_uses_recursive($class);
-        if (! str_starts_with($class, 'Tests\\Feature\\Workflows\\')
+        if (! in_array($class, require __DIR__.'/AuditedDevelopmentTests.php', true)
             || ! isset($traits[DatabaseTransactions::class])
             || array_intersect([RefreshDatabase::class, DatabaseMigrations::class, DatabaseTruncation::class], $traits)) {
-            throw new RuntimeException('BD de desarrollo: solo se permiten pruebas Workflows auditadas con DatabaseTransactions, sin migraciones ni truncado.');
+            throw new RuntimeException('BD de desarrollo: solo se permiten pruebas auditadas con DatabaseTransactions, sin migraciones ni truncado.');
         }
     }
 

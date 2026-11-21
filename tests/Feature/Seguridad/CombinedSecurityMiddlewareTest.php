@@ -3,12 +3,15 @@
 namespace Tests\Feature\Seguridad;
 
 use App\Http\Middleware\CombinedSecurityMiddleware;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class CombinedSecurityMiddlewareTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public function test_permite_peticion_con_parametros_normales(): void
     {
         $middleware = new CombinedSecurityMiddleware;
