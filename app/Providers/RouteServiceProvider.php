@@ -174,6 +174,11 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('api')
                 ->prefix('api/metricas')
                 ->group(base_path('routes/metricas.php'));
+
+            // ASISTENTE DE INTELIGENCIA ARTIFICIAL LOCAL (RAG + LLM)
+            Route::middleware('api')
+                ->prefix('api/ia-asistente')
+                ->group(base_path('routes/ia-asistente.php'));
         });
     }
 }

@@ -78,4 +78,18 @@ return [
         'host' => env('OCR_SERVICE_HOST', '127.0.0.1'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Microservicio de Inteligencia Artificial Local (Ocobo-IA FastAPI)
+    |--------------------------------------------------------------------------
+    |
+    | Conexión con el pipeline local RAG + Ollama en puerto 8002.
+    |
+    */
+    'ia' => [
+        'url' => env('IA_SERVICE_URL', 'http://127.0.0.1:8002'),
+        'key' => env('IA_SERVICE_KEY', 'ocobo_ai_secret_key_2026_local'),
+        'timeout' => (int) env('IA_SERVICE_TIMEOUT', 180),
+    ],
+
 ];
