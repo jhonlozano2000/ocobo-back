@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Ia\BuscarPrecedentesIaRequest;
 use App\Http\Requests\Ia\ProyectarBorradorIaRequest;
 use App\Http\Traits\ApiResponseTrait;
+use App\Jobs\Ia\ProyectarBorradorIaJob;
+use App\Models\Ia\IaBorradorAuditoria;
 use App\Services\Ia\IaAsistenteService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Controlador de Asistente de IA para el SGDEA OCOBO.
@@ -108,6 +111,64 @@ class IaAsistenteController extends Controller
         return $this->successResponse(
             $resultado,
             'Borrador institucional generado exitosamente a partir de precedentes verificados.'
+        );
+    }
+
+    /**
+     * Encola la proyección de borrador en segundo plano y notifica por Laravel Reverb (F2-03).
+     */
+    public function proyectarBorradorAsync(ProyectarBorradorIaRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $datos = $request->validated();
+        $jobId = (string) Str::uuid();
+
+        ProyectarBorradorIaJob::dispatch(
+            $user->id,
+            $jobId,
+            $datos,
+            $request->ip(),
+            $request->userAgent()
+        );
+
+        return $this->successResponse(
+            [
+                'job_id' => $jobId,
+                'canal' => 'ia-asistente.'.$user->id,
+                'evento' => 'borrador.generado',
+                'estado' => 'PROCESANDO_EN_SEGUNDO_PLANO',
+            ],
+            'Proyección de borrador encolada exitosamente. Recibirá la notificación en tiempo real.'
+        );
+    }
+
+    /**
+     * Consulta el historial de auditoría de inferencias de IA (ISO 27001).
+     */
+    public function historialAuditoria(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $query = IaBorradorAuditoria::query()->recientes();
+
+        // Si no tiene permiso de ver todos los registros de IA, filtrar solo los propios
+        if (! $user->can('Asistente IA -> Ver Todos') && ! $user->can('Radicar -> Ver Todos')) {
+            $query->paraUsuario($user->id);
+        }
+
+        if ($request->filled('estado')) {
+            $query->estado((string) $request->input('estado'));
+        }
+
+        if ($request->filled('id_radicado')) {
+            $query->where('id_radicado', 'like', '%'.$request->input('id_radicado').'%');
+        }
+
+        $perPage = min(max((int) $request->input('per_page', 15), 1), 100);
+        $paginados = $query->paginate($perPage);
+
+        return $this->successResponse(
+            $paginados,
+            'Historial de auditoría de IA recuperado exitosamente.'
         );
     }
 }

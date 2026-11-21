@@ -55,3 +55,10 @@ Broadcast::channel('grupo-colaborativo.{grupoId}', function ($user, $grupoId) {
         || $grupo->proyectores()->where('user_id', $user->id)->exists()
         || $grupo->aprobadores()->where('user_id', $user->id)->exists();
 });
+
+// ==========================================
+// Canal de Asistente de IA (OCOBO SGDEA v2.0)
+// ==========================================
+Broadcast::channel('ia-asistente.{userId}', function ($user, $userId) {
+    return (int) $user->id === (int) $userId;
+});

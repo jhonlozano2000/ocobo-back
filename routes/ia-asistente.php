@@ -20,6 +20,12 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     // Búsqueda de precedentes institucionales en el índice RAG
     Route::post('/buscar-precedentes', [IaAsistenteController::class, 'buscarPrecedentes']);
 
-    // Proyección de borrador de respuesta oficial asistido por LLM
+    // Proyección de borrador de respuesta oficial asistido por LLM (Síncrono)
     Route::post('/proyectar-borrador', [IaAsistenteController::class, 'proyectarBorrador']);
+
+    // Proyección asíncrona con notificación en tiempo real vía Reverb (F2-03)
+    Route::post('/proyectar-borrador-async', [IaAsistenteController::class, 'proyectarBorradorAsync']);
+
+    // Historial y trazabilidad de auditoría ISO 27001
+    Route::get('/auditoria', [IaAsistenteController::class, 'historialAuditoria']);
 });
