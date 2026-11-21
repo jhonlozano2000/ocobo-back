@@ -4,8 +4,8 @@ namespace Tests\Feature\MiBandeja;
 
 use App\Models\OfiArchivo\OfiArchivoPlantillaGenerada;
 use App\Models\User;
+use App\Services\OfiArchivo\PlantillasBaseService;
 use Database\Seeders\Configuracion\PlantillasGeneradasBaseSeed;
-use Database\Seeders\Configuracion\TiposPlantillaSeed;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Middleware\ThrottleRequests;
@@ -48,7 +48,7 @@ class PlantillasDocumentoTest extends TestCase
             DB::table('config_varias')->updateOrInsert(['clave' => $clave], ['valor' => $valor]);
         }
 
-        $this->seed(TiposPlantillaSeed::class);
+        // La ejecución autónoma del seeder debe resolver también la configuración de tipos.
         $this->seed(PlantillasGeneradasBaseSeed::class);
     }
 
@@ -152,6 +152,36 @@ class PlantillasDocumentoTest extends TestCase
         $this->assertSame(4, $base->count());
         $this->assertTrue($base->every->activo);
         $this->assertEqualsCanonicalizing(['Acta', 'Circular', 'Memorando', 'Oficio'], $base->pluck('tipo.nombre')->all());
+    }
+
+    public function test_resembrar_no_sobrescribe_contenido_ni_republica_una_plantilla_editada(): void
+    {
+        $plantilla = OfiArchivoPlantillaGenerada::where('institucional', true)->whereNull('user_id')->where('nombre', 'Oficio')->firstOrFail();
+        $contenido = ['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Contenido personalizado de prueba']]]]];
+        $plantilla->update(['contenido' => $contenido, 'activo' => false]);
+
+        $this->seed(PlantillasGeneradasBaseSeed::class);
+
+        // MySQL normaliza el orden de las claves JSON; el contenido y sus valores deben conservarse.
+        $this->assertEquals($contenido, $plantilla->fresh()->contenido);
+        $this->assertFalse($plantilla->fresh()->activo);
+        $this->assertSame(1, OfiArchivoPlantillaGenerada::where('institucional', true)->whereNull('user_id')->where('nombre', 'Oficio')->count());
+    }
+
+    public function test_un_error_del_contenido_revierte_la_transaccion_del_seeder(): void
+    {
+        $nivel = DB::transactionLevel();
+        $base = $this->createMock(PlantillasBaseService::class);
+        $base->method('construir')->willThrowException(new \RuntimeException('Contenido de prueba inválido'));
+        $this->app->instance(PlantillasBaseService::class, $base);
+
+        try {
+            $this->seed(PlantillasGeneradasBaseSeed::class);
+            $this->fail('El seeder debe propagar el error.');
+        } catch (\RuntimeException $error) {
+            $this->assertSame('Contenido de prueba inválido', $error->getMessage());
+            $this->assertSame($nivel, DB::transactionLevel());
+        }
     }
 
     public function test_lo_que_falta_por_completar_va_en_campos_y_no_en_corchetes(): void
