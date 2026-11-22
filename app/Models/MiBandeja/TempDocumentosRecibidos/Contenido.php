@@ -72,12 +72,15 @@ class Contenido extends Model
     {
         $activos = function (array $nodo) use (&$activos): array {
             $ids = [];
-            if (($nodo['type'] ?? '') === 'campoGrupo' && !empty($nodo['attrs']['linked']) && empty($nodo['attrs']['manual_override']) && isset($nodo['attrs']['id'])) {
+            if (($nodo['type'] ?? '') === 'campoGrupo' && ! empty($nodo['attrs']['linked']) && empty($nodo['attrs']['manual_override']) && isset($nodo['attrs']['id'])) {
                 $ids[$nodo['attrs']['id']] = ['manual_override' => true];
             }
             foreach ($nodo['content'] ?? [] as $hijo) {
-                if (is_array($hijo)) $ids += $activos($hijo);
+                if (is_array($hijo)) {
+                    $ids += $activos($hijo);
+                }
             }
+
             return $ids;
         };
         $retirados = array_diff_key($activos($this->contenido_yjs ?? []), $activos($contenido));

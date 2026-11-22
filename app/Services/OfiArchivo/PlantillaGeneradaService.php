@@ -7,6 +7,7 @@ use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\OfiArchivo\OfiArchivoPlantillaGenerada;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\MiBandeja\CamposGrupoDocumento;
 use App\Services\MiBandeja\TempDocumentosRecibidos\LogoEntidadService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -195,7 +196,7 @@ class PlantillaGeneradaService
 
         return [
             'pagina' => $pagina,
-            'contenido' => \App\Services\MiBandeja\CamposGrupoDocumento::conCreditosDePlantilla(
+            'contenido' => CamposGrupoDocumento::conCreditosDePlantilla(
                 $this->variables->resolverContenido($plantilla->contenido, $valores)
             ),
         ];

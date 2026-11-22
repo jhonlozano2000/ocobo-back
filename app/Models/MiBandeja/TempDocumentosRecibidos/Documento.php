@@ -7,6 +7,7 @@ use App\Models\OfiArchivo\OfiArchivoPlantillaGenerada;
 use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\Firma\ImagenFirmaService;
 use App\Services\MiBandeja\MiBandejaFiltroService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -386,7 +387,7 @@ class Documento extends Model
                 throw ValidationException::withMessages(['documento' => 'El documento está vacío: no hay contenido para firmar.']);
             }
 
-            $imagen = app(\App\Services\Firma\ImagenFirmaService::class)->capturar($user);
+            $imagen = app(ImagenFirmaService::class)->capturar($user);
             $fecha = now();
             $firma = FirmaEvento::create([
                 'documentable_id' => $this->id,

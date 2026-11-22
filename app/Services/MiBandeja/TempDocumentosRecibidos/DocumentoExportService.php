@@ -3,6 +3,7 @@
 namespace App\Services\MiBandeja\TempDocumentosRecibidos;
 
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
+use App\Services\MiBandeja\CamposGrupoDocumento;
 use App\Services\OfiArchivo\VariablesPlantillaService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
@@ -352,7 +353,7 @@ HTML;
     {
         $bloques = $this->bloques($documento->contenido?->contenido_yjs ?? []);
         $firmas = $documento->firmasVigentes()->with('user')->orderBy('fecha_firma')->get();
-        $personas = app(\App\Services\MiBandeja\CamposGrupoDocumento::class)->firmantesOrdenados($documento->grupoVigente());
+        $personas = app(CamposGrupoDocumento::class)->firmantesOrdenados($documento->grupoVigente());
         if (count($personas) > 1 || (count($personas) === 1 && $firmas->count() === 1)) {
             foreach ($bloques as $i => $bloque) {
                 foreach (['nombre', 'cargo', 'dependencia'] as $j => $propiedad) {
@@ -362,7 +363,7 @@ HTML;
                     if (($parrafo['type'] ?? '') !== 'paragraph' || count($parrafo['content'] ?? []) !== 1
                         || ($nodo['type'] ?? '') !== 'campoGrupo' || ($attrs['rol'] ?? '') !== 'firmantes'
                         || ($attrs['propiedad'] ?? '') !== $propiedad || ($attrs['id'] ?? '') !== 'firma-'.$propiedad
-                        || empty($attrs['linked']) || !empty($attrs['manual_override'])) {
+                        || empty($attrs['linked']) || ! empty($attrs['manual_override'])) {
                         continue 2;
                     }
                 }
@@ -377,12 +378,13 @@ HTML;
                         $lineas[$j]['content'][0]['attrs']['valor'] = $persona[$propiedad] ?? '';
                     }
                     $firma = $firmas->firstWhere('user_id', $persona['id']);
-                    if (!$firma) {
+                    if (! $firma) {
                         $lineas[] = ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Pendiente de firma']]];
                     }
                     $partes[] = [$lineas, $firma];
                 }
                 $partes[] = [array_slice($bloques, $i + 3), null];
+
                 return $partes;
             }
         }
@@ -390,6 +392,7 @@ HTML;
         foreach ($firmas as $firma) {
             $partes[] = [[], $firma];
         }
+
         return $partes;
     }
 
@@ -407,6 +410,7 @@ HTML;
                 $html .= '<p style="page-break-inside:avoid">Firmado por '.$this->esc($nombre).' / '.$this->esc((string) $firma->fecha_firma).'</p>';
             }
         }
+
         return ($html !== '' ? $html : '<p></p>').$this->renderNotas();
     }
 
@@ -452,7 +456,7 @@ HTML;
                 $section->addImage($bytes, ['width' => $ancho * $escala, 'height' => $alto * $escala, 'unit' => 'pt']);
             }
             $this->agregarContenidoASection($section, $bloques);
-            if (!$firma) {
+            if (! $firma) {
                 continue;
             }
             $section->addText('Firmado por '.trim($firma->user?->nombres.' '.$firma->user?->apellidos).' · '.$firma->fecha_firma);
@@ -520,7 +524,21 @@ HTML;
     {
         $bloques = ($contenido['type'] ?? null) === 'doc' ? ($contenido['content'] ?? []) : $contenido;
 
-        return array_values(array_filter($bloques, fn ($bloque) => is_array($bloque) && ! \App\Services\MiBandeja\CamposGrupoDocumento::creditoVacio($bloque)));
+        $visibles = [];
+        $primerCredito = true;
+        foreach ($bloques as $bloque) {
+            if (! is_array($bloque) || CamposGrupoDocumento::creditoVacio($bloque)) {
+                continue;
+            }
+            if ($primerCredito && CamposGrupoDocumento::esCredito($bloque)) {
+                $linea = ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => "\u{00A0}"]]];
+                array_push($visibles, $linea, $linea);
+                $primerCredito = false;
+            }
+            $visibles[] = $bloque;
+        }
+
+        return $visibles;
     }
 
     private function contenidoToHtml(array $contenido): string

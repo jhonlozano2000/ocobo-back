@@ -14,6 +14,7 @@ use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Version;
 use App\Models\OfiArchivo\OfiArchivoPlantillaGenerada;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
+use App\Services\MiBandeja\CamposGrupoDocumento;
 use App\Services\MiBandeja\TempDocumentosRecibidos\CursorService;
 use App\Services\MiBandeja\TempDocumentosRecibidos\EstilosDocumento;
 use App\Services\MiBandeja\TempDocumentosRecibidos\LogoEntidadService;
@@ -692,7 +693,7 @@ class DocumentoController extends Controller
             $doc->update($updateData);
             if (array_key_exists('configuracion_footer', $updateData) && ($grupo = $doc->grupoVigente())) {
                 $grupo->setRelation('documento', $doc);
-                app(\App\Services\MiBandeja\CamposGrupoDocumento::class)->actualizarPie($grupo);
+                app(CamposGrupoDocumento::class)->actualizarPie($grupo);
             }
         });
         $documento->refresh();

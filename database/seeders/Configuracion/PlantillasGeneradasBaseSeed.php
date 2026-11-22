@@ -60,6 +60,7 @@ class PlantillasGeneradasBaseSeed extends Seeder
         if (! array_is_list($nodo)) {
             ksort($nodo);
         }
+
         return array_map(fn ($v) => is_array($v) ? $this->canonico($v) : $v, $nodo);
     }
 }

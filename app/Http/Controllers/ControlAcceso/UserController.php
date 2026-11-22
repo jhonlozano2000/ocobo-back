@@ -4,6 +4,7 @@ namespace App\Http\Controllers\ControlAcceso;
 
 use App\Helpers\ArchivoHelper;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ControlAcceso\ActualizarMiFirmaRequest;
 use App\Http\Requests\ControlAcceso\StoreUserRequest;
 use App\Http\Requests\ControlAcceso\UpdatePasswordRequest;
 use App\Http\Requests\ControlAcceso\UpdateUserProfileRequest;
@@ -11,6 +12,7 @@ use App\Http\Requests\ControlAcceso\UpdateUserRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Models\User;
 use App\Services\ControlAcceso\UserService;
+use App\Services\Firma\ImagenFirmaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -253,9 +255,10 @@ class UserController extends Controller
         return $this->successResponse(['avatar_url' => $user->avatar_url], 'Foto actualizada');
     }
 
-    public function actualizarMiFirma(\App\Http\Requests\ControlAcceso\ActualizarMiFirmaRequest $request, \App\Services\Firma\ImagenFirmaService $imagenes)
+    public function actualizarMiFirma(ActualizarMiFirmaRequest $request, ImagenFirmaService $imagenes)
     {
         $user = $imagenes->actualizarPerfil($request->user(), $request->file('firma'));
+
         return $this->successResponse(['firma_url' => $user->firma_url], 'Firma actualizada.');
     }
 

@@ -2,8 +2,12 @@
 
 namespace Tests\Feature\MiBandeja;
 
+use App\Models\MiBandeja\MiBandejaTemp;
+use App\Models\MiBandeja\TempDocumentosRecibidos\Contenido;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\User;
+use App\Services\MiBandeja\CamposGrupoDocumento;
+use App\Services\OfiArchivo\VariablesPlantillaService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
@@ -76,17 +80,17 @@ class GrupoDocumentoTest extends TestCase
 
     public function test_creditos_de_plantilla_se_llenan_por_rol_y_se_ocultan_al_retirar_el_miembro(): void
     {
-        $doc = \App\Services\MiBandeja\CamposGrupoDocumento::conCreditosDePlantilla(['type' => 'doc', 'content' => []]);
-        $fila = \App\Models\MiBandeja\TempDocumentosRecibidos\Contenido::create(['documento_id' => $this->documento, 'contenido_yjs' => $doc, 'hash_contenido' => '']);
+        $doc = CamposGrupoDocumento::conCreditosDePlantilla(['type' => 'doc', 'content' => []]);
+        $fila = Contenido::create(['documento_id' => $this->documento, 'contenido_yjs' => $doc, 'hash_contenido' => '']);
         $id = $this->crearGrupo($this->creador)->assertCreated()->json('data.id');
         foreach (['proyectores' => 0, 'revisores' => 1] as $rol => $indice) {
             $url = self::URL_GRUPOS."/{$id}/{$rol}";
             $miembro = $this->postJson($url, ['user_id' => $this->revisor->id])->assertCreated()->json('data.id');
             $bloques = $fila->fresh()->contenido_yjs['content'];
             $this->assertStringContainsString($this->revisor->nombres, $bloques[$indice]['content'][0]['attrs']['valor']);
-            $this->assertTrue(\App\Services\MiBandeja\CamposGrupoDocumento::creditoVacio($bloques[1 - $indice]));
+            $this->assertTrue(CamposGrupoDocumento::creditoVacio($bloques[1 - $indice]));
             $this->deleteJson($url.'/'.$miembro)->assertSuccessful();
-            $this->assertTrue(\App\Services\MiBandeja\CamposGrupoDocumento::creditoVacio($fila->fresh()->contenido_yjs['content'][$indice]));
+            $this->assertTrue(CamposGrupoDocumento::creditoVacio($fila->fresh()->contenido_yjs['content'][$indice]));
         }
     }
 
@@ -96,10 +100,10 @@ class GrupoDocumentoTest extends TestCase
         $texto = ['type' => 'text', 'text' => 'PARA: Tesoreria. Texto redactado.'];
         $json = ['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [$texto, $campo]]]];
         Documento::findOrFail($this->documento)->update(['configuracion_footer' => ['texto_libre' => 'Para: Tesoreria. Firma: {{firmantes}}']]);
-        $json['content'][] = app(\App\Services\OfiArchivo\VariablesPlantillaService::class)->resolverContenido(['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'ASUNTO: '], ['type' => 'campo', 'attrs' => ['etiqueta' => 'Asunto']]]], []);
-        $fila = \App\Models\MiBandeja\TempDocumentosRecibidos\Contenido::create(['documento_id' => $this->documento, 'contenido_yjs' => $json, 'hash_contenido' => '']);
+        $json['content'][] = app(VariablesPlantillaService::class)->resolverContenido(['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'ASUNTO: '], ['type' => 'campo', 'attrs' => ['etiqueta' => 'Asunto']]]], []);
+        $fila = Contenido::create(['documento_id' => $this->documento, 'contenido_yjs' => $json, 'hash_contenido' => '']);
         $id = $this->crearGrupo($this->creador)->assertCreated()->json('data.id');
-        $asunto = \App\Models\MiBandeja\MiBandejaTemp::findOrFail($id)->asunto;
+        $asunto = MiBandejaTemp::findOrFail($id)->asunto;
         $json['content'][1]['content'][1]['attrs']['valor'] = $asunto;
         $this->assertSame($asunto, $fila->fresh()->contenido_yjs['content'][1]['content'][1]['attrs']['valor']);
         $url = self::URL_GRUPOS."/{$id}/firmantes";

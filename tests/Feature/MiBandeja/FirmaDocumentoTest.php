@@ -2,13 +2,18 @@
 
 namespace Tests\Feature\MiBandeja;
 
+use App\Helpers\ArchivoHelper;
 use App\Mail\OtpFirmaMail;
+use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
+use App\Services\MiBandeja\TempDocumentosRecibidos\DocumentoExportService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -66,11 +71,11 @@ class FirmaDocumentoTest extends TestCase
 
     public function test_cambiar_la_firma_del_perfil_conserva_la_imagen_del_documento(): void
     {
-        \Illuminate\Support\Facades\Storage::fake('firmas');
-        (new \ReflectionProperty(\App\Helpers\ArchivoHelper::class, 'storageCache'))->setValue(null, []);
+        Storage::fake('firmas');
+        (new \ReflectionProperty(ArchivoHelper::class, 'storageCache'))->setValue(null, []);
         $url = '/api/control-acceso/user/firma';
         $this->actingAs($this->yo)->postJson($url, ['firma' => 'texto'])->assertUnprocessable();
-        $png = \Illuminate\Http\UploadedFile::fake()->image('firma.png', 150, 40);
+        $png = UploadedFile::fake()->image('firma.png', 150, 40);
         $original = 'data:image/png;base64,'.base64_encode($png->getContent());
         $urlFirma = $this->post($url, ['firma' => $png])->assertOk()->json('data.firma_url');
         $this->assertNotEmpty($urlFirma);
@@ -79,17 +84,17 @@ class FirmaDocumentoTest extends TestCase
         $this->get($urlFirma)->assertOk();
         $otp = $this->pedirOtp($this->yo->fresh());
         $this->postJson($this->url('/firmas'), ['otp' => $otp])->assertOk()->assertJsonPath('data.firmas.0.imagen', $original);
-        $this->post($url, ['firma' => \Illuminate\Http\UploadedFile::fake()->image('nueva.jpg', 150, 40)])->assertOk();
+        $this->post($url, ['firma' => UploadedFile::fake()->image('nueva.jpg', 150, 40)])->assertOk();
         $this->getJson($this->url('/firmas'))->assertOk()->assertJsonPath('data.firmas.0.imagen', $original);
-        $doc = \App\Models\MiBandeja\TempDocumentosRecibidos\Documento::findOrFail($this->documento);
-        $export = app(\App\Services\MiBandeja\TempDocumentosRecibidos\DocumentoExportService::class);
+        $doc = Documento::findOrFail($this->documento);
+        $export = app(DocumentoExportService::class);
         $html = $export->exportarHtml($doc);
         $pdf = $export->exportarPdf($doc);
         $docx = $export->exportarDocx($doc);
         try {
             $this->assertStringContainsString($original, file_get_contents($html));
             $this->assertMatchesRegularExpression('/\/Subtype\s*\/Image/', file_get_contents($pdf));
-            $zip = new \ZipArchive();
+            $zip = new \ZipArchive;
             $this->assertTrue($zip->open($docx));
             try {
                 $this->assertStringContainsString('<v:imagedata r:id=', $zip->getFromName('word/document.xml'));

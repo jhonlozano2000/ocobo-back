@@ -2,10 +2,16 @@
 
 namespace Tests\Feature\MiBandeja;
 
+use App\Events\MiBandeja\TempReci\UsuarioConectado;
+use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoController;
+use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Support\Defer\DeferredCallbackCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -51,5 +57,29 @@ class DocumentoColaborativoRadicadoTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('radica_reci_id');
 
         $this->actingAs($this->creador)->postJson(self::URL, $datos)->assertCreated();
+    }
+
+    public function test_la_lectura_responde_antes_de_notificar_presencia(): void
+    {
+        $id = $this->actingAs($this->creador)->postJson(self::URL, ['titulo' => 'Lectura sin Reverb'])
+            ->assertCreated()->json('data.id');
+        $documento = Documento::findOrFail($id);
+        $request = Request::create(self::URL."/{$id}");
+        $request->setUserResolver(fn () => $this->creador);
+        Event::fake([UsuarioConectado::class]);
+
+        $response = app(DocumentoController::class)
+            ->show($request, $documento);
+
+        $this->assertSame(200, $response->getStatusCode());
+        Event::assertNotDispatched(UsuarioConectado::class);
+        app(DeferredCallbackCollection::class)->invoke();
+        Event::assertDispatched(UsuarioConectado::class);
+
+        $request->setUserResolver(fn () => $this->ajeno);
+        $rechazo = app(DocumentoController::class)->show($request, $documento);
+        $this->assertSame(403, $rechazo->getStatusCode());
+        app(DeferredCallbackCollection::class)->invoke();
+        Event::assertDispatchedTimes(UsuarioConectado::class, 1);
     }
 }

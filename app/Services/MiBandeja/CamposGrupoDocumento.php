@@ -30,30 +30,37 @@ class CamposGrupoDocumento
             $campo = $bloque['content'][0] ?? [];
             $attrs = $campo['attrs'] ?? [];
             if (($campo['type'] ?? '') === 'campoGrupo' && isset(self::CREDITOS[$attrs['rol'] ?? ''])
-                && ($attrs['id'] ?? '') === 'credito-'.$attrs['rol'] && !empty($attrs['linked']) && empty($attrs['manual_override'])) {
+                && ($attrs['id'] ?? '') === 'credito-'.$attrs['rol'] && ! empty($attrs['linked']) && empty($attrs['manual_override'])) {
                 $doc['content'][$i]['content'][0]['attrs']['valor'] = '';
             }
         }
         $buscar($doc);
         foreach (self::CREDITOS as $rol => $etiqueta) {
-            if (!isset($existentes[$rol])) {
+            if (! isset($existentes[$rol])) {
                 $doc['content'][] = ['type' => 'paragraph', 'content' => [['type' => 'campoGrupo', 'attrs' => [
                     'id' => 'credito-'.$rol, 'rol' => $rol, 'propiedad' => 'nombre',
                     'valor' => '', 'linked' => true, 'manual_override' => false,
                 ]]]];
             }
         }
+
         return $doc;
     }
 
     public static function creditoVacio(array $bloque): bool
     {
+        return self::esCredito($bloque) && ($bloque['content'][0]['attrs']['valor'] ?? '') === '';
+    }
+
+    public static function esCredito(array $bloque): bool
+    {
         $hijos = $bloque['content'] ?? [];
         $campo = $hijos[0] ?? [];
         $attrs = $campo['attrs'] ?? [];
+
         return ($bloque['type'] ?? '') === 'paragraph' && count($hijos) === 1
             && ($campo['type'] ?? '') === 'campoGrupo' && isset(self::CREDITOS[$attrs['rol'] ?? ''])
-            && ($attrs['id'] ?? '') === 'credito-'.$attrs['rol'] && ($attrs['valor'] ?? '') === '';
+            && ($attrs['id'] ?? '') === 'credito-'.$attrs['rol'];
     }
 
     public function syncCollaborativeGroupToDocument(Contenido $contenido, MiBandejaTemp $grupo, User $actor): bool
@@ -68,7 +75,7 @@ class CamposGrupoDocumento
                 $rol = $attrs['rol'] ?? '';
                 $campo = $attrs['propiedad'] ?? '';
                 if (($attrs['linked'] ?? false) === true && empty($attrs['manual_override'])
-                    && !isset($overrides[$attrs['id'] ?? ''])
+                    && ! isset($overrides[$attrs['id'] ?? ''])
                 ) {
                     if ($rol === 'grupo' && $campo === 'asunto') {
                         $nodo['attrs']['valor'] = (string) $grupo->asunto;
@@ -92,6 +99,7 @@ class CamposGrupoDocumento
         if ($doc !== $original) {
             $contenido->actualizarContenido($doc, $actor);
         }
+
         return $doc !== $original || $pieCambio;
     }
 
@@ -104,14 +112,23 @@ class CamposGrupoDocumento
         $resuelto = preg_replace_callback('/\{\{(firmantes|revisores|aprobadores|proyectores|responsables)(?:\.(nombre|cargo|dependencia))?\}\}/u',
             function ($m) use ($grupo, &$valores) {
                 $valores[$m[1]] ??= $this->participantes($grupo, $m[1]);
+
                 return implode(', ', array_filter(array_column($valores[$m[1]], $m[2] ?? 'nombre')));
             }, $texto, -1, $cantidad);
-        if (!$cantidad && !isset($pie['texto_grupo_resuelto'])) return false;
+        if (! $cantidad && ! isset($pie['texto_grupo_resuelto'])) {
+            return false;
+        }
         $original = $pie;
-        if ($cantidad) $pie['texto_grupo_resuelto'] = $resuelto;
-        else unset($pie['texto_grupo_resuelto']);
-        if ($pie === $original) return false;
+        if ($cantidad) {
+            $pie['texto_grupo_resuelto'] = $resuelto;
+        } else {
+            unset($pie['texto_grupo_resuelto']);
+        }
+        if ($pie === $original) {
+            return false;
+        }
         $documento->update(['configuracion_footer' => $pie]);
+
         return true;
     }
 
@@ -125,16 +142,19 @@ class CamposGrupoDocumento
         if ($rol === 'responsables') {
             // Documento::rolEnGrupo asigna responsabilidad a revisores y aprobadores.
             $personas = array_merge($this->participantes($grupo, 'revisores'), $this->participantes($grupo, 'aprobadores'));
+
             return array_values(array_column($personas, null, 'id'));
         }
         $query = $grupo->{$rol}()->with(['user.cargo', 'cargo']);
         if ($rol === 'firmantes') {
             $query->orderBy('orden_firma');
         }
+
         return $query->orderBy('id')->get()->map(function ($miembro) {
             $user = $miembro->user ?? $miembro->usuario;
             $cargo = $miembro->cargo ?? $user?->cargo;
             $dependencia = collect($cargo?->getJerarquiaCompleta() ?? [])->last(fn ($nivel) => ($nivel['tipo'] ?? '') === 'Dependencia');
+
             return [
                 'id' => $miembro->user_id,
                 'nombre' => trim($user?->nombres.' '.$user?->apellidos),

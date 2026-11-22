@@ -25,6 +25,11 @@ return [
             'secret' => env('REVERB_APP_SECRET'),
             'app_id' => env('REVERB_APP_ID'),
             'cipher' => 'AES-256-CBC',
+            // Un transporte caído no debe retener indefinidamente los workers HTTP.
+            'client_options' => [
+                'connect_timeout' => 1,
+                'timeout' => 2,
+            ],
             'options' => [
                 'host' => env('REVERB_HOST', 'localhost'),
                 'port' => env('REVERB_PORT', 8080),

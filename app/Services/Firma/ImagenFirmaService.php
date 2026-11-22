@@ -23,12 +23,14 @@ class ImagenFirmaService
                 $anterior = $user->firma;
                 $user->update(['firma' => $upload['nombre_almacenado']]);
                 ArchivoHelper::eliminarAlConfirmar([$anterior], 'firmas');
+
                 return $user;
             });
         } catch (\Throwable $error) {
             ArchivoHelper::eliminarArchivo($upload['nombre_almacenado'], 'firmas');
             throw $error;
         }
+
         return $user;
     }
 

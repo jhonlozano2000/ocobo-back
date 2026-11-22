@@ -184,6 +184,7 @@ class PlantillasBaseService
                 if ($propiedad === 'nombre') {
                     $nodo['marks'] = [['type' => 'bold']];
                 }
+
                 return $this->parrafo([$nodo]);
             }, ['nombre', 'cargo', 'dependencia']),
         ];
