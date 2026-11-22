@@ -80,7 +80,7 @@ class DocumentoExportService
         $configPagina = $documento->getConfiguracionPagina();
         $creadorNombre = $this->nombreCreador($documento);
 
-        $html = $this->contenidoToHtml($contenido->contenido_yjs ?? []);
+        $html = $this->documentoFirmadoHtml($documento);
         if ($conConstanciaFirmas) {
             $html .= $this->constanciaFirmas($documento);
         }
@@ -265,7 +265,7 @@ HTML;
                 'titulo' => $titulo,
                 'autor' => $autor,
                 'fecha' => date('d/m/Y'),
-                'texto_libre' => $franja['texto_libre'] ?? '',
+                'texto_libre' => $franja['texto_grupo_resuelto'] ?? $franja['texto_libre'] ?? '',
                 default => '',
             };
             if ($elemento === 'pagina') {
@@ -347,6 +347,69 @@ HTML;
             ."<tbody>{$filas}</tbody></table></div>";
     }
 
+    /** Se proyecta una copia de los tres campos de la plantilla para cada titular. */
+    private function bloquesConFirmantes(Documento $documento): array
+    {
+        $bloques = $this->bloques($documento->contenido?->contenido_yjs ?? []);
+        $firmas = $documento->firmasVigentes()->with('user')->orderBy('fecha_firma')->get();
+        $personas = app(\App\Services\MiBandeja\CamposGrupoDocumento::class)->firmantesOrdenados($documento->grupoVigente());
+        if (count($personas) > 1 || (count($personas) === 1 && $firmas->count() === 1)) {
+            foreach ($bloques as $i => $bloque) {
+                foreach (['nombre', 'cargo', 'dependencia'] as $j => $propiedad) {
+                    $parrafo = $bloques[$i + $j] ?? [];
+                    $nodo = $parrafo['content'][0] ?? [];
+                    $attrs = $nodo['attrs'] ?? [];
+                    if (($parrafo['type'] ?? '') !== 'paragraph' || count($parrafo['content'] ?? []) !== 1
+                        || ($nodo['type'] ?? '') !== 'campoGrupo' || ($attrs['rol'] ?? '') !== 'firmantes'
+                        || ($attrs['propiedad'] ?? '') !== $propiedad || ($attrs['id'] ?? '') !== 'firma-'.$propiedad
+                        || empty($attrs['linked']) || !empty($attrs['manual_override'])) {
+                        continue 2;
+                    }
+                }
+                $partes = [[array_slice($bloques, 0, $i), null]];
+                foreach ($personas as $indice => $persona) {
+                    if ($indice > 0) {
+                        $lineaVacia = ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => "\u{00A0}"]]];
+                        $partes[] = [[$lineaVacia, $lineaVacia], null];
+                    }
+                    $lineas = array_slice($bloques, $i, 3);
+                    foreach (['nombre', 'cargo', 'dependencia'] as $j => $propiedad) {
+                        $lineas[$j]['content'][0]['attrs']['valor'] = $persona[$propiedad] ?? '';
+                    }
+                    $firma = $firmas->firstWhere('user_id', $persona['id']);
+                    if (!$firma) {
+                        $lineas[] = ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Pendiente de firma']]];
+                    }
+                    $partes[] = [$lineas, $firma];
+                }
+                $partes[] = [array_slice($bloques, $i + 3), null];
+                return $partes;
+            }
+        }
+        $partes = [[$bloques, null]];
+        foreach ($firmas as $firma) {
+            $partes[] = [[], $firma];
+        }
+        return $partes;
+    }
+
+    private function documentoFirmadoHtml(Documento $documento): string
+    {
+        $this->notas = [];
+        $html = '';
+        foreach ($this->bloquesConFirmantes($documento) as [$bloques, $firma]) {
+            if ($firma?->imagen_firma) {
+                $html .= '<div><img style="max-width:150pt;max-height:60pt" src="'.$this->esc($firma->imagen_firma).'"></div>';
+            }
+            $html .= $this->renderHijos($bloques);
+            if ($firma) {
+                $nombre = trim($firma->user?->nombres.' '.$firma->user?->apellidos);
+                $html .= '<p style="page-break-inside:avoid">Firmado por '.$this->esc($nombre).' / '.$this->esc((string) $firma->fecha_firma).'</p>';
+            }
+        }
+        return ($html !== '' ? $html : '<p></p>').$this->renderNotas();
+    }
+
     private function nombreCreador(Documento $documento): string
     {
         $creador = $documento->creador;
@@ -381,7 +444,19 @@ HTML;
                 $hf->addPreserveText(implode('  |  ', $partes), ['size' => 9, 'color' => '666666'], ['alignment' => 'center']);
             }
         }
-        $this->agregarContenidoASection($section, $this->bloques($contenido->contenido_yjs ?? []));
+        foreach ($this->bloquesConFirmantes($documento) as [$bloques, $firma]) {
+            if ($firma?->imagen_firma) {
+                $bytes = base64_decode(explode(',', $firma->imagen_firma, 2)[1]);
+                [$ancho, $alto] = getimagesizefromstring($bytes);
+                $escala = min(150 / $ancho, 60 / $alto, 1);
+                $section->addImage($bytes, ['width' => $ancho * $escala, 'height' => $alto * $escala, 'unit' => 'pt']);
+            }
+            $this->agregarContenidoASection($section, $bloques);
+            if (!$firma) {
+                continue;
+            }
+            $section->addText('Firmado por '.trim($firma->user?->nombres.' '.$firma->user?->apellidos).' · '.$firma->fecha_firma);
+        }
 
         $filename = 'documento_'.$documento->id.'_'.time().'.docx';
         $path = 'exports/'.$filename;
@@ -403,7 +478,7 @@ HTML;
     public function exportarHtml(Documento $documento): string
     {
         $contenido = $documento->contenido;
-        $html = $this->contenidoToHtml($contenido->contenido_yjs ?? []);
+        $html = $this->documentoFirmadoHtml($documento);
 
         $fullHtml = $this->wrapHtmlDocument($documento->titulo, $html);
 
@@ -445,7 +520,7 @@ HTML;
     {
         $bloques = ($contenido['type'] ?? null) === 'doc' ? ($contenido['content'] ?? []) : $contenido;
 
-        return array_values(array_filter($bloques, 'is_array'));
+        return array_values(array_filter($bloques, fn ($bloque) => is_array($bloque) && ! \App\Services\MiBandeja\CamposGrupoDocumento::creditoVacio($bloque)));
     }
 
     private function contenidoToHtml(array $contenido): string
@@ -741,6 +816,9 @@ HTML;
                 continue;
             }
 
+            if ($inline['type'] === 'campoGrupo') {
+                $inline['text'] = $this->textoCampo($inline);
+            }
             $text = in_array($inline['type'], ['campo', 'variable'], true)
                 ? '<span style="background-color: '.self::COLOR_CAMPO.';">'.$this->esc($this->textoCampo($inline)).'</span>'
                 : $this->esc($inline['text'] ?? '');
@@ -808,6 +886,9 @@ HTML;
      */
     private function textoCampo(array $campo): string
     {
+        if (($campo['type'] ?? null) === 'campoGrupo') {
+            return (string) ($campo['attrs']['valor'] ?? '');
+        }
         if (($campo['type'] ?? null) === 'variable') {
             return '{'.(VariablesPlantillaService::VARIABLES[$campo['attrs']['clave'] ?? ''] ?? 'Variable').'}';
         }
@@ -999,7 +1080,7 @@ HTML;
         $text = '';
 
         foreach ($content as $inline) {
-            if (in_array($inline['type'] ?? null, ['campo', 'variable'], true)) {
+            if (in_array($inline['type'] ?? null, ['campo', 'variable', 'campoGrupo'], true)) {
                 $text .= $this->textoCampo($inline);
             } elseif (($inline['type'] ?? null) === 'notaAlPie') {
                 $text .= '['.$this->tomarNota($inline).']';
@@ -1121,6 +1202,8 @@ HTML;
                 $run->addTextBreak();
             } elseif (($inline['type'] ?? null) === 'notaAlPie') {
                 $run->addFootnote()->addText(mb_substr((string) ($inline['attrs']['texto'] ?? ''), 0, 1000));
+            } elseif (($inline['type'] ?? null) === 'campoGrupo') {
+                $run->addText($this->textoCampo($inline), $this->getTextStyle($inline['marks'] ?? []));
             } elseif (in_array($inline['type'] ?? null, ['campo', 'variable'], true)) {
                 // Resaltado, para que en Word se vea qué falta por completar
                 $run->addText($this->textoCampo($inline), ['fgColor' => 'yellow'] + $this->getTextStyle($inline['marks'] ?? []));

@@ -386,6 +386,7 @@ class Documento extends Model
                 throw ValidationException::withMessages(['documento' => 'El documento está vacío: no hay contenido para firmar.']);
             }
 
+            $imagen = app(\App\Services\Firma\ImagenFirmaService::class)->capturar($user);
             $fecha = now();
             $firma = FirmaEvento::create([
                 'documentable_id' => $this->id,
@@ -394,6 +395,7 @@ class Documento extends Model
                 'hash_original' => $contenido->hash_contenido,
                 // Sello: el contenido firmado, por quién y cuándo
                 'hash_firmado' => hash('sha256', $contenido->hash_contenido.'|'.$user->id.'|'.$fecha->toIso8601String()),
+                'imagen_firma' => $imagen,
                 'otp_utilizado' => ctype_digit($verificacion) ? '***'.substr($verificacion, -3) : $verificacion,
                 'ip_address' => $ip,
                 'user_agent' => $userAgent !== null ? substr($userAgent, 0, 255) : null,

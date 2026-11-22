@@ -253,6 +253,12 @@ class UserController extends Controller
         return $this->successResponse(['avatar_url' => $user->avatar_url], 'Foto actualizada');
     }
 
+    public function actualizarMiFirma(\App\Http\Requests\ControlAcceso\ActualizarMiFirmaRequest $request, \App\Services\Firma\ImagenFirmaService $imagenes)
+    {
+        $user = $imagenes->actualizarPerfil($request->user(), $request->file('firma'));
+        return $this->successResponse(['firma_url' => $user->firma_url], 'Firma actualizada.');
+    }
+
     /**
      * Quita la foto del usuario autenticado.
      */
@@ -318,8 +324,7 @@ class UserController extends Controller
                 return $this->notFoundResponse('Usuario no encontrado');
             }
 
-            // El encabezado del perfil muestra la foto: necesita la URL, no solo el nombre del archivo
-            $user->append('avatar_url');
+            $user->append(['avatar_url', 'firma_url']);
 
             return $this->successResponse([
                 'user' => $user,

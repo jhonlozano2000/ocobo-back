@@ -93,6 +93,11 @@ class PlantillasDocumentoTest extends TestCase
     {
         $id = $this->desde('Oficio')->assertCreated()->json('data.id');
 
+        $this->actingAs($this->yo)->getJson(self::URL."/{$id}/contenido")
+            ->assertOk()
+            ->assertJsonPath('data.contenido.type', 'doc')
+            ->assertJsonPath('data.contenido', $this->contenido($id));
+
         $documento = DB::table('mi_bandeja_temp_reci_documentos')->find($id);
         $this->assertSame('carta', $documento->tamano_papel);
         $this->assertEquals(['superior' => 30, 'inferior' => 25, 'izquierdo' => 30, 'derecho' => 20], json_decode($documento->margenes, true));
@@ -112,7 +117,8 @@ class PlantillasDocumentoTest extends TestCase
         $this->assertStringContainsString('ALCALDÍA DE PRUEBA', $texto);
         $this->assertMatchesRegularExpression('/NIT\s+800\.000\.001-1/u', $texto);
         $this->assertStringContainsString('Asunto:', $texto);
-        $this->assertStringContainsString('ANA RUIZ', $texto);
+        $this->assertStringNotContainsString('ANA RUIZ', $texto);
+        $this->assertSame('firmantes', $contenido['content'][count($contenido['content']) - 3]['content'][0]['attrs']['rol']);
     }
 
     public function test_el_acta_trae_asistentes_orden_del_dia_y_compromisos(): void
@@ -193,8 +199,8 @@ class PlantillasDocumentoTest extends TestCase
         // La ciudad de la entidad y el cargo y la dependencia de quien firma no están configurados: también
         // quedan por completar
         $this->assertSame([
-            'Ciudad', 'Nombre del destinatario', 'Cargo', 'Entidad', 'Dirección', 'Ciudad', 'Asunto',
-            'Escriba aquí el texto del oficio.', 'Cargo del usuario', 'Dependencia del usuario',
+            'Ciudad', 'Nombre del destinatario', 'Cargo', 'Entidad', 'Dirección', 'Ciudad',
+            'Escriba aquí el texto del oficio.',
         ], $campos);
         $this->assertSame([], $corchetes);
 

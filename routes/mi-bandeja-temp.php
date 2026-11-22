@@ -25,7 +25,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('grupos-colaborativo
 
     // Grupo principal
     Route::get('/', [MiBandejaTempController::class, 'index'])->name('index')->middleware('can:'.$permMiBandeja.'Ver');
-    Route::post('/', [MiBandejaTempController::class, 'store'])->name('store')->middleware('can:'.$permMiBandeja.'Crear');
+    Route::post('/', [MiBandejaTempController::class, 'store'])->name('store')->middleware(['can:'.$permMiBandeja.'Crear', \App\Http\Middleware\SincronizarCamposGrupo::class]);
     Route::get('/buscar-radicados', [MiBandejaTempController::class, 'buscarRadicados'])
         ->name('buscar-radicados')
         ->middleware('can:'.$permMiBandeja.'Ver');
@@ -33,7 +33,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('grupos-colaborativo
         ->name('dependencias-trd')
         ->middleware('can:'.$permMiBandeja.'Crear');
     Route::get('/{id}', [MiBandejaTempController::class, 'show'])->name('show')->middleware('can:'.$permMiBandeja.'Ver');
-    Route::put('/{id}', [MiBandejaTempController::class, 'update'])->name('update')->middleware('can:'.$permMiBandeja.'Editar');
+    Route::put('/{id}', [MiBandejaTempController::class, 'update'])->name('update')->middleware(['can:'.$permMiBandeja.'Editar', \App\Http\Middleware\SincronizarCamposGrupo::class]);
     Route::delete('/{id}', [MiBandejaTempController::class, 'destroy'])->name('destroy')->middleware('can:'.$permMiBandeja.'Eliminar');
 
     // Acciones de flujo
@@ -52,19 +52,19 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('grupos-colaborativo
     // Revisores
     Route::prefix('{grupo}/revisores')->name('revisores.')->group(function () use ($permMiBandeja) {
         Route::get('/', [MiBandejaTempGrupoRevisorController::class, 'index'])->name('index')->middleware('can:'.$permMiBandeja.'Ver');
-        Route::post('/', [MiBandejaTempGrupoRevisorController::class, 'store'])->name('store')->middleware('can:'.$permMiBandeja.'Gestionar Miembros');
-        Route::put('/{id}', [MiBandejaTempGrupoRevisorController::class, 'update'])->name('update')->middleware('can:'.$permMiBandeja.'Gestionar Miembros');
-        Route::delete('/{id}', [MiBandejaTempGrupoRevisorController::class, 'destroy'])->name('destroy')->middleware('can:'.$permMiBandeja.'Gestionar Miembros');
+        Route::post('/', [MiBandejaTempGrupoRevisorController::class, 'store'])->name('store')->middleware(['can:'.$permMiBandeja.'Gestionar Miembros', \App\Http\Middleware\SincronizarCamposGrupo::class]);
+        Route::put('/{id}', [MiBandejaTempGrupoRevisorController::class, 'update'])->name('update')->middleware(['can:'.$permMiBandeja.'Gestionar Miembros', \App\Http\Middleware\SincronizarCamposGrupo::class]);
+        Route::delete('/{id}', [MiBandejaTempGrupoRevisorController::class, 'destroy'])->name('destroy')->middleware(['can:'.$permMiBandeja.'Gestionar Miembros', \App\Http\Middleware\SincronizarCamposGrupo::class]);
         Route::post('/{id}/marcar-terminado', [MiBandejaTempGrupoRevisorController::class, 'marcarTerminado'])->name('marcar-terminado')->middleware('can:'.$permMiBandeja.'Ver');
     });
 
     // Firmantes
     Route::prefix('{grupo}/firmantes')->name('firmantes.')->group(function () use ($permMiBandeja) {
         Route::get('/', [MiBandejaTempGrupoFirmanteController::class, 'index'])->name('index')->middleware('can:'.$permMiBandeja.'Ver');
-        Route::post('/', [MiBandejaTempGrupoFirmanteController::class, 'store'])->name('store')->middleware('can:'.$permMiBandeja.'Gestionar Miembros');
+        Route::post('/', [MiBandejaTempGrupoFirmanteController::class, 'store'])->name('store')->middleware(['can:'.$permMiBandeja.'Gestionar Miembros', \App\Http\Middleware\SincronizarCamposGrupo::class]);
         Route::post('/solicitar-otp', [MiBandejaTempGrupoFirmanteController::class, 'solicitarOtp'])->name('solicitar-otp')->middleware(['can:'.$permMiBandeja.'Ver', 'throttle:firma-otp']);
-        Route::put('/{id}', [MiBandejaTempGrupoFirmanteController::class, 'update'])->name('update')->middleware('can:'.$permMiBandeja.'Gestionar Miembros');
-        Route::delete('/{id}', [MiBandejaTempGrupoFirmanteController::class, 'destroy'])->name('destroy')->middleware('can:'.$permMiBandeja.'Gestionar Miembros');
+        Route::put('/{id}', [MiBandejaTempGrupoFirmanteController::class, 'update'])->name('update')->middleware(['can:'.$permMiBandeja.'Gestionar Miembros', \App\Http\Middleware\SincronizarCamposGrupo::class]);
+        Route::delete('/{id}', [MiBandejaTempGrupoFirmanteController::class, 'destroy'])->name('destroy')->middleware(['can:'.$permMiBandeja.'Gestionar Miembros', \App\Http\Middleware\SincronizarCamposGrupo::class]);
         Route::post('/{id}/marcar-terminado', [MiBandejaTempGrupoFirmanteController::class, 'marcarTerminado'])->name('marcar-terminado')->middleware('can:'.$permMiBandeja.'Ver');
         Route::post('/{id}/firmar', [MiBandejaTempGrupoFirmanteController::class, 'firmar'])->name('firmar')->middleware(['can:'.$permMiBandeja.'Ver', 'throttle:firma']);
     });
@@ -72,18 +72,18 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->prefix('grupos-colaborativo
     // Aprobadores
     Route::prefix('{grupo}/aprobadores')->name('aprobadores.')->group(function () use ($permMiBandeja) {
         Route::get('/', [MiBandejaTempGrupoAprobadorController::class, 'index'])->name('index')->middleware('can:'.$permMiBandeja.'Ver');
-        Route::post('/', [MiBandejaTempGrupoAprobadorController::class, 'store'])->name('store')->middleware('can:'.$permMiBandeja.'Gestionar Miembros');
-        Route::put('/{id}', [MiBandejaTempGrupoAprobadorController::class, 'update'])->name('update')->middleware('can:'.$permMiBandeja.'Gestionar Miembros');
-        Route::delete('/{id}', [MiBandejaTempGrupoAprobadorController::class, 'destroy'])->name('destroy')->middleware('can:'.$permMiBandeja.'Gestionar Miembros');
+        Route::post('/', [MiBandejaTempGrupoAprobadorController::class, 'store'])->name('store')->middleware(['can:'.$permMiBandeja.'Gestionar Miembros', \App\Http\Middleware\SincronizarCamposGrupo::class]);
+        Route::put('/{id}', [MiBandejaTempGrupoAprobadorController::class, 'update'])->name('update')->middleware(['can:'.$permMiBandeja.'Gestionar Miembros', \App\Http\Middleware\SincronizarCamposGrupo::class]);
+        Route::delete('/{id}', [MiBandejaTempGrupoAprobadorController::class, 'destroy'])->name('destroy')->middleware(['can:'.$permMiBandeja.'Gestionar Miembros', \App\Http\Middleware\SincronizarCamposGrupo::class]);
         Route::post('/{id}/marcar-terminado', [MiBandejaTempGrupoAprobadorController::class, 'marcarTerminado'])->name('marcar-terminado')->middleware('can:'.$permMiBandeja.'Ver');
     });
 
     // Proyectores
     Route::prefix('{grupo}/proyectores')->name('proyectores.')->group(function () use ($permMiBandeja) {
         Route::get('/', [MiBandejaTempGrupoProyectorController::class, 'index'])->name('index')->middleware('can:'.$permMiBandeja.'Ver');
-        Route::post('/', [MiBandejaTempGrupoProyectorController::class, 'store'])->name('store')->middleware('can:'.$permMiBandeja.'Gestionar Miembros');
-        Route::put('/{id}', [MiBandejaTempGrupoProyectorController::class, 'update'])->name('update')->middleware('can:'.$permMiBandeja.'Gestionar Miembros');
-        Route::delete('/{id}', [MiBandejaTempGrupoProyectorController::class, 'destroy'])->name('destroy')->middleware('can:'.$permMiBandeja.'Gestionar Miembros');
+        Route::post('/', [MiBandejaTempGrupoProyectorController::class, 'store'])->name('store')->middleware(['can:'.$permMiBandeja.'Gestionar Miembros', \App\Http\Middleware\SincronizarCamposGrupo::class]);
+        Route::put('/{id}', [MiBandejaTempGrupoProyectorController::class, 'update'])->name('update')->middleware(['can:'.$permMiBandeja.'Gestionar Miembros', \App\Http\Middleware\SincronizarCamposGrupo::class]);
+        Route::delete('/{id}', [MiBandejaTempGrupoProyectorController::class, 'destroy'])->name('destroy')->middleware(['can:'.$permMiBandeja.'Gestionar Miembros', \App\Http\Middleware\SincronizarCamposGrupo::class]);
         Route::post('/{id}/marcar-terminado', [MiBandejaTempGrupoProyectorController::class, 'marcarTerminado'])->name('marcar-terminado')->middleware('can:'.$permMiBandeja.'Ver');
     });
 

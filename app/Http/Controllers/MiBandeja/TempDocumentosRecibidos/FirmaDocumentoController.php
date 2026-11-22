@@ -155,18 +155,28 @@ class FirmaDocumentoController extends Controller
         $firmaron = $vigentes->pluck('user_id');
         $pendientes = $documento->firmantesRequeridos()->diff($firmaron);
         $protegido = $documento->estaProtegido();
+        $grupo = $documento->grupoVigente();
+        $firmaDeGrupoPendiente = $grupo && $grupo->estado !== 'finalizado'
+            && ! $firmaron->contains($user->id)
+            && $user->can('Mi Bandeja - Grupos Colaborativos -> Ver')
+            && $grupo->firmantes()->where('user_id', $user->id)
+                ->whereNull('fechor_firmado')->where('estado_tarea', '!=', 'cumplido')->exists();
 
         return [
             'estado' => $documento->estado,
             'protegido' => $protegido,
-            'firma_en_grupo' => $enGrupo = (bool) $documento->grupoVigente(),
+            'firmantes_ordenados' => app(\App\Services\MiBandeja\CamposGrupoDocumento::class)->firmantesOrdenados($grupo),
+            'firma_en_grupo' => $enGrupo = (bool) $grupo,
+            'grupo_para_firmar' => $firmaDeGrupoPendiente ? ['id' => $grupo->id, 'asunto' => $grupo->asunto, 'es_firmante' => true] : null,
             'puede_firmar' => ! $enGrupo && $documento->puedeFirmar($user) && ! $firmaron->contains($user->id),
             'puede_retirar' => $protegido && ($documento->user_id === $user->id || $documento->puedeFirmar($user)),
             'firmas' => $vigentes->map(fn (FirmaEvento $firma) => [
                 'id' => $firma->id,
+                'user_id' => $firma->user_id,
                 'usuario' => $firma->user ? $this->nombre($firma->user) : null,
                 'fecha' => $firma->fecha_firma?->toIso8601String(),
                 'hash' => $firma->hash_original,
+                'imagen' => $firma->imagen_firma,
                 'sello' => $firma->hash_firmado,
             ])->values(),
             'pendientes' => User::whereIn('id', $pendientes)->get(['id', 'nombres', 'apellidos'])

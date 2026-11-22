@@ -195,7 +195,9 @@ class PlantillaGeneradaService
 
         return [
             'pagina' => $pagina,
-            'contenido' => $this->variables->resolverContenido($plantilla->contenido, $valores),
+            'contenido' => \App\Services\MiBandeja\CamposGrupoDocumento::conCreditosDePlantilla(
+                $this->variables->resolverContenido($plantilla->contenido, $valores)
+            ),
         ];
     }
 

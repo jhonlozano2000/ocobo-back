@@ -59,7 +59,13 @@ class VariablesPlantillaService
      */
     public function catalogo(): array
     {
-        return collect(self::VARIABLES)
+        $camposGrupo = [];
+        foreach (['firmantes', 'revisores', 'proyectores', 'responsables', 'aprobadores'] as $rol) {
+            foreach (['nombre', 'cargo', 'dependencia'] as $propiedad) {
+                $camposGrupo['grupo_'.$rol.'_'.$propiedad] = ucfirst($rol).' ('.$propiedad.')';
+            }
+        }
+        return collect(self::VARIABLES + $camposGrupo)
             ->map(fn ($etiqueta, $clave) => [
                 'clave' => $clave,
                 'etiqueta' => $etiqueta,
@@ -141,8 +147,24 @@ class VariablesPlantillaService
      */
     public function resolverContenido(array $nodo, array $valores): array
     {
+        // Las plantillas institucionales anteriores usan este marcador en el rengl?n de asunto.
+        $linea = $nodo['content'] ?? [];
+        if (($nodo['type'] ?? null) === 'paragraph' && count($linea) === 2
+            && strtoupper(trim($linea[0]['text'] ?? '')) === 'ASUNTO:'
+            && ($linea[1]['type'] ?? null) === 'campo' && ($linea[1]['attrs']['etiqueta'] ?? null) === 'Asunto') {
+            $nodo['content'][1]['type'] = 'campoGrupo';
+            $nodo['content'][1]['attrs'] = ['id' => (string) Str::uuid(), 'rol' => 'grupo', 'propiedad' => 'asunto',
+                'valor' => '', 'linked' => true, 'manual_override' => false];
+            return $nodo;
+        }
+
         if (($nodo['type'] ?? null) === 'variable') {
             $clave = (string) ($nodo['attrs']['clave'] ?? '');
+            if (preg_match('/^grupo_(firmantes|revisores|proyectores|responsables|aprobadores)_(nombre|cargo|dependencia)$/D', $clave, $m)) {
+                $campo = ['type' => 'campoGrupo', 'attrs' => ['id' => (string) Str::uuid(), 'rol' => $m[1],
+                    'propiedad' => $m[2], 'linked' => true, 'manual_override' => false, 'valor' => '']];
+                return empty($nodo['marks']) ? $campo : $campo + ['marks' => $nodo['marks']];
+            }
             $valor = $valores[$clave] ?? '';
             if (! empty($nodo['attrs']['mayusculas'])) {
                 $valor = mb_strtoupper($valor);

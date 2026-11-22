@@ -74,6 +74,50 @@ class GrupoDocumentoTest extends TestCase
         ]);
     }
 
+    public function test_creditos_de_plantilla_se_llenan_por_rol_y_se_ocultan_al_retirar_el_miembro(): void
+    {
+        $doc = \App\Services\MiBandeja\CamposGrupoDocumento::conCreditosDePlantilla(['type' => 'doc', 'content' => []]);
+        $fila = \App\Models\MiBandeja\TempDocumentosRecibidos\Contenido::create(['documento_id' => $this->documento, 'contenido_yjs' => $doc, 'hash_contenido' => '']);
+        $id = $this->crearGrupo($this->creador)->assertCreated()->json('data.id');
+        foreach (['proyectores' => 0, 'revisores' => 1] as $rol => $indice) {
+            $url = self::URL_GRUPOS."/{$id}/{$rol}";
+            $miembro = $this->postJson($url, ['user_id' => $this->revisor->id])->assertCreated()->json('data.id');
+            $bloques = $fila->fresh()->contenido_yjs['content'];
+            $this->assertStringContainsString($this->revisor->nombres, $bloques[$indice]['content'][0]['attrs']['valor']);
+            $this->assertTrue(\App\Services\MiBandeja\CamposGrupoDocumento::creditoVacio($bloques[1 - $indice]));
+            $this->deleteJson($url.'/'.$miembro)->assertSuccessful();
+            $this->assertTrue(\App\Services\MiBandeja\CamposGrupoDocumento::creditoVacio($fila->fresh()->contenido_yjs['content'][$indice]));
+        }
+    }
+
+    public function test_sincroniza_firmante_preservando_texto_y_rechaza_el_cambio_si_esta_firmado(): void
+    {
+        $campo = ['type' => 'campoGrupo', 'attrs' => ['id' => 'firma', 'rol' => 'firmantes', 'propiedad' => 'nombre', 'valor' => '', 'linked' => true, 'manual_override' => false], 'marks' => [['type' => 'bold']]];
+        $texto = ['type' => 'text', 'text' => 'PARA: Tesoreria. Texto redactado.'];
+        $json = ['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [$texto, $campo]]]];
+        Documento::findOrFail($this->documento)->update(['configuracion_footer' => ['texto_libre' => 'Para: Tesoreria. Firma: {{firmantes}}']]);
+        $json['content'][] = app(\App\Services\OfiArchivo\VariablesPlantillaService::class)->resolverContenido(['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'ASUNTO: '], ['type' => 'campo', 'attrs' => ['etiqueta' => 'Asunto']]]], []);
+        $fila = \App\Models\MiBandeja\TempDocumentosRecibidos\Contenido::create(['documento_id' => $this->documento, 'contenido_yjs' => $json, 'hash_contenido' => '']);
+        $id = $this->crearGrupo($this->creador)->assertCreated()->json('data.id');
+        $asunto = \App\Models\MiBandeja\MiBandejaTemp::findOrFail($id)->asunto;
+        $json['content'][1]['content'][1]['attrs']['valor'] = $asunto;
+        $this->assertSame($asunto, $fila->fresh()->contenido_yjs['content'][1]['content'][1]['attrs']['valor']);
+        $url = self::URL_GRUPOS."/{$id}/firmantes";
+        $miembro = $this->postJson($url, ['user_id' => $this->firmante->id])->assertCreated()->json('data.id');
+        $json['content'][0]['content'][1]['attrs']['valor'] = trim($this->firmante->nombres.' '.$this->firmante->apellidos);
+        $this->assertSame('Para: Tesoreria. Firma: '.$json['content'][0]['content'][1]['attrs']['valor'], Documento::findOrFail($this->documento)->configuracion_footer['texto_grupo_resuelto']);
+        $this->assertEquals($json, $fila->fresh()->contenido_yjs);
+        Documento::findOrFail($this->documento)->update(['estado' => 'firmado']);
+        $this->deleteJson($url.'/'.$miembro)->assertConflict();
+        $this->assertEquals($json, $fila->fresh()->contenido_yjs);
+        Documento::findOrFail($this->documento)->update(['estado' => 'borrador']);
+        $json['content'][0]['content'][1] = ['type' => 'text', 'text' => 'Firma escrita a mano'];
+        $this->postJson(self::URL.'/'.$this->documento.'/sincronizar', ['contenido' => $json, 'hash_base' => $fila->fresh()->hash_contenido])->assertOk();
+        $this->deleteJson($url.'/'.$miembro)->assertSuccessful();
+        $this->assertTrue($fila->fresh()->campos_manuales['firma']['manual_override']);
+        $this->assertEquals($json, $fila->fresh()->contenido_yjs);
+    }
+
     public function test_el_grupo_del_documento_se_crea_con_el_flujo_de_grupos_colaborativos(): void
     {
         $this->actingAs($this->creador)->getJson($this->url())

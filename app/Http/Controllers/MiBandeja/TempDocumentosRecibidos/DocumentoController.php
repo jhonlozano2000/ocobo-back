@@ -179,7 +179,7 @@ class DocumentoController extends Controller
         Contenido::create([
             'documento_id' => $documento->id,
             'contenido_yjs' => $plantilla['contenido'] ?? [],
-            'hash_contenido' => '',
+            'hash_contenido' => empty($plantilla['contenido']) ? '' : hash('sha256', json_encode($plantilla['contenido'])),
         ]);
 
         return $this->createdResponse(
@@ -239,21 +239,19 @@ class DocumentoController extends Controller
             $this->inicializarCursor($documento, $request->user());
         }
 
-        try {
-            UsuarioConectado::dispatch(
-                $documento->id,
-                $request->user()->id,
-                $request->user()->nombres
-            );
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
+        // La presencia es informativa: Reverb no debe retrasar la lectura del documento.
+        $evento = new UsuarioConectado($documento->id, $request->user()->id, $request->user()->nombres);
+        \Illuminate\Support\defer(function () use ($evento): void {
+            try {
+                event($evento);
+            } catch (\Throwable $e) {
+                // No registrar la URL firmada del transporte ni sus credenciales.
+                \Log::warning('No se pudo notificar la presencia en el documento.', [
+                    'documento_id' => $evento->documentoId,
+                    'exception' => $e::class,
+                ]);
             }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-            \Log::warning('Broadcast UsuarioConectado falló: '.$e->getMessage());
-        }
+        });
 
         return $this->successResponse(
             new DocumentoResource($documento->load(['contenido', 'cursores', 'usuarios.usuario'])),
@@ -378,6 +376,12 @@ class DocumentoController extends Controller
 
         return DB::transaction(function () use ($documento, $contenido, $hashCliente, $hashBase, $request) {
             $contenidoDoc = Contenido::where('documento_id', $documento->id)->lockForUpdate()->first();
+
+            $bloqueado = Documento::lockForUpdate()->findOrFail($documento->id);
+            $bloqueado->setRelation('contenido', $contenidoDoc);
+            if ($bloqueado->estaProtegido() || $bloqueado->estado === 'parcialmente_firmado' || $bloqueado->firmasVigentes()->exists()) {
+                return $this->conflictResponse('Retire las firmas o genere una nueva versión antes de editar el contenido.');
+            }
 
             if (! $contenidoDoc) {
                 $contenidoDoc = Contenido::create([
@@ -526,6 +530,7 @@ class DocumentoController extends Controller
         }
 
         return $this->successResponse([
+            'footer_grupo' => $documento->configuracion_footer,
             'contenido' => $contenido->contenido_yjs ?? [],
             'hash' => $contenido->hash_contenido,
         ]);
@@ -681,7 +686,16 @@ class DocumentoController extends Controller
             $updateData['configuracion_formato'] = $formato ? array_filter($formato, fn ($valor) => $valor !== null) ?: null : null;
         }
 
-        $documento->update($updateData);
+        DB::transaction(function () use ($documento, $updateData) {
+            $doc = Documento::lockForUpdate()->findOrFail($documento->id);
+            abort_if($doc->estaProtegido() || $doc->estado === 'parcialmente_firmado' || $doc->firmasVigentes()->exists(), 409, 'Retire las firmas antes de modificar la página.');
+            $doc->update($updateData);
+            if (array_key_exists('configuracion_footer', $updateData) && ($grupo = $doc->grupoVigente())) {
+                $grupo->setRelation('documento', $doc);
+                app(\App\Services\MiBandeja\CamposGrupoDocumento::class)->actualizarPie($grupo);
+            }
+        });
+        $documento->refresh();
 
         return $this->successResponse([
             'configuracion' => $documento->getConfiguracionPagina(),

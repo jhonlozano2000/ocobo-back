@@ -16,6 +16,7 @@ class FirmaEvento extends Model
         'documentable_id',
         'documentable_type',
         'user_id',
+        'imagen_firma',
         'hash_original',
         'hash_firmado',
         'timestamp_token',
@@ -25,6 +26,8 @@ class FirmaEvento extends Model
         'user_agent',
         'fecha_firma',
     ];
+
+    protected $hidden = ['imagen_firma'];
 
     protected $casts = [
         'fecha_firma' => 'datetime',

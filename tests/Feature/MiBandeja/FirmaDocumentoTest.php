@@ -64,6 +64,45 @@ class FirmaDocumentoTest extends TestCase
         return $otp;
     }
 
+    public function test_cambiar_la_firma_del_perfil_conserva_la_imagen_del_documento(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('firmas');
+        (new \ReflectionProperty(\App\Helpers\ArchivoHelper::class, 'storageCache'))->setValue(null, []);
+        $url = '/api/control-acceso/user/firma';
+        $this->actingAs($this->yo)->postJson($url, ['firma' => 'texto'])->assertUnprocessable();
+        $png = \Illuminate\Http\UploadedFile::fake()->image('firma.png', 150, 40);
+        $original = 'data:image/png;base64,'.base64_encode($png->getContent());
+        $urlFirma = $this->post($url, ['firma' => $png])->assertOk()->json('data.firma_url');
+        $this->assertNotEmpty($urlFirma);
+        $this->actingAs($this->yo->fresh())->getJson("/api/control-acceso/users/{$this->yo->id}/perfil-completo")
+            ->assertOk()->assertJsonPath('data.user.firma_url', $urlFirma);
+        $this->get($urlFirma)->assertOk();
+        $otp = $this->pedirOtp($this->yo->fresh());
+        $this->postJson($this->url('/firmas'), ['otp' => $otp])->assertOk()->assertJsonPath('data.firmas.0.imagen', $original);
+        $this->post($url, ['firma' => \Illuminate\Http\UploadedFile::fake()->image('nueva.jpg', 150, 40)])->assertOk();
+        $this->getJson($this->url('/firmas'))->assertOk()->assertJsonPath('data.firmas.0.imagen', $original);
+        $doc = \App\Models\MiBandeja\TempDocumentosRecibidos\Documento::findOrFail($this->documento);
+        $export = app(\App\Services\MiBandeja\TempDocumentosRecibidos\DocumentoExportService::class);
+        $html = $export->exportarHtml($doc);
+        $pdf = $export->exportarPdf($doc);
+        $docx = $export->exportarDocx($doc);
+        try {
+            $this->assertStringContainsString($original, file_get_contents($html));
+            $this->assertMatchesRegularExpression('/\/Subtype\s*\/Image/', file_get_contents($pdf));
+            $zip = new \ZipArchive();
+            $this->assertTrue($zip->open($docx));
+            try {
+                $this->assertStringContainsString('<v:imagedata r:id=', $zip->getFromName('word/document.xml'));
+            } finally {
+                $zip->close();
+            }
+        } finally {
+            unlink($html);
+            unlink($pdf);
+            unlink($docx);
+        }
+    }
+
     public function test_el_creador_firma_con_otp_y_el_documento_queda_protegido(): void
     {
         $this->actingAs($this->yo)->getJson($this->url('/firmas'))

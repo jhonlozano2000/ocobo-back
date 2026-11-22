@@ -182,7 +182,7 @@ class MiBandejaTempGrupoFirmanteController extends Controller
      */
     public function destroy($grupoId, $id)
     {
-        $this->autorizarGrupo($grupoId);
+        $grupo = $this->autorizarGrupo($grupoId);
 
         try {
             $firmante = MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->find($id);
@@ -196,7 +196,7 @@ class MiBandejaTempGrupoFirmanteController extends Controller
             }
 
             $totalFirmantes = MiBandejaTempGrupoFirmante::where('grupo_id', $grupoId)->count();
-            if ($totalFirmantes <= 1) {
+            if ($totalFirmantes <= 1 && ! in_array($grupo->documento?->estado, ['borrador', 'en_revision'], true)) {
                 return $this->errorResponse('El grupo colaborativo debe conservar al menos un firmante.', null, 422);
             }
 

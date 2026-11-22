@@ -101,6 +101,7 @@ class FirmaGrupoDocumentoTest extends TestCase
         // Desde el editor no se firma aparte: la firma es el cumplido del grupo
         $this->actingAs($this->firmante)->getJson(self::URL."/{$this->documento}/firmas")
             ->assertOk()
+            ->assertJsonPath('data.grupo_para_firmar.id', $this->grupo)
             ->assertJsonPath('data.firma_en_grupo', true)
             ->assertJsonPath('data.puede_firmar', false);
         $this->postJson(self::URL."/{$this->documento}/firmas/solicitar-otp")->assertUnprocessable();
@@ -115,6 +116,7 @@ class FirmaGrupoDocumentoTest extends TestCase
         $this->assertSame('firmado', DB::table('mi_bandeja_temp_reci_documentos')->where('id', $this->documento)->value('estado'));
         $this->getJson(self::URL."/{$this->documento}/firmas")
             ->assertOk()
+            ->assertJsonPath('data.grupo_para_firmar', null)
             ->assertJsonPath('data.protegido', true)
             ->assertJsonPath('data.firmas.0.usuario', 'Fabio Díaz')
             ->assertJsonCount(0, 'data.pendientes');

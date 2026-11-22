@@ -176,9 +176,16 @@ class PlantillasBaseService
         return [
             $this->vacio(),
             $this->vacio(),
-            $this->parrafo($this->enLinea('{usuario_nombre|mayus}', true)),
-            $this->parrafo('{usuario_cargo}'),
-            $this->parrafo('{usuario_dependencia}'),
+            ...array_map(function ($propiedad) {
+                $nodo = ['type' => 'campoGrupo', 'attrs' => [
+                    'id' => 'firma-'.$propiedad, 'rol' => 'firmantes', 'propiedad' => $propiedad,
+                    'valor' => '', 'linked' => true, 'manual_override' => false,
+                ]];
+                if ($propiedad === 'nombre') {
+                    $nodo['marks'] = [['type' => 'bold']];
+                }
+                return $this->parrafo([$nodo]);
+            }, ['nombre', 'cargo', 'dependencia']),
         ];
     }
 
