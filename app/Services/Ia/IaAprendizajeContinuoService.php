@@ -6,6 +6,7 @@ use App\Models\Ia\IaBorradorAuditoria;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Contenido;
 use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -292,6 +293,120 @@ class IaAprendizajeContinuoService
         $palabras = preg_split('/\s+/u', trim($texto), -1, PREG_SPLIT_NO_EMPTY);
 
         return is_array($palabras) ? $palabras : [];
+    }
+
+    /**
+     * Envía un lote de respuestas aprobadas (candidatos SFT / edición moderada) al indexador incremental RAG (F4-02).
+     *
+     * @param  int  $limit  Cantidad máxima de registros a procesar
+     * @return array<string, mixed>
+     */
+    public function indexarRespuestasAprobadas(int $limit = 50): array
+    {
+        $candidatos = IaBorradorAuditoria::whereIn('estado_aprendizaje', [
+            'capturado_candidato_sft',
+            'capturado_edicion_moderada',
+        ])
+            ->whereNotNull('contenido_final')
+            ->where(function ($query) {
+                $query->whereNull('metadata_aprendizaje->indexado_rag')
+                    ->orWhere('metadata_aprendizaje->indexado_rag', false);
+            })
+            ->limit($limit)
+            ->get();
+
+        if ($candidatos->isEmpty()) {
+            return [
+                'success' => true,
+                'total_enviados' => 0,
+                'mensaje' => 'No hay respuestas pendientes de indexación incremental.',
+                'detalles' => [],
+            ];
+        }
+
+        $items = [];
+        foreach ($candidatos as $reg) {
+            $citas = is_array($reg->citas_utilizadas) ? $reg->citas_utilizadas : [];
+            $items[] = [
+                'id_radica' => (string) ($reg->radicado_salida ?: ($reg->id_radicado ?: 'AUD-'.$reg->id)),
+                'contenido' => (string) $reg->contenido_final,
+                'tipo' => (string) ($reg->tipo_radicado ?: 'enviado'),
+                'anio' => (int) ($reg->firmado_at?->year ?? now()->year),
+                'id_dependencia' => isset($citas['dependencia_id']) ? (int) $citas['dependencia_id'] : null,
+                'nom_dependencia' => isset($citas['dependencia_nombre']) ? (string) $citas['dependencia_nombre'] : null,
+                'id_serie' => isset($citas['serie_trd']) ? (int) $citas['serie_trd'] : null,
+                'id_subserie' => isset($citas['subserie_trd']) ? (int) $citas['subserie_trd'] : null,
+                'id_tipodoc' => isset($citas['tipo_documento_id']) ? (int) $citas['tipo_documento_id'] : null,
+                'asunto' => (string) ($reg->id_radicado ?? ''),
+                'edit_ratio' => (float) ($reg->edit_ratio ?? 0.0),
+            ];
+        }
+
+        $baseUrl = rtrim(config('services.ia.url', 'http://127.0.0.1:8002'), '/');
+        $apiKey = config('services.ia.key', 'ocobo_ai_secret_key_2026_local');
+        $timeout = (int) config('services.ia.timeout', 120);
+
+        try {
+            $response = Http::withHeaders([
+                'X-Ocobo-AI-Key' => $apiKey,
+                'Accept' => 'application/json',
+            ])->timeout($timeout)->post("{$baseUrl}/v1/rag/incremental-index", [
+                'items' => $items,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $ahora = now()->toIso8601String();
+
+                // Marcar registros como indexados en auditoría
+                foreach ($candidatos as $reg) {
+                    $meta = is_array($reg->metadata_aprendizaje) ? $reg->metadata_aprendizaje : [];
+                    $meta['indexado_rag'] = true;
+                    $meta['indexado_rag_at'] = $ahora;
+                    $reg->update(['metadata_aprendizaje' => $meta]);
+                }
+
+                Log::info('Lote incremental RAG indexado exitosamente', [
+                    'total_documentos' => count($items),
+                    'chunks_generados' => $data['chunks_generados'] ?? 0,
+                    'total_vectores_faiss' => $data['total_vectores_faiss'] ?? 0,
+                ]);
+
+                return [
+                    'success' => true,
+                    'total_enviados' => count($items),
+                    'chunks_generados' => $data['chunks_generados'] ?? 0,
+                    'entidades_anonimizadas' => $data['entidades_anonimizadas'] ?? 0,
+                    'total_vectores_faiss' => $data['total_vectores_faiss'] ?? 0,
+                    'tiempo_total_s' => $data['tiempo_total_s'] ?? 0.0,
+                    'detalles' => $data['detalles'] ?? [],
+                    'mensaje' => 'Respuestas aprobadas indexadas exitosamente en RAG incremental.',
+                ];
+            }
+
+            Log::error('Fallo en endpoint incremental-index de FastAPI', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return [
+                'success' => false,
+                'total_enviados' => count($items),
+                'mensaje' => 'El servicio de IA retornó error HTTP '.$response->status(),
+                'error' => $response->body(),
+            ];
+        } catch (\Throwable $e) {
+            Log::error('Error de conexión con servicio de IA para indexación incremental', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'total_enviados' => count($items),
+                'mensaje' => 'No se pudo conectar con el servicio de IA local: '.$e->getMessage(),
+                'error' => $e->getMessage(),
+            ];
+        }
     }
 
     /**
