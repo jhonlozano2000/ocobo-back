@@ -230,6 +230,22 @@ class DocumentoController extends Controller
         ]);
     }
 
+    /** Page metadata for the editor without loading the body, cursors or presence. */
+    public function configuracion(Documento $documento): JsonResponse
+    {
+        $plantilla = $documento->plantilla_generada_id ? $documento->plantillaGenerada : null;
+
+        return $this->successResponse([
+            'titulo' => $documento->titulo,
+            'configuracion_pagina' => $documento->getConfiguracionPagina(),
+            'plantilla_generada' => $plantilla ? [
+                'id' => $plantilla->id,
+                'nombre' => $plantilla->nombre,
+                'institucional' => (bool) $plantilla->institucional,
+            ] : null,
+        ]);
+    }
+
     public function show(Request $request, Documento $documento): JsonResponse
     {
         if (! $documento->tieneAcceso($request->user())) {

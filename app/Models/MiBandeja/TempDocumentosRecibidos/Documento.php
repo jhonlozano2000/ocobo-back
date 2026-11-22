@@ -2,6 +2,7 @@
 
 namespace App\Models\MiBandeja\TempDocumentosRecibidos;
 
+use App\Models\Gestion\GestionTercero;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\OfiArchivo\OfiArchivoPlantillaGenerada;
 use App\Models\Transversal\FirmaEvento;
@@ -13,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -45,6 +47,18 @@ use Illuminate\Validation\ValidationException;
  */
 class Documento extends Model
 {
+    /** @return BelongsToMany<User> */
+    public function destinatariosInternos(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'documento_destinatarios_internos', 'documento_id', 'user_id')->withPivot('orden')->withTimestamps();
+    }
+
+    /** @return BelongsToMany<GestionTercero> */
+    public function destinatariosExternos(): BelongsToMany
+    {
+        return $this->belongsToMany(GestionTercero::class, 'documento_destinatarios_externos', 'documento_id', 'tercero_id')->withPivot('orden')->withTimestamps();
+    }
+
     /** Miembros del grupo colaborativo → rol equivalente en el documento (de menor a mayor alcance). */
     public const ROLES_GRUPO = [
         'proyectores' => 'proyector',

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\ComentarioController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\CursorController;
+use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DestinatariosDocumentoController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoExportController;
 use App\Http\Controllers\MiBandeja\TempDocumentosRecibidos\DocumentoImportController;
@@ -32,7 +33,9 @@ Route::middleware(['auth:sanctum', 'throttle:documentos'])->prefix('comunicacion
     Route::post('/plantillas-cargadas/{cargada}/usar', [PlantillaController::class, 'usarCargada']);
 
     Route::middleware('can:ver,documento')->group(function () {
+        Route::get('/documentos/{documento}/destinatarios', [DestinatariosDocumentoController::class, 'index']);
         Route::get('/documentos/{documento}', [DocumentoController::class, 'show']);
+        Route::get('/documentos/{documento}/configuracion', [DocumentoController::class, 'configuracion']);
         Route::get('/documentos/{documento}/contenido', [DocumentoController::class, 'obtenerContenido']);
         Route::get('/documentos/{documento}/combinacion', [PlantillaController::class, 'combinacion']);
         Route::get('/documentos/{documento}/cursores', [CursorController::class, 'obtenerCursores']);
@@ -46,6 +49,7 @@ Route::middleware(['auth:sanctum', 'throttle:documentos'])->prefix('comunicacion
     });
 
     Route::middleware(['can:editar,documento', 'throttle:sincronizacion'])->group(function () {
+        Route::put('/documentos/{documento}/destinatarios', [DestinatariosDocumentoController::class, 'update']);
         Route::put('/documentos/{documento}', [DocumentoController::class, 'update']);
         Route::patch('/documentos/{documento}/configuracion', [DocumentoController::class, 'guardarConfiguracionPagina']);
         Route::post('/documentos/{documento}/sincronizar', [DocumentoController::class, 'sincronizar']);

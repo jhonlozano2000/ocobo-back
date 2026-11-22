@@ -90,6 +90,7 @@ class VariablesPlantillaService
     {
         $camposGrupo = [
             'documento_asunto' => 'Asunto del documento',
+            'documento_destinatarios' => 'Destinatarios del documento',
             'grupo_bloque_firmas' => 'Bloque de firmas',
         ];
         foreach (['firmantes', 'revisores', 'proyectores', 'responsables', 'aprobadores'] as $rol) {
@@ -227,6 +228,14 @@ class VariablesPlantillaService
             if ($clave === 'documento_asunto') {
                 $campo = ['type' => 'campoGrupo', 'attrs' => [
                     'id' => (string) Str::uuid(), 'rol' => 'grupo', 'propiedad' => 'asunto',
+                    'valor' => '', 'linked' => true, 'manual_override' => false,
+                ]];
+
+                return empty($nodo['marks']) ? $campo : $campo + ['marks' => $nodo['marks']];
+            }
+            if ($clave === 'documento_destinatarios') {
+                $campo = ['type' => 'campoGrupo', 'attrs' => [
+                    'id' => (string) Str::uuid(), 'rol' => 'destinatarios', 'propiedad' => 'nombre',
                     'valor' => '', 'linked' => true, 'manual_override' => false,
                 ]];
 
