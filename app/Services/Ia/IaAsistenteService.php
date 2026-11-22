@@ -3,6 +3,8 @@
 namespace App\Services\Ia;
 
 use App\Models\Calidad\CalidadOrganigrama;
+use App\Models\Configuracion\ConfigDiviPoli;
+use App\Models\Configuracion\ConfigVarias;
 use App\Models\ControlAcceso\UserCargo;
 use App\Models\User;
 use Illuminate\Http\Client\ConnectionException;
@@ -152,6 +154,7 @@ class IaAsistenteService
     public function proyectarBorrador(array $datos, ?User $user = null): array
     {
         $dependenciasPermitidas = $this->obtenerDependenciasPermitidas($user);
+        $infoInst = $this->obtenerDatosInstitucion();
 
         $payload = [
             'id_radicado' => $datos['id_radicado'] ?? null,
@@ -164,6 +167,9 @@ class IaAsistenteService
             'top_k' => (int) ($datos['top_k'] ?? 5),
             'instrucciones_adicionales' => $datos['instrucciones_adicionales'] ?? null,
             'anonimizar_automaticamente' => (bool) ($datos['anonimizar_automaticamente'] ?? true),
+            'institucion_nombre' => $datos['institucion_nombre'] ?? $infoInst['institucion_nombre'],
+            'institucion_ciudad' => $datos['institucion_ciudad'] ?? $infoInst['institucion_ciudad'],
+            'institucion_departamento' => $datos['institucion_departamento'] ?? $infoInst['institucion_departamento'],
         ];
 
         try {
@@ -271,6 +277,43 @@ class IaAsistenteService
         foreach ($hijos as $hijo) {
             $ids[] = (int) $hijo->id;
             $this->acumularDescendientesIds($hijo, $ids, $profundidad + 1);
+        }
+    }
+
+    /**
+     * Obtiene los metadatos de la institución configurada en OCOBO (multitenant).
+     */
+    protected function obtenerDatosInstitucion(): array
+    {
+        try {
+            $razonSocial = ConfigVarias::where('clave', 'razon_social_empresa')->value('valor')
+                ?: config('app.name', 'Entidad Institucional');
+
+            $ciudad = '[CIUDAD]';
+            $depto = '[DEPARTAMENTO]';
+
+            $diviId = ConfigVarias::where('clave', 'divi_poli_id_empresa')->value('valor');
+            if ($diviId) {
+                $divi = ConfigDiviPoli::with('padre')->find($diviId);
+                if ($divi) {
+                    $ciudad = $divi->nombre;
+                    if ($divi->padre) {
+                        $depto = $divi->padre->nombre;
+                    }
+                }
+            }
+
+            return [
+                'institucion_nombre' => $razonSocial,
+                'institucion_ciudad' => $ciudad,
+                'institucion_departamento' => $depto,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'institucion_nombre' => config('app.name', 'Entidad Institucional'),
+                'institucion_ciudad' => '[CIUDAD]',
+                'institucion_departamento' => '[DEPARTAMENTO]',
+            ];
         }
     }
 }
