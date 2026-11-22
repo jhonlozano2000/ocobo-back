@@ -460,4 +460,61 @@ class IaAprendizajeContinuoService
             'distribucion_tipologias' => $distribucion,
         ];
     }
+
+    /**
+     * Exporta los pares calificados como candidatos SFT / Replay Buffer (edit_ratio <= 0.40)
+     * listos para ser consumidos por el pipeline de reentrenamiento LoRA anti-catastrophic forgetting.
+     *
+     * @param  string|null  $outputPath  Ruta opcional en disco donde escribir el archivo JSONL
+     * @param  int  $limit  Límite máximo de registros a recuperar
+     * @return array{total: int, items: array<int, array<string, mixed>>, path: string|null}
+     */
+    public function exportarCandidatosSft(?string $outputPath = null, int $limit = 1000): array
+    {
+        $candidatos = IaBorradorAuditoria::candidatosSft()
+            ->whereNotNull('contenido_final')
+            ->orderBy('id', 'asc')
+            ->limit($limit)
+            ->get();
+
+        $items = [];
+        foreach ($candidatos as $c) {
+            $items[] = [
+                'id' => $c->id,
+                'prompt_original' => $c->prompt_original,
+                'asunto' => $c->asunto ?? 'Sin asunto especificado',
+                'tipo_radicado' => $c->tipo_radicado,
+                'borrador_original' => $c->borrador_generado,
+                'respuesta_final' => $c->contenido_final,
+                'edit_ratio' => (float) $c->edit_ratio,
+                'estado_aprendizaje' => $c->estado_aprendizaje,
+                'firmado_at' => $c->firmado_at?->toIso8601String(),
+                'radicado_salida' => $c->radicado_salida,
+                'dependencia_id' => $c->dependencia_id,
+                'user_id' => $c->user_id,
+                'metadata' => $c->metadata_aprendizaje ?? [],
+            ];
+        }
+
+        if ($outputPath !== null && count($items) > 0) {
+            $dir = dirname($outputPath);
+            if (! is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+
+            $fp = fopen($outputPath, 'w');
+            if ($fp) {
+                foreach ($items as $item) {
+                    fwrite($fp, json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)."\n");
+                }
+                fclose($fp);
+            }
+        }
+
+        return [
+            'total' => count($items),
+            'items' => $items,
+            'path' => $outputPath,
+        ];
+    }
 }

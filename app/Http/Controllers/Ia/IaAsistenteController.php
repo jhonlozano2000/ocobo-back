@@ -318,4 +318,18 @@ class IaAsistenteController extends Controller
             'Métricas de aprendizaje continuo recuperadas exitosamente.'
         );
     }
+
+    /**
+     * Retorna los candidatos SFT capturados (edit_ratio <= 0.40) para el pipeline de Replay Buffer.
+     */
+    public function candidatosSft(Request $request, IaAprendizajeContinuoService $aprendizajeService): JsonResponse
+    {
+        $limit = $request->integer('limit', 100);
+        $resultado = $aprendizajeService->exportarCandidatosSft(null, $limit);
+
+        return $this->successResponse(
+            $resultado,
+            'Candidatos SFT para Replay Buffer recuperados exitosamente.'
+        );
+    }
 }

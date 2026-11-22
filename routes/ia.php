@@ -23,4 +23,7 @@ Route::middleware(['auth:sanctum', 'throttle:ia-drafts'])->group(function () {
 
     // Métricas del pipeline de aprendizaje continuo (HITL - Human in the Loop)
     Route::get('/aprendizaje/metricas', [IaAsistenteController::class, 'metricasAprendizaje']);
+
+    // Candidatos SFT capturados (edit_ratio <= 0.40) para Replay Buffer LoRA
+    Route::get('/aprendizaje/candidatos-sft', [IaAsistenteController::class, 'candidatosSft']);
 });
