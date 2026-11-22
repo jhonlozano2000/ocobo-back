@@ -21,6 +21,10 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('config-operations', function (Request $request) {
             return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
         });
+
+        RateLimiter::for('ia-drafts', function (Request $request) {
+            return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
+        });
     }
 
     public function boot(): void
@@ -179,6 +183,11 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('api')
                 ->prefix('api/ia-asistente')
                 ->group(base_path('routes/ia-asistente.php'));
+
+            // ASISTENTE IA — DOCUMENTO EN BLANCO Y FEEDBACK (/api/ia/*)
+            Route::middleware('api')
+                ->prefix('api/ia')
+                ->group(base_path('routes/ia.php'));
         });
     }
 }

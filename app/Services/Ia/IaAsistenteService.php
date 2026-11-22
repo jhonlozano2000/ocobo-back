@@ -6,6 +6,7 @@ use App\Models\Calidad\CalidadOrganigrama;
 use App\Models\Configuracion\ConfigDiviPoli;
 use App\Models\Configuracion\ConfigVarias;
 use App\Models\ControlAcceso\UserCargo;
+use App\Models\Ia\IaBorradorAuditoria;
 use App\Models\User;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
@@ -276,6 +277,163 @@ class IaAsistenteService
     }
 
     /**
+     * Solicita al microservicio de IA una sugerencia de borrador inicial para un documento en blanco.
+     *
+     * Combina la frase obligatoria y la tipología (memorando, acta, circular u oficio) con
+     * el contexto de sesión del funcionario (dependencia y cargo), el filtro ABAC jerárquico
+     * y los datos institucionales multitenant de OCOBO.
+     *
+     * @param  array  $datos  Datos validados de SugerirDocumentoBlancoRequest
+     * @param  User|null  $user  Usuario autenticado
+     * @return array<string, mixed>
+     */
+    public function sugerirDocumentoBlanco(array $datos, ?User $user = null): array
+    {
+        if (! $this->enabled) {
+            return [
+                'success' => false,
+                'estado' => 'SERVICIO_DESHABILITADO',
+                'tipo_documento' => $datos['tipo_documento'] ?? 'oficio',
+                'asunto_sugerido' => '',
+                'contenido_estructurado' => '',
+                'campos_por_completar' => [],
+                'precedentes_usados' => [],
+                'modelo_usado' => 'N/A',
+                'error' => 'El Asistente de IA se encuentra deshabilitado por configuración del sistema.',
+            ];
+        }
+
+        $dependenciasPermitidas = $this->obtenerDependenciasPermitidas($user);
+        $contextoFuncionario = $this->obtenerContextoFuncionario($user);
+        $infoInst = $this->obtenerDatosInstitucion();
+
+        $payload = [
+            'frase' => $datos['frase'],
+            'tipo_documento' => $datos['tipo_documento'],
+            'dependencia_nombre' => $contextoFuncionario['dependencia_nombre'],
+            'cargo_funcionario' => $contextoFuncionario['cargo_funcionario'],
+            'dependencias_permitidas' => $dependenciasPermitidas,
+            'serie_trd' => $datos['serie_trd'] ?? null,
+            'subserie_trd' => $datos['subserie_trd'] ?? null,
+            'top_k' => (int) ($datos['top_k'] ?? 3),
+            'institucion_nombre' => $infoInst['institucion_nombre'],
+            'institucion_ciudad' => $infoInst['institucion_ciudad'],
+            'institucion_departamento' => $infoInst['institucion_departamento'],
+            'modelo_solicitado' => $datos['modelo_solicitado'] ?? $this->model,
+            'anonimizar_automaticamente' => true,
+            'stream' => false,
+        ];
+
+        $timeoutControlado = min($this->timeout, 90);
+
+        try {
+            $response = Http::withHeaders([
+                'X-Ocobo-AI-Key' => $this->apiKey,
+                'Accept' => 'application/json',
+            ])->timeout($timeoutControlado)->post("{$this->baseUrl}/v1/drafts/blank-document", $payload);
+
+            if ($response->successful()) {
+                $json = $response->json();
+                $json['contexto_funcionario'] = $contextoFuncionario;
+
+                return $json;
+            }
+
+            Log::warning('Fallo en sugerencia de documento en blanco IA', [
+                'status' => $response->status(),
+                'tipo_documento' => $datos['tipo_documento'] ?? null,
+            ]);
+
+            return [
+                'success' => false,
+                'estado' => 'ERROR_SERVICIO',
+                'tipo_documento' => $datos['tipo_documento'] ?? 'oficio',
+                'asunto_sugerido' => '',
+                'contenido_estructurado' => '',
+                'campos_por_completar' => [],
+                'precedentes_usados' => [],
+                'modelo_usado' => 'N/A',
+                'error' => "El motor de IA retornó error HTTP {$response->status()}",
+            ];
+        } catch (ConnectionException $e) {
+            return [
+                'success' => false,
+                'estado' => 'SERVICIO_NO_DISPONIBLE',
+                'tipo_documento' => $datos['tipo_documento'] ?? 'oficio',
+                'asunto_sugerido' => '',
+                'contenido_estructurado' => '',
+                'campos_por_completar' => [],
+                'precedentes_usados' => [],
+                'modelo_usado' => 'N/A',
+                'error' => 'No se pudo establecer conexión con el motor de IA local (:8002).',
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'estado' => 'ERROR_INESPERADO',
+                'tipo_documento' => $datos['tipo_documento'] ?? 'oficio',
+                'asunto_sugerido' => '',
+                'contenido_estructurado' => '',
+                'campos_por_completar' => [],
+                'precedentes_usados' => [],
+                'modelo_usado' => 'N/A',
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Obtiene la dependencia y el cargo activo del funcionario autenticado para contextualizar el borrador.
+     *
+     * @return array{dependencia_id: int|null, dependencia_nombre: string|null, cargo_funcionario: string|null}
+     */
+    public function obtenerContextoFuncionario(?User $user): array
+    {
+        if (! $user) {
+            return [
+                'dependencia_id' => null,
+                'dependencia_nombre' => null,
+                'cargo_funcionario' => null,
+            ];
+        }
+
+        try {
+            $cargoActivo = UserCargo::cargoActivoDelUsuario($user->id);
+            if (! $cargoActivo || ! $cargoActivo->cargo) {
+                return [
+                    'dependencia_id' => null,
+                    'dependencia_nombre' => null,
+                    'cargo_funcionario' => null,
+                ];
+            }
+
+            $cargo = $cargoActivo->cargo;
+            $jerarquia = $cargo->getJerarquiaCompleta();
+
+            $dependenciaId = null;
+            $dependenciaNombre = null;
+            foreach ($jerarquia as $nodo) {
+                if (in_array($nodo['tipo'] ?? '', ['Dependencia', 'Oficina'], true)) {
+                    $dependenciaId = isset($nodo['id']) ? (int) $nodo['id'] : null;
+                    $dependenciaNombre = $nodo['nom_organico'] ?? null;
+                }
+            }
+
+            return [
+                'dependencia_id' => $dependenciaId ?? (int) $cargo->id,
+                'dependencia_nombre' => $dependenciaNombre ?? $cargo->nom_organico,
+                'cargo_funcionario' => $cargo->nom_organico,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'dependencia_id' => null,
+                'dependencia_nombre' => null,
+                'cargo_funcionario' => null,
+            ];
+        }
+    }
+
+    /**
      * Resuelve los IDs de dependencias a las que tiene acceso el usuario según ABAC.
      * Si retorna null, significa acceso global sin restricciones (bypass por permisos).
      *
@@ -365,5 +523,96 @@ class IaAsistenteService
                 'institucion_departamento' => '[DEPARTAMENTO]',
             ];
         }
+    }
+
+    /**
+     * Registra en la bitácora de auditoría (ISO 27001) la sugerencia de borrador en blanco.
+     *
+     * @param  array<string, mixed>  $datos  Datos de la petición validados
+     * @param  array<string, mixed>  $resultado  Resultado retornado por el motor de IA
+     * @param  User|null  $user  Usuario solicitante
+     * @param  string|null  $ipAddress  Dirección IP origen
+     * @param  string|null  $userAgent  User Agent origen
+     * @return int|null ID de la auditoría generada o null si falló la persistencia
+     */
+    public function registrarAuditoriaBorradorBlanco(
+        array $datos,
+        array $resultado,
+        ?User $user = null,
+        ?string $ipAddress = null,
+        ?string $userAgent = null
+    ): ?int {
+        $contexto = $resultado['contexto_funcionario'] ?? [];
+
+        try {
+            $auditoria = IaBorradorAuditoria::create([
+                'user_id' => $user?->id,
+                'id_radicado' => ! empty($datos['documento_id']) ? 'DOC-'.$datos['documento_id'] : null,
+                'tipo_radicado' => 'blanco_'.($datos['tipo_documento'] ?? 'oficio'),
+                'radicado_id' => $datos['documento_id'] ?? null,
+                'asunto_hash' => hash('sha256', (string) ($resultado['asunto_sugerido'] ?? '')),
+                'prompt_hash' => hash('sha256', (string) ($datos['frase'] ?? '')),
+                'modelo_llm' => (string) ($resultado['modelo_usado'] ?? 'N/A'),
+                'estado' => ! empty($resultado['fallback']) ? 'BORRADOR_BLANCO_FALLBACK' : 'BORRADOR_BLANCO_OK',
+                'score_confianza' => null,
+                'citas_utilizadas' => [
+                    'tipo_documento' => $datos['tipo_documento'] ?? 'oficio',
+                    'dependencia_id' => $contexto['dependencia_id'] ?? null,
+                    'dependencia_nombre' => $contexto['dependencia_nombre'] ?? null,
+                    'frase_longitud' => mb_strlen((string) ($datos['frase'] ?? '')),
+                    'serie_trd' => $datos['serie_trd'] ?? null,
+                    'subserie_trd' => $datos['subserie_trd'] ?? null,
+                    'precedentes_usados' => $resultado['precedentes_usados'] ?? [],
+                    'feedback' => null,
+                ],
+                'advertencias' => [],
+                'tokens_verificar' => $resultado['campos_por_completar'] ?? [],
+                'borrador_generado' => $resultado['contenido_estructurado'] ?? null,
+                'tiempo_total_ms' => isset($resultado['tiempo_total_ms']) ? (float) $resultado['tiempo_total_ms'] : null,
+                'fallback' => (bool) ($resultado['fallback'] ?? false),
+                'ip_address' => $ipAddress,
+                'user_agent' => $userAgent,
+            ]);
+
+            return $auditoria->id;
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo persistir auditoría de borrador en blanco IA', [
+                'error' => $e->getMessage(),
+                'user_id' => $user?->id,
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Registra o actualiza el feedback de usuario sobre una sugerencia de borrador (ISO 27001).
+     *
+     * @param  int  $auditoriaId  ID del registro de auditoría
+     * @param  string  $accion  Acción ejecutada (insertado, editado, descartado, regenerado)
+     * @param  int|null  $userId  ID del usuario solicitante
+     * @return bool True si se actualizó el registro, False en caso contrario
+     */
+    public function registrarFeedbackAuditoria(int $auditoriaId, string $accion, ?int $userId = null): bool
+    {
+        $query = IaBorradorAuditoria::where('id', $auditoriaId);
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        $auditoria = $query->first();
+        if (! $auditoria) {
+            return false;
+        }
+
+        $meta = is_array($auditoria->citas_utilizadas) ? $auditoria->citas_utilizadas : [];
+        $meta['feedback'] = [
+            'accion' => $accion,
+            'registrado_en' => now()->toIso8601String(),
+        ];
+
+        $auditoria->citas_utilizadas = $meta;
+
+        return $auditoria->save();
     }
 }

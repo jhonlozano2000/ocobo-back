@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Ia;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ia\BuscarPrecedentesIaRequest;
+use App\Http\Requests\Ia\CrearDocumentoDesdeBorradorIaRequest;
 use App\Http\Requests\Ia\ProyectarBorradorIaRequest;
+use App\Http\Requests\Ia\SugerirDocumentoBlancoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Jobs\Ia\ProyectarBorradorIaJob;
 use App\Models\Ia\IaBorradorAuditoria;
@@ -223,5 +225,80 @@ class IaAsistenteController extends Controller
                 $e->getMessage()
             );
         }
+    }
+
+    /**
+     * Sugiere un borrador inicial estructurado para un documento en blanco a partir de una frase obligatoria.
+     *
+     * Soporta memorandos, actas, circulares y oficios con control ABAC, anonimización Ley 1581
+     * y trazabilidad en auditoría ISO 27001 sin almacenar texto crudo sensible de la frase.
+     *
+     * @param  SugerirDocumentoBlancoRequest  $request  Solicitud validada (frase 10–240 chars y tipología)
+     */
+    public function sugerirDocumentoBlanco(SugerirDocumentoBlancoRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $datos = $request->validated();
+
+        $resultado = $this->iaService->sugerirDocumentoBlanco($datos, $user);
+
+        if (! ($resultado['success'] ?? false)) {
+            return $this->warningResponse(
+                $resultado['error'] ?? 'No fue posible sugerir el borrador inicial para el documento en blanco.',
+                $resultado
+            );
+        }
+
+        $contexto = $resultado['contexto_funcionario'] ?? [];
+        unset($resultado['contexto_funcionario']);
+
+        $auditoriaId = $this->iaService->registrarAuditoriaBorradorBlanco(
+            $datos,
+            array_merge($resultado, ['contexto_funcionario' => $contexto]),
+            $user,
+            $request->ip(),
+            $request->userAgent()
+        );
+
+        $resultado['auditoria_id'] = $auditoriaId;
+
+        return $this->successResponse(
+            $resultado,
+            'Borrador inicial sugerido exitosamente para el documento en blanco.'
+        );
+    }
+
+    /**
+     * Registra si el borrador inicial sugerido fue insertado, editado, regenerado o descartado.
+     *
+     * @param  Request  $request  Petición con el campo accion (insertado|editado|descartado|regenerado)
+     * @param  int  $auditoriaId  Identificador del registro de auditoría
+     */
+    public function registrarFeedbackDocumentoBlanco(Request $request, int $auditoriaId): JsonResponse
+    {
+        $validado = $request->validate([
+            'accion' => ['required', 'string', 'in:insertado,editado,descartado,regenerado'],
+        ], [
+            'accion.required' => 'Debe indicar la acción realizada sobre la sugerencia.',
+            'accion.in' => 'La acción indicada no es válida. Valores permitidos: insertado, editado, descartado o regenerado.',
+        ]);
+
+        $actualizado = $this->iaService->registrarFeedbackAuditoria(
+            $auditoriaId,
+            $validado['accion'],
+            $request->user()?->id
+        );
+
+        if (! $actualizado) {
+            return $this->notFoundResponse('Registro de auditoría de sugerencia no encontrado.');
+        }
+
+        return $this->successResponse(
+            [
+                'auditoria_id' => $auditoriaId,
+                'accion' => $validado['accion'],
+            ],
+            'Trazabilidad de sugerencia IA actualizada correctamente.'
+        );
     }
 }
