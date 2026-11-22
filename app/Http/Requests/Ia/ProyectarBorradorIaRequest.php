@@ -67,6 +67,11 @@ class ProyectarBorradorIaRequest extends FormRequest
                 'nullable',
                 'boolean',
             ],
+            'modelo_solicitado' => [
+                'nullable',
+                'string',
+                'max:100',
+            ],
         ];
     }
 

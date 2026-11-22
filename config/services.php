@@ -90,6 +90,9 @@ return [
         'url' => env('IA_SERVICE_URL', 'http://127.0.0.1:8002'),
         'key' => env('IA_SERVICE_KEY', 'ocobo_ai_secret_key_2026_local'),
         'timeout' => (int) env('IA_SERVICE_TIMEOUT', 180),
+        'enabled' => (bool) env('IA_SERVICE_ENABLED', true),
+        'model' => env('IA_SERVICE_MODEL', 'ocobo-asistente:latest'),
+        'model_fallback' => env('IA_SERVICE_MODEL_FALLBACK', 'qwen2.5:7b-instruct-q4_K_M'),
     ],
 
 ];

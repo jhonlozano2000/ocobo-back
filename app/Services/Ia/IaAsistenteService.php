@@ -27,16 +27,34 @@ class IaAsistenteService
 
     protected int $timeout;
 
-    public function __construct(?string $baseUrl = null, ?string $apiKey = null, ?int $timeout = null)
-    {
+    protected bool $enabled;
+
+    protected string $model;
+
+    protected string $modelFallback;
+
+    public function __construct(
+        ?string $baseUrl = null,
+        ?string $apiKey = null,
+        ?int $timeout = null,
+        ?bool $enabled = null,
+        ?string $model = null,
+        ?string $modelFallback = null
+    ) {
         try {
             $this->baseUrl = rtrim($baseUrl ?? config('services.ia.url', 'http://127.0.0.1:8002'), '/');
             $this->apiKey = $apiKey ?? config('services.ia.key', 'ocobo_ai_secret_key_2026_local');
             $this->timeout = $timeout ?? (int) config('services.ia.timeout', 180);
+            $this->enabled = $enabled ?? (bool) config('services.ia.enabled', true);
+            $this->model = $model ?? (string) config('services.ia.model', 'ocobo-asistente:latest');
+            $this->modelFallback = $modelFallback ?? (string) config('services.ia.model_fallback', 'qwen2.5:7b-instruct-q4_K_M');
         } catch (\Throwable $e) {
             $this->baseUrl = rtrim($baseUrl ?? 'http://127.0.0.1:8002', '/');
             $this->apiKey = $apiKey ?? 'ocobo_ai_secret_key_2026_local';
             $this->timeout = $timeout ?? 180;
+            $this->enabled = $enabled ?? true;
+            $this->model = $model ?? 'ocobo-asistente:latest';
+            $this->modelFallback = $modelFallback ?? 'qwen2.5:7b-instruct-q4_K_M';
         }
     }
 
@@ -45,6 +63,12 @@ class IaAsistenteService
      */
     public function obtenerEstado(): array
     {
+        if (! $this->enabled) {
+            return [
+                'online' => false,
+                'error' => 'El servicio de IA institucional se encuentra deshabilitado por configuración del sistema.',
+            ];
+        }
         try {
             $response = Http::withHeaders([
                 'X-Ocobo-AI-Key' => $this->apiKey,
@@ -91,6 +115,17 @@ class IaAsistenteService
         bool $flagHc = false,
         bool $flagTutela = false
     ): array {
+        if (! $this->enabled) {
+            return [
+                'success' => false,
+                'estado' => 'SERVICIO_DESHABILITADO',
+                'precedentes' => [],
+                'citas' => [],
+                'advertencias' => [],
+                'error' => 'El Asistente de IA se encuentra deshabilitado por configuración del sistema.',
+            ];
+        }
+
         $dependenciasPermitidas = $this->obtenerDependenciasPermitidas($user);
 
         $payload = [
@@ -153,6 +188,20 @@ class IaAsistenteService
      */
     public function proyectarBorrador(array $datos, ?User $user = null): array
     {
+        if (! $this->enabled) {
+            return [
+                'success' => false,
+                'estado' => 'SERVICIO_DESHABILITADO',
+                'borrador_respuesta' => '',
+                'citas' => [],
+                'advertencias' => [],
+                'tokens_verificar' => [],
+                'score_confianza' => 0.0,
+                'modelo_usado' => 'N/A',
+                'error' => 'El Asistente de IA se encuentra deshabilitado por configuración del sistema.',
+            ];
+        }
+
         $dependenciasPermitidas = $this->obtenerDependenciasPermitidas($user);
         $infoInst = $this->obtenerDatosInstitucion();
 
@@ -170,6 +219,7 @@ class IaAsistenteService
             'institucion_nombre' => $datos['institucion_nombre'] ?? $infoInst['institucion_nombre'],
             'institucion_ciudad' => $datos['institucion_ciudad'] ?? $infoInst['institucion_ciudad'],
             'institucion_departamento' => $datos['institucion_departamento'] ?? $infoInst['institucion_departamento'],
+            'modelo_solicitado' => $datos['modelo_solicitado'] ?? $this->model,
         ];
 
         try {
