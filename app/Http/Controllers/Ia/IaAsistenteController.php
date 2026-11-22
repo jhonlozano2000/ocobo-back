@@ -332,4 +332,49 @@ class IaAsistenteController extends Controller
             'Candidatos SFT para Replay Buffer recuperados exitosamente.'
         );
     }
+
+    /**
+     * Evalúa un modelo LoRA candidato contra el Golden Test Set a través del Gate de Promoción (F4-04).
+     */
+    public function gatePromocion(Request $request, IaAprendizajeContinuoService $aprendizajeService): JsonResponse
+    {
+        $reporteCandidato = $request->input('reporte_candidato', []);
+        $reporteBaseline = $request->input('reporte_baseline');
+        $muestrasTextos = $request->input('muestras_textos', []);
+
+        $decision = $aprendizajeService->evaluarGatePromocion(
+            $reporteCandidato,
+            $reporteBaseline,
+            $muestrasTextos
+        );
+
+        if (! ($decision['success'] ?? false) && empty($decision['motivos_bloqueo'])) {
+            return $this->serverErrorResponse('Error evaluando el gate de promoción', $decision['error'] ?? null);
+        }
+
+        return $this->successResponse(
+            $decision,
+            'Evaluación del Gate de Promoción LoRA ejecutada correctamente.'
+        );
+    }
+
+    /**
+     * Ejecuta el rollback de emergencia hacia el modelo seguro anterior (F4-04).
+     */
+    public function rollbackModelo(Request $request, IaAprendizajeContinuoService $aprendizajeService): JsonResponse
+    {
+        $modelo = $request->string('modelo_fallback', 'ocobo-asistente:latest')->toString();
+        $motivo = $request->string('motivo', 'Rollback administrativo ejecutado desde interfaz')->toString();
+
+        $resultado = $aprendizajeService->ejecutarRollbackModelo($modelo, $motivo);
+
+        if (! ($resultado['success'] ?? false)) {
+            return $this->serverErrorResponse('Error ejecutando el rollback del modelo', $resultado['error'] ?? null);
+        }
+
+        return $this->successResponse(
+            $resultado,
+            'Rollback de modelo ejecutado exitosamente.'
+        );
+    }
 }

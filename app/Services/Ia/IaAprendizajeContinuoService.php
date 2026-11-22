@@ -517,4 +517,120 @@ class IaAprendizajeContinuoService
             'path' => $outputPath,
         ];
     }
+
+    /**
+     * Evalúa determinísticamente un modelo LoRA candidato a través del Gate de Promoción (HITL F4-04).
+     *
+     * @param  array<string, mixed>  $reporteCandidato  Métricas de evaluación sobre el Golden Test Set
+     * @param  array<string, mixed>|null  $reporteBaseline  Métricas de referencia del modelo en producción
+     * @param  array<int, string>  $muestrasTextos  Textos generados para escaneo preventivo Ley 1581
+     * @return array<string, mixed>
+     */
+    public function evaluarGatePromocion(
+        array $reporteCandidato,
+        ?array $reporteBaseline = null,
+        array $muestrasTextos = []
+    ): array {
+        $baseUrl = config('services.ia.url', 'http://127.0.0.1:8002');
+        $apiKey = config('services.ia.key', env('OCOBO_AI_API_KEY', ''));
+
+        try {
+            $response = Http::withHeaders([
+                'X-Ocobo-AI-Key' => $apiKey,
+                'Accept' => 'application/json',
+            ])->timeout(30)->post("{$baseUrl}/v1/hitl/gate-promocion", [
+                'reporte_candidato' => $reporteCandidato,
+                'reporte_baseline' => $reporteBaseline,
+                'muestras_textos' => $muestrasTextos,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                Log::info('Evaluación Gate Promoción LoRA completada', [
+                    'aprobado' => $data['aprobado'] ?? false,
+                    'accion' => $data['accion'] ?? 'BLOQUEAR',
+                    'modelo' => $data['modelo_candidato'] ?? '',
+                ]);
+
+                return $data;
+            }
+
+            Log::error('Error HTTP en Gate de Promoción FastAPI', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return [
+                'success' => false,
+                'aprobado' => false,
+                'accion' => 'BLOQUEAR',
+                'motivos_bloqueo' => ['Error de comunicación HTTP '.$response->status().' con el Gate de IA.'],
+                'error' => $response->body(),
+            ];
+        } catch (\Throwable $e) {
+            Log::error('Fallo de conexión en evaluarGatePromocion', ['error' => $e->getMessage()]);
+
+            return [
+                'success' => false,
+                'aprobado' => false,
+                'accion' => 'BLOQUEAR',
+                'motivos_bloqueo' => ['Excepción de conexión local: '.$e->getMessage()],
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Ejecuta la política de reversión de emergencia (Rollback) hacia el modelo seguro anterior (HITL F4-04).
+     *
+     * @param  string  $modeloFallback  Nombre del modelo base seguro (ej: ocobo-asistente:latest)
+     * @param  string  $motivo  Justificación técnica del rollback
+     * @return array<string, mixed>
+     */
+    public function ejecutarRollbackModelo(
+        string $modeloFallback = 'ocobo-asistente:latest',
+        string $motivo = 'Rollback preventivo por degradación o solicitud administrativa'
+    ): array {
+        $baseUrl = config('services.ia.url', 'http://127.0.0.1:8002');
+        $apiKey = config('services.ia.key', env('OCOBO_AI_API_KEY', ''));
+
+        try {
+            $response = Http::withHeaders([
+                'X-Ocobo-AI-Key' => $apiKey,
+                'Accept' => 'application/json',
+            ])->timeout(10)->post("{$baseUrl}/v1/hitl/rollback", [
+                'modelo_fallback' => $modeloFallback,
+                'motivo' => $motivo,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                Log::warning('Rollback de modelo IA ejecutado con éxito', [
+                    'modelo_restaurado' => $data['modelo_restaurado'] ?? $modeloFallback,
+                    'tiempo_s' => $data['tiempo_reversion_s'] ?? 0.0,
+                    'motivo' => $motivo,
+                ]);
+
+                return $data;
+            }
+
+            return [
+                'success' => false,
+                'accion' => 'ROLLBACK',
+                'modelo_restaurado' => $modeloFallback,
+                'motivo' => $motivo,
+                'error' => 'Error HTTP '.$response->status().' al ejecutar rollback.',
+            ];
+        } catch (\Throwable $e) {
+            Log::error('Fallo de conexión en ejecutarRollbackModelo', ['error' => $e->getMessage()]);
+
+            return [
+                'success' => false,
+                'accion' => 'ROLLBACK',
+                'modelo_restaurado' => $modeloFallback,
+                'motivo' => $motivo,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
 }

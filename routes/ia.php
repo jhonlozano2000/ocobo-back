@@ -26,4 +26,10 @@ Route::middleware(['auth:sanctum', 'throttle:ia-drafts'])->group(function () {
 
     // Candidatos SFT capturados (edit_ratio <= 0.40) para Replay Buffer LoRA
     Route::get('/aprendizaje/candidatos-sft', [IaAsistenteController::class, 'candidatosSft']);
+
+    // Gate Automatizado de Promoción LoRA contra Golden Test Set (F4-04)
+    Route::post('/aprendizaje/gate-promocion', [IaAsistenteController::class, 'gatePromocion']);
+
+    // Política de reversión inmediata (Rollback) hacia modelo seguro (F4-04)
+    Route::post('/aprendizaje/rollback', [IaAsistenteController::class, 'rollbackModelo']);
 });

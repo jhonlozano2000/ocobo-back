@@ -88,7 +88,10 @@ class VariablesPlantillaService
      */
     public function catalogo(): array
     {
-        $camposGrupo = ['documento_asunto' => 'Asunto del documento'];
+        $camposGrupo = [
+            'documento_asunto' => 'Asunto del documento',
+            'grupo_bloque_firmas' => 'Bloque de firmas',
+        ];
         foreach (['firmantes', 'revisores', 'proyectores', 'responsables', 'aprobadores'] as $rol) {
             foreach (['nombre', 'cargo', 'dependencia'] as $propiedad) {
                 $camposGrupo['grupo_'.$rol.'_'.$propiedad] = ucfirst($rol).' ('.$propiedad.')';
