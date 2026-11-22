@@ -377,4 +377,55 @@ class IaAsistenteController extends Controller
             'Rollback de modelo ejecutado exitosamente.'
         );
     }
+
+    /**
+     * Retorna el diagnóstico de recursos y alertas operativas en tiempo real (F4-05).
+     */
+    public function monitoreoOperativo(IaAprendizajeContinuoService $aprendizajeService): JsonResponse
+    {
+        $diagnostico = $aprendizajeService->obtenerMonitoreoOperativo();
+
+        return $this->successResponse(
+            $diagnostico,
+            'Telemetría operativa de IA recuperada exitosamente.'
+        );
+    }
+
+    /**
+     * Ejecuta la rotación y preservación SHA-256 de logs de auditoría mayores a 90 días (F4-05 / ISO 27001).
+     */
+    public function rotarLogs(Request $request, IaAprendizajeContinuoService $aprendizajeService): JsonResponse
+    {
+        $dias = $request->integer('dias', 90);
+        $resultado = $aprendizajeService->rotarLogsAuditoria($dias);
+
+        if (! ($resultado['success'] ?? false)) {
+            return $this->serverErrorResponse('Error en rotación de auditoría', $resultado['mensaje'] ?? null);
+        }
+
+        return $this->successResponse(
+            $resultado,
+            'Rotación de auditoría ISO 27001 completada exitosamente.'
+        );
+    }
+
+    /**
+     * Retorna el dictamen periódico de cumplimiento Ley 1581 / Res. 1995 (F4-05).
+     */
+    public function reportePrivacidad(Request $request, IaAprendizajeContinuoService $aprendizajeService): JsonResponse
+    {
+        $periodo = $request->input('periodo');
+        $limite = $request->integer('limite', 200);
+
+        $reporte = $aprendizajeService->generarReportePrivacidadLey1581($periodo, $limite);
+
+        if (! ($reporte['success'] ?? false)) {
+            return $this->serverErrorResponse('Error generando reporte de privacidad', $reporte['error'] ?? null);
+        }
+
+        return $this->successResponse(
+            $reporte,
+            'Reporte de auditoría de privacidad Ley 1581 generado exitosamente.'
+        );
+    }
 }

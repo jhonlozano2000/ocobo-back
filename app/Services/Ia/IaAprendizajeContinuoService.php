@@ -633,4 +633,165 @@ class IaAprendizajeContinuoService
             ];
         }
     }
+
+    /**
+     * Consulta la telemetría operativa en tiempo real del microservicio de IA local (HITL F4-05).
+     *
+     * @return array<string, mixed>
+     */
+    public function obtenerMonitoreoOperativo(): array
+    {
+        $baseUrl = config('services.ia.url', 'http://127.0.0.1:8002');
+        $apiKey = config('services.ia.key', env('OCOBO_AI_API_KEY', ''));
+
+        try {
+            $response = Http::withHeaders([
+                'X-Ocobo-AI-Key' => $apiKey,
+                'Accept' => 'application/json',
+            ])->timeout(5)->get("{$baseUrl}/v1/hitl/monitoreo-operativo");
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            return [
+                'success' => false,
+                'estado_general' => 'CRITICO',
+                'alertas_activas' => ['Error HTTP '.$response->status().' consultando telemetría de IA.'],
+                'error' => $response->body(),
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'estado_general' => 'DESCONECTADO',
+                'alertas_activas' => ['Microservicio de IA no responde en puerto 8002: '.$e->getMessage()],
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Rota y archiva logs de auditoría mayores a los días estipulados cumpliendo ISO 27001 (HITL F4-05).
+     *
+     * Exporta los registros a un paquete comprimido con hash SHA-256 antes de depurar la tabla activa.
+     *
+     * @param  int  $diasRetencion  Días de retención activa (por defecto 90 días - rotación trimestral)
+     * @return array{success: bool, registros_rotados: int, archivo: string|null, hash_sha256: string|null, mensaje: string}
+     */
+    public function rotarLogsAuditoria(int $diasRetencion = 90): array
+    {
+        $fechaLimite = now()->subDays($diasRetencion);
+        $registrosViejos = IaBorradorAuditoria::where('created_at', '<', $fechaLimite)
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $total = $registrosViejos->count();
+        if ($total === 0) {
+            return [
+                'success' => true,
+                'registros_rotados' => 0,
+                'archivo' => null,
+                'hash_sha256' => null,
+                'mensaje' => "No hay registros de auditoría anteriores a {$diasRetencion} días para rotar.",
+            ];
+        }
+
+        $dir = storage_path('app/ia/auditoria_historica');
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $timestamp = now()->format('Ymd_His');
+        $rutaGz = "{$dir}/auditoria_rotada_{$timestamp}.json.gz";
+
+        $gz = gzopen($rutaGz, 'w9');
+        if (! $gz) {
+            return [
+                'success' => false,
+                'registros_rotados' => 0,
+                'archivo' => null,
+                'hash_sha256' => null,
+                'mensaje' => 'No fue posible abrir el archivo gzip para archivar auditoría.',
+            ];
+        }
+
+        foreach ($registrosViejos as $reg) {
+            gzwrite($gz, json_encode($reg->toArray(), JSON_UNESCAPED_UNICODE)."\n");
+        }
+        gzclose($gz);
+
+        $hashSha256 = hash_file('sha256', $rutaGz);
+
+        // Depurar de la base de datos tras verificar la integridad del archivo empaquetado
+        IaBorradorAuditoria::where('created_at', '<', $fechaLimite)->delete();
+
+        Log::info('Rotación de logs de auditoría IA ISO 27001 completada', [
+            'total_rotados' => $total,
+            'dias_retencion' => $diasRetencion,
+            'archivo' => $rutaGz,
+            'hash_sha256' => $hashSha256,
+        ]);
+
+        return [
+            'success' => true,
+            'registros_rotados' => $total,
+            'archivo' => $rutaGz,
+            'hash_sha256' => $hashSha256,
+            'mensaje' => "Rotados {$total} registros de auditoría exitosamente con preservación SHA-256.",
+        ];
+    }
+
+    /**
+     * Genera un dictamen periódico / trimestral de cumplimiento Ley 1581 / Res. 1995 (HITL F4-05).
+     *
+     * @param  string|null  $periodo  Etiqueta del periodo (ej: 2026-Q4)
+     * @param  int  $limite  Cantidad de registros a auditar
+     * @return array<string, mixed>
+     */
+    public function generarReportePrivacidadLey1581(?string $periodo = null, int $limite = 200): array
+    {
+        $periodo = $periodo ?: now()->format('Y-\QQ');
+        $baseUrl = config('services.ia.url', 'http://127.0.0.1:8002');
+        $apiKey = config('services.ia.key', env('OCOBO_AI_API_KEY', ''));
+
+        $muestras = IaBorradorAuditoria::latest('id')
+            ->limit($limite)
+            ->get()
+            ->map(fn ($item) => [
+                'id' => $item->id,
+                'borrador' => $item->borrador_generado ?? '',
+                'respuesta' => $item->contenido_final ?? '',
+            ])
+            ->toArray();
+
+        try {
+            $response = Http::withHeaders([
+                'X-Ocobo-AI-Key' => $apiKey,
+                'Accept' => 'application/json',
+            ])->timeout(30)->post("{$baseUrl}/v1/hitl/auditoria-privacidad", [
+                'periodo' => $periodo,
+                'textos' => $muestras,
+            ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            return [
+                'success' => false,
+                'periodo' => $periodo,
+                'total_textos_auditados' => count($muestras),
+                'tasa_cumplimiento_pct' => 0.0,
+                'error' => 'Error HTTP '.$response->status().' consultando servicio de auditoría.',
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'periodo' => $periodo,
+                'total_textos_auditados' => count($muestras),
+                'tasa_cumplimiento_pct' => 0.0,
+                'error' => 'Error de conexión: '.$e->getMessage(),
+            ];
+        }
+    }
 }

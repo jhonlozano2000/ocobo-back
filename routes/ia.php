@@ -32,4 +32,13 @@ Route::middleware(['auth:sanctum', 'throttle:ia-drafts'])->group(function () {
 
     // Política de reversión inmediata (Rollback) hacia modelo seguro (F4-04)
     Route::post('/aprendizaje/rollback', [IaAsistenteController::class, 'rollbackModelo']);
+
+    // Diagnóstico operativo y telemetría de recursos CPU/RAM (F4-05)
+    Route::get('/aprendizaje/monitoreo', [IaAsistenteController::class, 'monitoreoOperativo']);
+
+    // Rotación y archivado con preservación SHA-256 ISO 27001 (F4-05)
+    Route::post('/aprendizaje/rotar-logs', [IaAsistenteController::class, 'rotarLogs']);
+
+    // Auditoría periódica de cumplimiento de privacidad Ley 1581 (F4-05)
+    Route::get('/aprendizaje/reporte-privacidad', [IaAsistenteController::class, 'reportePrivacidad']);
 });
