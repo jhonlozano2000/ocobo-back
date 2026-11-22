@@ -23,6 +23,35 @@ class VariablesPlantillaService
 {
     /** clave => etiqueta */
     public const VARIABLES = [
+        'fecha_corta' => 'Fecha corta',
+        'hora' => 'Hora actual',
+        'anio' => 'Año actual',
+        'usuario_correo' => 'Correo del usuario',
+        'usuario_dependencia_codigo' => 'Código de dependencia del usuario',
+        'usuario_dependencia_sigla' => 'Sigla de dependencia del usuario',
+        'radicado_hora' => 'Hora de radicación',
+        'radicado_vencimiento' => 'Fecha de vencimiento',
+        'radicado_codigo_verificacion' => 'Código de verificación',
+        'radicado_medio_recepcion' => 'Medio de recepción',
+        'radicado_folios' => 'Cantidad de folios',
+        'radicado_anexos' => 'Cantidad de anexos',
+        'radicado_descripcion_anexos' => 'Descripción de anexos',
+        'radicado_dias_vencimiento' => 'Plazo de vencimiento en días',
+        'radicado_pqrs_tipo' => 'Tipo de PQRSD',
+        'radicado_pqrs_prioridad' => 'Prioridad de PQRSD',
+        'remitente_tipo_documento' => 'Tipo de documento del remitente',
+        'remitente_tipo_persona' => 'Tipo de persona del remitente',
+        'remitente_departamento' => 'Departamento del remitente',
+        'remitente_pais' => 'País del remitente',
+        'radicado_clasificacion_codigo' => 'Código de clasificación documental',
+        'radicado_clasificacion_nombre' => 'Nombre de clasificación documental',
+        'radicado_serie_nombre' => 'Serie',
+        'radicado_serie_codigo' => 'Código de serie',
+        'radicado_subserie_nombre' => 'Subserie',
+        'radicado_subserie_codigo' => 'Código de subserie',
+        'radicado_tipo_documental_nombre' => 'Tipo documental',
+        'radicado_tipo_documental_codigo' => 'Código de tipo documental',
+
         'fecha' => 'Fecha',
         'ciudad' => 'Ciudad',
         'usuario_nombre' => 'Nombre del usuario',
@@ -36,7 +65,7 @@ class VariablesPlantillaService
         'entidad_web' => 'Sitio web de la entidad',
         'radicado_numero' => 'Número de radicado',
         'radicado_fecha' => 'Fecha de radicación',
-        'radicado_asunto' => 'Asunto del radicado',
+        'radicado_asunto' => 'Asunto del radicado recibido',
         'radicado_fecha_documento' => 'Fecha del documento recibido',
         'remitente_nombre' => 'Nombre del remitente',
         'remitente_documento' => 'Documento del remitente',
@@ -59,12 +88,13 @@ class VariablesPlantillaService
      */
     public function catalogo(): array
     {
-        $camposGrupo = [];
+        $camposGrupo = ['documento_asunto' => 'Asunto del documento'];
         foreach (['firmantes', 'revisores', 'proyectores', 'responsables', 'aprobadores'] as $rol) {
             foreach (['nombre', 'cargo', 'dependencia'] as $propiedad) {
                 $camposGrupo['grupo_'.$rol.'_'.$propiedad] = ucfirst($rol).' ('.$propiedad.')';
             }
         }
+
         return collect(self::VARIABLES + $camposGrupo)
             ->map(fn ($etiqueta, $clave) => [
                 'clave' => $clave,
@@ -92,11 +122,35 @@ class VariablesPlantillaService
      */
     public function valoresRadicado(?VentanillaRadicaReci $radicado): array
     {
-        $radicado?->loadMissing('tercero.divisionPolitica');
+        $radicado?->loadMissing(['tercero.divisionPolitica.padre.padre', 'medioRecepcion', 'pqrs.tipoPqrs', 'clasificacionDocumental']);
+        $clasificacion = $radicado?->clasificacionDocumental;
+        $jerarquia = collect($clasificacion?->getJerarquia() ?? []);
         $tercero = $radicado?->tercero;
         $fecha = fn ($valor) => $valor ? Carbon::parse($valor)->locale('es')->translatedFormat('j \d\e F \d\e Y') : '';
 
         return array_map(fn ($valor) => trim((string) $valor), [
+            'radicado_hora' => $radicado?->created_at?->format('H:i:s') ?? '',
+            'radicado_vencimiento' => $fecha($radicado?->fec_venci),
+            'radicado_codigo_verificacion' => $radicado?->cod_verifica ?? '',
+            'radicado_medio_recepcion' => $radicado?->medioRecepcion?->nombre ?? '',
+            'radicado_folios' => $radicado?->num_folios ?? '',
+            'radicado_anexos' => $radicado?->num_anexos ?? '',
+            'radicado_descripcion_anexos' => $radicado?->descrip_anexos ?? '',
+            'radicado_dias_vencimiento' => $radicado?->dias_vencimiento ?? '',
+            'radicado_pqrs_tipo' => $radicado?->pqrs?->tipoPqrs?->nombre ?? '',
+            'radicado_pqrs_prioridad' => $radicado?->pqrs?->prioridad ?? '',
+            'remitente_tipo_documento' => $tercero?->tipo_docu ?? '',
+            'remitente_tipo_persona' => $tercero?->tipo ?? '',
+            'remitente_departamento' => $tercero?->divisionPolitica?->padre?->nombre ?? '',
+            'remitente_pais' => $tercero?->divisionPolitica?->padre?->padre?->nombre ?? '',
+            'radicado_clasificacion_codigo' => $clasificacion?->getCodigoCompleto() ?? '',
+            'radicado_clasificacion_nombre' => $clasificacion?->getNombreCompleto() ?? '',
+            'radicado_serie_nombre' => $jerarquia->firstWhere('tipo', 'Serie')['nom'] ?? '',
+            'radicado_serie_codigo' => $jerarquia->firstWhere('tipo', 'Serie')['cod'] ?? '',
+            'radicado_subserie_nombre' => $jerarquia->firstWhere('tipo', 'SubSerie')['nom'] ?? '',
+            'radicado_subserie_codigo' => $jerarquia->firstWhere('tipo', 'SubSerie')['cod'] ?? '',
+            'radicado_tipo_documental_nombre' => $jerarquia->firstWhere('tipo', 'TipoDocumento')['nom'] ?? '',
+            'radicado_tipo_documental_codigo' => $jerarquia->firstWhere('tipo', 'TipoDocumento')['cod'] ?? '',
             'radicado_numero' => $radicado?->num_radicado ?? '',
             'radicado_fecha' => $fecha($radicado?->created_at),
             'radicado_asunto' => $radicado?->asunto ?? '',
@@ -121,6 +175,12 @@ class VariablesPlantillaService
         $diviPoliId = $empresa['divi_poli_id_empresa'] ?? null;
 
         return array_map(fn ($valor) => trim((string) $valor), [
+            'fecha_corta' => Carbon::now()->format('d/m/Y'),
+            'hora' => Carbon::now()->format('H:i:s'),
+            'anio' => Carbon::now()->format('Y'),
+            'usuario_correo' => $user->email ?? '',
+            'usuario_dependencia_codigo' => $user->cargo?->dependencia?->cod_organico ?? '',
+            'usuario_dependencia_sigla' => $user->cargo?->dependencia?->sigla ?? '',
             'fecha' => Carbon::now()->locale('es')->translatedFormat('j \d\e F \d\e Y'),
             'ciudad' => $diviPoliId ? (ConfigDiviPoli::find($diviPoliId)?->nombre ?? '') : '',
             'usuario_nombre' => trim(($user->nombres ?? '').' '.($user->apellidos ?? '')),
@@ -155,14 +215,24 @@ class VariablesPlantillaService
             $nodo['content'][1]['type'] = 'campoGrupo';
             $nodo['content'][1]['attrs'] = ['id' => (string) Str::uuid(), 'rol' => 'grupo', 'propiedad' => 'asunto',
                 'valor' => '', 'linked' => true, 'manual_override' => false];
+
             return $nodo;
         }
 
         if (($nodo['type'] ?? null) === 'variable') {
             $clave = (string) ($nodo['attrs']['clave'] ?? '');
+            if ($clave === 'documento_asunto') {
+                $campo = ['type' => 'campoGrupo', 'attrs' => [
+                    'id' => (string) Str::uuid(), 'rol' => 'grupo', 'propiedad' => 'asunto',
+                    'valor' => '', 'linked' => true, 'manual_override' => false,
+                ]];
+
+                return empty($nodo['marks']) ? $campo : $campo + ['marks' => $nodo['marks']];
+            }
             if (preg_match('/^grupo_(firmantes|revisores|proyectores|responsables|aprobadores)_(nombre|cargo|dependencia)$/D', $clave, $m)) {
                 $campo = ['type' => 'campoGrupo', 'attrs' => ['id' => (string) Str::uuid(), 'rol' => $m[1],
                     'propiedad' => $m[2], 'linked' => true, 'manual_override' => false, 'valor' => '']];
+
                 return empty($nodo['marks']) ? $campo : $campo + ['marks' => $nodo['marks']];
             }
             $valor = $valores[$clave] ?? '';
