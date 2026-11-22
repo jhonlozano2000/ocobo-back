@@ -8,6 +8,8 @@ use App\Models\MiBandeja\TempDocumentosRecibidos\Documento;
 use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
 use App\Services\Firma\FirmaService;
+use App\Services\Ia\IaAprendizajeContinuoService;
+use App\Services\MiBandeja\CamposGrupoDocumento;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -102,6 +104,16 @@ class FirmaDocumentoController extends Controller
 
         $documento->firmarContenido($user, $request->otp, $request->ip(), (string) $request->userAgent());
 
+        // HITL (F4-01): Captura automática de diff (borrador IA vs final firmado)
+        try {
+            app(IaAprendizajeContinuoService::class)->capturarDiffDocumento($documento, null, $user);
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo capturar diff de aprendizaje continuo al firmar documento', [
+                'documento_id' => $documento->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         return $this->successResponse(
             $this->estado($documento->fresh(), $user),
             'Documento firmado electrónicamente. Quedó protegido contra cambios.'
@@ -165,7 +177,7 @@ class FirmaDocumentoController extends Controller
         return [
             'estado' => $documento->estado,
             'protegido' => $protegido,
-            'firmantes_ordenados' => app(\App\Services\MiBandeja\CamposGrupoDocumento::class)->firmantesOrdenados($grupo),
+            'firmantes_ordenados' => app(CamposGrupoDocumento::class)->firmantesOrdenados($grupo),
             'firma_en_grupo' => $enGrupo = (bool) $grupo,
             'grupo_para_firmar' => $firmaDeGrupoPendiente ? ['id' => $grupo->id, 'asunto' => $grupo->asunto, 'es_firmante' => true] : null,
             'puede_firmar' => ! $enGrupo && $documento->puedeFirmar($user) && ! $firmaron->contains($user->id),

@@ -20,4 +20,7 @@ Route::middleware(['auth:sanctum', 'throttle:ia-drafts'])->group(function () {
     // Registrar trazabilidad de aceptación, edición, regeneración o descarte del borrador sugerido
     Route::post('/auditoria/{auditoriaId}/feedback', [IaAsistenteController::class, 'registrarFeedbackDocumentoBlanco'])
         ->whereNumber('auditoriaId');
+
+    // Métricas del pipeline de aprendizaje continuo (HITL - Human in the Loop)
+    Route::get('/aprendizaje/metricas', [IaAsistenteController::class, 'metricasAprendizaje']);
 });

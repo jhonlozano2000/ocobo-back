@@ -5,6 +5,7 @@ namespace App\Services\MiBandeja;
 use App\Helpers\ArchivoHelper;
 use App\Models\MiBandeja\MiBandejaTemp;
 use App\Models\User;
+use App\Services\Ia\IaAprendizajeContinuoService;
 use App\Services\MiBandeja\TempDocumentosRecibidos\DocumentoExportService;
 
 /**
@@ -73,6 +74,18 @@ class RadicacionGrupoDocumentoService
         $nombre = $numRadicado.'_'.time().'.pdf';
         ArchivoHelper::guardarContenido($nombre, $contenido, $disco);
 
+        // HITL (F4-01): Si proviene de un borrador de IA, capturar el diff y vincular radicado oficial
+        if ($documento) {
+            try {
+                app(IaAprendizajeContinuoService::class)->capturarDiffDocumento(
+                    $documento,
+                    $numRadicado
+                );
+            } catch (\Throwable) {
+                // Silencioso para garantizar que la radicación no se interrumpa
+            }
+        }
+
         return [
             'archivo' => $nombre,
             'nom_origi' => ($documento->titulo ?: 'Documento').'.pdf',
@@ -83,12 +96,23 @@ class RadicacionGrupoDocumentoService
     }
 
     /** El grupo queda cerrado: su documento ya es un radicado. */
-    public function finalizar(MiBandejaTemp $grupo): void
+    public function finalizar(MiBandejaTemp $grupo, ?string $numRadicado = null): void
     {
         $grupo->update([
             'estado' => 'finalizado',
             'estado_grupo' => 'inactivo',
             'respuesta_final' => 'radicado',
         ]);
+
+        if ($grupo->documento) {
+            try {
+                app(IaAprendizajeContinuoService::class)->capturarDiffDocumento(
+                    $grupo->documento,
+                    $numRadicado
+                );
+            } catch (\Throwable) {
+                // Silencioso para garantizar que la finalización no se interrumpa
+            }
+        }
     }
 }

@@ -10,6 +10,7 @@ use App\Http\Requests\Ia\SugerirDocumentoBlancoRequest;
 use App\Http\Traits\ApiResponseTrait;
 use App\Jobs\Ia\ProyectarBorradorIaJob;
 use App\Models\Ia\IaBorradorAuditoria;
+use App\Services\Ia\IaAprendizajeContinuoService;
 use App\Services\Ia\IaAsistenteService;
 use App\Services\Ia\IaDocumentoIntegracionService;
 use Illuminate\Http\JsonResponse;
@@ -299,6 +300,22 @@ class IaAsistenteController extends Controller
                 'accion' => $validado['accion'],
             ],
             'Trazabilidad de sugerencia IA actualizada correctamente.'
+        );
+    }
+
+    /**
+     * Retorna las métricas consolidadas del pipeline de aprendizaje continuo (HITL - Human in the Loop).
+     *
+     * Permite auditar la tasa de adherencia de los funcionarios a los borradores de IA,
+     * el volumen de candidatos calificados para Replay Buffer y los descartados por reescritura.
+     */
+    public function metricasAprendizaje(IaAprendizajeContinuoService $aprendizajeService): JsonResponse
+    {
+        $metricas = $aprendizajeService->obtenerMetricasAprendizaje();
+
+        return $this->successResponse(
+            $metricas,
+            'Métricas de aprendizaje continuo recuperadas exitosamente.'
         );
     }
 }

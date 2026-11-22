@@ -59,6 +59,12 @@ class IaBorradorAuditoria extends Model
         'advertencias',
         'tokens_verificar',
         'borrador_generado',
+        'contenido_final',
+        'edit_ratio',
+        'estado_aprendizaje',
+        'firmado_at',
+        'radicado_salida',
+        'metadata_aprendizaje',
         'tiempo_retrieval_ms',
         'tiempo_reranking_ms',
         'tiempo_llm_ms',
@@ -78,6 +84,9 @@ class IaBorradorAuditoria extends Model
         'tiempo_llm_ms' => 'float',
         'tiempo_total_ms' => 'float',
         'fallback' => 'boolean',
+        'edit_ratio' => 'float',
+        'firmado_at' => 'datetime',
+        'metadata_aprendizaje' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -112,5 +121,21 @@ class IaBorradorAuditoria extends Model
     public function scopeRecientes(Builder $query): Builder
     {
         return $query->orderByDesc('id');
+    }
+
+    /**
+     * Scope para filtrar borradores capturados elegibles para entrenamiento SFT / Replay Buffer.
+     */
+    public function scopeCandidatosSft(Builder $query): Builder
+    {
+        return $query->where('estado_aprendizaje', 'capturado_candidato_sft');
+    }
+
+    /**
+     * Scope para filtrar borradores que ya tienen diff calculado tras firma o radicación.
+     */
+    public function scopeConDiffCapturado(Builder $query): Builder
+    {
+        return $query->whereNotNull('edit_ratio');
     }
 }
