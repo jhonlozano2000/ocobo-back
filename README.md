@@ -2,6 +2,10 @@
 
 Aplicación gestora del proceso de gestión documental desarrollada en Laravel.
 
+## Seguimiento de pruebas — 24/11/2026
+
+El plan y las evidencias actuales se registran en `../ocobo-documents/docs/pruebas/`. Mi Bandeja tiene 13 de 14 casos manuales aprobados; la prueba de destinatarios independientes quedó aprobada por el usuario. TC-BAN-07 permanece pendiente por el selector de documentos al responder un radicado interno. TC-REG-01 está en curso: se confirmó el inicio de sesión del administrador, pero aún falta verificar el rol limitado. Las aprobaciones manuales no equivalen a una certificación completa de despliegue.
+
 ![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=flat-square&logo=laravel)
 ![PHP](https://img.shields.io/badge/PHP-8.3+-777BB4?style=flat-square&logo=php)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
