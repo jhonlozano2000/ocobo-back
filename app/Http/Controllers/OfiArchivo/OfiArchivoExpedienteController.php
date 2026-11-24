@@ -359,6 +359,15 @@ class OfiArchivoExpedienteController extends Controller
         }
     }
 
+    public function dependenciasVisibles(Request $request): JsonResponse
+    {
+        $visibles = OfiArchivoExpediente::visiblesPara($request->user())->select('dependencia_id');
+        $dependencias = CalidadOrganigrama::whereIn('id', $visibles)
+            ->orderBy('nom_organico')->get(['id', 'nom_organico']);
+
+        return $this->successResponse($dependencias);
+    }
+
     /**
      * Lista expedientes con filtros por dependencia y serie (Cumplimiento ISO 27001).
      */

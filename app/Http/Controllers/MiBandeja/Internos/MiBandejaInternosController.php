@@ -53,7 +53,7 @@ class MiBandejaInternosController extends Controller
 
             $perPage = min((int) $request->get('per_page', 15), 100);
             $radicados = $query
-                ->with(['responsables.userCargo.cargo', 'usuarioCrea.cargoActivo.cargo', 'dependenciaOrigen'])
+                ->with(['responsables.userCargo.user', 'responsables.userCargo.cargo', 'usuarioCrea.cargoActivo.cargo', 'dependenciaOrigen'])
                 ->paginate($perPage);
 
             // La relación `dependenciaOrigen` se serializa con la misma clave y, vacía, pisaría

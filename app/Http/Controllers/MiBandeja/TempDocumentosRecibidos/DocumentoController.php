@@ -231,8 +231,31 @@ class DocumentoController extends Controller
     }
 
     /** Page metadata for the editor without loading the body, cursors or presence. */
-    public function configuracion(Documento $documento): JsonResponse
+    public function configuracion(Request $request, Documento $documento): JsonResponse
     {
+        if (! $documento->tieneAcceso($request->user())) {
+            return $this->forbiddenResponse('No tienes acceso a este documento');
+        }
+
+        $cursor = $documento->cursores()->where('user_id', $request->user()->id)->first();
+        if (! $cursor) {
+            $this->inicializarCursor($documento, $request->user());
+        } else {
+            $cursor->update(['ultima_actividad' => now()]);
+        }
+
+        $evento = new UsuarioConectado($documento->id, $request->user()->id, $request->user()->nombres);
+        \Illuminate\Support\defer(function () use ($evento): void {
+            try {
+                event($evento);
+            } catch (\Throwable $e) {
+                \Log::warning('No se pudo notificar la presencia en el documento.', [
+                    'documento_id' => $evento->documentoId,
+                    'exception' => $e::class,
+                ]);
+            }
+        });
+
         $plantilla = $documento->plantilla_generada_id ? $documento->plantillaGenerada : null;
 
         return $this->successResponse([
@@ -243,6 +266,11 @@ class DocumentoController extends Controller
                 'nombre' => $plantilla->nombre,
                 'institucional' => (bool) $plantilla->institucional,
             ] : null,
+            'cursores' => $documento->cursores()
+                ->where('ultima_actividad', '>=', now()->subSeconds(60))
+                ->get()
+                ->map(fn ($cursor) => $cursor->toArray())
+                ->values(),
         ]);
     }
 
