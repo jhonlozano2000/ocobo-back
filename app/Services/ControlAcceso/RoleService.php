@@ -5,11 +5,14 @@ namespace App\Services\ControlAcceso;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class RoleService
 {
+    private const PERMISSION_GUARD = 'web';
+
     /**
      * Obtiene roles con filtros.
      */
@@ -50,7 +53,8 @@ class RoleService
      */
     public function getAllPermissions(array $filters = [])
     {
-        $query = Permission::query();
+        // El selector solo debe ofrecer permisos compatibles con los roles de la aplicación.
+        $query = Permission::query()->where('guard_name', self::PERMISSION_GUARD);
 
         if (! empty($filters['search'])) {
             $query->where('name', 'like', '%'.$filters['search'].'%');
@@ -95,10 +99,12 @@ class RoleService
      */
     public function create(array $data): Role
     {
-        $role = Role::create(['name' => $data['name']]);
-        $role->syncPermissions($data['permissions'] ?? []);
+        return DB::transaction(function () use ($data): Role {
+            $role = Role::create(['name' => $data['name'], 'guard_name' => self::PERMISSION_GUARD]);
+            $role->syncPermissions($data['permissions'] ?? []);
 
-        return $role->fresh(['permissions']);
+            return $role->fresh(['permissions']);
+        });
     }
 
     /**
@@ -106,16 +112,33 @@ class RoleService
      */
     public function update(int $id, array $data): ?Role
     {
-        $role = Role::find($id);
+        return DB::transaction(function () use ($id, $data): ?Role {
+            $role = Role::find($id);
 
-        if (! $role) {
-            return null;
-        }
+            if (! $role) {
+                return null;
+            }
 
-        $role->update(['name' => $data['name']]);
-        $role->syncPermissions($data['permissions'] ?? []);
+            // Los roles vacíos creados antes del fix heredaron la guarda Sanctum de la petición.
+            // Solo se pueden convertir si no tienen asignaciones que cambien de significado.
+            if ($role->guard_name !== self::PERMISSION_GUARD) {
+                $asignado = DB::table('model_has_roles')->where('role_id', $role->id)->exists();
 
-        return $role->fresh(['permissions']);
+                if ($asignado || $role->permissions()->exists()) {
+                    throw ValidationException::withMessages([
+                        'name' => 'El rol utiliza una guarda incompatible y tiene asignaciones. Revise sus usuarios y permisos antes de editarlo.',
+                    ]);
+                }
+
+                $role->guard_name = self::PERMISSION_GUARD;
+            }
+
+            $role->name = $data['name'];
+            $role->save();
+            $role->syncPermissions($data['permissions'] ?? []);
+
+            return $role->fresh(['permissions']);
+        });
     }
 
     /**

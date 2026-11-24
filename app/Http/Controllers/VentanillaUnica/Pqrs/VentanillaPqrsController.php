@@ -1428,11 +1428,15 @@ class VentanillaPqrsController extends Controller
     {
         $item->es_anonimo = (bool) $pqrsCompleto->es_anonimo;
         $item->identidad_reservada = $pqrsCompleto->tieneIdentidadReservada();
+        $item->nom_afectado = $pqrsCompleto->nom_afectado ?: $item->tercero_nombre;
+        $item->num_docu_afectado = $pqrsCompleto->num_docu_afectado ?: $item->tercero_documento;
 
         if (! $pqrsCompleto->ocultaIdentidadPara(auth()->user())) {
             return;
         }
 
+        $item->nom_afectado = $pqrsCompleto->etiquetaIdentidadReservada();
+        $item->num_docu_afectado = null;
         $item->tercero_nombre = $pqrsCompleto->etiquetaIdentidadReservada();
         foreach (['gestion_tercero_id', 'tercero_documento', 'tercero_direccion', 'tercero_telefono', 'tercero_email', 'tercero_tipo'] as $campo) {
             $item->{$campo} = null;

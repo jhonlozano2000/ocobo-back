@@ -30,14 +30,14 @@ class StoreRoleRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('roles', 'name'),
+                Rule::unique('roles', 'name')->where('guard_name', 'web'),
             ],
             'permissions' => [
                 'required',
                 'array',
             ],
             'permissions.*' => [
-                'exists:permissions,name',
+                Rule::exists('permissions', 'name')->where('guard_name', 'web'),
             ],
         ];
     }

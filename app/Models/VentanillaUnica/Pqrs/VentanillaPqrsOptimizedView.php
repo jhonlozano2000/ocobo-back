@@ -38,11 +38,12 @@ class VentanillaPqrsOptimizedView extends Model
         return $query->where(function ($q) use ($search) {
             $q->where('num_radicado', 'like', "%{$search}%")
                 ->orWhere('detalle_solicitud', 'like', "%{$search}%")
-                ->orWhere(function ($q) use ($search) {
-                    $q->where(function ($q) use ($search) {
-                        $q->where('tercero_nombre', 'like', "%{$search}%")
-                            ->orWhere('tercero_documento', 'like', "%{$search}%");
-                    });
+                ->orWhereIn('id', function ($q) use ($search) {
+                    $q->select('id')->from('ventanilla_pqrs')
+                        ->where(function ($q) use ($search) {
+                            $q->where('nom_afectado', 'like', "%{$search}%")
+                                ->orWhere('num_docu_afectado', 'like', "%{$search}%");
+                        });
                     VentanillaPqrs::restringirBusquedaIdentidad($q, Auth::user());
                 });
         });

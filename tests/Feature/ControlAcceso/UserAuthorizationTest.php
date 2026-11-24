@@ -4,6 +4,7 @@ namespace Tests\Feature\ControlAcceso;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -120,5 +121,54 @@ class UserAuthorizationTest extends TestCase
             ->assertForbidden();
 
         $this->assertFalse($this->funcionario->fresh()->hasRole($rol->name));
+    }
+
+    public function test_crear_rol_desde_sanctum_usa_la_guarda_de_los_permisos(): void
+    {
+        Permission::findOrCreate('Control de acceso - Roles -> Crear', 'web');
+        Permission::findOrCreate('Radicar -> Cores. Recibida -> Listar', 'web');
+        $this->funcionario->givePermissionTo('Control de acceso - Roles -> Crear');
+        Sanctum::actingAs($this->funcionario);
+
+        $this->postJson(self::PREFIX.'/roles', [
+            'name' => 'Radicador Basico Prueba',
+            'permissions' => ['Radicar -> Cores. Recibida -> Listar'],
+        ])->assertCreated();
+
+        $role = Role::findByName('Radicador Basico Prueba', 'web');
+        $this->assertSame('web', $role->guard_name);
+        $this->assertSame(['Radicar -> Cores. Recibida -> Listar'], $role->permissions->pluck('name')->all());
+    }
+
+    public function test_editar_rol_vacio_creado_con_guarda_sanctum_lo_repara(): void
+    {
+        Permission::findOrCreate('Control de acceso - Roles -> Editar', 'web');
+        Permission::findOrCreate('Radicar -> Cores. Recibida -> Listar', 'web');
+        $this->funcionario->givePermissionTo('Control de acceso - Roles -> Editar');
+        $role = Role::create(['name' => 'Rol Orfano Prueba', 'guard_name' => 'sanctum']);
+        Sanctum::actingAs($this->funcionario);
+
+        $this->putJson(self::PREFIX.'/roles/'.$role->id, [
+            'name' => 'Rol Orfano Prueba',
+            'permissions' => ['Radicar -> Cores. Recibida -> Listar'],
+        ])->assertOk();
+
+        $this->assertSame('web', $role->fresh()->guard_name);
+        $this->assertSame(['Radicar -> Cores. Recibida -> Listar'], $role->fresh()->permissions->pluck('name')->all());
+    }
+
+    public function test_permiso_de_otra_guarda_responde_validacion_sin_crear_rol(): void
+    {
+        Permission::findOrCreate('Control de acceso - Roles -> Crear', 'web');
+        Permission::findOrCreate('Permiso Sanctum Prueba', 'sanctum');
+        $this->funcionario->givePermissionTo('Control de acceso - Roles -> Crear');
+        Sanctum::actingAs($this->funcionario);
+
+        $this->postJson(self::PREFIX.'/roles', [
+            'name' => 'Rol Invalido Prueba',
+            'permissions' => ['Permiso Sanctum Prueba'],
+        ])->assertUnprocessable()->assertJsonValidationErrors('permissions.0');
+
+        $this->assertFalse(Role::where('name', 'Rol Invalido Prueba')->exists());
     }
 }

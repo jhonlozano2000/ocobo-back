@@ -32,14 +32,14 @@ class UpdateRoleRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('roles', 'name')->ignore($role->id),
+                Rule::unique('roles', 'name')->where('guard_name', 'web')->ignore($role->id),
             ],
             'permissions' => [
                 'required',
                 'array',
             ],
             'permissions.*' => [
-                'exists:permissions,name',
+                Rule::exists('permissions', 'name')->where('guard_name', 'web'),
             ],
         ];
     }
