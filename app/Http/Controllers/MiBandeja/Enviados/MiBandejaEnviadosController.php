@@ -50,7 +50,7 @@ class MiBandejaEnviadosController extends Controller
             }
 
             $perPage = min((int) $request->get('per_page', 15), 100);
-            $radicados = $query->with('usuariosResponsables.user')->paginate($perPage);
+            $radicados = $query->with(['tercero', 'usuariosResponsables.user'])->paginate($perPage);
 
             return $this->successResponse($radicados, 'Mis radicados enviados obtenidos exitosamente');
         } catch (\Exception $e) {
