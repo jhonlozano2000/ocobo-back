@@ -3,6 +3,7 @@
 namespace Tests\Feature\Firma;
 
 use App\Mail\OtpFirmaMail;
+use App\Models\Notificacion;
 use App\Models\Transversal\FirmaEvento;
 use App\Models\User;
 use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
@@ -11,6 +12,7 @@ use App\Services\Firma\FirmaValidacionService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
@@ -196,5 +198,110 @@ class FirmaOtpFirmanteTest extends TestCase
         // Cualquier cambio posterior al PDF firmado se detecta
         Storage::disk('radicados_recibidos')->put('m06/prueba.pdf', $firmado.'%alterado');
         $this->assertFalse(app(FirmaValidacionService::class)->validar('radicado_recibido', $this->radicado->id)['valido']);
+    }
+
+    public function test_firmante_designado_puede_firmar_con_password_sin_otp(): void
+    {
+        Storage::fake('radicados_recibidos');
+        Http::fake(['*' => Http::response('', 503)]);
+        $this->firmante->forceFill(['password' => Hash::make('ClaveDePrueba123')])->save();
+
+        $pdf = new \FPDF;
+        $pdf->AddPage();
+        $pdf->SetFont('Arial', '', 12);
+        $pdf->Cell(40, 10, 'Firma con password');
+        $original = $pdf->Output('S');
+        Storage::disk('radicados_recibidos')->put('m06/password.pdf', $original);
+        $this->radicado->update(['archivo_digital' => 'm06/password.pdf', 'hash_sha256' => hash('sha256', $original)]);
+
+        $payload = $this->payload(['metodo' => 'password', 'password' => 'incorrecta']);
+        $this->actingAs($this->firmante)->postJson(self::URL.'/firmar', $payload)->assertForbidden();
+        $this->assertDatabaseMissing('firmas_eventos', [
+            'documentable_type' => VentanillaRadicaReci::class,
+            'documentable_id' => $this->radicado->id,
+        ]);
+
+        $this->actingAs($this->ajeno)->postJson(self::URL.'/firmar', $this->payload([
+            'metodo' => 'password', 'password' => 'ClaveDePrueba123',
+        ]))->assertForbidden();
+
+        $this->actingAs($this->firmante)->postJson(self::URL.'/firmar', $this->payload([
+            'metodo' => 'password', 'password' => 'ClaveDePrueba123',
+        ]))->assertOk();
+
+        $evento = FirmaEvento::where('documentable_type', VentanillaRadicaReci::class)
+            ->where('documentable_id', $this->radicado->id)->sole();
+        $this->assertSame('PASSWORD', $evento->otp_utilizado);
+        $this->assertSame(hash('sha256', Storage::disk('radicados_recibidos')->get('m06/password.pdf')), $evento->hash_firmado);
+        Mail::assertNothingSent();
+    }
+
+    public function test_radicador_solicita_firma_con_password_y_notifica_al_responsable_sin_firmar(): void
+    {
+        $radicador = User::factory()->create([
+            'estado' => 1,
+            'password' => Hash::make('ClaveRadicador123'),
+        ]);
+        $this->radicado->update([
+            'usuario_crea' => $radicador->id,
+            'archivo_digital' => 'm06/pendiente.pdf',
+            'estado_firma' => 'pendiente',
+        ]);
+
+        $url = self::URL.'/solicitar-firma';
+        $payload = ['documentable_id' => $this->radicado->id, 'metodo' => 'password', 'password' => 'ClaveRadicador123'];
+
+        $this->actingAs($radicador)->postJson($url, [...$payload, 'password' => 'incorrecta'])->assertForbidden();
+        $this->actingAs($this->ajeno)->postJson($url, $payload)->assertForbidden();
+        $this->actingAs($radicador)->postJson($url, $payload)
+            ->assertOk()->assertJsonPath('data.responsables_notificados', 1);
+        $this->actingAs($radicador)->postJson($url, $payload)->assertOk();
+
+        $notificacion = Notificacion::where('type', 'firma_solicitada')
+            ->where('notifiable_type', VentanillaRadicaReci::class)
+            ->where('notifiable_id', $this->radicado->id)->sole();
+        $this->assertSame($this->firmante->id, $notificacion->user_id);
+        $this->assertSame("/mi-bandeja/recibidos?detail={$this->radicado->id}", $notificacion->data['url']);
+        $this->assertSame('pendiente', $this->radicado->fresh()->estado_firma);
+        $this->assertDatabaseMissing('firmas_eventos', [
+            'documentable_type' => VentanillaRadicaReci::class,
+            'documentable_id' => $this->radicado->id,
+        ]);
+    }
+
+    public function test_radicador_puede_solicitar_firma_con_otp_sin_firmar_el_radicado(): void
+    {
+        $radicador = User::factory()->create(['estado' => 1]);
+        $this->radicado->update([
+            'usuario_crea' => $radicador->id,
+            'archivo_digital' => 'm06/pendiente-otp.pdf',
+            'estado_firma' => 'pendiente',
+        ]);
+
+        $this->actingAs($radicador)->postJson(self::URL.'/solicitar-otp', [
+            'documentable_type' => 'radicado_recibido',
+            'documentable_id' => $this->radicado->id,
+            'accion' => 'solicitar_firma',
+        ])->assertOk();
+
+        $otp = null;
+        Mail::assertSent(OtpFirmaMail::class, function ($mail) use (&$otp, $radicador) {
+            $otp = (string) $mail->otp;
+
+            return $mail->hasTo($radicador->email);
+        });
+
+        $this->actingAs($radicador)->postJson(self::URL.'/solicitar-firma', [
+            'documentable_id' => $this->radicado->id,
+            'metodo' => 'otp',
+            'otp' => $otp,
+        ])->assertOk();
+
+        $this->assertSame($this->firmante->id, Notificacion::where('type', 'firma_solicitada')
+            ->where('notifiable_id', $this->radicado->id)->sole()->user_id);
+        $this->assertDatabaseMissing('firmas_eventos', [
+            'documentable_type' => VentanillaRadicaReci::class,
+            'documentable_id' => $this->radicado->id,
+        ]);
     }
 }

@@ -17,6 +17,7 @@ class Notificacion extends Model
     public const TIPOS_NUEVAS_PARA_TI = [
         'asignacion_responsable', 'asignacion_proyector', 'asignacion_firmante', 'tarea.asignada',
         'radicado_asignado', 'asignacion',
+        'firma_solicitada',
     ];
 
     /** Radicado o PQRS próximo a vencer (alertas:vencimiento): preferencia «Vencimientos». */

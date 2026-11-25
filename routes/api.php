@@ -118,6 +118,7 @@ Route::middleware(['auth:sanctum', 'throttle:archivo'])->prefix('archivo')->grou
     // RUTAS DE FIRMA ELECTRÓNICA (LEY 527)
     Route::prefix('firma-electronica')->group(function () {
         Route::post('/solicitar-otp', [FirmaElectronicaController::class, 'solicitarOtp'])->middleware('throttle:firma-otp');
+        Route::post('/solicitar-firma', [FirmaElectronicaController::class, 'solicitarFirma'])->middleware('throttle:firma');
         Route::post('/firmar', [FirmaElectronicaController::class, 'firmarDocumento'])->middleware('throttle:firma');
     });
 

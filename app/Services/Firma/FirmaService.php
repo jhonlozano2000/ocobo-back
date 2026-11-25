@@ -127,7 +127,7 @@ class FirmaService
             ->update([
                 'firmado' => 1,
                 'fecha_firma' => now(),
-                'otp_utilizado' => '***'.substr($otp, -3),
+                'otp_utilizado' => $otp === 'PASSWORD' ? 'PASSWORD' : '***'.substr($otp, -3),
                 'updated_at' => now(),
             ]);
     }

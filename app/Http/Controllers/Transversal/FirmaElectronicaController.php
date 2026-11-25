@@ -12,9 +12,11 @@ use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use App\Rules\PdfFirmable;
 use App\Services\Firma\FirmaService;
 use App\Services\Firma\PdfCompatible;
+use App\Services\Firma\SolicitudFirmaRadicadoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -25,9 +27,48 @@ class FirmaElectronicaController extends Controller
     use ApiResponseTrait;
 
     public function __construct(
-        private FirmaService $firmaService
+        private FirmaService $firmaService,
+        private SolicitudFirmaRadicadoService $solicitudFirmaService
     ) {
         $this->middleware('auth:sanctum');
+    }
+
+    /** El radicador se autentica y solicita la firma a los responsables asignados. */
+    public function solicitarFirma(Request $request)
+    {
+        $request->validate([
+            'documentable_id' => 'required|integer',
+            'metodo' => 'required|in:otp,password',
+            'otp' => $request->input('metodo') === 'otp' ? 'required|string|size:6' : 'prohibited',
+            'password' => $request->input('metodo') === 'password' ? 'required|string' : 'prohibited',
+        ]);
+
+        $radicado = VentanillaRadicaReci::find($request->integer('documentable_id'));
+        if (! $radicado) {
+            return $this->errorResponse('Radicado no encontrado.', null, 404);
+        }
+
+        $user = $request->user();
+        if (! $this->solicitudFirmaService->puedeSolicitar($radicado, $user)) {
+            return $this->errorResponse('No tiene permiso para solicitar la firma de este radicado.', null, 403);
+        }
+        if (! $radicado->archivo_digital || $radicado->estado_firma === 'firmado') {
+            return $this->errorResponse('El radicado debe tener un archivo digital pendiente de firma.', null, 422);
+        }
+        if ($request->metodo === 'otp') {
+            if (! $this->firmaService->validarOtpPorDocumento($request->otp, SolicitudFirmaRadicadoService::TIPO_OTP, $radicado->id, $user->id)) {
+                return $this->errorResponse('Código OTP inválido o expirado.', null, 403);
+            }
+        } elseif (! Hash::check($request->password, $user->password)) {
+            return $this->errorResponse('La contraseña ingresada es incorrecta.', null, 403);
+        }
+
+        $total = $this->solicitudFirmaService->solicitar($radicado, $user);
+        if ($total === 0) {
+            return $this->errorResponse('No hay responsables distintos del radicador para solicitar la firma.', null, 422);
+        }
+
+        return $this->successResponse(['responsables_notificados' => $total], 'Solicitud de firma enviada a los responsables.');
     }
 
     /**
@@ -41,11 +82,36 @@ class FirmaElectronicaController extends Controller
         $request->validate([
             'documentable_type' => 'required|string|in:radicado_enviado,radicado_recibido,radicado_interno',
             'documentable_id' => 'required|integer',
+            'accion' => 'sometimes|in:solicitar_firma',
         ]);
 
         $user = Auth::user();
         $tipo = $request->documentable_type;
         $id = (int) $request->documentable_id;
+
+        if ($request->accion === 'solicitar_firma') {
+            if ($tipo !== 'radicado_recibido') {
+                return $this->errorResponse('La solicitud de firma solo está disponible para radicados recibidos.', null, 422);
+            }
+            $radicado = VentanillaRadicaReci::find($id);
+            if (! $radicado) {
+                return $this->errorResponse('Radicado no encontrado.', null, 404);
+            }
+            if (! $this->solicitudFirmaService->puedeSolicitar($radicado, $user)) {
+                return $this->errorResponse('No tiene permiso para solicitar la firma de este radicado.', null, 403);
+            }
+            if (! $radicado->archivo_digital || $radicado->estado_firma === 'firmado') {
+                return $this->errorResponse('El radicado debe tener un archivo digital pendiente de firma.', null, 422);
+            }
+            if (empty($user->email)) {
+                return $this->errorResponse('El usuario no tiene un correo electrónico configurado.', null, 422);
+            }
+
+            $nombre = trim("{$user->nombres} {$user->apellidos}");
+            $this->firmaService->generarYEnviarOtpParaEmail($user->email, $nombre, SolicitudFirmaRadicadoService::TIPO_OTP, $id, $user->id);
+
+            return $this->successResponse(null, 'Código OTP enviado a su correo electrónico.');
+        }
 
         [$modelo] = FirmaService::TIPOS_DOCUMENTO[$tipo];
         if (! $modelo::whereKey($id)->exists()) {
@@ -77,14 +143,17 @@ class FirmaElectronicaController extends Controller
 
     /**
      * Ejecuta la firma electrónica de un documento enviado.
-     * Valida OTP, estampa PDF con sello visual, registra evento legal (ISO 27001).
+     * Valida OTP o contraseña, estampa PDF con sello visual y registra el evento legal.
      */
     public function firmarDocumento(Request $request)
     {
+        $metodo = $request->input('metodo', 'otp');
         $request->validate([
             'documentable_id' => 'required|integer',
             'documentable_type' => 'required|string|in:radicado_enviado,radicado_recibido,radicado_interno',
-            'otp' => 'required|string|size:6',
+            'metodo' => 'sometimes|in:otp,password',
+            'otp' => $metodo === 'otp' ? 'required|string|size:6' : 'prohibited',
+            'password' => $metodo === 'password' ? 'required|string' : 'prohibited',
             'firmado_en_representacion' => 'nullable|boolean',
             'nombre_representado' => 'nullable|string|max:255',
         ]);
@@ -101,11 +170,17 @@ class FirmaElectronicaController extends Controller
             return $this->warningResponse('Ya firmó este documento.');
         }
 
-        // 1. Validar OTP por documento y usuario
-        $otpValido = $this->firmaService->validarOtpPorDocumento($request->otp, $request->documentable_type, (int) $request->documentable_id, $user->id);
-        if (! $otpValido) {
-            return $this->errorResponse('Código OTP inválido o expirado', null, 403);
+        // 1. Verificar la identidad antes de modificar el PDF o registrar la firma.
+        if ($metodo === 'otp') {
+            $otpValido = $this->firmaService->validarOtpPorDocumento($request->otp, $request->documentable_type, (int) $request->documentable_id, $user->id);
+            if (! $otpValido) {
+                return $this->errorResponse('Código OTP inválido o expirado', null, 403);
+            }
+        } elseif (! Hash::check($request->password, $user->password)) {
+            return $this->errorResponse('La contraseña ingresada es incorrecta.', null, 403);
         }
+
+        $verificacion = $metodo === 'password' ? 'PASSWORD' : $request->otp;
 
         try {
             DB::beginTransaction();
@@ -160,13 +235,13 @@ class FirmaElectronicaController extends Controller
                 'hash_firmado' => $resultadoFirma['nuevo_hash'],
                 'timestamp_token' => $resultadoFirma['timestamp_token'],
                 'timestamp_fecha' => $resultadoFirma['timestamp_fecha'],
-                'otp_utilizado' => '***'.substr($request->otp, -3),
+                'otp_utilizado' => $metodo === 'password' ? 'PASSWORD' : '***'.substr($request->otp, -3),
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),
                 'fecha_firma' => now(),
             ]);
 
-            $this->firmaService->marcarFirmante($request->documentable_type, $documento->id, $user->id, $request->otp);
+            $this->firmaService->marcarFirmante($request->documentable_type, $documento->id, $user->id, $verificacion);
 
             // 4. Actualizar el documento con el nuevo hash; queda firmado cuando firma el último firmante
             $completa = $this->firmaService->todosFirmaron($request->documentable_type, $documento->id);
