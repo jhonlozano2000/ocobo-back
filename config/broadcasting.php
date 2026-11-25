@@ -1,5 +1,11 @@
 <?php
 
+$broadcastDriver = env('BROADCAST_DRIVER', 'reverb');
+
+if ($broadcastDriver === 'reverb' && (! env('REVERB_APP_KEY') || ! env('REVERB_APP_SECRET') || ! env('REVERB_APP_ID'))) {
+    $broadcastDriver = 'log';
+}
+
 return [
 
     /*
@@ -15,7 +21,9 @@ return [
     |
     */
 
-    'default' => env('BROADCAST_DRIVER', 'reverb'),
+    // Los canales se registran en cada petición HTTP. Si Reverb no tiene
+    // credenciales en este proceso, no debe impedir consultas ajenas al socket.
+    'default' => $broadcastDriver,
 
     'connections' => [
 
