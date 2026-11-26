@@ -46,7 +46,7 @@ class SolicitudFirmaRadicadoService
                             'radica_reci_id' => $radicado->id,
                             'num_radicado' => $radicado->num_radicado,
                             'solicitado_por' => $radicador->id,
-                            'url' => "/mi-bandeja/recibidos?detail={$radicado->id}",
+                            'url' => "/mi-bandeja/recibidos?detail={$radicado->id}&firmar=1",
                         ],
                     ]
                 );

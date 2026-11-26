@@ -17,6 +17,18 @@ class RutasRecibidosAutorizadasTest extends TestCase
 {
     use DatabaseTransactions;
 
+    public function test_los_radicados_solo_exponen_solicitud_de_anulacion(): void
+    {
+        $rutas = collect(Route::getRoutes()->getRoutes());
+
+        foreach (['radica-recibida', 'radica-enviada', 'radica-interno'] as $tipo) {
+            $base = 'api/ventanilla/'.$tipo.'/{id}';
+
+            $this->assertFalse($rutas->contains(fn ($ruta) => $ruta->uri() === $base && in_array('DELETE', $ruta->methods(), true)));
+            $this->assertTrue($rutas->contains(fn ($ruta) => $ruta->uri() === $base.'/solicitar-anulacion' && in_array('POST', $ruta->methods(), true)));
+        }
+    }
+
     public function test_toda_ruta_de_recibidos_tiene_middleware_de_autorizacion(): void
     {
         $sinAutorizacion = collect(Route::getRoutes()->getRoutes())

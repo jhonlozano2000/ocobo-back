@@ -261,12 +261,32 @@ class FirmaOtpFirmanteTest extends TestCase
             ->where('notifiable_type', VentanillaRadicaReci::class)
             ->where('notifiable_id', $this->radicado->id)->sole();
         $this->assertSame($this->firmante->id, $notificacion->user_id);
-        $this->assertSame("/mi-bandeja/recibidos?detail={$this->radicado->id}", $notificacion->data['url']);
+        $this->assertSame("/mi-bandeja/recibidos?detail={$this->radicado->id}&firmar=1", $notificacion->data['url']);
         $this->assertSame('pendiente', $this->radicado->fresh()->estado_firma);
         $this->assertDatabaseMissing('firmas_eventos', [
             'documentable_type' => VentanillaRadicaReci::class,
             'documentable_id' => $this->radicado->id,
         ]);
+    }
+
+    public function test_radicador_no_responsable_solicita_firma_sin_credenciales_y_responsable_no_puede_solicitarla(): void
+    {
+        $radicador = User::factory()->create(['estado' => 1]);
+        $this->radicado->update([
+            'usuario_crea' => $radicador->id,
+            'archivo_digital' => 'm06/pendiente.pdf',
+            'estado_firma' => 'pendiente',
+        ]);
+
+        $payload = ['documentable_id' => $this->radicado->id];
+        $this->actingAs($radicador)->postJson(self::URL.'/solicitar-firma', $payload)
+            ->assertOk()->assertJsonPath('data.responsables_notificados', 1);
+        $this->assertSame($this->firmante->id, Notificacion::where('type', 'firma_solicitada')
+            ->where('notifiable_id', $this->radicado->id)->sole()->user_id);
+
+        $this->radicado->update(['usuario_crea' => $this->firmante->id]);
+        $this->actingAs($this->firmante)->postJson(self::URL.'/solicitar-firma', $payload)
+            ->assertStatus(422);
     }
 
     public function test_radicador_puede_solicitar_firma_con_otp_sin_firmar_el_radicado(): void

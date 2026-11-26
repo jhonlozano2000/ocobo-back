@@ -53,7 +53,6 @@ class VentanillaRadicaEnviadosController extends Controller
         $this->middleware('can:'.self::PERM.'Actualizar asunto')->only(['updateAsunto']);
         $this->middleware('can:'.self::PERM.'Atualizar fechas de radicados')->only(['updateFechas']);
         $this->middleware('can:'.self::PERM.'Actualizar clasificacion de radicados')->only(['updateClasificacionDocumental']);
-        $this->middleware('can:'.self::PERM.'Eliminar')->only(['destroy']);
         $this->middleware('can:'.self::PERM.'Notificar Email')->only(['enviarNotificacion']);
     }
 
@@ -522,48 +521,6 @@ class VentanillaRadicaEnviadosController extends Controller
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar el radicado enviado', $e->getMessage(), 500);
-        }
-    }
-
-    public function destroy($id)
-    {
-        try {
-            DB::beginTransaction();
-
-            $radicado = VentanillaRadicaEnviados::find($id);
-
-            if (! $radicado) {
-                return $this->errorResponse('Radicado enviado no encontrado', null, 404);
-            }
-
-            // Los adjuntos caen por FK en cascada; sus archivos se borran al confirmar
-            ArchivoHelper::eliminarAlConfirmar(
-                [$radicado->archivo_digital, ...$radicado->archivos()->pluck('archivo')->all()],
-                'radicados_enviados'
-            );
-
-            $radicado->responsables()->delete();
-            $radicado->respuestas()->delete();
-            $radicado->firmas()->delete();
-            $radicado->proyectores()->delete();
-            $numRadicado = $radicado->num_radicado;
-            $radicado->delete();
-
-            $this->auditVentanilla($radicado, 'deleted', $numRadicado);
-
-            DB::commit();
-
-            return $this->successResponse(null, 'Radicado enviado eliminado exitosamente');
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-            DB::rollBack();
-
-            return $this->errorResponse('Error al eliminar el radicado enviado', $e->getMessage(), 500);
         }
     }
 

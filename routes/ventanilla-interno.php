@@ -33,7 +33,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/radica-interno', [VentanillaRadicaInternoController::class, 'store'])->name('radica-interno.store')->middleware('can:'.$permInterno.'Crear')->middleware('throttle:radicacion');
     Route::get('/radica-interno/{id}', [VentanillaRadicaInternoController::class, 'show'])->name('radica-interno.show')->middleware('acceso_radicado:interno');
     Route::put('/radica-interno/{id}', [VentanillaRadicaInternoController::class, 'update'])->name('radica-interno.update')->middleware('can:'.$permInterno.'Editar')->middleware('acceso_radicado:interno');
-    Route::delete('/radica-interno/{id}', [VentanillaRadicaInternoController::class, 'destroy'])->name('radica-interno.destroy')->middleware('can:'.$permInterno.'Eliminar')->middleware('acceso_radicado:interno');
     Route::get('/radica-interno/search/ocr', [VentanillaRadicaInternoController::class, 'searchByOcr'])->name('radica-interno.search-ocr')->middleware('can:'.$permInterno.'Listar');
 
     Route::prefix('radica-interno/{id}/archivos')->middleware('acceso_radicado:interno')->name('radica-interno.archivos.')->group(function () use ($permInterno) {

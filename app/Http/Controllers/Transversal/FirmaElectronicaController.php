@@ -33,12 +33,12 @@ class FirmaElectronicaController extends Controller
         $this->middleware('auth:sanctum');
     }
 
-    /** El radicador se autentica y solicita la firma a los responsables asignados. */
+    /** El radicador solicita la firma; cada responsable se autentica al firmar. */
     public function solicitarFirma(Request $request)
     {
         $request->validate([
             'documentable_id' => 'required|integer',
-            'metodo' => 'required|in:otp,password',
+            'metodo' => 'sometimes|in:otp,password',
             'otp' => $request->input('metodo') === 'otp' ? 'required|string|size:6' : 'prohibited',
             'password' => $request->input('metodo') === 'password' ? 'required|string' : 'prohibited',
         ]);
@@ -52,6 +52,9 @@ class FirmaElectronicaController extends Controller
         if (! $this->solicitudFirmaService->puedeSolicitar($radicado, $user)) {
             return $this->errorResponse('No tiene permiso para solicitar la firma de este radicado.', null, 403);
         }
+        if ($this->firmaService->esFirmanteDesignado('radicado_recibido', $radicado->id, $user->id)) {
+            return $this->errorResponse('Usted es responsable de este radicado. Firme con su propia contraseÃ±a o cÃ³digo OTP.', null, 422);
+        }
         if (! $radicado->archivo_digital || $radicado->estado_firma === 'firmado') {
             return $this->errorResponse('El radicado debe tener un archivo digital pendiente de firma.', null, 422);
         }
@@ -59,7 +62,7 @@ class FirmaElectronicaController extends Controller
             if (! $this->firmaService->validarOtpPorDocumento($request->otp, SolicitudFirmaRadicadoService::TIPO_OTP, $radicado->id, $user->id)) {
                 return $this->errorResponse('Código OTP inválido o expirado.', null, 403);
             }
-        } elseif (! Hash::check($request->password, $user->password)) {
+        } elseif ($request->metodo === 'password' && ! Hash::check($request->password, $user->password)) {
             return $this->errorResponse('La contraseña ingresada es incorrecta.', null, 403);
         }
 

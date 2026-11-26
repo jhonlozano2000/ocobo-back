@@ -4,7 +4,6 @@ namespace Tests\Feature\VentanillaUnica;
 
 use App\Helpers\ArchivoHelper;
 use App\Models\User;
-use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -13,8 +12,7 @@ use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 /**
- * M01-06/M02-06/M03-06: al eliminar un radicado los archivos se borraban antes del commit; si la
- * transacción fallaba, el registro quedaba en BD sin su documento. Ahora se borran al confirmar.
+ * Los radicados ya no se eliminan. DELETE debe rechazarse sin borrar los archivos.
  */
 class BorradoArchivosRadicadoTest extends TestCase
 {
@@ -59,58 +57,32 @@ class BorradoArchivosRadicadoTest extends TestCase
         return [DB::table('ventanilla_radica_reci')->where('id', $id)->value('archivo_digital'), "adjunto-$id.pdf"];
     }
 
-    private function fallarAlBorrar(int $id): void
-    {
-        VentanillaRadicaReci::deleting(function ($radicado) use ($id) {
-            if ($radicado->id === $id) {
-                throw new \RuntimeException('fallo simulado');
-            }
-        });
-    }
-
-    public function test_si_el_borrado_falla_los_archivos_se_conservan(): void
+    public function test_delete_recibido_no_borra_el_radicado_ni_sus_archivos(): void
     {
         $id = $this->recibido();
         $archivos = $this->archivosDe($id);
-        $this->fallarAlBorrar($id);
+        $this->actingAs($this->user)->deleteJson("/api/ventanilla/radica-recibida/{$id}")->assertStatus(405);
 
-        $this->actingAs($this->user)->deleteJson("/api/ventanilla/radica-recibida/{$id}")->assertStatus(500);
-
-        $this->assertDatabaseHas('ventanilla_radica_reci', ['id' => $id]);
+        $this->assertDatabaseHas('ventanilla_radica_reci', ['id' => $id, 'deleted_at' => null]);
         foreach ($archivos as $archivo) {
             Storage::disk('radicados_recibidos')->assertExists($archivo);
         }
     }
 
-    public function test_borrado_confirmado_elimina_los_archivos(): void
-    {
-        $id = $this->recibido();
-        $archivos = $this->archivosDe($id);
-
-        $this->actingAs($this->user)->deleteJson("/api/ventanilla/radica-recibida/{$id}")->assertOk();
-
-        $this->assertSoftDeleted('ventanilla_radica_reci', ['id' => $id]);
-        foreach ($archivos as $archivo) {
-            Storage::disk('radicados_recibidos')->assertMissing($archivo);
-        }
-    }
-
     public function test_no_hay_borrado_en_lote_de_radicados(): void
     {
-        // Los radicados se borran de a uno (el último) o se anulan, para no dejar huecos en el consecutivo
+        // No se admite borrado masivo; las solicitudes de anulación siguen otro flujo.
         $id = $this->recibido();
 
         $this->actingAs($this->user)->deleteJson('/api/ventanilla/radica-recibida', ['ids' => [$id]])->assertStatus(405);
         $this->actingAs($this->user)->deleteJson('/api/ventanilla/radica-enviada', ['ids' => [$id]])->assertStatus(405);
+        $this->actingAs($this->user)->deleteJson('/api/ventanilla/radica-interno/123456789')->assertStatus(405);
 
         $this->assertDatabaseHas('ventanilla_radica_reci', ['id' => $id, 'deleted_at' => null]);
     }
 
-    public function test_borrar_enviado_elimina_tambien_los_adjuntos_del_disco(): void
+    public function test_delete_enviado_no_borra_los_adjuntos_del_disco(): void
     {
-        if (! Schema::hasTable('ventanilla_radica_enviados_responsable')) {
-            DB::statement('CREATE TEMPORARY TABLE ventanilla_radica_enviados_responsable LIKE ventanilla_radica_enviados_responsa');
-        }
         Schema::disableForeignKeyConstraints();
         $id = DB::table('ventanilla_radica_enviados')->insertGetId([
             'num_radicado' => 'M0206-'.uniqid(), 'clasifica_documen_id' => 1, 'medio_enviado_id' => 1,
@@ -122,9 +94,10 @@ class BorradoArchivosRadicadoTest extends TestCase
         Storage::disk('radicados_enviados')->put("enviado-{$this->user->id}.pdf", 'pdf');
         Storage::disk('radicados_enviados')->put("adjunto-env-$id.pdf", 'pdf');
 
-        $this->actingAs($this->user)->deleteJson("/api/ventanilla/radica-enviada/{$id}")->assertOk();
+        $this->actingAs($this->user)->deleteJson("/api/ventanilla/radica-enviada/{$id}")->assertStatus(405);
 
-        Storage::disk('radicados_enviados')->assertMissing("enviado-{$this->user->id}.pdf");
-        Storage::disk('radicados_enviados')->assertMissing("adjunto-env-$id.pdf");
+        $this->assertDatabaseHas('ventanilla_radica_enviados', ['id' => $id]);
+        Storage::disk('radicados_enviados')->assertExists("enviado-{$this->user->id}.pdf");
+        Storage::disk('radicados_enviados')->assertExists("adjunto-env-$id.pdf");
     }
 }

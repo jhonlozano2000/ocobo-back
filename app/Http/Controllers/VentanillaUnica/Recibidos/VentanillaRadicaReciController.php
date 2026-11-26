@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\VentanillaUnica\Recibidos;
 
 use App\Helpers\AcuseReciboHelper;
-use App\Helpers\ArchivoHelper;
 use App\Helpers\MailConfigHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ventanilla\Recibidos\ListRadicadosRecibidosRequest;
@@ -52,12 +51,10 @@ class VentanillaRadicaReciController extends Controller
     ) {
         $this->middleware('can:'.self::PERM.'Listar')->only(['index', 'listarRadicados', 'estadisticas', 'export']);
         $this->middleware('can:'.self::PERM.'Crear')->only(['store']);
-        $this->middleware('can:'.self::PERM.'Mostrar')->only(['show', 'lineaTiempo']);
         $this->middleware('can:'.self::PERM.'Editar')->only(['update']);
         $this->middleware('can:'.self::PERM.'Actualizar asunto')->only(['updateAsunto']);
         $this->middleware('can:'.self::PERM.'Atualizar fechas de radicados')->only(['updateFechas']);
         $this->middleware('can:'.self::PERM.'Actualizar clasificacion de radicados')->only(['updateClasificacionDocumental']);
-        $this->middleware('can:'.self::PERM.'Eliminar')->only(['destroy']);
         $this->middleware('can:'.self::PERM.'Notificar Email')->only(['enviarNotificacion']);
     }
 
@@ -1088,69 +1085,6 @@ class VentanillaRadicaReciController extends Controller
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar la radicación', $e->getMessage(), 500);
-        }
-    }
-
-    /**
-     * Elimina una radicación del sistema.
-     *
-     * Este método permite eliminar una radicación específica del sistema.
-     * Se recomienda verificar que no tenga dependencias antes de eliminar.
-     *
-     * @param  int  $id  ID de la radicación
-     * @return JsonResponse Respuesta JSON confirmando la eliminación
-     *
-     * @urlParam id integer required El ID de la radicación a eliminar. Example: 1
-     *
-     * @response 200 {
-     *   "status": true,
-     *   "message": "Radicación eliminada exitosamente"
-     * }
-     * @response 404 {
-     *   "status": false,
-     *   "message": "Radicación no encontrada"
-     * }
-     * @response 500 {
-     *   "status": false,
-     *   "message": "Error al eliminar la radicación",
-     *   "error": "Error message"
-     * }
-     */
-    public function destroy($id)
-    {
-        try {
-            DB::beginTransaction();
-
-            $radicado = VentanillaRadicaReci::find($id);
-
-            if (! $radicado) {
-                return $this->errorResponse('Radicación no encontrada', null, 404);
-            }
-
-            ArchivoHelper::eliminarAlConfirmar($radicado->archivos()->pluck('archivo')->all(), 'radicados_recibidos');
-
-            $radicado->archivos()->delete();
-            $radicado->responsables()->delete();
-            $numRadicado = $radicado->num_radicado;
-            $radicado->delete();
-
-            $this->auditVentanilla($radicado, 'deleted', $numRadicado);
-
-            DB::commit();
-
-            Cache::forget('ventanilla_recibidos_estadisticas');
-
-            return $this->successResponse(null, 'Radicación eliminada exitosamente');
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-            DB::rollBack();
-
-            return $this->errorResponse('Error al eliminar la radicación', $e->getMessage(), 500);
         }
     }
 

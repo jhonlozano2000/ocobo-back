@@ -23,6 +23,7 @@ class PermisoPaseCompartirRecibidosTest extends TestCase
         Schema::disableForeignKeyConstraints();
         $id = DB::table('ventanilla_radica_reci')->insertGetId([
             'num_radicado' => 'M0121-'.uniqid(), 'medio_recep_id' => 1, 'usuario_crea' => $user->id,
+            'created_at' => now(), 'updated_at' => now(),
         ]);
         Schema::enableForeignKeyConstraints();
 
@@ -48,5 +49,43 @@ class PermisoPaseCompartirRecibidosTest extends TestCase
         $user->givePermissionTo(Permission::findOrCreate('Mi Bandeja - Recibidos -> Ver', 'web'));
 
         $this->actingAs($user)->getJson("/api/ventanilla/radica-recibida/{$radicado}/pase-historial")->assertOk();
+    }
+
+    public function test_responsable_con_permiso_de_mi_bandeja_puede_ver_detalle_sin_permiso_de_ventanilla(): void
+    {
+        $creador = User::factory()->create(['estado' => 1]);
+        $responsable = User::factory()->create(['estado' => 1]);
+        $ajeno = User::factory()->create(['estado' => 1]);
+        $radicado = $this->radicadoDe($creador);
+
+        Schema::disableForeignKeyConstraints();
+        $cargoId = DB::table('users_cargos')->insertGetId([
+            'user_id' => $responsable->id,
+            'cargo_id' => 999999,
+            'fecha_inicio' => now()->toDateString(),
+            'estado' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('ventanilla_radica_reci_responsa')->insert([
+            'radica_reci_id' => $radicado,
+            'users_cargos_id' => $cargoId,
+            'custodio' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        Schema::enableForeignKeyConstraints();
+
+        $url = "/api/ventanilla/radica-recibida/{$radicado}";
+        $this->actingAs($responsable)->getJson($url)->assertForbidden();
+
+        $permiso = Permission::findOrCreate('Mi Bandeja - Recibidos -> Ver', 'web');
+        $responsable->givePermissionTo($permiso);
+        $ajeno->givePermissionTo($permiso);
+
+        $this->actingAs($responsable)->getJson($url)->assertOk()->assertJsonPath('data.id', $radicado);
+        $this->actingAs($responsable)->getJson("{$url}/linea-tiempo")->assertOk();
+        $this->actingAs($responsable)->getJson("{$url}/enviados")->assertOk();
+        $this->actingAs($ajeno)->getJson($url)->assertNotFound();
     }
 }

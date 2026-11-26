@@ -5,6 +5,7 @@ namespace Tests\Feature\Reportes;
 use App\Mail\ReporteProgramadoMailable;
 use App\Models\ReporteProgramado;
 use App\Models\User;
+use App\Models\VentanillaUnica\Recibidos\VentanillaRadicaReci;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -78,7 +79,8 @@ class ReportesAccesoTest extends TestCase
     public function test_la_exportacion_no_se_corta_en_100_filas(): void
     {
         $this->user->givePermissionTo([self::LISTAR, self::VER_TODOS]);
-        $total = DB::table('ventanilla_radica_reci')->count();
+        // El reporte usa Eloquent y excluye los radicados eliminados históricamente.
+        $total = VentanillaRadicaReci::query()->count();
         for ($i = $total; $i < 101; $i++) {
             $this->radicado($this->user->id);
         }
@@ -87,7 +89,7 @@ class ReportesAccesoTest extends TestCase
             ->assertOk()->streamedContent();
         $filas = count(array_filter(explode("\n", trim($csv)))) - 1;
 
-        $this->assertSame(min(DB::table('ventanilla_radica_reci')->count(), 5000), $filas);
+        $this->assertSame(min(VentanillaRadicaReci::query()->count(), 5000), $filas);
     }
 
     public function test_programados_tienen_dueno_y_corren_con_su_alcance(): void

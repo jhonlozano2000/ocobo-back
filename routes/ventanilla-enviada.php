@@ -38,7 +38,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/radica-enviada/recibidos-disponibles', [VentanillaRadicaEnviadosRespuestasController::class, 'disponibles'])->name('radica-enviada.recibidos.disponibles')->middleware('can:'.$permEnvi.'Editar');
     Route::get('/radica-enviada/{id}', [VentanillaRadicaEnviadosController::class, 'show'])->name('radica-enviada.show')->middleware($verEnvi('Mostrar'))->middleware('acceso_radicado:enviado');
     Route::put('/radica-enviada/{id}', [VentanillaRadicaEnviadosController::class, 'update'])->name('radica-enviada.update')->middleware('can:'.$permEnvi.'Editar')->middleware('acceso_radicado:enviado');
-    Route::delete('/radica-enviada/{id}', [VentanillaRadicaEnviadosController::class, 'destroy'])->name('radica-enviada.destroy')->middleware('can:'.$permEnvi.'Eliminar')->middleware('acceso_radicado:enviado');
     Route::get('/radica-enviada/search/ocr', [VentanillaRadicaEnviadosController::class, 'searchByOcr'])->name('radica-enviada.search-ocr')->middleware('can:'.$permEnvi.'Listar');
 
     Route::prefix('radica-enviada/{id}/archivos')->middleware('acceso_radicado:enviado')->name('radica-enviada.archivos.')->group(function () use ($permEnvi, $verEnvi) {

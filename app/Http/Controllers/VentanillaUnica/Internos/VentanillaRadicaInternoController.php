@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\VentanillaUnica\Internos;
 
-use App\Helpers\ArchivoHelper;
 use App\Helpers\FileMetadataHelper;
 use App\Helpers\MailConfigHelper;
 use App\Http\Controllers\Controller;
@@ -52,7 +51,6 @@ class VentanillaRadicaInternoController extends Controller
         $this->middleware('can:'.self::PERM.' Actualizar asunto')->only(['updateAsunto']);
         $this->middleware('can:'.self::PERM.' Atualizar fechas de radicados')->only(['updateFechas']);
         $this->middleware('can:'.self::PERM.' Actualizar clasificacion de radicados')->only(['updateClasificacionDocumental']);
-        $this->middleware('can:'.self::PERM.' Eliminar')->only(['destroy']);
         $this->middleware('can:'.self::PERM.' Notificar Email')->only(['enviarNotificacion']);
     }
 
@@ -564,47 +562,6 @@ class VentanillaRadicaInternoController extends Controller
             DB::rollBack();
 
             return $this->errorResponse('Error al actualizar el radicado interno', $e->getMessage(), 500);
-        }
-    }
-
-    public function destroy($id)
-    {
-        try {
-            DB::beginTransaction();
-
-            $radicado = VentanillaRadicaInterno::find($id);
-
-            if (! $radicado) {
-                return $this->errorResponse('Radicado interno no encontrado', null, 404);
-            }
-
-            // Los adjuntos caen por FK en cascada; sus archivos se borran al confirmar
-            ArchivoHelper::eliminarAlConfirmar(
-                [$radicado->archivo_digital, ...$radicado->archivos()->pluck('archivo')->all()],
-                'radicados_internos'
-            );
-
-            $radicado->destinatarios()->delete();
-            $radicado->responsables()->delete();
-            $radicado->proyectores()->delete();
-            $numRadicado = $radicado->num_radicado;
-            $radicado->delete();
-
-            $this->auditVentanilla($radicado, 'deleted', $numRadicado);
-
-            DB::commit();
-
-            return $this->successResponse(null, 'Radicado interno eliminado exitosamente');
-        } catch (\Exception $e) {
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
-            if ($e instanceof HttpExceptionInterface) {
-                throw $e;
-            }
-            DB::rollBack();
-
-            return $this->errorResponse('Error al eliminar el radicado interno', $e->getMessage(), 500);
         }
     }
 

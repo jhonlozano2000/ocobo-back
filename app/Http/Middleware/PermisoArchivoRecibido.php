@@ -27,6 +27,10 @@ class PermisoArchivoRecibido
             return $next($request);
         }
 
+        if ($accion === 'Mostrar' && $user->can('Mi Bandeja - Recibidos -> Ver')) {
+            return $next($request);
+        }
+
         $id = (string) $request->route($parametro);
 
         if (ctype_digit($id)
